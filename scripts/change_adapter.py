@@ -190,11 +190,15 @@ def _directive(kind, post, request, instant, now):
     if "route" in request:
         return {"version": 1, "items": targets(post, kind, request["route"], [])}
     full = request.get("full", False)
-    scope = de.discover(post) if full else [
-        n for n in targets(post, kind, request.get("changes", []), request.get("items", []))
-        if de.is_directive(post, n)]
+    scope = de.discover(post) if full else targets(
+        post, kind, request.get("changes", []), request.get("items", []))
     records = []
     for name in scope:
+        # Partial scope covers every requested key, including a retired one.
+        # No record for that key tells the consumer to remove its old verdict.
+        # Filtering the scope itself makes the entire mixed batch UNKNOWN.
+        if not de.is_directive(post, name):
+            continue
         r = de.judge(post, name, instant)
         if kind == "directive-lapse":
             r = {**r, "verdict": r["lapse"], "event_id": r["lapse_event_id"]}
