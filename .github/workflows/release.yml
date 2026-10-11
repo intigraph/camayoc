@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable version tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: camayoc-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/release-proof.yml
+    with:
+      tag: ${{ github.event.inputs.tag || github.ref_name }}
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: source-release
+          path: release
+      - name: Publish existing source format
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum -c SHA256SUMS
+          python3 -c 'import json; p=json.load(open("source.json")); print("Source bundle from revision " + p["source_revision"] + ". No native executable is included.")' > notes.txt
+          gh release create "$RELEASE_TAG" "camayoc-${RELEASE_TAG}.tar.gz" SHA256SUMS source.json --verify-tag --title "Camayoc $RELEASE_TAG" --notes-file notes.txt
