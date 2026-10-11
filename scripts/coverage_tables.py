@@ -499,6 +499,16 @@ COVERAGE_WA: dict[int, dict] = {
     },
 }
 
+COVERAGE_PI: dict[int, dict] = {
+    1: {"query": None, "expressible": "The scoped activeBlocks closure and declared priority identify active P0 dependents; a dedicated blocker listing is not yet stored."},
+    2: {"query": "camayoc_effective_work_priority"},
+    3: {"query": None, "expressible": "Rule truth maintenance withdraws entailments after closure or edge removal; a before/after verification query is not yet stored."},
+    4: {"query": None, "expressible": "Explicit project and companion datasets bound the query scope; isolation and unrelated-edge negatives are fixture controls, not a stored audit query."},
+    5: {"query": None, "expressible": "The rule requires schema:Action typing and an active status; a stored rejected-entity audit query is not yet written."},
+    6: {"query": None, "gap": "The direct Quipu rank-change and owner-notification workflow integration is not implemented.", "needs": ["direct workflow rank-change and notification records"]},
+    7: {"query": None, "gap": "The P0 acceptance-disposition policy catalog and workflow integration are not yet modeled.", "needs": ["P0 acceptance disposition catalog"]},
+}
+
 SLICES: dict[str, dict[int, dict]] = {
     "verification-and-liveness": COVERAGE_VL,
     "golden-paths": COVERAGE_GP,
@@ -506,4 +516,5 @@ SLICES: dict[str, dict[int, dict]] = {
     "crew-task-lifecycle": COVERAGE_CTL,
     "document-structure-and-chunks": COVERAGE_DSC,
     "workflow-and-archive": COVERAGE_WA,
+    "priority-inheritance": COVERAGE_PI,
 }

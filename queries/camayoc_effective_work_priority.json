@@ -1,0 +1,20 @@
+{
+  "action": "load",
+  "name": "camayoc_effective_work_priority",
+  "description": "priority-inheritance Q1/Q2: minimum declared priority over a work item and its active blocking dependents. Reads explicit project plus its companion; no priority is rewritten. Rule-derived activeBlocks supplies closure. Reconcile/freshness required before use; absent/failed query is UNKNOWN.",
+  "template": "SELECT ?item (MIN(?rank) AS ?effectivePriority) FROM <{project}> FROM <{inferred}> WHERE { ?item a <https://schema.org/Action> . { ?item <https://seeds.local/ontology/priority> ?rank } UNION { ?item <https://seeds.local/ontology/activeBlocks> ?root . ?root <https://seeds.local/ontology/priority> ?rank } } GROUP BY ?item",
+  "params": [
+    {
+      "name": "project",
+      "type": "iri",
+      "required": true,
+      "description": "The explicit work project graph."
+    },
+    {
+      "name": "inferred",
+      "type": "iri",
+      "required": true,
+      "description": "That project graph's companion inferred graph; consumers must verify the pairing."
+    }
+  ]
+}
