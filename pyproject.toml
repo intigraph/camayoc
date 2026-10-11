@@ -1,0 +1,16 @@
+[project]
+name = "camayoc-review"
+version = "0.1.0"
+description = "Project-managed dependencies for RDF review commands"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+review = [
+    "boto3>=1.43.111",
+    "cryptography>=50.0.2",
+    "pyshacl>=0.40.1",
+    "pytest>=9.1.1",
+    "pyyaml>=6.0.3",
+    "rdflib>=7.6.0",
+]

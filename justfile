@@ -5,10 +5,19 @@ default:
 
 # Run all quality checks (markdown lint; grows an eval gate with the first slice)
 check:
-    npx --yes markdownlint-cli2 "**/*.md" "!node_modules"
+    npx --yes markdownlint-cli2 "**/*.md" "!node_modules" "!.venv"
 
 test:
     python3 -m unittest discover -s tests -v
+
+# Locked, project-managed interpreter for RDF review, not a runtime migration.
+review-preflight:
+    uv run --frozen --python 3.11 --group review python scripts/review_preflight.py
+
+# Preflight and tests use the same managed interpreter and dependency group.
+review-test *args:
+    uv run --frozen --python 3.11 --group review python scripts/review_preflight.py
+    uv run --frozen --python 3.11 --group review python -m pytest {{args}}
 
 # Benchmark competency or ordered rubrics; ordinal defaults to a keyless dry run.
 jev-bench *args:
