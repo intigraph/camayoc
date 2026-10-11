@@ -126,7 +126,7 @@ class Reader:
                  f'}} }} LIMIT {MAX_ROWS+1}')
         try:
             response = self.post('/query', {'query':query})
-            if not isinstance(response, dict) or response.get('truncated'):
+            if not isinstance(response, dict) or response.get('truncated') is not False:
                 raise NativeUnknown('native read is partial')
             rows = response.get('rows')
             if (not isinstance(rows, list) or not 0 < len(rows) <= MAX_ROWS

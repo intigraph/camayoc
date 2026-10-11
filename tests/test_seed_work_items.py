@@ -57,6 +57,10 @@ class NativeReader(unittest.TestCase):
                 reader,_=self.read(data,**response)
                 with self.assertRaises(nw.NativeUnknown):reader.get(ID)
 
+    def test_missing_completeness_marker_is_unknown(self):
+        reader=nw.Reader(lambda *args:{'rows':rows()},nw.Board(GRAPH,'demo'))
+        with self.assertRaises(nw.NativeUnknown):reader.get(ID)
+
     def test_status_conflict_and_unknown_refuse(self):
         for status in ('unknown','closed,open',None):
             reader,_=self.read(rows(**{nw.SEEDS+'status':status}))
