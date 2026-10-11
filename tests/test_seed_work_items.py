@@ -135,3 +135,30 @@ class AuthorityProjection(unittest.TestCase):
                 with self.assertRaises(nw.NativeUnknown):
                     nw.from_authority(lambda *args:None,{**self.profile(),**change},
                                       server='https://tracker.example.test')
+
+class DeployedAuthority(unittest.TestCase):
+    def test_missing_profile_is_unknown_not_legacy(self):
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(nw,'AUTHORITY_FILE',str(Path(directory)/'absent.json')):
+                with self.assertRaises(nw.NativeUnknown):nw.deployed_reader(lambda *args:None)
+
+    def test_protected_profile_and_unprotected_variants(self):
+        import json
+        import stat
+        import tempfile
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import planes
+        profile=AuthorityProjection().profile()
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'authority.json';path.write_text(json.dumps(profile))
+            trusted=SimpleNamespace(st_mode=stat.S_IFREG|0o644,st_uid=0,st_size=path.stat().st_size)
+            with patch.object(nw,'AUTHORITY_FILE',str(path)),patch.object(planes,'SERVER',profile['server']):
+                with patch.object(Path,'lstat',return_value=trusted):
+                    self.assertEqual(nw.deployed_reader(lambda *args:None).board,nw.Board(GRAPH,'demo'))
+                for mode,uid,size in ((stat.S_IFLNK|0o777,0,100),(stat.S_IFREG|0o666,0,100),
+                                      (stat.S_IFREG|0o644,1000,100),(stat.S_IFREG|0o644,0,5000)):
+                    with patch.object(Path,'lstat',return_value=SimpleNamespace(st_mode=mode,st_uid=uid,st_size=size)):
+                        with self.assertRaises(nw.NativeUnknown):nw.deployed_reader(lambda *args:None)
