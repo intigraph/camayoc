@@ -41,5 +41,9 @@ jobs:
           set -euo pipefail
           cd release
           sha256sum -c SHA256SUMS
+          current_revision=$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha)
+          expected_revision=$(python3 -c 'import json; print(json.load(open("source.json"))["source_revision"])')
+          test "$current_revision" = "$expected_revision"
+          python3 -c 'import hashlib,json,sys; p=json.load(open("source.json")); assert p["tag"] == sys.argv[1]; assert p["artifact"] == "camayoc-" + sys.argv[1] + ".tar.gz"; assert hashlib.sha256(open(p["artifact"],"rb").read()).hexdigest() == p["sha256"]' "$RELEASE_TAG"
           python3 -c 'import json; p=json.load(open("source.json")); print("Source bundle from revision " + p["source_revision"] + ". No native executable is included.")' > notes.txt
           gh release create "$RELEASE_TAG" "camayoc-${RELEASE_TAG}.tar.gz" SHA256SUMS source.json --verify-tag --title "Camayoc $RELEASE_TAG" --notes-file notes.txt

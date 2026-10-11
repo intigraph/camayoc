@@ -58,6 +58,8 @@ class SourceRelease(unittest.TestCase):
         original = archive.read_bytes()
         archive.write_bytes(original + b"tampered")
         self.assertNotEqual(subprocess.run(["sha256sum", "-c", "SHA256SUMS"], cwd=output, capture_output=True).returncode, 0)
+        archive.unlink()
+        self.assertNotEqual(subprocess.run(["sha256sum", "-c", "SHA256SUMS"], cwd=output, capture_output=True).returncode, 0)
 
     def test_same_revision_repeats_identical_bytes(self):
         one = PACK.package("HEAD", "0.1.0", self.root / "one")
