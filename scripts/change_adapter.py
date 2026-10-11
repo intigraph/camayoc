@@ -12,6 +12,7 @@ import time
 
 import blocked_by as bb
 import planes
+import seed_work_items as native
 
 BLOCKER = {"blockerKind", "prRef", "tool", "minVersion", "repoRef", "resolvesOn", "resolutionQuery"}
 OBS = {"observedAt", "observedStatus", "observedValue", "observedBlockedOn"}
@@ -27,14 +28,14 @@ DIRECTIVE = {"governedBy", "trackedBy", "inferredAt"}
 DIRECTIVE_KINDS = ("directive", "directive-lapse")
 
 
-def description(kind):
+def description(kind, *, native_reader=None):
     if kind in DIRECTIVE_KINDS:
         import directive_edges as de
         return {"version": 1, "attributes": sorted(bb.A + p for p in DIRECTIVE),
                 "graphs": ["ROOT", de.DECLARED, de.INFERRED],
                 "types": [bb.A + "Directive"]}
     props = WORK | OBS | BLOCKER if kind == "blocked" else REVIEW | REVIEW_ACTIVITY
-    seed_props = {bb.SEED_STATUS, bb.SCHEMA + "dateModified", bb.SCHEMA + "agent"} if kind == "blocked" else set()
+    seed_props = {bb.SEED_STATUS, bb.SCHEMA + "dateModified", bb.SCHEMA + "agent", bb.SCHEMA + "version"}
     return {"version": 1, "attributes": sorted({iri for p in props for iri in bb.term_iris(p)} | seed_props),
             "graphs": [g or "ROOT" for g in bb.graphs()],
             "types": bb.term_iris("WorkItem") + bb.term_iris("Blocker") + [bb.SCHEMA + "Action"] if kind == "blocked" else []}
@@ -57,14 +58,30 @@ def values(post, subject, prop, reverse=False):
     return [bb._local(str(r["v"])) for r in bb.select(post, f"SELECT ?v WHERE {{ {p} }}")]
 
 
-def targets(post, kind, changes, items):
-    out = set(items)
+def targets(post, kind, changes, items, *, native_reader=None):
+    def review_key(entity, graph=None):
+        nonlocal native_reader
+        if kind != "review" or not isinstance(entity,str) or not entity.startswith(native.ITEM):
+            return local(entity)
+        if native_reader is None:
+            native_reader=native.deployed_reader(post)
+        if graph is not None and graph != native_reader.board.graph:
+            return None
+        from urllib.parse import unquote
+        item_id=unquote(entity[len(native.ITEM):])
+        if not item_id.startswith(native_reader.board.prefix+'-'):
+            return None
+        if native_reader.board.subject(item_id)!=entity:
+            raise native.NativeUnknown('native change candidate identity ambiguous')
+        return item_id  # Existing exact-ID WorkItem's policy, never A + ActionIRI.
+    out = {key for value in items for key in [review_key(value) if isinstance(value,str) and value.startswith(native.ITEM) else value] if key}
+
     if kind in DIRECTIVE_KINDS:
         # Every subscribed change is ON the Directive itself.
         return sorted(out | {e for e in (local(c["entity"]) for c in changes) if e})
     subjects = set()
     for change in changes:
-        entity = local(change["entity"])
+        entity = review_key(change["entity"],change.get("graph"))
         if entity is None:
             continue
         prop = change.get("attribute", "").rsplit("#", 1)[-1].rsplit("/", 1)[-1]
