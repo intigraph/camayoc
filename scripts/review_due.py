@@ -143,10 +143,10 @@ def _native_id(post, entity: str, reader=None) -> str | None:
     if len(set(identifiers)) > 1:
         raise native.NativeUnknown('legacy WorkItem identifiers conflict')
     if identifiers:
-        if reader is not None and not identifiers[0].startswith(reader.board.prefix+'-'):
-            return None  # Other rigs retain their separately selected authority.
         if reader is not None and entity.startswith(reader.board.prefix+'-') and entity != identifiers[0]:
             raise native.NativeUnknown('legacy exact-ID entity and identifier conflict')
+        if reader is not None and not identifiers[0].startswith(reader.board.prefix+'-'):
+            return None  # Other rigs retain their separately selected authority.
         return identifiers[0]
     if reader is not None and entity.startswith(reader.board.prefix+'-'):
         # Original canonical WorkItem names ARE exact tracker IDs. The native
@@ -166,6 +166,8 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
             if native_reader is None:
                 from seed_work_items import deployed_reader
                 native_reader=deployed_reader(post)
+                if entity.startswith(native_reader.board.prefix+'-') and entity != item_id:
+                    raise ValueError('legacy exact-ID entity and identifier conflict')
                 if not item_id.startswith(native_reader.board.prefix+'-'):
                     item_id=None
             if item_id is not None:

@@ -39,6 +39,14 @@ class NativeReview(unittest.TestCase):
         self.assertEqual((result['verdict'],result['owner']),('UNKNOWN',None))
         self.assertEqual(result['native_authority'],'UNKNOWN')
 
+    def test_foreign_identifier_on_this_boards_canonical_item_is_unknown(self):
+        legacy=Store([(ID,'identifier','"other-one"'),(ID,'idleLimit','"P3D"'),
+                      (ID,'observes','old'),('old','observedAt','"2026-09-01T00:00:00Z"'),
+                      ('old','observedStatus','"closed"')])
+        result=rd.judge(legacy.post,ID,NOW,native_reader=nw.Reader(legacy.post,nw.Board(GRAPH,'demo')))
+        self.assertEqual(result['verdict'],'UNKNOWN')
+        self.assertEqual(result['native_authority'],'UNKNOWN')
+
     def test_independent_review_after_remains_due(self):
         self.assertEqual(self.judge(extra=[(ID,'reviewAfter','"2026-10-01T00:00:00Z"')])['verdict'],'DUE')
 
