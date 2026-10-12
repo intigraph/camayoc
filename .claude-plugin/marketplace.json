@@ -6,7 +6,7 @@
       "name": "camayoc",
       "source": "./",
       "description": "Governed memory for agents: quipu-backed decisions, provenance tags, SHACL gate, query-first recall.",
-      "version": "0.1.0"
+      "version": "0.1.1"
     }
   ]
 }
