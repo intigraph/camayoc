@@ -127,6 +127,8 @@ def graphs() -> list[str | None]:
 def _iri(term: str) -> str:
     if term.startswith("aegis:"):
         return A + term[len("aegis:"):]
+    if term.startswith("schema:"):
+        return SCHEMA + term[len("schema:"):]
     return term
 
 
