@@ -417,6 +417,17 @@ least-recently-attempted fairness. This prevents both a fresh backlog delaying
 all recovery reads and a broken control starving fresh work. Retry writes still
 require two separately scheduled controlled absent reads and the original body.
 
+`pending_oldest_seconds` measures time since a retained body entered recovery,
+not time waiting in the delivery backlog. Its `started_at` is persisted before
+the first write and survives reads, retries, tracker changes and restarts.
+Backoff ticks recompute the age without making requests. Missing legacy clocks,
+invalid clocks or a clock in the future report `-1` (unknown), never zero.
+`exhausted_retries` counts pending bodies at the existing three-attempt limit;
+invalid attempt counters also report `-1`. Both are exported with the
+`camayoc_workitem_ingress_` prefix. Confirming every body clears both to zero.
+These signals distinguish designed recovery from stuck delivery without changing
+the write budget, controlled-read requirement or immutable retry payload.
+
 ### Quipu client credentials
 
 Plane registration and governed RML writes share the credential order

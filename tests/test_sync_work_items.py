@@ -178,6 +178,99 @@ class Delivery(unittest.TestCase):
         self.assertEqual('OK', self.tick()['status'])
         self.assertNotIn('pending', self.state['items']['proj-a'])
 
+    def test_recovery_clock_survives_retry_restart_and_tracker_changes(self):
+        self.lost = True
+        result = self.tick()
+        self.assertEqual((0, 0), (result['pending_oldest_seconds'], result['exhausted_retries']))
+        body = copy.deepcopy(self.state['items']['proj-a']['pending']['body'])
+        self.state = json.loads(self.path.read_text())
+        self.lost = False
+        self.present = False
+        changed = [{**RECORD, 'title': 'Changed'}]
+        for now in (1060, 1120, 1180):
+            result = self.tick(changed, now=now)
+            self.assertEqual(now - 1000, result['pending_oldest_seconds'])
+            self.assertEqual(1000, self.state['items']['proj-a']['pending']['started_at'])
+        self.assertEqual(2, self.state['items']['proj-a']['pending']['attempts'])
+        self.assertEqual([body, body], [b for p, b in self.calls if p == '/episode'])
+        self.present = True
+        result = self.tick(changed, now=1240)
+        self.assertEqual((0, 0, 0), (result['indeterminate'], result['pending_oldest_seconds'],
+                                    result['exhausted_retries']))
+
+    def test_backoff_recomputes_age_and_exhaustion_without_requests(self):
+        self.lost = True
+        self.tick()
+        self.state['next_tick'] = 10000
+        self.state['items']['proj-a']['pending']['attempts'] = sync.MAX_ATTEMPTS
+        self.state['receipt']['indeterminate'] = 0  # stale receipt after write-ahead save
+        before = len(self.calls)
+        result = self.tick(now=5000)
+        self.assertEqual(('BACKOFF', 4000, 1, 1),
+                         (result['mode'], result['pending_oldest_seconds'],
+                          result['exhausted_retries'], result['indeterminate']))
+        self.assertEqual((0, 0, before), (result['writes'], result['requests'], len(self.calls)))
+
+    def test_final_failed_attempt_exposes_exhaustion_until_confirmed_without_fourth_write(self):
+        self.lost = True
+        self.present = False
+        for now in (1000, 1060, 1120, 1180, 1240, 1300, 1360):
+            result = self.tick(now=now)
+        self.assertEqual((1, 360, 1), (result['indeterminate'],
+                                      result['pending_oldest_seconds'], result['exhausted_retries']))
+        self.assertEqual(3, len([p for p, _ in self.calls if p == '/episode']))
+        self.lost = False
+        self.present = True
+        result = self.tick(now=2260)
+        self.assertEqual((0, 0, 0), (result['indeterminate'],
+                                    result['pending_oldest_seconds'], result['exhausted_retries']))
+        self.assertEqual(3, len([p for p, _ in self.calls if p == '/episode']))
+
+    def test_backlog_wait_does_not_age_a_new_recovery(self):
+        self.lost = True
+        self.state['items'] = {'proj-a': {'first_seen': 0, 'last_attempt': 0, 'due_since': 0}}
+        result = self.tick(now=10000)
+        self.assertEqual(10000, result['oldest_seconds'])
+        self.assertEqual(0, result['pending_oldest_seconds'])
+
+    def test_unknown_legacy_and_invalid_recovery_clocks_never_become_zero(self):
+        for start in (None, True, '1000', -1, float('nan'), float('inf'), 2000, 10 ** 1000):
+            with self.subTest(start=start):
+                pending = {'attempts': 1}
+                if start is not None:
+                    pending['started_at'] = start
+                result = sync.recovery_metrics({'a': {'pending': pending}}, 1000)
+                self.assertEqual((1, -1, 0), (result['indeterminate'],
+                                             result['pending_oldest_seconds'],
+                                             result['exhausted_retries']))
+
+    def test_oldest_pending_and_exhaustion_include_every_retained_body(self):
+        entries = {'a': {'pending': {'started_at': 1000, 'attempts': 1}},
+                   'b': {'pending': {'started_at': 2000, 'attempts': 3}}}
+        result = sync.recovery_metrics(entries, 5000)
+        self.assertEqual((2, 4000, 1), (result['indeterminate'],
+                                       result['pending_oldest_seconds'], result['exhausted_retries']))
+        entries['b']['pending']['attempts'] = '3'
+        self.assertEqual(-1, sync.recovery_metrics(entries, 5000)['exhausted_retries'])
+
+    def test_cli_publishes_known_zero_and_unknown_recovery_metrics(self):
+        import io
+        from contextlib import redirect_stdout
+        argv = ['sync', '--db', str(self.path.parent / 'tracker.db'),
+                '--state', str(self.path), '--actor', 'tracker',
+                '--source', 'br:authoritative', '--publish-status']
+        for failure in (False, True):
+            with self.subTest(failure=failure), patch.object(sys, 'argv', argv), \
+                    patch.object(sync, 'collect', **({'side_effect': ValueError('fixture')}
+                                                     if failure else {'return_value': []})), \
+                    patch.object(sync.camayoc_metrics, 'push', return_value=(True, '')) as push, \
+                    redirect_stdout(io.StringIO()):
+                self.assertEqual(2 if failure else 0, sync.main())
+                exposition = push.call_args.args[1]
+                for metric in ('pending_oldest_seconds', 'exhausted_retries'):
+                    self.assertIn(f'camayoc_workitem_ingress_{metric} {-1 if failure else 0}',
+                                  exposition)
+
     def test_unchanged_response_with_missing_data_is_not_success(self):
         self.present = False
         self.assertEqual('UNKNOWN', self.tick()['status'])

@@ -192,11 +192,33 @@ def readback(body, post):
     return bool(found['rows'])
 
 
+def recovery_metrics(entries, now):
+    """Recovery clocks belong to retained bodies, not the delivery backlog."""
+    pending = [entry['pending'] for entry in entries.values() if entry.get('pending')]
+    starts = [entry.get('started_at') for entry in pending]
+    attempts = [entry.get('attempts') for entry in pending]
+    return {
+        'indeterminate': len(pending),
+        # Legacy/invalid clocks are unknown; never fabricate their first write
+        # time or inherit hours spent waiting BEFORE recovery from due_since.
+        'pending_oldest_seconds': (
+            -1 if any(type(start) not in (int, float) or not 0 <= start <= now
+                      or not math.isfinite(start) for start in starts)
+            else max((now - start for start in starts), default=0)),
+        'exhausted_retries': (
+            -1 if any(type(attempt) is not int or attempt < 0 for attempt in attempts)
+            else sum(attempt >= MAX_ATTEMPTS for attempt in attempts)),
+    }
+
+
 def tick(records, state, path, *, actor, source, now, post, max_items=1):
     if type(max_items) is not int or not 1 <= max_items <= MAX_BATCH:
         raise ValueError('invalid ingress item budget')
     if now < state.get('next_tick', 0):
-        return {**state.get('receipt', {'status': 'UNKNOWN'}), 'mode': 'BACKOFF',
+        # Even a backoff publishes fresh metrics. A cached age could otherwise
+        # hide a stuck pending body while next_tick is still in the future.
+        return {**state.get('receipt', {'status': 'UNKNOWN'}),
+                **recovery_metrics(state.get('items', {}), now), 'mode': 'BACKOFF',
                 'requests': 0, 'writes': 0, 'verified': 0, 'items': [], 'max_items': max_items}
     state['next_tick'] = now + INTERVAL
     entries = state.setdefault('items', {})
@@ -320,7 +342,8 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
                     entry.pop('due_since', None)
                     receipt['verified'] += 1
                 else:
-                    pending = {'body': body, 'attempts': 0, 'absent_reads': 0}
+                    pending = {'body': body, 'attempts': 0, 'absent_reads': 0,
+                               'started_at': now}
                     entry['pending'] = pending
                     # A failed periodic recheck used two requests: leave the
                     # exact pending body for later, without a same-tick write.
@@ -377,7 +400,7 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     # of #60). Count the current items that have never been verified.
     receipt['unverified_items'] = sum(1 for i in current if not entries.get(i, {}).get('verified_at'))
     pending_entries = [e for e in outstanding if e.get('pending')]
-    receipt['indeterminate'] = len(pending_entries)
+    receipt.update(recovery_metrics(entries, now))
     if (invalid or any(e['pending']['attempts'] >= MAX_ATTEMPTS for e in pending_entries)
             or any(e.get('error') and not e.get('pending') for e in outstanding)
             or (pending_entries and not receipt['verified'])
@@ -517,6 +540,8 @@ def main():
                 ('camayoc_workitem_ingress_recheck_utilization', {}, receipt.get('recheck_utilization', -1)),
                 ('camayoc_workitem_ingress_unverified_items', {}, receipt.get('unverified_items', -1)),
                 ('camayoc_workitem_ingress_indeterminate', {}, receipt.get('indeterminate', -1)),
+                ('camayoc_workitem_ingress_pending_oldest_seconds', {}, receipt.get('pending_oldest_seconds', -1)),
+                ('camayoc_workitem_ingress_exhausted_retries', {}, receipt.get('exhausted_retries', -1)),
                 ('camayoc_workitem_ingress_degraded', {}, int(receipt['status'] == 'DEGRADED')),
             ]
             ok, why = camayoc_metrics.push('camayoc_workitem_ingress',
