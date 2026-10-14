@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 import urllib.error
 import urllib.request
 
@@ -61,6 +62,24 @@ class NativeLoaderTests(unittest.TestCase):
         before = self.options["output"].read_bytes()
         self.assertEqual(loader.stage(**self.options)["outcome"], "verified-existing")
         self.assertEqual(before, self.options["output"].read_bytes())
+
+    def test_stage_does_not_depend_on_connection_collection(self):
+        # Retain handles like a delayed collector: staging must release its
+        # readers before switching SQLite journal mode and publishing.
+        handles = []
+        connect = loader.sqlite3.connect
+
+        def retain(*args, **kwargs):
+            conn = connect(*args, **kwargs)
+            handles.append(conn)
+            return conn
+
+        try:
+            with patch.object(loader.sqlite3, "connect", retain):
+                self.assertEqual(loader.stage(**self.options)["outcome"], "staged")
+        finally:
+            for conn in handles:
+                conn.close()
 
     def test_identity_and_destination_refusals_leave_no_output(self):
         for changes in ({"file_sha256": "0" * 64}, {"version": "0.8.0"},
