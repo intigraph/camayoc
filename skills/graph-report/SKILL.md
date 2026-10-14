@@ -18,7 +18,7 @@ Graph-building tools hand you a `GRAPH_REPORT.md` (god nodes, surprises, suggest
 at build time — and it is stale the next day. This skill produces the same orientation **live** from
 Quipu, over HTTP: no static file, no framework. It pairs with [graph-extract] (which fills the graph).
 
-**Stack tools this reaches for**
+Stack tools this reaches for:
 
 | Present | This skill uses it for | Absent — what happens |
 |---|---|---|
@@ -55,11 +55,13 @@ report with silently-omitted sections is worse than a short one.
 ## Workflow
 
 ### 1. Overview — graph size
+
 ```bash
 curl -s ${GRAPH_URL}/stats        # {entities, facts, predicates}
 ```
 
 ### 2. God nodes — central domain entities
+
 - Get raw centrality: `POST /project {"algorithm":"pagerank","max_iters":20,"persist":false}`.
 - Get the exclusion sets: classes `{"query":"SELECT DISTINCT ?c WHERE { ?x a ?c }"}` and episodes
   `{"query":"PREFIX prov:<http://www.w3.org/ns/prov#> SELECT ?a WHERE { ?a a prov:Activity }"}`.
@@ -72,9 +74,11 @@ curl -s ${GRAPH_URL}/stats        # {entities, facts, predicates}
 - For each hub, fetch its label/type for a readable name and its neighbourhood (endpoints.md).
 
 ### 3. Recent activity — what was ingested lately
+
 The graph's changelog is its episodes. **Caveat (quipu 0.3.0):** episodes do NOT carry a structured
 `prov:atTime` — the date lives inside the `rdfs:comment` text. So you can't `ORDER BY` time in
 SPARQL. Options, best-first:
+
 - If `GET /transactions` is available, use it for true commit order.
 - Else list episodes and read the dates from their comments:
   `POST /query {"query":"PREFIX prov:<http://www.w3.org/ns/prov#> PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#> SELECT ?l ?c WHERE { ?a a prov:Activity ; rdfs:label ?l ; rdfs:comment ?c }"}`
@@ -82,6 +86,7 @@ SPARQL. Options, best-first:
 - A server-side `/report` endpoint will eventually expose proper recency; until then this is best-effort.
 
 ### 4. Surprising connections
+
 - **When community detection is available** (quipu `quipu:memberOfCommunity` facts): rank edges whose endpoints sit in *different* communities and whose predicate is *rare* between
   those communities — those are the anomalies worth a human's eye.
 - **v1 fallback (today, no communities):** surface entities that participate in an unusually *wide
@@ -89,11 +94,13 @@ SPARQL. Options, best-first:
   predicate-diversity per entity and report the top few. Clearly label this as the interim heuristic.
 
 ### 5. Suggested questions
+
 Generate 5–8 from the god nodes + their types, e.g. for a `ProxmoxNode` hub → "What runs_on it?";
 for a `WebApplication` hub → "What does it depend_on / route_to?"; for a `Directive` → "What
 applies_to it?". These are ready-to-run `/query` follow-ups.
 
 ### 6. Assemble
+
 Emit a short markdown report: **Overview · God nodes · Recent activity · Surprising connections ·
 Suggested questions.** Keep it scannable — this is a map, not a dump.
 

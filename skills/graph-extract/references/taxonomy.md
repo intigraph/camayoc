@@ -37,7 +37,7 @@ terms. Ad-hoc types invented inline are how a graph turns into seven nodes for o
 IaC says what infrastructure is **supposed** to be; the graph holds what it **is**. Two layers,
 related by edges, **never merged**:
 
-```
+```text
 ct-243              member_of    games_api_servers      # observed host in a declared group
 proxmox_lxc.quipu   provisions   ct-243                 # declared resource -> the thing it creates
 ```

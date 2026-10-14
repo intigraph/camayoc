@@ -28,7 +28,7 @@ the extraction — the cheap, mechanical part — and POST a structured episode 
 pipeline, no worker pool, no job runner. It runs anywhere there's a shell and network access to the
 graph.
 
-**Stack tools this reaches for**
+Stack tools this reaches for:
 
 | Present | This skill uses it for | Absent — what happens |
 |---|---|---|
@@ -90,6 +90,7 @@ auth-enabled graph silently `401`s (see Failure Modes).
 ## Workflow
 
 ### 1. Detect mode and gather source material
+
 - **Pre-spec mode** — the request already lists `ENTITIES:` / `RELATIONSHIPS:` and names source
   issue(s) ("extract knowledge from <SRC>"). Read each SRC fully; the listed entities/relationships
   are your backbone — your job is to structure them and write accurate descriptions.
@@ -98,7 +99,9 @@ auth-enabled graph silently `401`s (see Failure Modes).
   Follow references inside it (linked issues, commit hashes, file paths) one hop.
 
 ### 2. Extract nodes and edges
+
 Map the material onto the taxonomy in `{baseDir}/references/taxonomy.md`:
+
 - **Nodes:** `{name, type, description}` for new nodes; `{name, type}` for reuse.
   Keep a governed type on every node; omit description on reuse.
 - **Edges:** `{source, target, relation}` — `relation` from the taxonomy's relationship vocabulary;
@@ -107,6 +110,7 @@ Map the material onto the taxonomy in `{baseDir}/references/taxonomy.md`:
   task. For dated events use `deployed_on` / temporal relations.
 
 ### 3. POST the episode
+
 See `{baseDir}/references/episode-schema.md` for the exact JSON shape. Skeleton:
 
 ```bash
