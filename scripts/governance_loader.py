@@ -11,6 +11,7 @@ readback. No existing database is modified, and no policy is activated.
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -44,7 +45,7 @@ def native(binary: str, *args: str) -> str:
 
 def read_shapes(db: Path, name: str) -> Graph:
     try:
-        with sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True) as conn:
+        with closing(sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True)) as conn:
             rows = conn.execute("SELECT name,turtle FROM shapes WHERE valid_to IS NULL").fetchall()
         if len(rows) != 1 or rows[0][0] != name:
             raise Refused("expected exactly the selected combined shape resource")
@@ -112,7 +113,7 @@ def stage(*, artifact: Path, file_sha256: str, content_hash: str,
         pinned.chmod(0o600)
         native(binary, "pack", "--verify", str(pinned))
         try:
-            with sqlite3.connect(pinned.as_uri() + "?mode=ro", uri=True) as conn:
+            with closing(sqlite3.connect(pinned.as_uri() + "?mode=ro", uri=True)) as conn:
                 rows = conn.execute("SELECT name,version,content_hash,counts FROM pack_manifest").fetchall()
             if len(rows) != 1 or rows[0][:3] != (shape, version, content_hash):
                 raise Refused("pendant name/version/content hash differs")
@@ -129,7 +130,7 @@ def stage(*, artifact: Path, file_sha256: str, content_hash: str,
         count = verify(staged, binary, graph, shape, catalog, profile)
         # Quipu opens SQLite in WAL mode. Consolidate only our new scratch
         # database after all native readers have exited; never copy a live WAL.
-        with sqlite3.connect(staged) as conn:
+        with closing(sqlite3.connect(staged)) as conn:
             busy, _, _ = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
             if busy:
                 raise Refused("scratch database checkpoint busy")
