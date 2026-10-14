@@ -11,6 +11,7 @@ The second arm is what stops the first from passing vacuously: against a store
 that does NOT hold the ontology, the presence check must say so.
 """
 import json
+import hashlib
 import os
 import socket
 import subprocess
@@ -80,6 +81,37 @@ class BootstrapRerunTest(unittest.TestCase):
         self.assertIn("ontology: already present", second.stdout)
         self.assertNotIn("FAILED", second.stdout)
 
+    def test_fresh_user_gets_private_matching_credential_and_reruns(self):
+        self.env.pop("QUIPU_AUTH_TOKEN", None)
+        self.env.pop("QUIPU_AUTH_TOKEN_FILE", None)
+        first = self.bootstrap()
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertIn("planes: registered and labelled", first.stdout)
+        self.assertIn("gate: PROVEN", first.stdout)
+        credential = self.project / ".config/quipu/token"
+        secret = credential.read_text().strip()
+        self.assertFalse(secret in first.stdout + first.stderr, "credential leaked")
+        self.assertEqual(credential.stat().st_mode & 0o777, 0o400)
+        config = self.project / ".bobbin/config.toml"
+        self.assertEqual(config.stat().st_mode & 0o777, 0o600)
+        self.assertIn("/.bobbin/config.toml", (self.project / ".gitignore").read_text())
+        before = tuple(hashlib.sha256(p.read_bytes()).hexdigest() for p in (credential, config))
+        second = self.bootstrap()
+        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertEqual(before, tuple(hashlib.sha256(p.read_bytes()).hexdigest() for p in (credential, config)))
+        self.assertFalse(secret in second.stdout + second.stderr, "credential leaked")
+        body = json.dumps({"action": "list"}).encode()
+        request = urllib.request.Request(self.server + "/shapes", data=body,
+                                        headers={"Content-Type": "application/json"})
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(request, timeout=10)
+        self.assertEqual(caught.exception.code, 401)
+        caught.exception.close()
+        request.add_header("Authorization", "Bearer " + secret)
+        with urllib.request.urlopen(request, timeout=10) as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn("camayoc-core", response.read().decode())
+
     def test_bootstrapped_store_accepts_tracker_and_rejects_unanchored_observation(self):
         sys.path.insert(0, str(ROOT / "scripts"))
         from ingest_work_items import BASE_NS, episode_for
@@ -90,7 +122,7 @@ class BootstrapRerunTest(unittest.TestCase):
         def post(body, endpoint="/episode"):
             request = urllib.request.Request(
                 self.server + endpoint, data=json.dumps(body).encode(),
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": "application/json", "Authorization": "Bearer " + self.env["QUIPU_AUTH_TOKEN"]},
             )
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
