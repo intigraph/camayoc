@@ -19,7 +19,6 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 SERVER="${QUIPU_SERVER:-http://localhost:3030}"; SERVER=${SERVER%/}
 QUIPU_DIR="$PROJECT_DIR/.quipu"
 AUTH=()
-[ -n "${QUIPU_AUTH_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer $QUIPU_AUTH_TOKEN")
 
 say() { printf '%s\n' "$*"; }
 reachable() { curl -sf -m 2 "$SERVER/health" >/dev/null 2>&1; }
@@ -29,23 +28,11 @@ ensure_config() {
   local cfg="$PROJECT_DIR/.bobbin/config.toml"
   local port; port=$(printf '%s' "$SERVER" | sed -n 's/.*:\([0-9]*\)$/\1/p'); port=${port:-3030}
   if [ ! -f "$cfg" ]; then
-    mkdir -p "$PROJECT_DIR/.bobbin"
-    cat > "$cfg" <<EOF
-# written by camayoc bootstrap — the gate config. validate_on_write is the
-# whole point: without it every trust tag is advisory.
-[quipu]
-store_path = ".quipu/store.db"
-
-[quipu.shacl]
-validate_on_write = true
-
-[quipu.server]
-bind = "127.0.0.1:${port}"
-EOF
+    python3 "$PLUGIN_ROOT/scripts/bootstrap_credentials.py" provision "$PROJECT_DIR" "$SERVER" || return 1
     say "config: wrote .bobbin/config.toml (validate_on_write = true)"
   elif ! grep -q '\[quipu\.shacl\]' "$cfg"; then
-    printf '\n# appended by camayoc bootstrap — the gate config\n[quipu.shacl]\nvalidate_on_write = true\n' >> "$cfg"
-    say "config: appended [quipu.shacl] validate_on_write = true to existing .bobbin/config.toml"
+    say "config: existing config lacks [quipu.shacl]; preserving it. Set validate_on_write = true before continuing."
+    return 1
   elif grep -A3 '\[quipu\.shacl\]' "$cfg" | grep -q 'validate_on_write[[:space:]]*=[[:space:]]*false'; then
     say "config: WARNING — your .bobbin/config.toml sets validate_on_write = false."
     say "  Not editing inside your existing section. Set it true or the gate proof below will fail."
@@ -92,7 +79,7 @@ find_or_install_binary() {
 
 ensure_server() {
   reachable && { say "server: already running at $SERVER"; return 0; }
-  ensure_config
+  ensure_config || return 1
   local bin
   bin=$(find_or_install_binary) || return 1
   say "server: starting $bin (db: .quipu/store.db)"
@@ -157,6 +144,13 @@ ensure_server || {
   say "This is 'could not look', not 'nothing exists'."
   exit 1
 }
+
+# Every writer uses the canonical resolver; a reachable server does not grant
+# permission to invent a credential for it. Fresh local provisioning above is
+# the only mint path, and configures the matching server to require the token.
+AUTH_CONFIG=$(python3 "$PLUGIN_ROOT/scripts/bootstrap_credentials.py" curl-config) || exit 1
+trap 'rm -f "$AUTH_CONFIG"' EXIT
+AUTH=(-K "$AUTH_CONFIG")
 
 ONTO="$PLUGIN_ROOT/ontology/core.ttl"
 SHAPES="$PLUGIN_ROOT/shapes/core.shapes.ttl"

@@ -1,0 +1,81 @@
+name: Source release proof
+
+on:
+  pull_request:
+    paths:
+      - '.claude-plugin/plugin.json'
+      - '.claude-plugin/marketplace.json'
+      - '.github/workflows/release*.yml'
+      - 'scripts/package_release.py'
+      - 'tests/test_package_release.py'
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.sha || inputs.tag || github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate release version and existing stable tag
+        env:
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = pull_request ]; then
+            RELEASE_TAG="v$(python3 -c 'import json; print(json.load(open(".claude-plugin/plugin.json"))["version"])')"
+          else
+            RELEASE_TAG="$REQUESTED_TAG"
+          fi
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if [ "$EVENT_NAME" != pull_request ]; then
+            test "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
+            git merge-base --is-ancestor HEAD origin/main
+          fi
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+      - run: pip install boto3 cryptography rdflib pyyaml
+      - name: Install just
+        uses: ./.github/actions/install-just
+      - run: just check
+      - name: Fetch reviewed integration dependency
+        env:
+          QUIPU_TAG: quipu-ai-v0.11.0
+          QUIPU_SHA256: 328eacceb9f9c0e8fcb03c0ef2a4af53ca390b65bc02ca25550fce72f98806c7
+        run: |
+          set -euo pipefail
+          asset="quipu-${QUIPU_TAG}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSL --retry 3 -o "$asset" "https://github.com/scbrown/quipu/releases/download/${QUIPU_TAG}/$asset"
+          echo "$QUIPU_SHA256  $asset" | sha256sum -c -
+          tar -xzf "$asset"
+          dependency="$PWD/quipu-${QUIPU_TAG}-x86_64-unknown-linux-gnu"
+          echo "QUIPU_SERVER_BIN=$dependency/quipu-server" >> "$GITHUB_ENV"
+          echo "QUIPU_BIN=$dependency/quipu" >> "$GITHUB_ENV"
+      - name: Reject tracked private signing material
+        run: python3 scripts/check_private_keys.py
+      - run: just test
+      - name: Package tracked source and verify extracted bootstrap
+        run: |
+          set -euo pipefail
+          python3 scripts/package_release.py --ref HEAD --version "${RELEASE_TAG#v}" --output release
+          (cd release && sha256sum -c SHA256SUMS)
+          mkdir extracted
+          tar -xzf "release/camayoc-${RELEASE_TAG}.tar.gz" -C extracted
+          python3 -m unittest discover -s "extracted/camayoc-${RELEASE_TAG}/tests" -p test_bootstrap_rerun.py -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-release
+          path: release/
+          if-no-files-found: error
+

@@ -5,6 +5,8 @@
 - [Getting started](getting-started.md)
 - [Using it with agents](agents.md)
 - [Reference](reference.md)
+- [Governance resources](governance.md)
+- [Source releases](releases.md)
 - [Why camayoc](why-camayoc.md)
 - [The stack](the-stack.md)
 - [Metrics](metrics.md)

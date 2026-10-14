@@ -173,12 +173,13 @@ class SuiteTotalTests(unittest.TestCase):
     """
 
     def test_the_suite_total_is_reported_and_pinned(self):
+        # Priority adds seven questions: one stored, four unwritten, two gaps.
         figures = coverage.totals()
-        self.assertEqual(6, figures["slices"])
-        self.assertEqual(91, figures["total"])
-        self.assertEqual(40, figures["covered"])
-        self.assertEqual(22, figures["unwritten"])
-        self.assertEqual(29, figures["gaps"])
+        self.assertEqual(7, figures["slices"])
+        self.assertEqual(98, figures["total"])
+        self.assertEqual(41, figures["covered"])
+        self.assertEqual(26, figures["unwritten"])
+        self.assertEqual(31, figures["gaps"])
 
     def test_the_three_states_account_for_every_question(self):
         """No question falls between the states. If one ever does it is

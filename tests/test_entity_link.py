@@ -169,5 +169,65 @@ class EntityLinkTest(unittest.TestCase):
         with self.assertRaises(Exception):
             self._write(["shape violation"])
 
+
+
+class AuthoritativeInputTest(unittest.TestCase):
+    def payload(self):
+        return {'version': 1, 'items': [{'id': 'aegis-seeds-only.12',
+                'title': 'literal $(do-not-run) `do-not-run`',
+                'description': 'quoted "text"\nnext line'}]}
+
+    def test_stdin_preserves_text_and_never_resolves_an_id_with_br(self):
+        import io, json, contextlib
+        payload = self.payload()
+        calls = []
+        def link(title, description, client, item=''):
+            calls.append((item, title, description))
+            return {'choice': None, 'error': None}
+        out = io.StringIO()
+        with mock.patch.object(sys, 'stdin', io.StringIO(json.dumps(payload))), \
+                mock.patch.object(el, 'bead', side_effect=AssertionError('br lookup')), \
+                mock.patch.object(el.jev, 'JevClient', return_value=object()), \
+                mock.patch.object(el, 'link', side_effect=link), contextlib.redirect_stdout(out):
+            self.assertEqual(el.main(['--work-item-json', '-']), 0)
+        row = payload['items'][0]
+        self.assertEqual(calls, [(row['id'], row['title'], row['description'])])
+        self.assertEqual(json.loads(out.getvalue())['item'], row['id'])
+
+    def test_invalid_input_is_refused_before_any_client_or_partial_write(self):
+        import io, json, contextlib
+        cases = [[], {'version': True, 'items': []}, {'version': 2, 'items': []},
+                 {'version': 1, 'items': []}, self.payload()]
+        cases[-1]['items'].append({'id': 'invalid ID', 'title': 'other', 'description': ''})
+        for payload in cases:
+            with self.subTest(payload=payload), \
+                    mock.patch.object(sys, 'stdin', io.StringIO(json.dumps(payload))), \
+                    mock.patch.object(el.jev, 'JevClient') as client, \
+                    contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as exc:
+                    el.main(['--work-item-json', '-'])
+                self.assertEqual(exc.exception.code, 2)
+                client.assert_not_called()
+
+    def test_mixing_authoritative_input_and_legacy_lookup_is_refused(self):
+        import io, contextlib
+        for args in [['aegis-old'], ['--db', 'other'], ['--db=other']]:
+            with self.subTest(args=args), contextlib.redirect_stderr(io.StringIO()), \
+                    mock.patch.object(el.jev, 'JevClient') as client:
+                with self.assertRaises(SystemExit):
+                    el.main(['--work-item-json', '-', *args])
+                client.assert_not_called()
+
+    def test_legacy_explicit_database_still_supplies_the_same_text(self):
+        import io, contextlib
+        with mock.patch.object(el, 'bead', return_value=('title', 'description')) as bead, \
+                mock.patch.object(el.jev, 'JevClient', return_value=object()), \
+                mock.patch.object(el, 'link', return_value={'choice': None}) as link, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(el.main(['aegis-old', '--db', 'selected-db']), 0)
+        bead.assert_called_once_with('aegis-old', 'selected-db')
+        self.assertEqual(link.call_args.args[:2], ('title', 'description'))
+
+
 if __name__ == "__main__":
     unittest.main()

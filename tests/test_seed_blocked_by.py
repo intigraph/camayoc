@@ -55,6 +55,19 @@ class SeedBlockers(unittest.TestCase):
         self.assertEqual(run(store), run(store, item=W))
         self.assertEqual(run(BoardStore(own_status="closed")), {})
 
+    def test_compact_schema_type_matches_full_iri_verdicts(self):
+        # Quipu's served query rows compact the native seed type to schema:Action.
+        for status in ("open", "deferred", "closed", "tombstone", None):
+            with self.subTest(status=status):
+                store = BoardStore(status)
+                def post(endpoint, body):
+                    result = store.post(endpoint, body)
+                    result["rows"] = [
+                        {key: "schema:Action" if value == bb.SCHEMA + "Action" else value
+                         for key, value in row.items()} for row in result["rows"]]
+                    return result
+                self.assertEqual(bb.evaluate(post, item=W), bb.evaluate(store.post, item=W))
+
     def test_reopen_overrides_old_close_metadata_and_changes_event_identity(self):
         store = BoardStore("closed")
         first = run(store)[W]["event_id"]

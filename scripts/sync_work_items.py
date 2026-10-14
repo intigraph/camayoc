@@ -416,15 +416,91 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     return receipt
 
 
+def native_main(args):
+    """Protected selector input, dedicated custody, bounded one-record tick.
+
+    Existing br JSON state cannot become native custody. A new cursor must be
+    initialized under its separate review, so an uninitialized schedule fails
+    UNKNOWN instead of silently replaying history or skipping to a watermark.
+    """
+    import sys
+    import seed_work_items as native
+    import seed_change_custody as custody
+    import seed_work_item_sync as native_sync
+    import urllib.parse
+    import urllib.request
+    args.state.parent.mkdir(parents=True,exist_ok=True)
+    started=time.time()
+    receipt={'status':'UNKNOWN','requests':0,'writes':0,'verified':0}
+    with args.state.with_suffix('.lock').open('a') as lock:
+        try:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:
+            print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
+        journal=None
+        try:
+            raw=sys.stdin.buffer.read(4097)
+            if len(raw)>4096:raise native.NativeUnknown('authority projection exceeds budget')
+            authority=json.loads(raw)
+            reader=native.from_authority(lambda *args:None,authority,server=planes.SERVER)
+            if not str(args.state).endswith('.sqlite3'):
+                raise custody.CustodyUnknown('native custody requires a separate .sqlite3 state; no br migration')
+            journal=custody.Journal(args.state,reader.board,server=planes.SERVER,initial_tx=args.initial_tx)
+            last_path=args.state.with_suffix('.receipt.json')
+            if last_path.exists():
+                previous=json.loads(last_path.read_text())
+                previous_time=previous.get('attempted_at')
+                if type(previous_time) not in (int,float) or not math.isfinite(previous_time):
+                    raise custody.CustodyUnknown('last native tick timestamp unproved')
+                if started<previous_time+INTERVAL:
+                    print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
+            def post(endpoint,body):
+                return planes._post(endpoint,body,client='camayoc-ingress')
+            def changes(**params):
+                # /changes is GET, with an explicit graph and whole-tx cursor.
+                request=urllib.request.Request(planes.SERVER+'/changes?'+urllib.parse.urlencode(params),
+                    headers={'X-Quipu-Client':'camayoc-ingress',**planes.provenance_headers('camayoc-ingress')})
+                with urllib.request.urlopen(request,timeout=15) as response:
+                    payload=response.read(custody.MAX_BYTES+1)
+                if len(payload)>custody.MAX_BYTES:raise custody.CustodyUnknown('feed exceeds response budget')
+                return json.loads(payload)
+            receipt=native_sync.tick(reader,journal,post,changes=changes,
+                    plane=planes.plane_for('observed'),actor=args.actor)
+        except Exception as exc:
+            receipt['error']=type(exc).__name__  # never log auth or payloads
+        finally:
+            if journal is not None:journal.db.close()
+        save(args.state.with_suffix('.receipt.json'),{'attempted_at':started,**receipt})
+    print(json.dumps(receipt,sort_keys=True))
+    code=0 if receipt['status']=='OK' else 2
+    if args.publish_status:
+        samples=[('camayoc_workitem_ingress_timestamp_seconds',{},started),
+                 ('camayoc_workitem_ingress_exit_status',{},code),
+                 ('camayoc_workitem_ingress_backlog',{},receipt.get('backlog',-1)),
+                 ('camayoc_workitem_ingress_indeterminate',{},int(code!=0))]
+        ok,_=camayoc_metrics.push('camayoc_workitem_ingress',camayoc_metrics.exposition(samples),
+                                 grouping={'producer':args.actor})
+        if not ok:return 2
+    return code
+
+
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--db', required=True, type=Path)
+    source_group=parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument('--db', type=Path, help='separately selected legacy rig only')
+    source_group.add_argument('--native-authority-stdin', action='store_true',
+                              help='consume the protected selector projection; never a fallback')
+    parser.add_argument('--initial-tx', type=int, help='explicitly reviewed first native cursor; never resets existing custody')
     parser.add_argument('--state', required=True, type=Path)
     parser.add_argument('--actor', required=True)
     parser.add_argument('--source', required=True, help='stable authoritative tracker provenance URI')
     parser.add_argument('--publish-status', action='store_true')
     args = parser.parse_args()
+    if args.native_authority_stdin:
+        return native_main(args)
+    if args.initial_tx is not None:
+        parser.error('--initial-tx is native-only')
     args.state.parent.mkdir(parents=True, exist_ok=True)
     with args.state.with_suffix('.lock').open('a') as lock:
         try:

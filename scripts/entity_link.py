@@ -189,21 +189,59 @@ def _full(iri: str) -> str:
     return ONTOLOGY + iri.split(":", 1)[1] if iri.startswith("aegis:") else iri
 
 
+def work_items(value) -> list[dict]:
+    """Validate all caller-resolved text before any retrieval or inferred write."""
+    if (not isinstance(value, dict) or set(value) != {"version", "items"}
+            or type(value["version"]) is not int or value["version"] != 1):
+        raise ValueError("expected version 1 work-item envelope")
+    rows = value["items"]
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("expected a nonempty items list")
+    seen = set()
+    for row in rows:
+        if (not isinstance(row, dict) or set(row) != {"id", "title", "description"}
+                or not isinstance(row["id"], str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", row["id"])
+                or row["id"] in seen
+                or not isinstance(row["title"], str) or not row["title"].strip()
+                or not isinstance(row["description"], str)):
+            raise ValueError("item identity or text is invalid, incomplete or duplicated")
+        seen.add(row["id"])
+    return rows
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("items", nargs="+", help="bead ids")
+    p.add_argument("items", nargs="*", help="bead ids (legacy br reader)")
+    p.add_argument("--work-item-json", metavar="PATH",
+                   help="versioned authoritative work-item JSON; '-' reads stdin, never br")
     p.add_argument("--db", default=os.environ.get(
         "BR_DB", str(Path.home() / "gt/beads_aegis/mayor/rig/_beads/beads.db")))
     p.add_argument("--write", action="store_true",
                    help="record accepted links in the inferred (quarantine) plane")
     p.add_argument("--timestamp", help="ISO-8601 instant for plane registration")
     a = p.parse_args(argv)
+    supplied = None
+    if a.work_item_json:
+        tokens = argv if argv is not None else sys.argv[1:]
+        if a.items or any(arg == "--db" or arg.startswith("--db=") for arg in tokens):
+            p.error("--work-item-json cannot be combined with bead IDs or --db")
+        try:
+            raw = sys.stdin.read() if a.work_item_json == "-" else Path(a.work_item_json).read_text()
+            supplied = work_items(json.loads(raw))
+        except (OSError, ValueError) as exc:
+            p.error(f"invalid authoritative work-item input: {exc}")
+    elif not a.items:
+        p.error("provide bead IDs or --work-item-json")
     token = os.environ.get("QUIPU_AUTH_TOKEN", "")
     if a.write and not (token and a.timestamp):
         p.error("--write needs QUIPU_AUTH_TOKEN and --timestamp")
     client = jev.JevClient()
-    for item in a.items:
-        title, description = bead(item, a.db)
+    rows = supplied if supplied is not None else (
+        {"id": item, "title": title, "description": description}
+        for item in a.items for title, description in [bead(item, a.db)])
+    for row in rows:
+        item, title, description = row["id"], row["title"], row["description"]
         res = {"item": item, **link(title, description, client, item=item)}
         if a.write and res["choice"]:
             res["write"] = write_link(item, res["choice"], token, a.timestamp)

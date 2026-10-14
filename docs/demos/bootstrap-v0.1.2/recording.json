@@ -1,0 +1,14 @@
+{
+  "format": "edited native terminal replay",
+  "duration_seconds": 90,
+  "capture_machine": "fresh Ubuntu24.04.5 LTS VM",
+  "claude_code": "2.1.287",
+  "tool_version": "0.1.2",
+  "invocation": "native Claude Code headless -p",
+  "simulated_callbacks": false,
+  "pacing_edited": true,
+  "release_sha": "0f06292d83abd18a5eab46c2d01229538a515539",
+  "release_archive_sha256": "26905fe0185c1f9cd501fc4887abe2bbd91d7ee648e990611e6b36c1dd0d9c01",
+  "quipu": "0.13.0/ec3b707dc2976e579e634f276e752c7715a9ac99",
+  "native_runtime_seconds": 23.12022
+}

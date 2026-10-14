@@ -1,0 +1,20 @@
+{
+  "action": "load",
+  "name": "camayoc_planned_actions",
+  "description": "Exact-ID native planned Action reader, including deferred/blocked. Current board owns status/owner/dates; no legacy fallback. Candidate IDs come from bounded semantic retrieval or an actual creation event, never full-board enumeration. Up to101 raw rows is an overflow sentinel, not permission to return partial data.",
+  "template": "PREFIX s: <https://schema.org/>\nPREFIX seeds: <https://seeds.local/ontology/>\nSELECT DISTINCT ?item ?id ?status ?title ?description ?owner ?modified ?label ?type\nFROM <{board}>\nWHERE {\n ?item s:identifier \"{identifier}\" ; s:identifier ?id ; s:keywords ?label .\n OPTIONAL { ?item a ?type }\n OPTIONAL { ?item seeds:status ?status }\n OPTIONAL { ?item s:name ?title }\n OPTIONAL { ?item s:dateModified ?modified }\n FILTER(?label IN (\"stiwi-directive\", \"design\", \"plan\"))\n OPTIONAL { ?item s:description ?description }\n OPTIONAL { ?item s:agent ?owner }\n\n}\nORDER BY ?item ?label\nLIMIT 101",
+  "params": [
+    {
+      "name": "board",
+      "type": "iri",
+      "required": true,
+      "description": "Authoritative selected Seeds board; no legacy fallback."
+    },
+    {
+      "name": "identifier",
+      "type": "text",
+      "required": true,
+      "description": "Exact authoritative tracker identifier from bounded retrieval or an event."
+    }
+  ]
+}

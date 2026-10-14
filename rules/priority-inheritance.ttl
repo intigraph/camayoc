@@ -1,0 +1,17 @@
+@prefix rule: <http://quipu.local/rule#> .
+@prefix ex: <https://scbrown.github.io/camayoc/priority-inheritance/> .
+ex:potential a rule:Rule ; rule:id "priority-active-potential" ;
+ rule:head "<https://seeds.local/ontology/priorityEligible>(?x, ?x)" ;
+ rule:body "<https://schema.org/actionStatus>(?x, <https://schema.org/PotentialActionStatus>), <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>(?x, <https://schema.org/Action>)" .
+ex:active a rule:Rule ; rule:id "priority-active-active" ;
+ rule:head "<https://seeds.local/ontology/priorityEligible>(?x, ?x)" ;
+ rule:body "<https://schema.org/actionStatus>(?x, <https://schema.org/ActiveActionStatus>), <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>(?x, <https://schema.org/Action>)" .
+ex:dependent a rule:Rule ; rule:id "priority-active-dependent" ;
+ rule:head "<https://seeds.local/ontology/eligibleBlockedOn>(?root, ?gate)" ;
+ rule:body "<https://scbrown.github.io/quechua/ns#blockedOn>(?root, ?gate), <https://seeds.local/ontology/priorityEligible>(?root, ?root)" .
+ex:direct a rule:Rule ; rule:id "priority-blocks-active" ;
+ rule:head "<https://seeds.local/ontology/activeBlocks>(?gate, ?root)" ;
+ rule:body "<https://seeds.local/ontology/eligibleBlockedOn>(?root, ?gate), <https://seeds.local/ontology/priorityEligible>(?gate, ?gate)" .
+ex:chain a rule:Rule ; rule:id "priority-blocks-transitive" ;
+ rule:head "<https://seeds.local/ontology/activeBlocks>(?gate, ?root)" ;
+ rule:body "<https://seeds.local/ontology/activeBlocks>(?gate, ?middle), <https://seeds.local/ontology/activeBlocks>(?middle, ?root)" .

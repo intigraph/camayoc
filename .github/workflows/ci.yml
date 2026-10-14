@@ -54,7 +54,7 @@ jobs:
           python-version: "3.10"
       - name: Chaski adapter tests on Python 3.10
         run: |
-          for t in test_instant_parsing test_review_due test_change_adapter test_directive_edges test_blocked_by; do
+          for t in test_instant_parsing test_review_due test_change_adapter test_directive_edges test_blocked_by test_seed_work_items test_seed_change_custody test_seed_metadata_projection test_seed_work_item_sync test_native_review_due test_native_review_changes; do
             python3 -m unittest discover -s tests -p "$t.py" || exit 1
           done
 
@@ -116,3 +116,39 @@ jobs:
       - name: Say whether integration actually ran
         if: always()
         run: python3 scripts/integration_verdict.py integration-suite.log
+
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install boto3 cryptography rdflib pyyaml
+      # PINNED, not releases/latest. The tag used to be resolved at run time, so
+      # the binary this job executed was whatever was published last, unreviewed
+      # here. It is now a named release checked against a pinned sha256 (equal to
+      # the digest GitHub records for the asset) before anything is extracted.
+      # To test against a newer quipu, bump QUIPU_TAG and QUIPU_SHA256 together.
+      - name: Fetch quipu-server
+        id: fetch
+        env:
+          QUIPU_TAG: quipu-ai-v0.12.1
+          QUIPU_SHA256: db82c6beaf43526c713f1679934d6968a5576c46a4a8c4b09114273abe7c3ec2
+        run: |
+          set -euo pipefail
+          tag="$QUIPU_TAG"
+          asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSL --retry 3 -o "$asset" \
+            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          echo "${QUIPU_SHA256}  $asset" | sha256sum -c -
+          tar -xzf "$asset"
+          echo "QUIPU_SERVER_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu-server" >> "$GITHUB_ENV"
+          # The tarball ships the CLI next to the server. Exporting it is what
+          # makes tests/test_rml_shapes.py actually EXECUTE — before this line the
+          # RML shape gate had never run on any machine: it demanded a `quipu` on
+          # PATH whenever CI was set, and no job had ever put one there, so it
+          # raised on every run of every job instead of validating anything.
+          echo "QUIPU_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
+      - name: Prove offline governance stage and atomic server refusal
+        run: python3 -m unittest discover -s tests -p integration_governance_loader.py -v

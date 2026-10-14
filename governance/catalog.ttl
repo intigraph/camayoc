@@ -1,0 +1,1418 @@
+<https://scbrown.github.io/quechua/ns#APIEndpoint> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/EntryPoint> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "APIEndpoint" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#AdmissionPolicy> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "AdmissionPolicy" .
+<https://scbrown.github.io/quechua/ns#AgentTool> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "AgentTool" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#AlertRule> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "AlertRule" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#AnsibleGroup> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "AnsibleGroup" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#AnsibleRole> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "AnsibleRole" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Artifact> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#Entity> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Artifact" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#BareMetalHost> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "BareMetalHost" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Blocker> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Blocker" .
+<https://scbrown.github.io/quechua/ns#Bundle> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Bundle" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CIWorkflow> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CIWorkflow" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CLI> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CLI" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CLITool> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CLITool" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Capability> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Capability" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CertifiedShareBundle> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CertifiedShareBundle" .
+<https://scbrown.github.io/quechua/ns#Chunk> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/CreativeWork> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Chunk" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CiJob> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CiJob" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ClaudeCodeHook> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ClaudeCodeHook" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CodeModule> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareSourceCode> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CodeModule" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CodeSymbol> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareSourceCode> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CodeSymbol" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CommandDiskImpactObservation> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CommandDiskImpactObservation" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Commit> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Commit" .
+<https://scbrown.github.io/quechua/ns#Component> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Component" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Concept> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/2004/02/skos/core#Concept> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Concept" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ConfigFile> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ConfigFile" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ConfigSetting> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ConfigSetting" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Container> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Container" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Credential> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Credential" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#CronJob> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "CronJob" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#DataCorpus> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/dcat#Dataset> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataCorpus" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#DatabaseService> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DatabaseService" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Decision> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Decision" .
+<https://scbrown.github.io/quechua/ns#DecisionRecord> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/DigitalDocument> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DecisionRecord" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#DecisionRequest> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DecisionRequest" .
+<https://scbrown.github.io/quechua/ns#DesignDoc> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/DigitalDocument> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DesignDoc" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#DesignPrinciple> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DesignPrinciple" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Directive> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Directive" .
+<https://scbrown.github.io/quechua/ns#DockerContainer> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DockerContainer" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#DockerImage> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DockerImage" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Document> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/DigitalDocument> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Document" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ExecutionPath> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ExecutionPath" .
+<https://scbrown.github.io/quechua/ns#ExternalService> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ExternalService" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#FailureKnowledge> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "FailureKnowledge" .
+<https://scbrown.github.io/quechua/ns#FailureMode> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "FailureMode" .
+<https://scbrown.github.io/quechua/ns#FailurePattern> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "FailurePattern" .
+<https://scbrown.github.io/quechua/ns#FamilyMember> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/Person> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "FamilyMember" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Feature> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Feature" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#FileCollection> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "FileCollection" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Formula> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Formula" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#GitCommit> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "GitCommit" .
+<https://scbrown.github.io/quechua/ns#GitRepo> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareSourceCode> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "GitRepo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#GitRepository> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareSourceCode> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "GitRepository" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#GoldenPath> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "GoldenPath" .
+<https://scbrown.github.io/quechua/ns#GoogleAccount> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "GoogleAccount" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Host> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Host" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Incident> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Incident" .
+<https://scbrown.github.io/quechua/ns#IncidentClass> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "IncidentClass" .
+<https://scbrown.github.io/quechua/ns#InternalIdentifierPattern> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "InternalIdentifierPattern" .
+<https://scbrown.github.io/quechua/ns#KnowledgeCertificationSeal> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "KnowledgeCertificationSeal" .
+<https://scbrown.github.io/quechua/ns#LXCContainer> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "LXCContainer" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Limitation> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Limitation" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#LocalCommand> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "LocalCommand" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#MCPServer> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "MCPServer" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#MLModel> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/CreativeWork> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "MLModel" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#MediaLibrary> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "MediaLibrary" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Metric> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Metric" .
+<https://scbrown.github.io/quechua/ns#MonitoringProbe> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "MonitoringProbe" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Movie> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/Movie> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Movie" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#NFSExport> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "NFSExport" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#NetworkSegment> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "NetworkSegment" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#NonFunctionalRequirement> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "NonFunctionalRequirement" .
+<https://scbrown.github.io/quechua/ns#Observation> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/sosa/Observation> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Observation" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#OperatingPoint> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "OperatingPoint" .
+<https://scbrown.github.io/quechua/ns#OperationalFact> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "OperationalFact" .
+<https://scbrown.github.io/quechua/ns#OperationalKnowledge> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "OperationalKnowledge" .
+<https://scbrown.github.io/quechua/ns#OperationalRule> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "OperationalRule" .
+<https://scbrown.github.io/quechua/ns#OperatorGroup> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/org#Organization> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "OperatorGroup" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Overseer> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Overseer" .
+<https://scbrown.github.io/quechua/ns#PathOmission> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "PathOmission" .
+<https://scbrown.github.io/quechua/ns#PathPromotion> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "PathPromotion" .
+<https://scbrown.github.io/quechua/ns#Person> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/Person> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Person" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#PlanStep> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/HowToStep> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "PlanStep" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Plugin> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Plugin" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Policy> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/odrl/2/Policy> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Policy" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#PrecedentLink> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "PrecedentLink" .
+<https://scbrown.github.io/quechua/ns#Predicate> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Predicate" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Principal> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#Agent> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Principal" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Probe> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Probe" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Procedure> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/HowTo> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Procedure" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ProxmoxNode> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ProxmoxNode" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#PublisherAttestation> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "PublisherAttestation" .
+<https://scbrown.github.io/quechua/ns#PushgatewayJob> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "PushgatewayJob" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Reaction> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Reaction" .
+<https://scbrown.github.io/quechua/ns#ReactionFiring> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ReactionFiring" .
+<https://scbrown.github.io/quechua/ns#RemoteHost> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "RemoteHost" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Repo> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareSourceCode> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Repo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Requirement> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Requirement" .
+<https://scbrown.github.io/quechua/ns#ResponsibilityDomain> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/org#Role> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ResponsibilityDomain" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ReverseProxyRoute> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ReverseProxyRoute" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Rig> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Rig" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#SSHKey> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "SSHKey" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Script> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareSourceCode> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Script" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#SearchService> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "SearchService" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Section> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/CreativeWork> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Section" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#SecurityFinding> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "SecurityFinding" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Selector> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Selector" .
+<https://scbrown.github.io/quechua/ns#Service> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Service" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Session> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#Activity> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Session" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Skill> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Skill" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#SoftwareVersion> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "SoftwareVersion" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Step> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Step" .
+<https://scbrown.github.io/quechua/ns#StoragePool> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "StoragePool" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#SystemdService> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "SystemdService" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#SystemdTimer> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "SystemdTimer" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#TVSeries> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/TVSeries> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "TVSeries" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#TerraformResource> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "TerraformResource" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#TextRule> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "TextRule" .
+<https://scbrown.github.io/quechua/ns#Tool> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/SoftwareApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Tool" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ToolClass> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ToolClass" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#TraefikRoute> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "TraefikRoute" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#TraitValue> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "TraitValue" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Trajectory> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Trajectory" .
+<https://scbrown.github.io/quechua/ns#Transition> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Transition" .
+<https://scbrown.github.io/quechua/ns#TransitionEvent> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "TransitionEvent" .
+<https://scbrown.github.io/quechua/ns#UsageRecord> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "UsageRecord" .
+<https://scbrown.github.io/quechua/ns#Verdict> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Verdict" .
+<https://scbrown.github.io/quechua/ns#Verification> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Verification" .
+<https://scbrown.github.io/quechua/ns#VerifierRegistration> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "VerifierRegistration" .
+<https://scbrown.github.io/quechua/ns#Watchlist> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Watchlist" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#WebApplication> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/WebApplication> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "WebApplication" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#WorkItem> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/Action> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "WorkItem" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Workflow> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#Plan> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Workflow" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#WorkflowDefinition> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "WorkflowDefinition" .
+<https://scbrown.github.io/quechua/ns#WorkflowRun> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "WorkflowRun" .
+<https://scbrown.github.io/quechua/ns#WorkflowStep> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/HowToStep> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "WorkflowStep" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#Workstream> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/Project> ;
+	a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Workstream" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ZFSDataset> a <http://www.w3.org/2000/01/rdf-schema#Class> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ZFSDataset" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#about> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/about> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "about" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#access_via> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "access_via" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#action> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "action" .
+<https://scbrown.github.io/quechua/ns#actor> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#wasAssociatedWith> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "actor" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#adversariallyProvenBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "adversariallyProvenBy" .
+<https://scbrown.github.io/quechua/ns#afterHours> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "afterHours" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#alertExpr> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "alertExpr" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#alternatives> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "alternatives" .
+<https://scbrown.github.io/quechua/ns#appliesTo> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "appliesTo" .
+<https://scbrown.github.io/quechua/ns#applies_to> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "applies_to" .
+<https://scbrown.github.io/quechua/ns#assignsWorkflow> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "assignsWorkflow" .
+<https://scbrown.github.io/quechua/ns#atStep> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "atStep" .
+<https://scbrown.github.io/quechua/ns#attestationSignature> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "attestationSignature" .
+<https://scbrown.github.io/quechua/ns#attests> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "attests" .
+<https://scbrown.github.io/quechua/ns#attestsBundle> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "attestsBundle" .
+<https://scbrown.github.io/quechua/ns#attributedTo> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#wasAttributedTo> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "attributedTo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#author> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/author> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "author" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#authored_by> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/author> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "authored_by" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#authority> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "authority" .
+<https://scbrown.github.io/quechua/ns#authorityOver> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "authorityOver" .
+<https://scbrown.github.io/quechua/ns#axis> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "axis" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#backend> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "backend" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#backoffFormula> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "backoffFormula" .
+<https://scbrown.github.io/quechua/ns#backs_up> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "backs_up" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#binary> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "binary" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#blessingLevel> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "blessingLevel" .
+<https://scbrown.github.io/quechua/ns#blockedOn> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "blockedOn" .
+<https://scbrown.github.io/quechua/ns#blockerEvidence> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "blockerEvidence" .
+<https://scbrown.github.io/quechua/ns#blockerKind> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "blockerKind" .
+<https://scbrown.github.io/quechua/ns#boundary> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "boundary" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#by> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "by" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#byteCount> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "byteCount" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#calibrationBasis> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "calibrationBasis" .
+<https://scbrown.github.io/quechua/ns#candidateSource> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "candidateSource" .
+<https://scbrown.github.io/quechua/ns#canonicalGraphHash> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "canonicalGraphHash" .
+<https://scbrown.github.io/quechua/ns#certificationSeal> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "certificationSeal" .
+<https://scbrown.github.io/quechua/ns#certifiesBundle> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "certifiesBundle" .
+<https://scbrown.github.io/quechua/ns#chose> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "chose" .
+<https://scbrown.github.io/quechua/ns#chunkOrder> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "chunkOrder" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#claim> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "claim" .
+<https://scbrown.github.io/quechua/ns#commandSignature> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "commandSignature" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#commandText> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "commandText" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#committed_to> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "committed_to" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#condition> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "condition" .
+<https://scbrown.github.io/quechua/ns#confidence> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "confidence" .
+<https://scbrown.github.io/quechua/ns#configPath> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "configPath" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#configured_in> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "configured_in" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#connects_to> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "connects_to" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#consolidatesInto> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "consolidatesInto" .
+<https://scbrown.github.io/quechua/ns#constraintClass> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "constraintClass" .
+<https://scbrown.github.io/quechua/ns#contains> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/hasPart> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "contains" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#contentHash> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "contentHash" .
+<https://scbrown.github.io/quechua/ns#contentSha256> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "contentSha256" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#contradicts> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "contradicts" .
+<https://scbrown.github.io/quechua/ns#corpusWatermark> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "corpusWatermark" .
+<https://scbrown.github.io/quechua/ns#createdAt> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/dateCreated> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "createdAt" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#crewPlanStatus> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "crewPlanStatus" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#crewRoleName> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "crewRoleName" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#crewStatus> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "crewStatus" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ctId> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ctId" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#currentState> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "currentState" .
+<https://scbrown.github.io/quechua/ns#dataPath> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "dataPath" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#date> <http://purl.org/dc/terms/isReplacedBy> <http://purl.org/dc/terms/date> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "date" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#definedIn> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/2000/01/rdf-schema#isDefinedBy> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "definedIn" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#demonstratedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "demonstratedBy" .
+<https://scbrown.github.io/quechua/ns#depends_on> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "depends_on" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#deployed_on> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "deployed_on" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#derived_from> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#wasDerivedFrom> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "derived_from" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#desiredCount> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "desiredCount" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#desiredHarness> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "desiredHarness" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#diskDeltaBytes> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "diskDeltaBytes" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#dispatchedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "dispatchedBy" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#domain> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "domain" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#effect> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "effect" .
+<https://scbrown.github.io/quechua/ns#elastic> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "elastic" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#email> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/email> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "email" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#embeddingModel> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "embeddingModel" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#enabled> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "enabled" .
+<https://scbrown.github.io/quechua/ns#enforcedInsteadAt> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "enforcedInsteadAt" .
+<https://scbrown.github.io/quechua/ns#enforcementTier> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "enforcementTier" .
+<https://scbrown.github.io/quechua/ns#event> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "event" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#eventId> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "eventId" .
+<https://scbrown.github.io/quechua/ns#eventTypes> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "eventTypes" .
+<https://scbrown.github.io/quechua/ns#evidenceHash> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "evidenceHash" .
+<https://scbrown.github.io/quechua/ns#evidenceSource> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "evidenceSource" .
+<https://scbrown.github.io/quechua/ns#executable> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "executable" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#executesArtifact> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "executesArtifact" .
+<https://scbrown.github.io/quechua/ns#exemplar> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "exemplar" .
+<https://scbrown.github.io/quechua/ns#expiresAt> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/expires> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "expiresAt" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#extensionCounts> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "extensionCounts" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#externalUrl> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/url> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "externalUrl" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#falseNegativeTolerance> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "falseNegativeTolerance" .
+<https://scbrown.github.io/quechua/ns#falsePositiveTolerance> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "falsePositiveTolerance" .
+<https://scbrown.github.io/quechua/ns#falsifier> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "falsifier" .
+<https://scbrown.github.io/quechua/ns#fileCount> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "fileCount" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#filePath> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "filePath" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#filesystemIdentity> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "filesystemIdentity" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#firedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "firedBy" .
+<https://scbrown.github.io/quechua/ns#focus> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "focus" .
+<https://scbrown.github.io/quechua/ns#forPolicy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "forPolicy" .
+<https://scbrown.github.io/quechua/ns#forTarget> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "forTarget" .
+<https://scbrown.github.io/quechua/ns#formulaName> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "formulaName" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#freshness> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "freshness" .
+<https://scbrown.github.io/quechua/ns#fromState> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "fromState" .
+<https://scbrown.github.io/quechua/ns#frozenWindow> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "frozenWindow" .
+<https://scbrown.github.io/quechua/ns#gate> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "gate" .
+<https://scbrown.github.io/quechua/ns#gatedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "gatedBy" .
+<https://scbrown.github.io/quechua/ns#gatesPath> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "gatesPath" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#gateway> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "gateway" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#governedAt> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "governedAt" .
+<https://scbrown.github.io/quechua/ns#governedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "governedBy" .
+<https://scbrown.github.io/quechua/ns#grantsAction> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "grantsAction" .
+<https://scbrown.github.io/quechua/ns#groundingQuery> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "groundingQuery" .
+<https://scbrown.github.io/quechua/ns#groupName> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "groupName" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#guardsProducer> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "guardsProducer" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#hasCrewSlot> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "hasCrewSlot" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#hasExtension> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "hasExtension" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#hasRole> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/org#role> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "hasRole" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#hasStep> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/step> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "hasStep" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#hash> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "hash" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#heading> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/headline> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "heading" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#headingDepth> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "headingDepth" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#healthEndpoint> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "healthEndpoint" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#healthScore> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "healthScore" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#heldOn> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "heldOn" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#host> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "host" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#hostedAtLayer> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "hostedAtLayer" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#hostname> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "hostname" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#implements> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "implements" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#importsUntrustedState> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "importsUntrustedState" .
+<https://scbrown.github.io/quechua/ns#inDocument> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/isPartOf> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "inDocument" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#inExport> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "inExport" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#inRun> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "inRun" .
+<https://scbrown.github.io/quechua/ns#inSession> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "inSession" .
+<https://scbrown.github.io/quechua/ns#inStep> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "inStep" .
+<https://scbrown.github.io/quechua/ns#inWorkflowRun> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "inWorkflowRun" .
+<https://scbrown.github.io/quechua/ns#in_repo> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "in_repo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#indexes> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "indexes" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#inheritedByDelegates> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "inheritedByDelegates" .
+<https://scbrown.github.io/quechua/ns#ipAddress> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ipAddress" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#issuedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "issuedBy" .
+<https://scbrown.github.io/quechua/ns#keeper> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "keeper" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#kind> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "kind" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#language> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/inLanguage> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "language" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#latencyBudgetMs> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "latencyBudgetMs" .
+<https://scbrown.github.io/quechua/ns#linkageOutcome> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "linkageOutcome" .
+<https://scbrown.github.io/quechua/ns#localEquivalent> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "localEquivalent" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#managed_by> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "managed_by" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#matchType> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "matchType" .
+<https://scbrown.github.io/quechua/ns#maxAge> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "maxAge" .
+<https://scbrown.github.io/quechua/ns#meanServiceSeconds> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "meanServiceSeconds" .
+<https://scbrown.github.io/quechua/ns#meaning> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "meaning" .
+<https://scbrown.github.io/quechua/ns#measurementWindow> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "measurementWindow" .
+<https://scbrown.github.io/quechua/ns#measuresRequirement> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "measuresRequirement" .
+<https://scbrown.github.io/quechua/ns#member_of> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/org#memberOf> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "member_of" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#mentions> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/mentions> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "mentions" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#minVersion> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "minVersion" .
+<https://scbrown.github.io/quechua/ns#minimumCount> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "minimumCount" .
+<https://scbrown.github.io/quechua/ns#modifies> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "modifies" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#monitors> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "monitors" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#mountpoint> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "mountpoint" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#mustMatch> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "mustMatch" .
+<https://scbrown.github.io/quechua/ns#mustNotMatch> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "mustNotMatch" .
+<https://scbrown.github.io/quechua/ns#name> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/name> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "name" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#newestMtime> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "newestMtime" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#nextChunk> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "nextChunk" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#nodeId> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "nodeId" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#observedAt> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/sosa/resultTime> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "observedAt" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#observedBlockedOn> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "observedBlockedOn" .
+<https://scbrown.github.io/quechua/ns#observedClosedAt> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "observedClosedAt" .
+<https://scbrown.github.io/quechua/ns#observedStatus> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "observedStatus" .
+<https://scbrown.github.io/quechua/ns#observedValue> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/sosa/hasSimpleResult> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "observedValue" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#omissionAuthority> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "omissionAuthority" .
+<https://scbrown.github.io/quechua/ns#omittedStep> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "omittedStep" .
+<https://scbrown.github.io/quechua/ns#on> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "on" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#onTimeout> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "onTimeout" .
+<https://scbrown.github.io/quechua/ns#onUndecidable> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "onUndecidable" .
+<https://scbrown.github.io/quechua/ns#operatingPoint> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "operatingPoint" .
+<https://scbrown.github.io/quechua/ns#operatorCount> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "operatorCount" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#outcome> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "outcome" .
+<https://scbrown.github.io/quechua/ns#ownedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ownedBy" .
+<https://scbrown.github.io/quechua/ns#owner> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "owner" .
+<https://scbrown.github.io/quechua/ns#owns> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "owns" .
+<https://scbrown.github.io/quechua/ns#parentCollection> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "parentCollection" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#path> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "path" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#performedBy> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#wasAssociatedWith> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "performedBy" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#platform> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "platform" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#plexId> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "plexId" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#pluginType> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "pluginType" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#pool> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "pool" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#port> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "port" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#prRef> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "prRef" .
+<https://scbrown.github.io/quechua/ns#precedence> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "precedence" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#precedent> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "precedent" .
+<https://scbrown.github.io/quechua/ns#precedentRequest> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "precedentRequest" .
+<https://scbrown.github.io/quechua/ns#predicate> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "predicate" .
+<https://scbrown.github.io/quechua/ns#predicateId> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "predicateId" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#prefix> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "prefix" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#principalId> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "principalId" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#probe> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "probe" .
+<https://scbrown.github.io/quechua/ns#produces> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "produces" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#promotedAt> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "promotedAt" .
+<https://scbrown.github.io/quechua/ns#promotedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "promotedBy" .
+<https://scbrown.github.io/quechua/ns#promotes> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "promotes" .
+<https://scbrown.github.io/quechua/ns#pronouns> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "pronouns" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#provenanceManifest> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "provenanceManifest" .
+<https://scbrown.github.io/quechua/ns#provider> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "provider" .
+<https://scbrown.github.io/quechua/ns#providesCommand> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "providesCommand" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#prunedFrom> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "prunedFrom" .
+<https://scbrown.github.io/quechua/ns#publicKey> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "publicKey" .
+<https://scbrown.github.io/quechua/ns#publisherAttestation> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "publisherAttestation" .
+<https://scbrown.github.io/quechua/ns#purpose> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "purpose" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#reference> <http://purl.org/dc/terms/isReplacedBy> <http://purl.org/dc/terms/references> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "reference" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#references> <http://purl.org/dc/terms/isReplacedBy> <http://purl.org/dc/terms/references> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "references" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#refines> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "refines" .
+<https://scbrown.github.io/quechua/ns#refreshedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "refreshedBy" .
+<https://scbrown.github.io/quechua/ns#regex> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "regex" .
+<https://scbrown.github.io/quechua/ns#registry> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "registry" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#relationship> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "relationship" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#relativePath> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "relativePath" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#repo> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "repo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#repoRef> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "repoRef" .
+<https://scbrown.github.io/quechua/ns#reportsToSlot> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "reportsToSlot" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#reports_to> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/org#reportsTo> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "reports_to" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#repositorySource> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "repositorySource" .
+<https://scbrown.github.io/quechua/ns#requires> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "requires" .
+<https://scbrown.github.io/quechua/ns#requiresRole> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "requiresRole" .
+<https://scbrown.github.io/quechua/ns#resolutionQuery> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "resolutionQuery" .
+<https://scbrown.github.io/quechua/ns#resolvedAt> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "resolvedAt" .
+<https://scbrown.github.io/quechua/ns#resolvesOn> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "resolvesOn" .
+<https://scbrown.github.io/quechua/ns#resourceName> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "resourceName" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#resourceType> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "resourceType" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#result> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "result" .
+<https://scbrown.github.io/quechua/ns#reversibilityWindowSeconds> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "reversibilityWindowSeconds" .
+<https://scbrown.github.io/quechua/ns#reviewAfter> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "reviewAfter" .
+<https://scbrown.github.io/quechua/ns#rig> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "rig" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#role> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "role" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#roleName> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "roleName" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#routedTo> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "routedTo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#routes_to> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "routes_to" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#runOf> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "runOf" .
+<https://scbrown.github.io/quechua/ns#runs_on> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "runs_on" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#schedule> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "schedule" .
+<https://scbrown.github.io/quechua/ns#scopeEntity> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "scopeEntity" .
+<https://scbrown.github.io/quechua/ns#scopeKind> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "scopeKind" .
+<https://scbrown.github.io/quechua/ns#scopeProvenance> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "scopeProvenance" .
+<https://scbrown.github.io/quechua/ns#script> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "script" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#scrubCheckPass> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "scrubCheckPass" .
+<https://scbrown.github.io/quechua/ns#selector> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "selector" .
+<https://scbrown.github.io/quechua/ns#service> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "service" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#severity> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "severity" .
+<https://scbrown.github.io/quechua/ns#sha> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "sha" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#shaclReportHash> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "shaclReportHash" .
+<https://scbrown.github.io/quechua/ns#shapesBundleVersion> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "shapesBundleVersion" .
+<https://scbrown.github.io/quechua/ns#signature> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "signature" .
+<https://scbrown.github.io/quechua/ns#signingKey> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "signingKey" .
+<https://scbrown.github.io/quechua/ns#similarityMethod> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "similarityMethod" .
+<https://scbrown.github.io/quechua/ns#similarityScore> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "similarityScore" .
+<https://scbrown.github.io/quechua/ns#similarityThreshold> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "similarityThreshold" .
+<https://scbrown.github.io/quechua/ns#skillName> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "skillName" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#source> <http://purl.org/dc/terms/isReplacedBy> <http://purl.org/dc/terms/source> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "source" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#sourceKind> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "sourceKind" .
+<https://scbrown.github.io/quechua/ns#sourceRepo> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "sourceRepo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#sourceType> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "sourceType" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#source_uri> <http://purl.org/dc/terms/isReplacedBy> <http://purl.org/dc/terms/source> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "source_uri" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#src> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "src" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#startedAt> <http://purl.org/dc/terms/isReplacedBy> <http://www.w3.org/ns/prov#startedAtTime> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "startedAt" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#status> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/creativeWorkStatus> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "status" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#stepOf> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/isPartOf> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "stepOf" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#storageBackend> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "storageBackend" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#subnet> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "subnet" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#symbolKind> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "symbolKind" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#tag> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/keywords> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "tag" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#target> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "target" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#targetRef> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "targetRef" .
+<https://scbrown.github.io/quechua/ns#targetSize> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "targetSize" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#targets> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "targets" .
+<https://scbrown.github.io/quechua/ns#threshold> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "threshold" .
+<https://scbrown.github.io/quechua/ns#tier> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "tier" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#title> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/name> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "title" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#to> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "to" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#toState> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "toState" .
+<https://scbrown.github.io/quechua/ns#tokensConsumed> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "tokensConsumed" .
+<https://scbrown.github.io/quechua/ns#tool> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "tool" .
+<https://scbrown.github.io/quechua/ns#tools> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "tools" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#touches> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "touches" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#touchesHost> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "touchesHost" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#touchesRepo> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "touchesRepo" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#touchesService> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "touchesService" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#trackedBy> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "trackedBy" .
+<https://scbrown.github.io/quechua/ns#traitAttachment> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "traitAttachment" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#traitAuthority> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "traitAuthority" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#traitCoordination> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "traitCoordination" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#traitLifecycle> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "traitLifecycle" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#traitScope> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "traitScope" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#traitValue> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "traitValue" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#traitWorkIntake> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "traitWorkIntake" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#trigger> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "trigger" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#triggerKind> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "triggerKind" .
+<https://scbrown.github.io/quechua/ns#triggered_by> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "triggered_by" .
+<https://scbrown.github.io/quechua/ns#triggers> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "triggers" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#ungovernedReason> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ungovernedReason" .
+<https://scbrown.github.io/quechua/ns#unit> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/unitText> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "unit" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#untrustedOrigin> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "untrustedOrigin" .
+<https://scbrown.github.io/quechua/ns#url> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/url> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "url" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#verificationPoint> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "verificationPoint" .
+<https://scbrown.github.io/quechua/ns#verifiedAt> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "verifiedAt" .
+<https://scbrown.github.io/quechua/ns#verified_by> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "verified_by" .
+<https://scbrown.github.io/quechua/ns#verifier> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "verifier" .
+<https://scbrown.github.io/quechua/ns#version> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/softwareVersion> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "version" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#visitDate> a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Deprecated: homelab- or tool-specific, outside the public profile. No public replacement; it remains in the private ontology it came from." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "visitDate" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns#year> <http://purl.org/dc/terms/isReplacedBy> <https://schema.org/datePublished> ;
+	a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "year" ;
+	<http://www.w3.org/2002/07/owl#deprecated> true .
+<https://scbrown.github.io/quechua/ns> a <http://www.w3.org/2002/07/owl#Ontology> ;
+	<http://www.w3.org/2002/07/owl#versionInfo> "0.7.0" .
