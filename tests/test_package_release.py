@@ -1,4 +1,5 @@
 """The released source must bind a revision, not a dirty checkout."""
+import gzip
 import hashlib
 import importlib.util
 import json
@@ -66,6 +67,15 @@ class SourceRelease(unittest.TestCase):
         two = PACK.package("HEAD", "0.1.0", self.root / "two")
         self.assertEqual(one, two)
         self.assertEqual((self.root / "one" / one["artifact"]).read_bytes(), (self.root / "two" / two["artifact"]).read_bytes())
+
+    def test_archive_envelope_is_platform_neutral(self):
+        proof = PACK.package("HEAD", "0.1.0", self.root / "neutral")
+        data = (self.root / "neutral" / proof["artifact"]).read_bytes()
+        self.assertEqual(data[9], 255, "gzip OS must be unknown on every build host")
+        self.assertEqual(data[4:8], b"\0" * 4, "gzip timestamp must be zero")
+        self.assertEqual(data[3] & 8, 0, "gzip must not embed an output filename")
+        expected = self.git("archive", "--format=tar", "--prefix=camayoc-v0.1.0/", "HEAD")
+        self.assertEqual(gzip.decompress(data), expected)
 
     def test_wrong_version_and_occupied_output_refuse(self):
         for version in ("0.2.0", "../0.1.0", "0.1.0-rc1"):

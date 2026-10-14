@@ -4,6 +4,7 @@
 import argparse
 import gzip
 import hashlib
+import io
 import json
 import re
 import subprocess
@@ -33,7 +34,12 @@ def package(ref, version, output):
     prefix = "camayoc-v" + version
     source = git("archive", "--format=tar", "--prefix=" + prefix + "/", revision)
     archive = output / (prefix + ".tar.gz")
-    archive.write_bytes(gzip.compress(source, mtime=0))
+    # gzip.compress delegates to zlib in Python 3.11/3.12, which supplies a
+    # platform-specific OS byte. GzipFile writes the neutral envelope itself.
+    compressed = io.BytesIO()
+    with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", mtime=0, compresslevel=9) as bundle:
+        bundle.write(source)
+    archive.write_bytes(compressed.getvalue())
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     (output / "SHA256SUMS").write_text(digest + "  " + archive.name + "\n")
     provenance = {"repository": "https://github.com/scbrown/camayoc", "tag": "v" + version,
