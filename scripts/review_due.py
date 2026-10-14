@@ -129,8 +129,52 @@ def latest_activity(post, entity: str) -> tuple[dt.datetime | None, str | None]:
     return latest, status
 
 
-def judge(post, entity: str, now: dt.datetime) -> dict:
+def _native_id(post, entity: str, reader=None) -> str | None:
+    """Exact legacy identifier only, never a title or fuzzy about match."""
+    import seed_work_items as native
+    if entity.startswith(native.ITEM):
+        from urllib.parse import unquote
+        item_id=unquote(entity[len(native.ITEM):])
+        if native.item_iri(item_id) != entity:
+            raise native.NativeUnknown('native Action spelling is ambiguous')
+        return item_id
+    identifiers=_values(post,entity,'identifier')
+    identifiers=[raw.strip('"') for raw in identifiers]
+    if len(set(identifiers)) > 1:
+        raise native.NativeUnknown('legacy WorkItem identifiers conflict')
+    if identifiers:
+        if reader is not None and entity.startswith(reader.board.prefix+'-') and entity != identifiers[0]:
+            raise native.NativeUnknown('legacy exact-ID entity and identifier conflict')
+        if reader is not None and not identifiers[0].startswith(reader.board.prefix+'-'):
+            return None  # Other rigs retain their separately selected authority.
+        return identifiers[0]
+    if reader is not None and entity.startswith(reader.board.prefix+'-'):
+        # Original canonical WorkItem names ARE exact tracker IDs. The native
+        # Action's own identifier check still proves the destination separately.
+        return entity
+    return None
+
+
+def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
     basis = []
+    native_record=None
+    native_failed=False
+    native_error=None
+    try:
+        item_id=_native_id(post,entity,native_reader)
+        if item_id is not None:
+            if native_reader is None:
+                from seed_work_items import deployed_reader
+                native_reader=deployed_reader(post)
+                if entity.startswith(native_reader.board.prefix+'-') and entity != item_id:
+                    raise ValueError('legacy exact-ID entity and identifier conflict')
+                if not item_id.startswith(native_reader.board.prefix+'-'):
+                    item_id=None
+            if item_id is not None:
+                native_record=native_reader.get(item_id)
+    except (ValueError,OSError,RuntimeError) as exc:
+        native_failed=True
+        native_error=type(exc).__name__
     for raw in _values(post, entity, "reviewAfter"):
         when = parse_instant(raw)
         basis.append({"age": "reviewAfter", "value": raw.strip('"'),
@@ -147,12 +191,20 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
                       "due_at": when.isoformat() if when else None, "why": why})
     for raw in _values(post, entity, "idleLimit"):
         span = parse_duration(raw)
-        anchor, status = latest_activity(post, entity) if span else (None, None)
+        if native_record is not None:
+            from seed_work_items import instant
+            anchor,status=instant(native_record.modified),native_record.status
+        elif native_failed:
+            anchor,status=None,None  # Failed native authority cannot use stale Observation.
+        else:
+            anchor,status=latest_activity(post,entity) if span else (None,None)
         resolved = status in RESOLVING_STATUS
         when = anchor + span if anchor and span and not resolved else None
         why = ("unreadable duration" if span is None else
+               f"native authority UNKNOWN ({native_error}); no legacy fallback" if native_failed else
                "no tracker Observation, so the idle age has no anchor" if anchor is None else
                f"resolved: the latest tracker status is {status}" if resolved else
+               f"last native activity {anchor.isoformat()}" if native_record is not None else
                f"last tracker activity {anchor.isoformat()}")
         basis.append({"age": "idleLimit", "value": raw.strip('"'),
                       "due_at": when.isoformat() if when else None, "why": why,
@@ -165,12 +217,23 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
         verdict = NOT_DUE
     else:
         verdict = UNKNOWN
-    owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{entity}>', 'ownedBy', '?v')} }}")]
     # Classification is context for the receiver's configured policy, never
     # adapter-supplied severity. Ambiguous kinds keep the ordinary policy.
     kinds = {raw.strip('"') for raw in _values(post, entity, "workKind")}
     work_kind = next(iter(kinds)) if len(kinds) == 1 else None
-    ident = json.dumps([entity, sorted((b["age"], b["value"], b["due_at"] or "") for b in basis)],
+    if native_record is not None:
+        owners=[native_record.owner] if native_record.owner else []
+    elif native_failed:
+        owners=[]
+    else:
+        owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{entity}>', 'ownedBy', '?v')} }}")]
+    native_source=({'graph':native_record.graph,'action':native_record.action,'id':native_record.id,
+                    'version':native_record.version,'modified':native_record.modified,
+                    'status':native_record.status} if native_record is not None else None)
+    identity=[entity, sorted((b["age"], b["value"], b["due_at"] or "") for b in basis)]
+    if native_source is not None or native_failed:
+        identity.append(native_source or {'native':'UNKNOWN'})
+    ident = json.dumps(identity,
                        separators=(",", ":"))
     passed = [t for t in known if t <= now]
     # The 'due' event's id (aegis-kxjack; sattler's delivery ruling on
@@ -184,7 +247,9 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
             **({"event_id": "sha256:" + hashlib.sha256(event.encode()).hexdigest()} if event else {}),
             "due_at": min(known).isoformat() if known else None,
             "evidence": "sha256:" + hashlib.sha256(ident.encode()).hexdigest(),
-            "owner": sorted(owners)[0] if owners else None, "basis": basis}
+            "owner": sorted(owners)[0] if owners else None, "basis": basis,
+            **({'native_source':native_source} if native_source is not None else {}),
+            **({'native_authority':'UNKNOWN'} if native_failed else {})}
 
 
 def evaluate(post, *, now: dt.datetime | None = None) -> list[dict]:
