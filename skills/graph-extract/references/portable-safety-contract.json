@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "contract": "graph-extract-portable-safety",
+  "invariants": [
+    {
+      "id": "outcome-is-write-verdict",
+      "requirement": "Treat created, updated, and unchanged as successful episode outcomes; count is transaction write volume, not a presence or success gate."
+    },
+    {
+      "id": "reader-path-readback",
+      "requirement": "After a successful outcome, verify nodes through the type-aware query path a reader will use before marking the source ingested."
+    },
+    {
+      "id": "indeterminate-transport",
+      "requirement": "Treat timeout, empty response, gateway errors, and HTTP 408 as indeterminate commit results. Make two control-gated reads separated by 15 seconds; only two absences permit one byte-identical retry. Two absences still do not prove non-commit."
+    },
+    {
+      "id": "stable-node-identity",
+      "requirement": "Search before minting and compare the actual destination IRI, not only its label. Reuse an existing addressable canonical name exactly; report other IRIs sharing its label. A retry must preserve the exact episode body."
+    },
+    {
+      "id": "corrections-use-set",
+      "requirement": "Omit description on reused episode nodes while retaining their governed type. Current servers revise attributed descriptions and can refuse ambiguous legacy comments. Use /set for a deliberate predicate correction, then verify its value and count."
+    },
+    {
+      "id": "standard-predicates-use-knot",
+      "requirement": "Use /knot or /set with exact RDF predicate IRIs for explicit predicate writes. Current /episode also preserves supported standard prefixes and angle-bracket full IRIs; never sanitize a standard predicate into a local lookalike."
+    },
+    {
+      "id": "every-node-is-typed",
+      "requirement": "Every episode node, including reuse, has a governed type; one untyped node invalidates the whole episode. Each name occurs once per episode; add another type in a separate episode without a description."
+    }
+  ]
+}
