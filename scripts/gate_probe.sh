@@ -50,7 +50,11 @@ set -u
 
 SERVER="${QUIPU_SERVER:-http://localhost:3030}"; SERVER=${SERVER%/}
 GATE_AUTH=()
-[ -n "${QUIPU_AUTH_TOKEN:-}" ] && GATE_AUTH=(-H "Authorization: Bearer $QUIPU_AUTH_TOKEN")
+if declare -p AUTH >/dev/null 2>&1; then
+  GATE_AUTH=("${AUTH[@]}")
+else
+  [ -n "${QUIPU_AUTH_TOKEN:-}" ] && GATE_AUTH=(-H "Authorization: Bearer $QUIPU_AUTH_TOKEN")
+fi
 
 # bootstrap.sh defines `say`; standing alone we need our own.
 if ! declare -F say >/dev/null 2>&1; then

@@ -10,6 +10,16 @@ Run the camayoc bootstrap script and report its output faithfully:
 ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh
 ```
 
+For a fresh loopback server that it starts itself, bootstrap creates a private
+random credential at `~/.config/quipu/token` (mode 0400) and configures the
+matching server to require it. Its new `.bobbin/config.toml` is mode 0600.
+Existing credentials follow `QUIPU_AUTH_TOKEN` → `QUIPU_AUTH_TOKEN_FILE` →
+`~/.config/quipu/token`; none is replaced. An already running or remote server
+requires an accepted credential from its administrator. A failed health check
+alone does not authorize creating one: existing server data/configuration and
+an occupied local port prevent fresh provisioning. Bearers are kept out of
+bootstrap output and curl arguments.
+
 The script is idempotent and does, in order, only what is missing: reach the
 quipu at $QUIPU_SERVER (default localhost:3030) — or install one (write
 .bobbin/config.toml with validate_on_write = true, download the latest quipu
