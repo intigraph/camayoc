@@ -371,6 +371,21 @@ Each takes <code>--help</code>.</p>
 <a href="https://github.com/scbrown/camayoc/tree/main/competency"><code>competency/</code></a>; the
 stored queries that answer them live in
 <a href="https://github.com/scbrown/camayoc/tree/main/queries"><code>queries/</code></a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="governance-resources"><a class="header" href="#governance-resources">Governance resources</a></h1>
+<p>Camayoc provides an explicit offline stage for the governance catalogue and
+combined SHACL profile. It writes a new owned scratch database only after native
+pendant verification and exact catalogue/profile readback. It does not load a
+running service, replace an existing catalogue, install a native policy adapter
+or activate a hook.</p>
+<p>See the <a href="../governance/README.html">resource guide</a> for required identity arguments,
+repeat behavior and refusal cases. The <a href="design/governance-consumer-contract.html">consumer contract</a>
+defines the separate projection, cache, exemption, freshness and atomic refresh
+requirements for a future native adapter. Offline stage success does not prove
+that adapter is implemented or independently certified.</p>
+<p>Tests generate a fresh local pendant from the reviewed resource bytes, verify
+449 declarations and the complete profile, and exercise an isolated server:
+unknown types and invalid mixed transactions leave every submitted subject
+absent; a valid proposed AdmissionPolicy is the positive writer control.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="source-releases"><a class="header" href="#source-releases">Source releases</a></h1>
 <p>Camayoc releases contain the same source tree used by the plugin and shell
 bootstrap. They do not contain a native Camayoc executable.</p>
