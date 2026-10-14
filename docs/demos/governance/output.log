@@ -1,0 +1,7 @@
+Script started on 2026-10-14 00:35:52-04:00 [COMMAND="uv run --script docs/demos/governance/measure.py" <not executed on terminal>]
+Installed 2 packages in 5ms
+before 83673d40: governance catalogue absent; loader=False
+candidate source: declared=9/9 directly_shaped=9/9 Directive_control=True loader=True
+Source fixture only: no historical lineage, certification, deployment or activation claim.
+
+Script done on 2026-10-14 00:35:52-04:00 [COMMAND_EXIT_CODE="0"]
