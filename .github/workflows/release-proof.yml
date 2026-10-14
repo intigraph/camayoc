@@ -3,6 +3,8 @@ name: Source release proof
 on:
   pull_request:
     paths:
+      - '.claude-plugin/plugin.json'
+      - '.claude-plugin/marketplace.json'
       - '.github/workflows/release*.yml'
       - 'scripts/package_release.py'
       - 'tests/test_package_release.py'
