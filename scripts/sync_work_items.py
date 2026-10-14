@@ -422,7 +422,7 @@ def native_main(args):
             reader=native.from_authority(lambda *args:None,authority,server=planes.SERVER)
             if not str(args.state).endswith('.sqlite3'):
                 raise custody.CustodyUnknown('native custody requires a separate .sqlite3 state; no br migration')
-            journal=custody.Journal(args.state,reader.board,initial_tx=args.initial_tx)
+            journal=custody.Journal(args.state,reader.board,server=planes.SERVER,initial_tx=args.initial_tx)
             last_path=args.state.with_suffix('.receipt.json')
             if last_path.exists():
                 previous=json.loads(last_path.read_text())

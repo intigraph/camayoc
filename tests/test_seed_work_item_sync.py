@@ -12,7 +12,7 @@ class Tick(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'journal.db'
         self.reader=nw.Reader(lambda *args:None,nw.Board(GRAPH,'demo'))
-        self.j=sc.Journal(self.path,self.reader.board,initial_tx=9)
+        self.j=sc.Journal(self.path,self.reader.board,server='https://peer-one.example.test',initial_tx=9)
         self.writes=0;self.description=None;self.unavailable=False;self.drop=False
     def tearDown(self):self.j.db.close();self.tmp.cleanup()
     def post(self,endpoint,body):
@@ -42,7 +42,7 @@ class Tick(unittest.TestCase):
     def test_commit_response_loss_freezes_without_resend_across_restart(self):
         self.drop=True;self.assertEqual(self.tick()['status'],'UNKNOWN')
         self.assertEqual(self.writes,1);self.assertIsNotNone(self.j.next()[2])
-        self.j.db.close();self.j=sc.Journal(self.path,self.reader.board)
+        self.j.db.close();self.j=sc.Journal(self.path,self.reader.board,server='https://peer-one.example.test')
         self.unavailable=True;self.assertEqual(self.tick()['status'],'UNKNOWN');self.assertEqual(self.writes,1)
         self.unavailable=False
         original=self.post

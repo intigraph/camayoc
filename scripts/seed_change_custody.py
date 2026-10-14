@@ -58,20 +58,28 @@ def candidates(page,board,since):
     return end,items
 
 class Journal:
-    def __init__(self,path,board,*,initial_tx=None):
+    def __init__(self,path,board,*,server,initial_tx=None):
+        # Custody belongs to the server that received it. Graph and prefix alone
+        # let a journal be reopened against a different deployment-selected peer,
+        # which then verified the old pending items there and deleted them.
+        if not isinstance(server,str) or not server.strip():raise CustodyUnknown('custody needs the receiving server identity')
         self.board=board
         self.db=sqlite3.connect(path,isolation_level=None)
         self.db.execute('PRAGMA synchronous=FULL')
-        self.db.execute('CREATE TABLE IF NOT EXISTS authority(graph TEXT,prefix TEXT,cursor INTEGER)')
+        # Refuse a legacy journal before any CREATE, so the refusal writes nothing.
+        legacy=self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='authority'").fetchone()
+        if legacy and 'server' not in {c[1] for c in self.db.execute('PRAGMA table_info(authority)')}:
+            self.db.close();raise CustodyUnknown('custody has no recorded receiving server; no migration or adoption')
+        self.db.execute('CREATE TABLE IF NOT EXISTS authority(graph TEXT,prefix TEXT,cursor INTEGER,server TEXT)')
         self.db.execute('CREATE TABLE IF NOT EXISTS pending(id TEXT PRIMARY KEY,tx INTEGER,body TEXT,effect_tx INTEGER,last_attempt REAL)')
         self.db.execute('CREATE TABLE IF NOT EXISTS verified(id TEXT PRIMARY KEY,version INTEGER)')
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            row=self.db.execute('SELECT graph,prefix,cursor FROM authority').fetchall()
+            row=self.db.execute('SELECT graph,prefix,cursor,server FROM authority').fetchall()
             if not row:
                 if initial_tx is None:raise CustodyUnknown('new custody needs an explicitly reviewed initial cursor')
-                self.db.execute('INSERT INTO authority VALUES(?,?,?)',(board.graph,board.prefix,integer(initial_tx)))
-            elif len(row)!=1 or row[0][:2]!=(board.graph,board.prefix):
+                self.db.execute('INSERT INTO authority VALUES(?,?,?,?)',(board.graph,board.prefix,integer(initial_tx),server))
+            elif len(row)!=1 or row[0][:2]!=(board.graph,board.prefix) or row[0][3]!=server:
                 raise CustodyUnknown('custody authority mismatch; no migration or reset')
             elif initial_tx is not None and integer(initial_tx)!=row[0][2]:
                 raise CustodyUnknown('existing cursor cannot be reset')

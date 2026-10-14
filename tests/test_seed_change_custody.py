@@ -5,6 +5,10 @@ from pathlib import Path
 from test_seed_work_items import GRAPH,ID,SUBJECT
 import seed_work_items as nw
 import seed_change_custody as sc
+import sqlite3
+
+PEER='https://peer-one.example.test'
+OTHER='https://peer-two.example.test'
 
 def page(tx=10,subject=SUBJECT,**changes):
     result={'records':[{'graph':GRAPH,'tx':tx,'sequence':1,'entity':subject,
@@ -15,19 +19,36 @@ def page(tx=10,subject=SUBJECT,**changes):
 class Custody(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'journal.db'
-        self.board=nw.Board(GRAPH,'demo');self.j=sc.Journal(self.path,self.board,initial_tx=9)
+        self.board=nw.Board(GRAPH,'demo');self.j=sc.Journal(self.path,self.board,server=PEER,initial_tx=9)
     def tearDown(self):self.j.db.close();self.tmp.cleanup()
     def test_atomic_retention_and_restart_pending_body(self):
         self.j.retain(page());self.assertEqual(self.j.cursor,10)
         self.j.prepare(ID,10,{'exact':'body'});self.j.db.close()
-        self.j=sc.Journal(self.path,self.board)
+        self.j=sc.Journal(self.path,self.board,server=PEER)
         self.assertEqual(json.loads(self.j.next()[2]),{'exact':'body'})
         with self.assertRaises(sc.CustodyUnknown):self.j.prepare(ID,10,{'changed':'body'})
         self.j.acknowledge(ID,10,3);self.assertIsNone(self.j.next())
     def test_initial_cursor_explicit_no_reset_or_authority_swap(self):
-        with self.assertRaises(sc.CustodyUnknown):sc.Journal(Path(self.tmp.name)/'new.db',self.board)
-        with self.assertRaises(sc.CustodyUnknown):sc.Journal(self.path,self.board,initial_tx=0)
-        with self.assertRaises(sc.CustodyUnknown):sc.Journal(self.path,nw.Board('urn:other','demo'))
+        with self.assertRaises(sc.CustodyUnknown):sc.Journal(Path(self.tmp.name)/'new.db',self.board,server=PEER)
+        with self.assertRaises(sc.CustodyUnknown):sc.Journal(self.path,self.board,server=PEER,initial_tx=0)
+        with self.assertRaises(sc.CustodyUnknown):sc.Journal(self.path,nw.Board('urn:other','demo'),server=PEER)
+    def test_changed_receiving_server_refused_and_custody_kept(self):
+        self.j.retain(page());self.j.prepare(ID,10,{'exact':'body'});self.j.db.close()
+        with self.assertRaises(sc.CustodyUnknown):sc.Journal(self.path,self.board,server=OTHER)
+        for bad in ('',None,'  '):
+            with self.subTest(server=bad),self.assertRaises(sc.CustodyUnknown):sc.Journal(self.path,self.board,server=bad)
+        self.j=sc.Journal(self.path,self.board,server=PEER)
+        self.assertEqual(self.j.cursor,10);self.assertEqual(json.loads(self.j.next()[2]),{'exact':'body'})
+    def test_legacy_custody_without_server_is_refused_unchanged(self):
+        self.j.db.close();legacy=Path(self.tmp.name)/'legacy.db';db=sqlite3.connect(legacy)
+        db.execute('CREATE TABLE authority(graph TEXT,prefix TEXT,cursor INTEGER)')
+        db.execute('CREATE TABLE pending(id TEXT PRIMARY KEY,tx INTEGER,body TEXT,effect_tx INTEGER,last_attempt REAL)')
+        db.execute('INSERT INTO authority VALUES(?,?,?)',(GRAPH,'demo',10))
+        db.execute('INSERT INTO pending VALUES(?,?,?,?,?)',(ID,10,'{"exact":"body"}',None,None));db.commit()
+        before=list(db.iterdump());db.close()
+        with self.assertRaises(sc.CustodyUnknown):sc.Journal(legacy,self.board,server=PEER)
+        db=sqlite3.connect(legacy);self.assertEqual(list(db.iterdump()),before);db.close()
+        self.j=sc.Journal(self.path,self.board,server=PEER)
     def test_empty_page_does_not_use_global_watermark(self):
         self.j.retain(page(records=[],next_tx=9,watermark_tx=1000))
         self.assertEqual(self.j.cursor,9)
