@@ -12,7 +12,8 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh
 
 For a fresh loopback server that it starts itself, bootstrap creates a private
 random credential at `~/.config/quipu/token` (mode 0400) and configures the
-matching server to require it. Its new `.bobbin/config.toml` is mode 0600.
+matching server to require it. Its new `.bobbin/config.toml` is mode 0600
+and ignored by git because it contains that private credential.
 Existing credentials follow `QUIPU_AUTH_TOKEN` → `QUIPU_AUTH_TOKEN_FILE` →
 `~/.config/quipu/token`; none is replaced. An already running or remote server
 requires an accepted credential from its administrator. A failed health check

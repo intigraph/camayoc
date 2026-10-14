@@ -11,6 +11,7 @@ The second arm is what stops the first from passing vacuously: against a store
 that does NOT hold the ontology, the presence check must say so.
 """
 import json
+import hashlib
 import os
 import socket
 import subprocess
@@ -89,15 +90,16 @@ class BootstrapRerunTest(unittest.TestCase):
         self.assertIn("gate: PROVEN", first.stdout)
         credential = self.project / ".config/quipu/token"
         secret = credential.read_text().strip()
-        self.assertNotIn(secret, first.stdout + first.stderr)
+        self.assertFalse(secret in first.stdout + first.stderr, "credential leaked")
         self.assertEqual(credential.stat().st_mode & 0o777, 0o400)
         config = self.project / ".bobbin/config.toml"
         self.assertEqual(config.stat().st_mode & 0o777, 0o600)
-        before = (credential.read_bytes(), config.read_bytes())
+        self.assertIn("/.bobbin/config.toml", (self.project / ".gitignore").read_text())
+        before = tuple(hashlib.sha256(p.read_bytes()).hexdigest() for p in (credential, config))
         second = self.bootstrap()
         self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
-        self.assertEqual(before, (credential.read_bytes(), config.read_bytes()))
-        self.assertNotIn(secret, second.stdout + second.stderr)
+        self.assertEqual(before, tuple(hashlib.sha256(p.read_bytes()).hexdigest() for p in (credential, config)))
+        self.assertFalse(secret in second.stdout + second.stderr, "credential leaked")
         body = json.dumps({"action": "list"}).encode()
         request = urllib.request.Request(self.server + "/shapes", data=body,
                                         headers={"Content-Type": "application/json"})

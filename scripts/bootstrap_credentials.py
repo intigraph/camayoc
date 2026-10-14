@@ -29,6 +29,9 @@ def provision(project: Path, server: str) -> None:
     # intended local address must succeed before provisioning a fresh server.
     with socket.socket() as listener:
         listener.bind(('127.0.0.1', endpoint.port or 3030))
+    ignore = project / '.gitignore'
+    if ignore.is_symlink():
+        raise ValueError('Project gitignore must not be a symlink.')
     value = quipu_auth.token()
     if not value:
         # An explicit but empty credential file is an operator configuration,
@@ -53,6 +56,14 @@ def provision(project: Path, server: str) -> None:
                      '[quipu.server]\n'
                      f'bind = {json.dumps("127.0.0.1:" + str(endpoint.port or 3030))}\n'
                      f'auth_token = {json.dumps(value)}\n')
+    # This file now carries a credential. Prevent accidental source publication,
+    # even when the project did not already have a gitignore.
+    existing = ignore.read_text() if ignore.exists() else ''
+    additions = [rule for rule in ('/.bobbin/config.toml', '/.quipu/')
+                 if rule not in existing.splitlines()]
+    if additions:
+        with ignore.open('a') as stream:
+            stream.write('\n# Private local governed-memory state\n' + '\n'.join(additions) + '\n')
 
 
 def resolve() -> str:
