@@ -1,0 +1,7 @@
+{
+  "name": "quechua-governance",
+  "version": "0.7.0",
+  "content_hash": "sha256:e3952ce1919300af934e0a2846836e559d3d900652ecbbf7cbbd9889ba056e17",
+  "counts": "{\"embedding_dimension\":384,\"embedding_model\":null,\"facts\":1418,\"queries\":0,\"shapes\":1,\"vectors\":0}",
+  "source_graph": "urn:quipu:graph:root"
+}
