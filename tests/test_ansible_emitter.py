@@ -54,6 +54,14 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(ARTIFACT, props["artifactId"])
         self.assertEqual("web-1.example.invalid", props["environment"])
 
+    def test_the_recap_and_the_outcome_word_always_agree(self):
+        # Camayoc refuses an Ansible event whose word contradicts its recap.
+        for recap in ({"ok": 1}, {"ok": 1, "failures": 1}, {"ok": 0, "unreachable": 1}):
+            with self.subTest(recap):
+                event = self.event(**recap)
+                self.assertEqual("ansible", event["data"]["customData"]["emitter"])
+                ingest.episode_for(event, actor="t")
+
     def test_the_same_apply_is_the_same_event(self):
         self.assertEqual(self.event(ok=1)["id"], self.event(ok=1)["id"])
 

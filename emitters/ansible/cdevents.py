@@ -58,6 +58,8 @@ def build(host: str, recap: dict, *, source: str, service: str, artifact: str,
     event_id = hashlib.sha256("\0".join(
         (TYPE, source, service, host, artifact, stamp)).encode()).hexdigest()[:32]
     custom = {
+        # Declares the producer, so Camayoc binds this recap to the outcome.
+        "emitter": "ansible",
         "deploymentAttempt": True,
         "service": service,
         "environment": host,
