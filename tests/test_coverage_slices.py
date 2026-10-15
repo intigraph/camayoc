@@ -174,12 +174,14 @@ class SuiteTotalTests(unittest.TestCase):
 
     def test_the_suite_total_is_reported_and_pinned(self):
         # Priority adds seven questions: one stored, four unwritten, two gaps.
+        # Delivery (aegis-rb3) adds seven gaps, all waiting on the proposed
+        # aegis:DeploymentEvent class (Quipu proposal 31).
         figures = coverage.totals()
-        self.assertEqual(7, figures["slices"])
-        self.assertEqual(98, figures["total"])
+        self.assertEqual(8, figures["slices"])
+        self.assertEqual(105, figures["total"])
         self.assertEqual(41, figures["covered"])
         self.assertEqual(26, figures["unwritten"])
-        self.assertEqual(31, figures["gaps"])
+        self.assertEqual(38, figures["gaps"])
 
     def test_the_three_states_account_for_every_question(self):
         """No question falls between the states. If one ever does it is
