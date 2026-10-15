@@ -437,20 +437,21 @@ def native_main(args):
     # the previous success forward; it never manufactures a fresh one.
     last_success=None
     graph=None
-    # Read the carried success BEFORE anything that can fail: an early failure
-    # (authority, custody, journal) must not save None over a real success
-    # (ian, camayoc#127 review).
-    try:
-        carried=json.loads(args.state.with_suffix('.receipt.json').read_text()).get('last_success_at')
-        if type(carried) in (int,float) and math.isfinite(carried):
-            last_success=carried
-    except (OSError,ValueError,AttributeError):
-        pass
     with args.state.with_suffix('.lock').open('a') as lock:
         try:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:
             print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
+        # Read the carried success first thing UNDER the lock, before anything
+        # that can fail: an early failure (authority, custody, journal) must not
+        # save None over a real success, and no concurrent tick can save between
+        # this read and ours (ian, camayoc#127 review).
+        try:
+            carried=json.loads(args.state.with_suffix('.receipt.json').read_text()).get('last_success_at')
+            if type(carried) in (int,float) and math.isfinite(carried):
+                last_success=carried
+        except (OSError,ValueError,AttributeError):
+            pass
         journal=None
         try:
             raw=sys.stdin.buffer.read(4097)
