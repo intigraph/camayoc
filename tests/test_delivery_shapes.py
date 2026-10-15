@@ -74,7 +74,6 @@ class DeliveryShapes(unittest.TestCase):
         # so a syntax error or an unrelated rule cannot pass as a negative.
         cases = {
             "removed is not an outcome": (record(aegis__deploymentOutcome='"removed"'), "In constraint", "deploymentOutcome"),
-            "no serving artifact": (record(aegis__artifactId=None), "MinCount(1)", "artifactId"),
             "artifact not a purl": (record(aegis__artifactId='"3392682"'), "Pattern(", "artifactId"),
             "no time": (record(aegis__occurredAt=None), "MinCount(1)", "occurredAt"),
             "time not RFC 3339": (record(aegis__occurredAt='"2026-10-14 19:41"'), "Pattern(", "occurredAt"),
@@ -94,6 +93,48 @@ class DeliveryShapes(unittest.TestCase):
                 self.assertIn(f"ontology/{path}", out)
 
 
+    def test_the_artifact_a_record_names_depends_on_its_outcome(self):
+        # dearing's slice-2 ruling (aegis-rb3): succeeded/rolledback name the
+        # serving-after artifact; failed names the ATTEMPT, and a serving
+        # artifact there is optional and only ever observed.
+        serving = FIELDS["aegis:artifactId"]
+        attempt = '"pkg:github/example/example-svc@97e84848ab4977739280e4ce3f9f683e437733ba"'
+        valid = {
+            "failed, attempted only": record(aegis__deploymentOutcome='"failed"', aegis__artifactId=None,
+                                             aegis__attemptedArtifactId=attempt),
+            "failed, attempted and observed serving": record(aegis__deploymentOutcome='"failed"',
+                                                             aegis__attemptedArtifactId=attempt),
+        }
+        for name, body in valid.items():
+            with self.subTest(name):
+                self.assertTrue(self.valid(body), self.report(body))
+        branch_failures = {
+            "no serving artifact": record(aegis__artifactId=None),
+            "failed, neither artifact": record(aegis__deploymentOutcome='"failed"', aegis__artifactId=None),
+            # The bypass a plain artifactId | (failed + attempted) OR would allow.
+            "failed, serving only": record(aegis__deploymentOutcome='"failed"', aegis__artifactId=serving),
+            "succeeded, attempted only": record(aegis__artifactId=None, aegis__attemptedArtifactId=attempt),
+            "rolledback, no serving artifact": record(aegis__deploymentOutcome='"rolledback"', aegis__artifactId=None,
+                                                      aegis__attemptedArtifactId=attempt),
+        }
+        for name, body in branch_failures.items():
+            with self.subTest(name):
+                out = self.report(body)
+                self.assertIn("invalid: 1 violation(s)", out)
+                self.assertIn("OR not satisfied", out)
+        constraint_failures = {
+            "attempted not a purl": (record(aegis__deploymentOutcome='"failed"', aegis__artifactId=None,
+                                            aegis__attemptedArtifactId='"339268"'), "Pattern("),
+            "two attempted artifacts": (record(aegis__deploymentOutcome='"failed"', aegis__artifactId=None,
+                                               aegis__attemptedArtifactId=attempt + ", " + serving), "MaxCount(1)"),
+        }
+        for name, (body, constraint) in constraint_failures.items():
+            with self.subTest(name):
+                out = self.report(body)
+                self.assertIn("invalid: 1 violation(s)", out)
+                self.assertIn(constraint, out)
+                self.assertIn("ontology/attemptedArtifactId", out)
+
     def test_time_range_negatives(self):
         for value in ("2026-13-01T00:00:00Z", "2026-10-32T00:00:00Z", "2026-10-14T24:00:00Z",
                       "2026-10-14T12:60:00Z", "2026-10-14T23:59:60Z", "2026-10-14T12:00:00+24:00",
@@ -103,6 +144,34 @@ class DeliveryShapes(unittest.TestCase):
                 self.assertIn("invalid: 1 violation(s)", out)
                 self.assertIn("Pattern(", out)
                 self.assertIn("ontology/occurredAt", out)
+
+    def test_what_the_ingest_produces_conforms(self):
+        """End to end on the real engine: each mapped fixture, as the ingest
+        writes it, satisfies the shape, so the two halves cannot drift apart."""
+        ingest = _ingest()
+        fixtures = ROOT / "tests" / "fixtures" / "cdevents"
+        serving = "pkg:generic/example-iac@0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e"
+        cases = {name: json.loads((fixtures / f"{name}.json").read_text())
+                 for name in ("deployed", "rolledback", "pipelinerun-failed")}
+        observed = json.loads((fixtures / "pipelinerun-failed.json").read_text())
+        observed["data"]["customData"]["servingArtifactId"] = serving
+        cases["pipelinerun-failed+observed-serving"] = observed
+        succeeded = json.loads(json.dumps(observed))
+        succeeded["data"]["subject"]["content"]["outcome"] = "success"
+        succeeded["data"]["customData"]["recap"] = dict(succeeded["data"]["customData"]["recap"], failures=0)
+        cases["pipelinerun-succeeded"] = succeeded
+        for name, event in cases.items():
+            with self.subTest(name):
+                body = ingest.episode_for(event, actor="tester")
+                node = body["nodes"][0]
+                fields = {"a": "aegis:DeploymentEvent",
+                          "rdfs:label": json.dumps(node["properties"].get("label", node["name"])),
+                          "aegis:deployedService": "aegis:" + body["edges"][0]["target"]}
+                for key, value in node["properties"].items():
+                    if key != "label":
+                        fields[f"aegis:{key}"] = json.dumps(value)
+                ttl = "aegis:e1 " + " ;\n  ".join(f"{k} {v}" for k, v in fields.items()) + " .\n"
+                self.assertTrue(self.valid(ttl), self.report(ttl))
 
     def test_calendar_validity_is_the_producers_half_of_the_contract(self):
         """The shape is lexical + range; the producer proves the calendar.

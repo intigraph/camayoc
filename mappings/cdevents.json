@@ -1,5 +1,5 @@
 {
-  "_README": "CDEvents -> native graph record mapping (aegis-rb3). Governed DATA: adding a tool or an event type is a reviewed edit here, not code. Keys are CDEvents types WITHOUT the trailing version; 'versions' lists the accepted type-version majors. 'fields' are dotted paths into the CDEvent (context/subject/customData); a field marked required that is absent quarantines the event. An event type that is not listed here is quarantined (parked with a reason), never dropped and never guessed. The sha256 of this file rides in every episode's source so each record names the mapping that produced it.",
+  "_README": "CDEvents -> native graph record mapping (aegis-rb3). Governed DATA: adding a tool or an event type is a reviewed edit here, not code. Keys are CDEvents types WITHOUT the trailing version; 'versions' lists the accepted type-version majors. 'fields' are dotted paths into the CDEvent (context/subject/customData); a field marked required that is absent quarantines the event. 'outcomeFrom' maps the event's own outcome word through an explicit table (an unlisted word quarantines); 'requires' are literal-value preconditions (a pipeline run counts only when the emitter declares an actual deployment attempt); 'outcomeRequires' names fields an outcome must carry; 'recapRules' bind a declared producer's own counters to the outcome (for an Ansible run: a complete recap is required and failures or unreachable above zero must be failed; a contradiction quarantines); 'provenance' paths ride in the episode source. An event type that is not listed here is quarantined (parked with a reason), never dropped and never guessed. The sha256 of this file rides in every episode's source so each record names the mapping that produced it.",
   "spec": {
     "cloudevents": ["1.0"],
     "cdevents": ["0.3", "0.4"]
@@ -38,6 +38,22 @@
         "artifactId": {"path": "subject.content.artifactId", "required": true},
         "environment": {"path": "subject.content.environment.id", "required": true},
         "attemptedArtifactId": {"path": "customData.attemptedArtifactId", "required": false}
+      }
+    },
+    "dev.cdevents.pipelinerun.finished": {
+      "versions": ["0"],
+      "class": "DeploymentEvent",
+      "window": "deployment",
+      "outcomeFrom": {"path": "subject.content.outcome", "map": {"success": "succeeded", "failure": "failed", "error": "failed"}},
+      "requires": [{"path": "customData.deploymentAttempt", "equals": true}],
+      "outcomeRequires": {"succeeded": ["artifactId"], "failed": ["attemptedArtifactId"]},
+      "recapRules": [{"when": {"path": "customData.emitter", "equals": "ansible"}, "path": "customData.recap", "counters": ["ok", "changed", "failures", "unreachable", "skipped", "rescued", "ignored"], "failWhenAny": ["failures", "unreachable"]}],
+      "provenance": ["subject.content.outcome", "customData.recap"],
+      "fields": {
+        "service": {"path": "customData.service", "required": true},
+        "attemptedArtifactId": {"path": "customData.attemptedArtifactId", "required": true},
+        "artifactId": {"path": "customData.servingArtifactId", "required": false},
+        "environment": {"path": "customData.environment", "required": true}
       }
     }
   }
