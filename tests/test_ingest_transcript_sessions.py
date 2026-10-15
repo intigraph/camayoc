@@ -15,6 +15,8 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import os
+import json
+from unittest.mock import patch
 import sqlite3
 import sys
 import unittest
@@ -152,6 +154,149 @@ class DeclaredWorkItems(unittest.TestCase):
 
     def test_no_stats_db_means_no_edges_not_an_error(self):
         self.assertEqual(mod.declared_tasks(None), {})
+
+
+class PendingRecovery(unittest.TestCase):
+    def setUp(self):
+        self.rec = dict(session=CLAUDE_ID, agent="wu", harness="claude", at="",
+                        key="archive/session.md", sha256="a" * 64, bytes=10,
+                        tasks=["aegis-fixture"])
+
+    def test_transport_error_retains_exact_bytes_tasks_and_private_journal(self):
+        with TemporaryDirectory() as tmp, patch.object(mod.planes, "_post", side_effect=OSError("after POST")):
+            state = Path(tmp) / "state.json"
+            with self.assertRaises(OSError):
+                mod.publish([self.rec], "test", state, 1)
+            marker = state.with_suffix(".pending.json")
+            envelope = json.loads(marker.read_text())
+            record, payload = mod.retained_payload(envelope)
+            self.assertEqual(record, self.rec)
+            self.assertEqual(payload, mod.body(self.rec, "test"))
+            self.assertEqual(envelope["tasks"], ["aegis-fixture"])
+            self.assertEqual(marker.stat().st_mode & 0o777, 0o600)
+            self.assertFalse(state.exists())
+
+    def marker(self, root):
+        state = Path(root) / "state.json"
+        mod.durable_json(state.with_suffix(".pending.json"),
+                         mod.pending_envelope(self.rec, mod.body(self.rec, "old actor")))
+        return state
+
+    def test_landed_recovery_never_resends(self):
+        with TemporaryDirectory() as tmp, patch.object(mod, "snapshot_outcome", return_value="landed"), patch.object(mod.planes, "_post") as post:
+            state = self.marker(tmp)
+            result = mod.publish([self.rec], "changed actor", state, 1)
+            post.assert_not_called()
+            self.assertEqual(result["reconciled"], 1)
+            self.assertEqual(json.loads(state.read_text())[CLAUDE_ID], mod.digest(self.rec))
+            self.assertFalse(state.with_suffix(".pending.json").exists())
+
+    def test_absent_twice_gap_then_byte_identical_retry(self):
+        with TemporaryDirectory() as tmp, patch.object(mod, "snapshot_outcome", side_effect=["absent", "absent", "landed"]), patch.object(mod.time, "sleep") as sleep, patch.object(mod.planes, "_post", return_value={"tx_id": 17}) as post:
+            state = self.marker(tmp)
+            original = mod.retained_payload(json.loads(state.with_suffix(".pending.json").read_text()))[1]
+            mod.publish([self.rec], "new actor", state, 1)
+            sleep.assert_called_once_with(1.0)
+            self.assertEqual(post.call_count, 1)
+            self.assertEqual(mod.canonical_payload(post.call_args.args[1]), mod.canonical_payload(original))
+
+    def test_unknown_superseded_partial_and_second_read_change_preserve_bytes(self):
+        for outcomes in (["superseded"], ["absent", "landed"], [OSError("read timeout")]):
+            with self.subTest(outcomes=outcomes), TemporaryDirectory() as tmp, patch.object(mod, "snapshot_outcome", side_effect=outcomes), patch.object(mod.time, "sleep"), patch.object(mod.planes, "_post") as post:
+                state = self.marker(tmp)
+                marker = state.with_suffix(".pending.json")
+                before = marker.read_bytes()
+                with self.assertRaises((ValueError, OSError)):
+                    mod.publish([], "test", state, 1)
+                self.assertEqual(marker.read_bytes(), before)
+                self.assertFalse(state.exists())
+                post.assert_not_called()
+
+    def test_legacy_and_corrupt_payloads_never_send(self):
+        for mutate in (lambda e: {"session": CLAUDE_ID, "sha256": "a" * 64},
+                       lambda e: e | {"payload_bytes": 0},
+                       lambda e: e | {"tasks": []}):
+            with TemporaryDirectory() as tmp, patch.object(mod.planes, "_post") as post:
+                state = self.marker(tmp)
+                marker = state.with_suffix(".pending.json")
+                mod.durable_json(marker, mutate(json.loads(marker.read_text())))
+                before = marker.read_bytes()
+                with self.assertRaisesRegex(ValueError, "legacy or invalid"):
+                    mod.publish([], "test", state, 1)
+                self.assertEqual(marker.read_bytes(), before)
+                post.assert_not_called()
+
+    def test_after_post_transport_fault_landed_outcome_no_duplicate(self):
+        with TemporaryDirectory() as tmp, patch.object(mod.planes, "_post", side_effect=OSError("lost response")) as post:
+            state = Path(tmp) / "state.json"
+            with self.assertRaises(OSError):
+                mod.publish([self.rec], "test", state, 1)
+            with patch.object(mod, "snapshot_outcome", return_value="landed"):
+                mod.publish([self.rec], "test", state, 1)
+            self.assertEqual(post.call_count, 1)
+
+
+    def test_real_publish_after_lost_response_recovers_without_second_knot(self):
+        session, artifact = mod.iris(self.rec)
+        rows = [dict(s=artifact,p=mod.ONTOLOGY+"contentSha256",o=self.rec["sha256"]),
+                dict(s=artifact,p=mod.ONTOLOGY+"contentBytes",o="10"),
+                dict(s=artifact,p=mod.ONTOLOGY+"reference",o=self.rec["key"]),
+                dict(s=session,p=mod.ONTOLOGY+"transcript",o=artifact),
+                dict(s=artifact,p=mod.ONTOLOGY+"transcriptOf",o=session),
+                dict(s=session,p=mod.ONTOLOGY+"declaredWorkItem",o=mod.ONTOLOGY+"aegis-fixture")]
+        calls=[]
+        def transport(path,payload,**kwargs):
+            calls.append(path)
+            if path == "/knot":raise OSError("committed then lost response")
+            return {"rows":rows}
+        with TemporaryDirectory() as tmp,patch.object(mod.planes,"_post",side_effect=transport):
+            state=Path(tmp)/"state.json"
+            with self.assertRaises(OSError):mod.publish([self.rec],"test",state,1)
+            mod.publish([self.rec],"test",state,1)
+            self.assertEqual(calls.count("/knot"),1)
+            self.assertEqual(json.loads(state.read_text())[CLAUDE_ID],mod.digest(self.rec))
+
+
+    def test_snapshot_comparison_requires_complete_owned_projection(self):
+        session, artifact = mod.iris(self.rec)
+        values = [(artifact, "contentSha256", self.rec["sha256"]),
+                  (artifact, "contentBytes", "10"), (artifact, "reference", self.rec["key"]),
+                  (session, "transcript", artifact), (artifact, "transcriptOf", session),
+                  (session, "declaredWorkItem", mod.ONTOLOGY + "aegis-fixture")]
+        rows = [dict(s=s, p=mod.ONTOLOGY+p, o=o) for s,p,o in values]
+        for supplied, expected in ((rows,"landed"), (rows[:-1],"superseded"),
+                                   (rows+[dict(s=session,p=mod.ONTOLOGY+"declaredWorkItem",o="foreign")],"superseded")):
+            with patch.object(mod, "query", return_value=supplied):
+                self.assertEqual(mod.snapshot_outcome(self.rec), expected)
+        with patch.object(mod, "query", side_effect=[[], [{"s": "positive"}]]):
+            self.assertEqual(mod.snapshot_outcome(self.rec), "absent")
+        with patch.object(mod, "query", side_effect=[[], []]):
+            with self.assertRaisesRegex(ValueError, "positive"):
+                mod.snapshot_outcome(self.rec)
+
+    def test_explicit_archive_retains_exact_legacy_bytes_and_never_posts(self):
+        with TemporaryDirectory() as tmp, patch.object(mod.planes, "_post") as post:
+            state = Path(tmp) / "state.json"
+            marker = state.with_suffix(".pending.json")
+            raw = b'{"session":"old","sha256":"old"}\n'
+            marker.write_bytes(raw)
+            reason = Path(tmp) / "reason.txt"
+            reason.write_text("Owner adjudicated superseded legacy snapshot; no identical payload remains.")
+            result = mod.archive_pending(state, reason)
+            archived = state.parent / "state.pending-archive" / (result["sha256"] + ".json")
+            self.assertEqual(archived.read_bytes(), raw)
+            self.assertFalse(marker.exists())
+            self.assertFalse(state.exists())
+            post.assert_not_called()
+
+    def test_refusal_and_unproven_replay_retain_marker(self):
+        for response, outcomes in (({"conforms":False},["absent","absent"]),
+                                   ({"tx_id":19},["absent","absent","superseded"])):
+            with TemporaryDirectory() as tmp, patch.object(mod, "snapshot_outcome", side_effect=outcomes), patch.object(mod.time,"sleep"), patch.object(mod.planes,"_post",return_value=response):
+                state=self.marker(tmp); marker=state.with_suffix(".pending.json"); before=marker.read_bytes()
+                with self.assertRaises(ValueError):mod.publish([],"test",state,1)
+                self.assertEqual(marker.read_bytes(),before)
+                self.assertFalse(state.exists())
 
 
 if __name__ == "__main__":

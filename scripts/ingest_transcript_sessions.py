@@ -65,6 +65,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import base64
+import fcntl
+import os
 import datetime
 import hashlib
 import json
@@ -242,37 +245,170 @@ def read_back(record: dict) -> bool:
     return any(str(r.get("h", "")).strip('"') == record["sha256"] for r in rows)
 
 
+def canonical_payload(payload: dict) -> bytes:
+    # This is planes._post's wire serialization; validate it again on recovery.
+    return json.dumps(payload, sort_keys=True).encode()
+
+
+def durable_json(path: Path, value: dict) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w") as stream:
+        json.dump(value, stream, sort_keys=True)
+        stream.flush()
+        os.fsync(stream.fileno())
+    temporary.replace(path)
+    directory = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
+def pending_envelope(record: dict, payload: dict) -> dict:
+    raw = canonical_payload(payload)
+    return dict(version=1, record=record, payload_b64=base64.b64encode(raw).decode(),
+                payload_sha256=hashlib.sha256(raw).hexdigest(), payload_bytes=len(raw),
+                tasks=record.get("tasks") or [], created_at=time.time())
+
+
+def retained_payload(envelope: dict) -> tuple[dict, dict]:
+    try:
+        raw = base64.b64decode(envelope["payload_b64"], validate=True)
+        payload = json.loads(raw)
+        record = envelope["record"]
+        if (envelope["version"] != 1 or len(raw) != envelope["payload_bytes"] or
+                hashlib.sha256(raw).hexdigest() != envelope["payload_sha256"] or
+                canonical_payload(payload) != raw or
+                envelope["tasks"] != (record.get("tasks") or []) or
+                not isinstance(envelope["created_at"], (float, int)) or
+                payload["turtle"] != turtle(record) or
+                payload["snapshot"] != f"camayoc-session-transcript:{record['harness']}:{record['session']}" or
+                payload["graph"] != planes.plane_for("observed") or
+                payload["replace_snapshot"] is not True):
+            raise ValueError("inconsistent pending payload")
+        return record, payload
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("pending journal legacy or invalid; adjudication required") from exc
+
+
+def snapshot_outcome(record: dict) -> str:
+    session, artifact = iris(record)
+    # These predicates belong to this producer. An absent hash alone is not
+    # absence: partial snapshots and changed task sets must refuse replacement.
+    rows = query(f'SELECT ?s ?p ?o WHERE {{ VALUES ?s {{ <{session}> <{artifact}> }} '
+                 f'?s ?p ?o . FILTER(?p = <{ONTOLOGY}contentSha256> || '
+                 f'?p = <{ONTOLOGY}contentBytes> || ?p = <{ONTOLOGY}reference> || '
+                 f'?p = <{ONTOLOGY}declaredWorkItem> || ?p = <{ONTOLOGY}transcript> || '
+                 f'?p = <{ONTOLOGY}transcriptOf> || ?p = <{ONTOLOGY}lastActivityAt>) }}')
+    if not rows:
+        control = query(f"SELECT ?s WHERE {{ ?s a <{ONTOLOGY}Session> }} LIMIT 1")
+        if not control:
+            raise ValueError("pending absence has no positive records-plane control")
+        return "absent"
+    actual = {(str(r["s"]), str(r["p"]), str(r["o"]).strip('"')) for r in rows}
+    expected = {(artifact, ONTOLOGY + "contentSha256", record["sha256"]),
+                (artifact, ONTOLOGY + "contentBytes", str(record["bytes"])),
+                (artifact, ONTOLOGY + "reference", record["key"]),
+                (session, ONTOLOGY + "transcript", artifact),
+                (artifact, ONTOLOGY + "transcriptOf", session)}
+    if record.get("at"):
+        expected.add((session, ONTOLOGY + "lastActivityAt", record["at"]))
+    expected.update((session, ONTOLOGY + "declaredWorkItem", ONTOLOGY + task)
+                    for task in record.get("tasks") or [])
+    return "landed" if actual == expected else "superseded"
+
+
+def finish_pending(state: dict, state_path: Path, marker: Path, record: dict) -> None:
+    state[record["session"]] = digest(record)
+    durable_json(state_path, state)
+    marker.unlink()
+
+
+def send_pending(envelope: dict, state: dict, state_path: Path, marker: Path) -> dict:
+    record, payload = retained_payload(envelope)
+    response = planes._post("/knot", payload, client=CLIENT)
+    if response.get("conforms") is False:
+        # Keep the exact refused payload as evidence, never treat refusal as landed.
+        raise ValueError("graph refused retained transcript snapshot; adjudication required")
+    if not response.get("tx_id") or snapshot_outcome(record) != "landed":
+        raise ValueError("snapshot accepted but complete read-back unproven")
+    finish_pending(state, state_path, marker, record)
+    return response
+
+
 def publish(records: list[dict], actor: str, state_path: Path, limit: int) -> dict:
+    if limit < 1:
+        raise ValueError("publication limit must be positive")
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    with state_path.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return publish_locked(records, actor, state_path, limit)
+
+
+def publish_locked(records: list[dict], actor: str, state_path: Path, limit: int) -> dict:
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     marker = state_path.with_suffix(".pending.json")
+    recovered = 0
     if marker.exists():
-        # The previous write's outcome is unknown. Never blind-retry: an
-        # operator reconciles the named snapshot by read-back first.
-        raise ValueError(f"previous graph write indeterminate; reconcile {marker} before retry")
+        envelope = json.loads(marker.read_text())
+        record, _ = retained_payload(envelope)
+        outcome = snapshot_outcome(record)
+        if outcome == "landed":
+            finish_pending(state, state_path, marker, record)
+        elif outcome == "absent":
+            time.sleep(1.0)
+            if snapshot_outcome(record) != "absent":
+                raise ValueError("pending snapshot changed between reads; adjudication required")
+            # No current-corpus rebuild: replay the retained original bytes only.
+            send_pending(envelope, state, state_path, marker)
+        else:
+            raise ValueError("pending snapshot superseded; archive by explicit adjudication, no replay")
+        recovered = 1
     pending = [r for r in records if state.get(r["session"]) != digest(r)]
-    receipt = {"pending": len(pending), "posted": 0, "tx": []}
+    receipt = {"pending": len(pending), "posted": 0, "tx": [], "reconciled": recovered}
     for record in pending[:limit]:
-        payload = body(record, actor)
-        marker.write_text(json.dumps({"session": record["session"], "sha256": record["sha256"]}))
+        envelope = pending_envelope(record, body(record, actor))
+        durable_json(marker, envelope)
         started = time.monotonic()
-        response = planes._post("/knot", payload, client=CLIENT)
-        if response.get("conforms") is False:
-            marker.unlink()  # an explicit refusal wrote nothing: determinate
-            raise ValueError(f"graph refused transcript snapshot for {record['session']}: {response}")
-        if not response.get("tx_id"):
-            raise ValueError(f"graph refused transcript snapshot for {record['session']}: {response}")
-        if not read_back(record):
-            raise ValueError(f"snapshot accepted but read-back unproven for {record['session']}")
-        state[record["session"]] = digest(record)
-        temporary = state_path.with_suffix(".tmp")
-        temporary.write_text(json.dumps(state, sort_keys=True))
-        temporary.replace(state_path)
-        marker.unlink()
+        response = send_pending(envelope, state, state_path, marker)
         receipt["posted"] += 1
         receipt["tx"].append(response["tx_id"])
         time.sleep(max(0.0, 1.0 - (time.monotonic() - started)))
     receipt["remaining"] = len(pending) - receipt["posted"]
     return receipt
+
+
+def archive_pending(state_path: Path, reason_path: Path) -> dict:
+    """Explicit adjudication only; archives exact bytes and never publishes."""
+    reason = reason_path.read_text().strip()
+    if not reason or len(reason.encode()) > 16384:
+        raise ValueError("pending archive needs a bounded explicit adjudication reason")
+    marker = state_path.with_suffix(".pending.json")
+    with state_path.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        raw = marker.read_bytes()
+        key = hashlib.sha256(raw).hexdigest()
+        directory = state_path.parent / (state_path.stem + ".pending-archive")
+        directory.mkdir(mode=0o700, exist_ok=True)
+        target = directory / (key + ".json")
+        # No overwrite: a prior archive must already contain these exact bytes.
+        try:
+            fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            if target.read_bytes() != raw:
+                raise ValueError("pending archive collision")
+        else:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+        durable_json(directory / (key + ".reason.json"),
+                     dict(reason=reason, archived_at=time.time(), sha256=key, bytes=len(raw)))
+        if target.read_bytes() != raw or marker.read_bytes() != raw:
+            raise ValueError("pending archive verification failed")
+        marker.unlink()
+        return dict(outcome="explicitly-superseded", sha256=key, bytes=len(raw))
 
 
 def liveness(records: list[dict], lag_seconds: float, now: float) -> tuple[int, str]:
@@ -313,11 +449,16 @@ def main() -> int:
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--post", action="store_true")
     mode.add_argument("--check-liveness", action="store_true")
+    mode.add_argument("--archive-pending", type=Path, metavar="REASON_FILE",
+                      help="explicit owner adjudication; archive exact pending bytes, never post")
     ap.add_argument("--lag-minutes", type=float, default=180,
                     help="liveness: a transcript older than this must be linked")
     args = ap.parse_args()
     now = time.time()
     try:
+        if args.archive_pending:
+            print(json.dumps(archive_pending(args.state, args.archive_pending), sort_keys=True))
+            return 0
         records, stats = scan(args.corpus, args.quiet_minutes * 60, now,
                               excluded(args.exclude_file), declared_tasks(args.stats_db))
         # THE DENOMINATOR, always: a run that linked a tenth of the archive
