@@ -32,7 +32,17 @@ Pin `@main` to a commit or tag you have reviewed.
 
 The artifact defaults to `pkg:github/<owner>/<repo>@<sha>`. Set `artifact`
 to a package URL when you deploy something else, such as an image digest.
-Each run attempt is a separate deployment attempt.
+Each deployment attempt is one event, identified by the run attempt, the job
+and an instance. Several deploy jobs in one workflow stay distinct. In a matrix,
+pass the leg as `instance` so its record has a stable, readable identity:
+
+```yaml
+        with:
+          instance: ${{ toJSON(matrix) }}
+```
+
+Without `instance`, each execution generates one, so matrix legs still never
+collide. A re-run of the workflow is a new attempt.
 
 The event carries only the service, environment, artifact, run id and
 outcome. It never carries logs, outputs, variables or the environment.

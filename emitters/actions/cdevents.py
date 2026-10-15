@@ -13,6 +13,13 @@ valid, including when no event is printed.
 The artifact defaults to the repository at the job's commit
 (pkg:github/<owner>/<repo>@<sha>, from GITHUB_REPOSITORY and GITHUB_SHA), and
 the run id to GITHUB_RUN_ID-GITHUB_RUN_ATTEMPT, so a re-run is a new attempt.
+
+Identity is one deployment attempt: the run attempt, the job (GITHUB_JOB) and
+an instance. Several jobs in one workflow, or several matrix legs of one job,
+are distinct attempts even when they deploy the same revision to the same
+place. Pass --instance (e.g. the job's matrix as JSON) for a readable, stable
+instance; without it each execution generates one, so legs never collide.
+The event is built once per step, so re-delivering it keeps its id.
 The event carries only the fields below: never logs, outputs, variables or
 the environment, because job logs and spooled events are readable.
 """
@@ -25,6 +32,7 @@ import json
 import os
 import re
 import sys
+import uuid
 from datetime import datetime, timezone
 
 TYPE = "dev.cdevents.pipelinerun.finished.0.2.0"
@@ -36,12 +44,13 @@ OUTCOME = {"success": "success", "failure": "failure"}
 
 
 def build(*, status: str, source: str, service: str, environment: str, artifact: str,
-          run_id: str, when: datetime) -> dict | None:
+          run_id: str, job: str, instance: str, when: datetime) -> dict | None:
     """The CloudEvent for one deployment job, or None when `status` is not an outcome."""
     outcome = OUTCOME.get(status)
     if outcome is None:
         return None
-    for name, value in (("source", source), ("service", service), ("environment", environment)):
+    for name, value in (("source", source), ("service", service),
+                        ("environment", environment), ("job", job), ("instance", instance)):
         if not value.strip():
             raise ValueError(f"{name} must not be empty")
     if not _PURL.match(artifact):
@@ -50,11 +59,14 @@ def build(*, status: str, source: str, service: str, environment: str, artifact:
         raise ValueError("run id must be 1-128 of [A-Za-z0-9._:-]")
     stamp = when.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     event_id = hashlib.sha256("\0".join(
-        (TYPE, source, service, environment, artifact, run_id)).encode()).hexdigest()[:32]
+        (TYPE, source, service, environment, artifact, run_id, job, instance)
+    ).encode()).hexdigest()[:32]
     custom = {
         "emitter": "github-actions",
         "deploymentAttempt": True,
         "runId": run_id,
+        "job": job,
+        "instance": instance,
         "service": service,
         "environment": environment,
         "attemptedArtifactId": artifact,
@@ -88,14 +100,20 @@ def main(argv: list[str] | None = None, env: dict | None = None) -> int:
     ap.add_argument("--source", default=f"{server}/{repo}/actions" if repo else "",
                     help="CloudEvents source")
     ap.add_argument("--run-id", default=f"{run}-{attempt}" if run else "",
-                    help="names this attempt; part of the event id")
+                    help="names this run attempt; part of the event id")
+    ap.add_argument("--job", default=env.get("GITHUB_JOB", ""),
+                    help="the job id (GITHUB_JOB); part of the event id")
+    ap.add_argument("--instance", default="",
+                    help="distinguishes matrix legs, e.g. the matrix as JSON; "
+                         "generated per execution when omitted")
     args = ap.parse_args(argv)
     try:
         # The id has no clock in it: a re-delivered event for the same attempt
         # keeps its identity; GITHUB_RUN_ATTEMPT separates real re-runs.
         event = build(status=args.status.strip().lower(), source=args.source,
                       service=args.service, environment=args.environment,
-                      artifact=args.artifact, run_id=args.run_id,
+                      artifact=args.artifact, run_id=args.run_id, job=args.job,
+                      instance=args.instance.strip() or uuid.uuid4().hex,
                       when=datetime.now(timezone.utc))
     except ValueError as exc:
         print(f"cdevents: {exc}", file=sys.stderr)

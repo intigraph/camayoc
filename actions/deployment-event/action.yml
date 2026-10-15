@@ -22,6 +22,11 @@ inputs:
   artifact:
     description: Package URL of the revision deployed. Defaults to pkg:github/<owner>/<repo>@<sha>.
     default: ""
+  instance:
+    description: >-
+      Distinguishes matrix legs of this job; pass the matrix as JSON (toJSON(matrix)). Without it
+      each execution gets a generated instance, so legs still never collide.
+    default: ""
   fail-on-error:
     description: Fail the job when the event cannot be recorded. Default false; a missing record never fails a deploy.
     default: "false"
@@ -37,12 +42,14 @@ runs:
         CD_SERVICE: ${{ inputs.service }}
         CD_ENVIRONMENT: ${{ inputs.environment }}
         CD_ARTIFACT: ${{ inputs.artifact }}
+        CD_INSTANCE: ${{ inputs.instance }}
         CD_STRICT: ${{ inputs.fail-on-error }}
         CAMAYOC_ROOT: ${{ github.action_path }}/../..
       run: |
         set -uo pipefail
         args=(--status "$CD_STATUS" --service "$CD_SERVICE" --environment "$CD_ENVIRONMENT")
         if [ -n "$CD_ARTIFACT" ]; then args+=(--artifact "$CD_ARTIFACT"); fi
+        if [ -n "$CD_INSTANCE" ]; then args+=(--instance "$CD_INSTANCE"); fi
         event=$(python3 "$CAMAYOC_ROOT/emitters/actions/cdevents.py" "${args[@]}") || rc=$?
         if [ "${rc:-0}" -eq 0 ] && [ -z "$event" ]; then exit 0; fi
         if [ "${rc:-0}" -eq 0 ]; then
