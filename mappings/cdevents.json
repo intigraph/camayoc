@@ -1,0 +1,44 @@
+{
+  "_README": "CDEvents -> native graph record mapping (aegis-rb3). Governed DATA: adding a tool or an event type is a reviewed edit here, not code. Keys are CDEvents types WITHOUT the trailing version; 'versions' lists the accepted type-version majors. 'fields' are dotted paths into the CDEvent (context/subject/customData); a field marked required that is absent quarantines the event. An event type that is not listed here is quarantined (parked with a reason), never dropped and never guessed. The sha256 of this file rides in every episode's source so each record names the mapping that produced it.",
+  "spec": {
+    "cloudevents": ["1.0"],
+    "cdevents": ["0.3", "0.4"]
+  },
+  "types": {
+    "dev.cdevents.service.deployed": {
+      "versions": ["0"],
+      "class": "DeploymentEvent",
+      "window": "deployment",
+      "outcome": "succeeded",
+      "fields": {
+        "service": {"path": "subject.id", "required": true},
+        "artifactId": {"path": "subject.content.artifactId", "required": true},
+        "environment": {"path": "subject.content.environment.id", "required": true}
+      }
+    },
+    "dev.cdevents.service.upgraded": {
+      "versions": ["0"],
+      "class": "DeploymentEvent",
+      "window": "deployment",
+      "outcome": "succeeded",
+      "fields": {
+        "service": {"path": "subject.id", "required": true},
+        "artifactId": {"path": "subject.content.artifactId", "required": true},
+        "environment": {"path": "subject.content.environment.id", "required": true}
+      }
+    },
+    "dev.cdevents.service.rolledback": {
+      "versions": ["0"],
+      "class": "DeploymentEvent",
+      "window": "deployment",
+      "outcome": "rolledback",
+      "outcomeWhenFalse": {"path": "customData.rollbackVerified", "outcome": "failed"},
+      "fields": {
+        "service": {"path": "subject.id", "required": true},
+        "artifactId": {"path": "subject.content.artifactId", "required": true},
+        "environment": {"path": "subject.content.environment.id", "required": true},
+        "attemptedArtifactId": {"path": "customData.attemptedArtifactId", "required": false}
+      }
+    }
+  }
+}

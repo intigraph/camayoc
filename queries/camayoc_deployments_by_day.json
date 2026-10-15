@@ -1,0 +1,9 @@
+{
+  "action": "load",
+  "name": "camayoc_deployments_by_day",
+  "description": "delivery-and-dora Q1: deployments per service and outcome on one UTC day, from aegis:DeploymentEvent records in the deployment window graphs. Its acceptance is reproducing an independent deploy-log count exactly. occurredAt is matched by its RFC 3339 date prefix, so producers must emit UTC (Z) times for the day boundary to be exact.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?service ?outcome (COUNT(DISTINCT ?event) AS ?deployments) WHERE { GRAPH ?g { ?event a aegis:DeploymentEvent ; aegis:deployedService ?service ; aegis:deploymentOutcome ?outcome ; aegis:occurredAt ?at . } FILTER(STRSTARTS(STR(?at), \"{day}\")) } GROUP BY ?service ?outcome ORDER BY ?service ?outcome",
+  "params": [
+    {"name": "day", "type": "text", "required": true, "description": "UTC date YYYY-MM-DD"}
+  ]
+}
