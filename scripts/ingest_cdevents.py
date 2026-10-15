@@ -29,6 +29,7 @@ import hashlib
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import planes
@@ -37,12 +38,40 @@ import windows
 SOURCE_KIND = "observed"
 ROOT = Path(__file__).resolve().parents[1]
 MAPPING_FILE = ROOT / "mappings" / "cdevents.json"
-_TIME = re.compile(r"^(\d{4})-(\d{2})-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+_TIME = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-])(\d{2}):(\d{2}))$")
 _TYPE = re.compile(r"^(dev\.cdevents\.[a-z]+\.[a-z]+)\.(\d+)\.\d+\.\d+$")
 
 
 class Quarantined(ValueError):
     """The event cannot be mapped without guessing; it is parked, not dropped."""
+
+
+def event_month(value: object) -> str:
+    """YYYY-MM of a calendar-valid RFC 3339 instant, or Quarantined.
+
+    Validated BEFORE the window is chosen: a lexically well-formed but
+    impossible time (2026-02-30, hour 24, offset +24:00) must never select a
+    window or reach DORA. The value is checked, never normalized; the record
+    keeps the producer's exact lexical form. Built from the regex groups and
+    the datetime constructor rather than fromisoformat, which on Python 3.10
+    (the Chaski host) rejects 'Z'. A leap second (:60) cannot be represented
+    and is quarantined with that reason rather than rounded.
+    """
+    m = _TIME.match(value) if isinstance(value, str) else None
+    if not m:
+        raise Quarantined(f"time {value!r} is not RFC 3339")
+    year, month, day, hour, minute, second = (int(g) for g in m.group(1, 2, 3, 4, 5, 6))
+    if second == 60:
+        raise Quarantined(f"time {value!r} is a leap second; not representable, not rounded")
+    if m.group(9):
+        off_h, off_m = int(m.group(10)), int(m.group(11))
+        if off_h > 23 or off_m > 59:
+            raise Quarantined(f"time {value!r} has an impossible UTC offset")
+    try:
+        datetime(year, month, day, hour, minute, second)
+    except ValueError as exc:
+        raise Quarantined(f"time {value!r} is not a calendar-valid instant: {exc}") from None
+    return f"{m.group(1)}-{m.group(2)}"
 
 
 def load_mapping(path: Path = MAPPING_FILE) -> tuple[dict, str]:
@@ -108,9 +137,7 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
         raise Quarantined(f"no mapping for CDEvents type {base!r}")
     if major not in rule["versions"]:
         raise Quarantined(f"{base} major version {major} not mapped")
-    t = _TIME.match(attrs["time"])
-    if not t:
-        raise Quarantined(f"time {attrs['time']!r} is not RFC 3339")
+    month = event_month(attrs["time"])
 
     values: dict[str, str] = {}
     for name, spec in rule["fields"].items():
@@ -143,7 +170,7 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
     label = f"{service} {outcome} {values['artifactId']} on {values['environment']}"
     return {
         "name": f"cdevent:{key}",
-        "graph": windows.window_iri(rule["window"], f"{t.group(1)}-{t.group(2)}"),
+        "graph": windows.window_iri(rule["window"], month),
         "episode_body": f"CDEvent {attrs['type']} for {service}",
         "source": f"cdevents:mapping={mapping_sha[:16]}:{attrs['source']}#{attrs['id']}",
         "actor": actor,

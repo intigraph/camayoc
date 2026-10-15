@@ -16,6 +16,15 @@
 # What SHACL proves here is the record's shape. Monthly window routing, the
 # source+id identity and replay byte-identity are producer guarantees
 # (scripts/ingest_cdevents.py and its tests), not provable by a shape.
+#
+# occurredAt: this shape enforces RFC 3339 LEXICAL form with legal RANGES
+# (month 01-12, day 01-31, hour 00-23, minute and second 00-59, offset at most
+# 23:59). It does NOT prove calendar validity per month (2026-02-30 or
+# 2025-02-29 are lexically in range). That is a producer guarantee:
+# ingest_cdevents.event_month() quarantines any impossible instant BEFORE a
+# window is chosen, and tests/test_delivery_shapes.py proves both halves of
+# that contract on the same values. Leap seconds (:60) are quarantined by the
+# producer and refused here.
 
 aegis:DeploymentEvent a rdfs:Class ;
     rdfs:label "Deployment event" ;
@@ -47,7 +56,7 @@ aegis:deploymentOutcome a rdf:Property ;
 
 aegis:occurredAt a rdf:Property ;
     rdfs:label "occurred at" ;
-    rdfs:comment "RFC 3339 instant the outcome happened (the CloudEvent time)." ;
+    rdfs:comment "RFC 3339 instant the outcome happened (the CloudEvent time), kept in the producer's exact lexical form. Calendar validity is enforced at ingest; the shape checks lexical form and field ranges." ;
     rdfs:range xsd:string .
 
 aegis:cdeventsType a rdf:Property ;
@@ -75,7 +84,7 @@ aegis:DeploymentEventShape a sh:NodeShape ;
     sh:property [ sh:path aegis:environment ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
     sh:property [ sh:path aegis:deploymentOutcome ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("succeeded" "failed" "rolledback") ] ;
     sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
-                  sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" ] ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] ;
     sh:property [ sh:path aegis:cdeventsType ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^dev\\.cdevents\\." ] ;
     sh:property [ sh:path aegis:cloudEventSource ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
     sh:property [ sh:path aegis:cloudEventId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] .

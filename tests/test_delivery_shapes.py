@@ -94,6 +94,48 @@ class DeliveryShapes(unittest.TestCase):
                 self.assertIn(f"ontology/{path}", out)
 
 
+    def test_time_range_negatives(self):
+        for value in ("2026-13-01T00:00:00Z", "2026-10-32T00:00:00Z", "2026-10-14T24:00:00Z",
+                      "2026-10-14T12:60:00Z", "2026-10-14T23:59:60Z", "2026-10-14T12:00:00+24:00",
+                      "2026-99-99T99:99:99Z"):
+            with self.subTest(value):
+                out = self.report(record(aegis__occurredAt=f'"{value}"'))
+                self.assertIn("invalid: 1 violation(s)", out)
+                self.assertIn("Pattern(", out)
+                self.assertIn("ontology/occurredAt", out)
+
+    def test_calendar_validity_is_the_producers_half_of_the_contract(self):
+        """The shape is lexical + range; the producer proves the calendar.
+
+        For each value: what the shape says and what the producer does, side by
+        side, so neither half can quietly widen.
+        """
+        ingest = _ingest()
+        for value, shape_ok, producer_ok in (
+                ("2024-02-29T12:00:00Z", True, True),
+                ("2026-10-31T23:30:00-05:00", True, True),
+                ("2026-10-14T19:41:59.5Z", True, True),
+                ("2026-02-30T12:00:00Z", True, False),   # in range, not a date
+                ("2025-02-29T00:00:00Z", True, False),
+                ("2026-10-14T24:00:00Z", False, False)):
+            with self.subTest(value):
+                self.assertIs(shape_ok, self.valid(record(aegis__occurredAt=f'"{value}"')))
+                try:
+                    ingest.event_month(value)
+                    accepted = True
+                except ingest.Quarantined:
+                    accepted = False
+                self.assertIs(producer_ok, accepted)
+
+
+def _ingest():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    spec = importlib.util.spec_from_file_location("ingest_cdevents", ROOT / "scripts/ingest_cdevents.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 class ProducerMatchesShape(unittest.TestCase):
     """Every property the ingest writes is a predicate this file declares."""
 

@@ -8,6 +8,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -98,6 +99,38 @@ class CDEventsIngressTests(unittest.TestCase):
         for name, event in cases.items():
             with self.subTest(name), self.assertRaises(ingest.Quarantined):
                 self.body(event)
+
+    def with_time(self, value: str) -> dict:
+        event = fixture("deployed")
+        event["time"] = event["data"]["context"]["timestamp"] = value
+        return event
+
+    def test_calendar_valid_times_are_accepted_verbatim(self):
+        # dearing review of #122: validated time, never normalized.
+        for value, month in (("2024-02-29T12:00:00Z", "2024-02"),        # leap day
+                             ("2026-10-14T19:41:59.123456789Z", "2026-10"),  # fraction
+                             ("2026-10-31T23:30:00-05:00", "2026-10"),   # local date, offset
+                             ("2026-12-31T23:59:59+14:00", "2026-12")):
+            with self.subTest(value):
+                body = self.body(self.with_time(value))
+                self.assertEqual(value, body["nodes"][0]["properties"]["occurredAt"])
+                self.assertEqual(ingest.windows.window_iri("deployment", month), body["graph"])
+
+    def test_impossible_times_are_quarantined_before_a_window_is_chosen(self):
+        for value in ("2026-02-30T12:00:00Z",   # day 30 of February
+                      "2025-02-29T00:00:00Z",   # not a leap year
+                      "2026-04-31T00:00:00Z",
+                      "2026-10-14T24:00:00Z",
+                      "2026-10-14T12:60:00Z",
+                      "2026-10-14T23:59:60Z",   # leap second: not representable
+                      "2026-10-14T12:00:00+24:00",
+                      "2026-10-14T12:00:00+05:60",
+                      "2026-99-99T99:99:99Z",
+                      "2026-13-01T00:00:00Z"):
+            with self.subTest(value), \
+                 patch.object(ingest.windows, "window_iri", side_effect=AssertionError("window chosen")):
+                with self.assertRaises(ingest.Quarantined):
+                    self.body(self.with_time(value))
 
     def test_mapping_file_is_well_formed(self):
         mapping, _ = ingest.load_mapping()
