@@ -509,6 +509,21 @@ COVERAGE_PI: dict[int, dict] = {
     7: {"query": None, "gap": "The P0 acceptance-disposition policy catalog and workflow integration are not yet modeled.", "needs": ["P0 acceptance disposition catalog"]},
 }
 
+#: delivery-and-dora (aegis-rb3): CDEvents deployment outcomes in window graphs.
+COVERAGE_DD: dict[int, dict] = {
+    # Every question needs aegis:DeploymentEvent, proposed as Quipu schema
+    # proposal 31 (pending adjudication). Until it is accepted and lands in the
+    # loaded vocabulary, nothing here is expressible; camayoc_deployments_by_day
+    # is written and waits on it.
+    1: {"query": None, "gap": "camayoc_deployments_by_day is written but its class is not yet in the ontology.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
+    2: {"query": None, "gap": "Needs the DeploymentEvent class; then the latest succeeded/rolledback event per environment answers it.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
+    3: {"query": None, "gap": "Needs the DeploymentEvent class (attemptedArtifactId, artifactId).", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
+    4: {"query": None, "gap": "Needs the DeploymentEvent class; then a weekly count per deployedService.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
+    5: {"query": None, "gap": "Needs the DeploymentEvent class; the closed outcome set makes CFR a count.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
+    6: {"query": None, "gap": "No merge record is joined to an artifact yet: lead time needs change.merged (or work-item close) events carrying the same artifact or commit.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)", "CDEvents change.merged mapping and records"]},
+    7: {"query": None, "gap": "Needs the DeploymentEvent class; then the next succeeded event after a rolledback/failed one or an Incident.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
+}
+
 SLICES: dict[str, dict[int, dict]] = {
     "verification-and-liveness": COVERAGE_VL,
     "golden-paths": COVERAGE_GP,
@@ -517,4 +532,5 @@ SLICES: dict[str, dict[int, dict]] = {
     "document-structure-and-chunks": COVERAGE_DSC,
     "workflow-and-archive": COVERAGE_WA,
     "priority-inheritance": COVERAGE_PI,
+    "delivery-and-dora": COVERAGE_DD,
 }

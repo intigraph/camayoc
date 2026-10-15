@@ -1,0 +1,35 @@
+{
+  "data": {
+    "context": {
+      "id": "f99030f232d39c2680b263accf8c80b2",
+      "source": "example-cd/deploy",
+      "timestamp": "2026-10-14T19:22:56Z",
+      "type": "dev.cdevents.service.rolledback.0.2.0",
+      "version": "0.4.1"
+    },
+    "customData": {
+      "attemptedArtifactId": "pkg:github/example/example-svc@339268225664",
+      "rollbackVerified": true
+    },
+    "customDataContentType": "application/json",
+    "subject": {
+      "content": {
+        "artifactId": "pkg:github/example/example-svc@97e84848ab4977739280e4ce3f9f683e437733ba",
+        "environment": {
+          "id": "deploy-host.example.invalid",
+          "source": "example-cd/deploy"
+        }
+      },
+      "id": "example-svc",
+      "source": "example-cd/deploy",
+      "type": "service"
+    }
+  },
+  "datacontenttype": "application/json",
+  "id": "f99030f232d39c2680b263accf8c80b2",
+  "source": "example-cd/deploy",
+  "specversion": "1.0",
+  "subject": "example-svc",
+  "time": "2026-10-14T19:22:56Z",
+  "type": "dev.cdevents.service.rolledback.0.2.0"
+}
