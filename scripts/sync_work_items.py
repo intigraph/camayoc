@@ -432,6 +432,11 @@ def native_main(args):
     args.state.parent.mkdir(parents=True,exist_ok=True)
     started=time.time()
     receipt={'status':'UNKNOWN','requests':0,'writes':0,'verified':0}
+    # aegis-ksd (wu 10-15 ruling): freshness is measured from the last SUCCESSFUL
+    # verified receipt, kept apart from the attempt time. A failed tick carries
+    # the previous success forward; it never manufactures a fresh one.
+    last_success=None
+    graph=None
     with args.state.with_suffix('.lock').open('a') as lock:
         try:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -443,12 +448,16 @@ def native_main(args):
             if len(raw)>4096:raise native.NativeUnknown('authority projection exceeds budget')
             authority=json.loads(raw)
             reader=native.from_authority(lambda *args:None,authority,server=planes.SERVER)
+            graph=reader.board.graph
             if not str(args.state).endswith('.sqlite3'):
                 raise custody.CustodyUnknown('native custody requires a separate .sqlite3 state; no br migration')
             journal=custody.Journal(args.state,reader.board,server=planes.SERVER,initial_tx=args.initial_tx)
             last_path=args.state.with_suffix('.receipt.json')
             if last_path.exists():
                 previous=json.loads(last_path.read_text())
+                carried=previous.get('last_success_at')
+                if type(carried) in (int,float) and math.isfinite(carried):
+                    last_success=carried
                 previous_time=previous.get('attempted_at')
                 if type(previous_time) not in (int,float) or not math.isfinite(previous_time):
                     raise custody.CustodyUnknown('last native tick timestamp unproved')
@@ -470,14 +479,30 @@ def native_main(args):
             receipt['error']=type(exc).__name__  # never log auth or payloads
         finally:
             if journal is not None:journal.db.close()
-        save(args.state.with_suffix('.receipt.json'),{'attempted_at':started,**receipt})
+        if receipt['status']=='OK':
+            last_success=started
+        save(args.state.with_suffix('.receipt.json'),
+             {'attempted_at':started,'last_success_at':last_success,**receipt})
     print(json.dumps(receipt,sort_keys=True))
     code=0 if receipt['status']=='OK' else 2
     if args.publish_status:
         samples=[('camayoc_workitem_ingress_timestamp_seconds',{},started),
                  ('camayoc_workitem_ingress_exit_status',{},code),
                  ('camayoc_workitem_ingress_backlog',{},receipt.get('backlog',-1)),
-                 ('camayoc_workitem_ingress_indeterminate',{},int(code!=0))]
+                 ('camayoc_workitem_ingress_indeterminate',{},int(code!=0)),
+                 ('camayoc_workitem_ingress_requests',{},receipt.get('requests',0)),
+                 ('camayoc_workitem_ingress_writes',{},receipt.get('writes',0)),
+                 ('camayoc_workitem_ingress_verified',{},receipt.get('verified',0))]
+        # Never a success time that did not happen: absent until the first success.
+        if last_success is not None:
+            samples.append(('camayoc_workitem_ingress_last_success_timestamp_seconds',{},last_success))
+        if type(receipt.get('cursor')) is int:
+            samples.append(('camayoc_workitem_ingress_cursor',{},receipt['cursor']))
+        # Coverage is disclosed, not implied: the feed reads ONE board graph (main);
+        # ephemeral and pre-cutover history are not covered (wu ruling 2).
+        if graph:
+            samples.append(('camayoc_workitem_ingress_coverage_info',
+                            {'graph':graph,'coverage':'board-graph-only'},1))
         ok,_=camayoc_metrics.push('camayoc_workitem_ingress',camayoc_metrics.exposition(samples),
                                  grouping={'producer':args.actor})
         if not ok:return 2
