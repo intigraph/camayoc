@@ -1,14 +1,14 @@
-Script started on 2026-10-14 22:04:10-04:00 [COMMAND="python3 docs/design/assets/transcript-pending-demo.py" <not executed on terminal>]
+Script started on 2026-10-14 22:54:14-04:00 [COMMAND="python3 docs/design/assets/transcript-pending-demo.py" <not executed on terminal>]
 BEFORE ca4164f84bd1c9ef80284ad064f7b3ce111018ef: identical isolated committed-POST/lost-response input
 first call: fixture committed, response lost
 journal fields: ['session', 'sha256']
 recovery refused: previous graph write indeterminate; reconcile <fixture>/state.pending.json before retry
 POST count: 1 state committed: False
-AFTER 7642ad9f16e103202857c3e3d3072cd55e1a6ff3: identical isolated committed-POST/lost-response input
+AFTER db4a09c7791f5808c502a2adb8130e20c309a5e8: identical isolated committed-POST/lost-response input
 first call: fixture committed, response lost
-journal fields: ['created_at', 'payload_b64', 'payload_bytes', 'payload_sha256', 'record', 'tasks', 'version']
+journal fields: ['created_at', 'outcome', 'payload_b64', 'payload_bytes', 'payload_sha256', 'record', 'tasks', 'version']
 recovery: {"pending": 0, "posted": 0, "reconciled": 1, "remaining": 0, "tx": []}
 POST count: 1 state committed: True
 Expected before refusal and after no-resend recovery verified.
 
-Script done on 2026-10-14 22:04:10-04:00 [COMMAND_EXIT_CODE="0"]
+Script done on 2026-10-14 22:54:14-04:00 [COMMAND_EXIT_CODE="0"]

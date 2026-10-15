@@ -35,10 +35,9 @@ sets, unknown reads, corrupt/legacy journals, refusal, and exact archive retenti
 [Replayable terminal output](assets/transcript-pending-output.txt) and
 [original timing](assets/transcript-pending-timing.txt) show the same isolated
 committed-POST/lost-response fixture. Base `ca4164f84bd1` refuses recovery and
-leaves state uncommitted. Candidate `7642ad9f16e1` retains the payload, confirms
-complete read-back and commits state without a second POST. The producer and
-tests are byte-identical to the demonstrated candidate after the caption and
-recording commit; later CI and installed acceptance remain separate.
+leaves state uncommitted. Candidate `db4a09c7791f` retains the payload, confirms
+complete read-back and commits state without a second POST. The producer is byte-identical to the demonstrated candidate after the caption
+and recording commit; later CI and installed acceptance remain separate.
 
 This is a mocked transport calling the actual producer functions, not a live
 store or deployment. Repeat with
