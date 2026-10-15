@@ -270,7 +270,7 @@ def durable_json(path: Path, value: dict) -> None:
 
 def pending_envelope(record: dict, payload: dict) -> dict:
     raw = canonical_payload(payload)
-    return dict(version=1, record=record, payload_b64=base64.b64encode(raw).decode(),
+    return dict(version=2, outcome="attempted", record=record, payload_b64=base64.b64encode(raw).decode(),
                 payload_sha256=hashlib.sha256(raw).hexdigest(), payload_bytes=len(raw),
                 tasks=record.get("tasks") or [], created_at=time.time())
 
@@ -280,7 +280,7 @@ def retained_payload(envelope: dict) -> tuple[dict, dict]:
         raw = base64.b64decode(envelope["payload_b64"], validate=True)
         payload = json.loads(raw)
         record = envelope["record"]
-        if (envelope["version"] != 1 or len(raw) != envelope["payload_bytes"] or
+        if (envelope["version"] != 2 or envelope["outcome"] not in ("attempted", "refused") or len(raw) != envelope["payload_bytes"] or
                 hashlib.sha256(raw).hexdigest() != envelope["payload_sha256"] or
                 canonical_payload(payload) != raw or
                 envelope["tasks"] != (record.get("tasks") or []) or
@@ -299,7 +299,8 @@ def snapshot_outcome(record: dict) -> str:
     session, artifact = iris(record)
     # These predicates belong to this producer. An absent hash alone is not
     # absence: partial snapshots and changed task sets must refuse replacement.
-    rows = query(f'SELECT ?s ?p ?o WHERE {{ VALUES ?s {{ <{session}> <{artifact}> }} '
+    rows = query(f'SELECT (STR(?s) AS ?subject) (STR(?p) AS ?predicate) '
+                 f'(STR(?o) AS ?value) WHERE {{ VALUES ?s {{ <{session}> <{artifact}> }} '
                  f'?s ?p ?o . FILTER(?p = <{ONTOLOGY}contentSha256> || '
                  f'?p = <{ONTOLOGY}contentBytes> || ?p = <{ONTOLOGY}reference> || '
                  f'?p = <{ONTOLOGY}declaredWorkItem> || ?p = <{ONTOLOGY}transcript> || '
@@ -309,7 +310,9 @@ def snapshot_outcome(record: dict) -> str:
         if not control:
             raise ValueError("pending absence has no positive records-plane control")
         return "absent"
-    actual = {(str(r["s"]), str(r["p"]), str(r["o"]).strip('"')) for r in rows}
+    actual = {(r["subject"], r["predicate"], r["value"]) for r in rows}
+    if not all(all(isinstance(value, str) for value in row) for row in actual):
+        raise ValueError("INDETERMINATE: snapshot string projection malformed")
     expected = {(artifact, ONTOLOGY + "contentSha256", record["sha256"]),
                 (artifact, ONTOLOGY + "contentBytes", str(record["bytes"])),
                 (artifact, ONTOLOGY + "reference", record["key"]),
@@ -332,7 +335,9 @@ def send_pending(envelope: dict, state: dict, state_path: Path, marker: Path) ->
     record, payload = retained_payload(envelope)
     response = planes._post("/knot", payload, client=CLIENT)
     if response.get("conforms") is False:
-        # Keep the exact refused payload as evidence, never treat refusal as landed.
+        # A determinate refusal is terminal, not an indeterminate write whose
+        # absence can authorize replay. Keep the exact payload for adjudication.
+        durable_json(marker, {**envelope, "outcome": "refused", "refused_at": time.time()})
         raise ValueError("graph refused retained transcript snapshot; adjudication required")
     if not response.get("tx_id") or snapshot_outcome(record) != "landed":
         raise ValueError("snapshot accepted but complete read-back unproven")
@@ -356,6 +361,8 @@ def publish_locked(records: list[dict], actor: str, state_path: Path, limit: int
     if marker.exists():
         envelope = json.loads(marker.read_text())
         record, _ = retained_payload(envelope)
+        if envelope["outcome"] == "refused":
+            raise ValueError("pending payload was explicitly refused; adjudication required")
         outcome = snapshot_outcome(record)
         if outcome == "landed":
             finish_pending(state, state_path, marker, record)

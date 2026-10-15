@@ -47,3 +47,13 @@ files and run `scriptreplay --log-out transcript-pending-output.txt --log-timing
 transcript-pending-timing.txt` for playback; an inline browser player is not
 claimed. The small source fixture and recording are retained in this design
 folder with the PR, under the repository's ordinary Git history.
+
+Recovery compares `STR()` projections of subjects, predicates and values, so
+loaded shape prefixes cannot turn an identical committed snapshot into a false
+supersession. A native disposable-server control loads a prefix and verifies
+both compact wire results and successful string-projection recovery.
+
+A definite validation refusal is retained with `outcome: refused`. Later runs
+stop before graph reads or another POST; an operator must adjudicate and archive
+that journal before a new attempt. Transport uncertainty remains `attempted`
+and follows the read-back reconciliation rules above.

@@ -34,7 +34,7 @@ for revision, label in ((BASE, "BEFORE"), (HEAD, "AFTER")):
         calls.append(path)
         if path == "/knot":
             raise OSError("fixture committed, response lost")
-        return {"rows": rows}
+        return {"rows": [dict(subject=r["s"],predicate=r["p"],value=r["o"]) for r in rows]}
     print(f"{label} {revision}: identical isolated committed-POST/lost-response input", flush=True)
     with TemporaryDirectory() as tmp, patch.object(module.planes,"_post",side_effect=transport):
         state = Path(tmp) / "state.json"

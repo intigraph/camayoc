@@ -238,12 +238,12 @@ class PendingRecovery(unittest.TestCase):
 
     def test_real_publish_after_lost_response_recovers_without_second_knot(self):
         session, artifact = mod.iris(self.rec)
-        rows = [dict(s=artifact,p=mod.ONTOLOGY+"contentSha256",o=self.rec["sha256"]),
-                dict(s=artifact,p=mod.ONTOLOGY+"contentBytes",o="10"),
-                dict(s=artifact,p=mod.ONTOLOGY+"reference",o=self.rec["key"]),
-                dict(s=session,p=mod.ONTOLOGY+"transcript",o=artifact),
-                dict(s=artifact,p=mod.ONTOLOGY+"transcriptOf",o=session),
-                dict(s=session,p=mod.ONTOLOGY+"declaredWorkItem",o=mod.ONTOLOGY+"aegis-fixture")]
+        rows = [dict(subject=artifact,predicate=mod.ONTOLOGY+"contentSha256",value=self.rec["sha256"]),
+                dict(subject=artifact,predicate=mod.ONTOLOGY+"contentBytes",value="10"),
+                dict(subject=artifact,predicate=mod.ONTOLOGY+"reference",value=self.rec["key"]),
+                dict(subject=session,predicate=mod.ONTOLOGY+"transcript",value=artifact),
+                dict(subject=artifact,predicate=mod.ONTOLOGY+"transcriptOf",value=session),
+                dict(subject=session,predicate=mod.ONTOLOGY+"declaredWorkItem",value=mod.ONTOLOGY+"aegis-fixture")]
         calls=[]
         def transport(path,payload,**kwargs):
             calls.append(path)
@@ -269,9 +269,9 @@ class PendingRecovery(unittest.TestCase):
                   (artifact, "contentBytes", "10"), (artifact, "reference", self.rec["key"]),
                   (session, "transcript", artifact), (artifact, "transcriptOf", session),
                   (session, "declaredWorkItem", mod.ONTOLOGY + "aegis-fixture")]
-        rows = [dict(s=s, p=mod.ONTOLOGY+p, o=o) for s,p,o in values]
+        rows = [dict(subject=s, predicate=mod.ONTOLOGY+p, value=o) for s,p,o in values]
         for supplied, expected in ((rows,"landed"), (rows[:-1],"superseded"),
-                                   (rows+[dict(s=session,p=mod.ONTOLOGY+"declaredWorkItem",o="foreign")],"superseded")):
+                                   (rows+[dict(subject=session,predicate=mod.ONTOLOGY+"declaredWorkItem",value="foreign")],"superseded")):
             with patch.object(mod, "query", return_value=supplied):
                 self.assertEqual(mod.snapshot_outcome(self.rec), expected)
         with patch.object(mod, "query", side_effect=[[], [{"s": "positive"}]]):
@@ -301,8 +301,43 @@ class PendingRecovery(unittest.TestCase):
             with TemporaryDirectory() as tmp, patch.object(mod, "snapshot_outcome", side_effect=outcomes), patch.object(mod.time,"sleep"), patch.object(mod.planes,"_post",return_value=response):
                 state=self.marker(tmp); marker=state.with_suffix(".pending.json"); before=marker.read_bytes()
                 with self.assertRaises(ValueError):mod.publish([],"test",state,1)
-                self.assertEqual(marker.read_bytes(),before)
+                after=json.loads(marker.read_text()); original=json.loads(before)
+                self.assertEqual(after["payload_b64"],original["payload_b64"])
+                if response.get("conforms") is False:
+                    self.assertEqual(after["outcome"],"refused")
+                else:
+                    self.assertEqual(marker.read_bytes(),before)
                 self.assertFalse(state.exists())
+
+
+    def test_known_refusal_is_terminal_across_runs(self):
+        with TemporaryDirectory() as tmp, patch.object(mod.planes,"_post",return_value={"conforms":False}) as post:
+            state=Path(tmp)/"state.json"
+            with self.assertRaisesRegex(ValueError,"refused"):
+                mod.publish([self.rec],"fixture",state,1)
+            marker=state.with_suffix(".pending.json"); before=marker.read_bytes()
+            with patch.object(mod,"snapshot_outcome") as read:
+                for _ in range(2):
+                    with self.assertRaisesRegex(ValueError,"explicitly refused"):
+                        mod.publish([self.rec],"fixture",state,1)
+                read.assert_not_called()
+            self.assertEqual(post.call_count,1)
+            self.assertEqual(marker.read_bytes(),before)
+
+    def test_snapshot_projects_string_literals_instead_of_compacted_iri_terms(self):
+        session,artifact=mod.iris(self.rec)
+        rows=[dict(subject=artifact,predicate=mod.ONTOLOGY+"contentSha256",value=self.rec["sha256"]),
+              dict(subject=artifact,predicate=mod.ONTOLOGY+"contentBytes",value="10"),
+              dict(subject=artifact,predicate=mod.ONTOLOGY+"reference",value=self.rec["key"]),
+              dict(subject=session,predicate=mod.ONTOLOGY+"transcript",value=artifact),
+              dict(subject=artifact,predicate=mod.ONTOLOGY+"transcriptOf",value=session),
+              dict(subject=session,predicate=mod.ONTOLOGY+"declaredWorkItem",value=mod.ONTOLOGY+"aegis-fixture")]
+        def wire(query):
+            if all(term in query for term in ("STR(?s)","STR(?p)","STR(?o)")):
+                return rows
+            return [{"s":r["subject"],"p":"aegis:"+r["predicate"].split("#")[-1],"o":r["value"]} for r in rows]
+        with patch.object(mod,"query",side_effect=wire):
+            self.assertEqual(mod.snapshot_outcome(self.rec),"landed")
 
 
 if __name__ == "__main__":
