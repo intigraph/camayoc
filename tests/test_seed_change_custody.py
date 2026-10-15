@@ -54,6 +54,24 @@ class Custody(unittest.TestCase):
         self.assertEqual(self.j.cursor,9)
         with self.assertRaises(sc.CustodyUnknown):self.j.retain(page(records=[],next_tx=1000,watermark_tx=1000))
         self.assertEqual(self.j.cursor,9)
+    def test_comment_entity_maps_to_its_exact_parent(self):
+        # aegis-ksd: a Comment entity is "<item>/comment/<n>"; it must not reject the page.
+        comment=SUBJECT+'/comment/50'
+        end,items=sc.candidates(page(subject=comment),self.board,9)
+        self.assertEqual((end,items),(10,{ID:10}))
+        self.j.retain(page(subject=comment));self.assertEqual(self.j.cursor,10)
+
+    def test_ambiguous_comment_spellings_still_refuse(self):
+        encoded=SUBJECT.replace(ID,ID.replace('-','%2D'))+'/comment/50'
+        for bad in (encoded,):
+            with self.subTest(ref=bad),self.assertRaises(sc.CustodyUnknown):
+                sc.candidates(page(subject=bad),self.board,9)
+        # Other sub-paths are not comments and keep the existing exact-ID refusal.
+        for bad in (SUBJECT+'/comment/x',SUBJECT+'/note/1',SUBJECT+'/comment/1/2'):
+            with self.subTest(ref=bad),self.assertRaises((sc.CustodyUnknown,nw.NativeUnknown)):
+                sc.candidates(page(subject=bad),self.board,9)
+        self.assertEqual(self.j.cursor,9)
+
     def test_bad_scope_partial_order_and_boundary_keep_cursor(self):
         for data in (page(truncated=True),page(records=[{**page()['records'][0],'graph':'ROOT'}]),
                      page(next_tx=11,watermark_tx=11),page(records=page()['records']*2),
