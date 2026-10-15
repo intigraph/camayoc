@@ -257,6 +257,12 @@ class PendingRecovery(unittest.TestCase):
             self.assertEqual(json.loads(state.read_text())[CLAUDE_ID],mod.digest(self.rec))
 
 
+    def test_truncated_query_is_unknown_even_with_an_empty_rows_list(self):
+        with patch.object(mod.planes,"_post",return_value={"rows":[],"truncated":True}):
+            with self.assertRaisesRegex(ValueError,"incomplete"):
+                mod.query("SELECT ?s WHERE { ?s ?p ?o }")
+
+
     def test_snapshot_comparison_requires_complete_owned_projection(self):
         session, artifact = mod.iris(self.rec)
         values = [(artifact, "contentSha256", self.rec["sha256"]),

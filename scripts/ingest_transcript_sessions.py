@@ -232,8 +232,11 @@ def body(record: dict, actor: str) -> dict:
 
 
 def query(sparql: str) -> list:
-    rows = planes._post("/query", {"query": sparql, "graph": planes.plane_for("observed")},
-                        client=CLIENT).get("rows")
+    response = planes._post("/query", {"query": sparql, "graph": planes.plane_for("observed")},
+                            client=CLIENT)
+    if response.get("truncated") or "error" in response:
+        raise ValueError("INDETERMINATE: incomplete query projection")
+    rows = response.get("rows")
     if not isinstance(rows, list):
         raise ValueError("INDETERMINATE: query returned no rows field")
     return rows
