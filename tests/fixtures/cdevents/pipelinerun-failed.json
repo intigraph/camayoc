@@ -1,0 +1,40 @@
+{
+  "specversion": "1.0",
+  "id": "5f0c2a9e7b1d4c3a8e6f9b2d1c0a7e4f",
+  "source": "example-ci/ansible",
+  "type": "dev.cdevents.pipelinerun.finished.0.2.0",
+  "time": "2026-10-15T07:02:11Z",
+  "subject": "web",
+  "datacontenttype": "application/json",
+  "data": {
+    "context": {
+      "id": "5f0c2a9e7b1d4c3a8e6f9b2d1c0a7e4f",
+      "source": "example-ci/ansible",
+      "timestamp": "2026-10-15T07:02:11Z",
+      "type": "dev.cdevents.pipelinerun.finished.0.2.0",
+      "version": "0.4.1"
+    },
+    "subject": {
+      "id": "apply-web-1",
+      "source": "example-ci/ansible",
+      "type": "pipelineRun",
+      "content": {
+        "pipelineName": "ansible apply",
+        "outcome": "failure",
+        "errors": "failed=1"
+      }
+    },
+    "customData": {
+      "service": "web",
+      "attemptedArtifactId": "pkg:generic/example-iac@5e1f0c9d8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e",
+      "environment": "web-1.example.invalid",
+      "deploymentAttempt": true,
+      "recap": {
+        "ok": 7,
+        "changed": 2,
+        "failed": 1,
+        "unreachable": 0
+      }
+    }
+  }
+}

@@ -56,6 +56,79 @@ class CDEventsIngressTests(unittest.TestCase):
         event["data"]["customData"]["rollbackVerified"] = False
         self.assertEqual("failed", self.node(event)["properties"]["deploymentOutcome"])
 
+    # dearing's slice-2 ruling (aegis-rb3): a pipeline run is a deployment only
+    # when its emitter declares an actual apply attempt; failed names the
+    # ATTEMPTED artifact; a serving artifact is separate and only observed.
+    def run_event(self, **custom):
+        event = fixture("pipelinerun-failed")
+        for key, value in custom.items():
+            if value is None:
+                event["data"]["customData"].pop(key, None)
+            else:
+                event["data"]["customData"][key] = value
+        return event
+
+    def test_a_failed_apply_names_only_what_it_attempted(self):
+        body = self.body(fixture("pipelinerun-failed"))
+        props = body["nodes"][0]["properties"]
+        self.assertEqual("failed", props["deploymentOutcome"])
+        self.assertTrue(props["attemptedArtifactId"].startswith("pkg:generic/example-iac@"))
+        self.assertNotIn("artifactId", props, "never copied from the attempt")
+        self.assertEqual("web", body["edges"][0]["target"])
+        self.assertIn('subject.content.outcome="failure"', body["source"])
+        self.assertIn('customData.recap={"changed":2,"failed":1,"ok":7,"unreachable":0}', body["source"])
+
+    def test_a_failed_apply_keeps_an_observed_serving_artifact(self):
+        serving = "pkg:generic/example-iac@0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e"
+        props = self.node(self.run_event(servingArtifactId=serving))["properties"]
+        self.assertEqual(serving, props["artifactId"])
+        self.assertNotEqual(props["artifactId"], props["attemptedArtifactId"])
+
+    def test_a_successful_apply_needs_its_serving_artifact(self):
+        event = self.run_event(servingArtifactId="pkg:generic/example-iac@5e1f0c9d8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e")
+        event["data"]["subject"]["content"]["outcome"] = "success"
+        self.assertEqual("succeeded", self.node(event)["properties"]["deploymentOutcome"])
+        attempted_only = self.run_event()
+        attempted_only["data"]["subject"]["content"]["outcome"] = "success"
+        with self.assertRaises(ingest.Quarantined):
+            self.body(attempted_only)
+
+    def test_outcome_words_map_explicitly_and_unknown_words_quarantine(self):
+        for word, want in [("success", "succeeded"), ("failure", "failed"), ("error", "failed")]:
+            with self.subTest(word):
+                event = self.run_event(servingArtifactId="pkg:generic/example-iac@aa")
+                event["data"]["subject"]["content"]["outcome"] = word
+                self.assertEqual(want, self.node(event)["properties"]["deploymentOutcome"])
+        for word in ("cancelled", "skipped", "", None, 1):
+            with self.subTest(word):
+                event = fixture("pipelinerun-failed")
+                event["data"]["subject"]["content"]["outcome"] = word
+                with self.assertRaises(ingest.Quarantined):
+                    self.body(event)
+
+    def test_no_actual_apply_attempt_is_not_a_deployment(self):
+        # The measured case: lint failed on lock acquisition, so the apply step
+        # was skipped. Workflow metadata may still carry service, artifact and
+        # environment; without attempt evidence it is quarantined.
+        for attempt in (None, False, "true", 1):
+            with self.subTest(attempt):
+                with self.assertRaises(ingest.Quarantined):
+                    self.body(self.run_event(deploymentAttempt=attempt))
+
+    def test_artifact_requirements_quarantine_never_guess(self):
+        cases = {
+            "missing attempted and serving": dict(attemptedArtifactId=None),
+            "serving only": dict(attemptedArtifactId=None, servingArtifactId="pkg:generic/example-iac@aa"),
+            "attempted not a purl": dict(attemptedArtifactId="5e1f0c9d"),
+            "serving not a purl": dict(servingArtifactId="0d1e2f3a"),
+            "no service": dict(service=None),
+            "no environment": dict(environment=None),
+        }
+        for name, custom in cases.items():
+            with self.subTest(name):
+                with self.assertRaises(ingest.Quarantined):
+                    self.body(self.run_event(**custom))
+
     def test_lands_in_the_month_window_not_a_plane(self):
         body = self.body(fixture("deployed"))
         self.assertEqual(ingest.windows.window_iri("deployment", "2026-10"), body["graph"])
@@ -137,7 +210,10 @@ class CDEventsIngressTests(unittest.TestCase):
         for base, rule in mapping["types"].items():
             with self.subTest(base):
                 self.assertRegex(base, r"^dev\.cdevents\.[a-z]+\.[a-z]+$")
-                self.assertIn(rule["outcome"], {"succeeded", "failed", "rolledback"})
+                outcomes = ({rule["outcome"]} if "outcome" in rule
+                            else set(rule["outcomeFrom"]["map"].values()))
+                self.assertTrue(outcomes)
+                self.assertLessEqual(outcomes, {"succeeded", "failed", "rolledback"})
                 self.assertTrue(rule["fields"]["service"]["required"])
                 ingest.windows.window_iri(rule["window"], "2026-10")
 

@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MAPPING_FILE = ROOT / "mappings" / "cdevents.json"
 _TIME = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-])(\d{2}):(\d{2}))$")
 _TYPE = re.compile(r"^(dev\.cdevents\.[a-z]+\.[a-z]+)\.(\d+)\.\d+\.\d+$")
+_PURL = re.compile(r"^pkg:[a-z]+/")  # the delivery shape's artifact pattern
 
 
 class Quarantined(ValueError):
@@ -117,6 +118,18 @@ def envelope(payload: object) -> tuple[dict, dict]:
     return attrs, cdevent
 
 
+def _provenance(rule: dict, cdevent: dict) -> str:
+    """The rule's declared provenance values (the producer's own outcome word,
+    an Ansible recap) as a stable suffix. Empty for rules declaring none, so
+    existing records' sources are unchanged."""
+    parts = []
+    for path in rule.get("provenance", []):
+        value = _get(cdevent, path)
+        if value is not None:
+            parts.append(f"{path}={json.dumps(value, sort_keys=True, separators=(',', ':'))}")
+    return (";" + ";".join(parts)) if parts else ""
+
+
 def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
                 mapping_sha: str | None = None) -> dict:
     """The governed /episode body for one CDEvent. Raises Quarantined."""
@@ -150,10 +163,31 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
             raise Quarantined(f"field {name} ({spec['path']}) is not a string")
         values[name] = value
 
-    outcome = rule["outcome"]
+    for need in rule.get("requires", []):
+        # A literal precondition, compared exactly: a pipeline run is a
+        # deployment only when its emitter says an apply actually ran.
+        got = _get(cdevent, need["path"])
+        if type(got) is not type(need["equals"]) or got != need["equals"]:
+            raise Quarantined(f"{need['path']} is not {need['equals']!r}: not a deployment attempt")
+    for name in ("artifactId", "attemptedArtifactId"):
+        if name in values and not _PURL.match(values[name]):
+            raise Quarantined(f"{name} {values[name]!r} is not a package URL")
+
+    outcome = rule.get("outcome")
+    source = rule.get("outcomeFrom")
+    if source:
+        # The event's own outcome word, through an explicit value map: a word the
+        # map does not name is quarantined, never read as success.
+        word = _get(cdevent, source["path"])
+        if not isinstance(word, str) or word not in source["map"]:
+            raise Quarantined(f"outcome {word!r} at {source['path']} is not mapped")
+        outcome = source["map"][word]
     override = rule.get("outcomeWhenFalse")
     if override and _get(cdevent, override["path"]) is False:
         outcome = override["outcome"]
+    for name in rule.get("outcomeRequires", {}).get(outcome, []):
+        if name not in values:
+            raise Quarantined(f"a {outcome} record needs {name}")
 
     key = hashlib.sha256(f"{attrs['source']}\0{attrs['id']}".encode()).hexdigest()[:16]
     name = f"deployment-event-{key}"
@@ -167,12 +201,12 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
         "cloudEventId": attrs["id"],
         **values,
     }
-    label = f"{service} {outcome} {values['artifactId']} on {values['environment']}"
+    label = f"{service} {outcome} {values.get('artifactId') or values['attemptedArtifactId']} on {values['environment']}"
     return {
         "name": f"cdevent:{key}",
         "graph": windows.window_iri(rule["window"], month),
         "episode_body": f"CDEvent {attrs['type']} for {service}",
-        "source": f"cdevents:mapping={mapping_sha[:16]}:{attrs['source']}#{attrs['id']}",
+        "source": f"cdevents:mapping={mapping_sha[:16]}:{attrs['source']}#{attrs['id']}" + _provenance(rule, cdevent),
         "actor": actor,
         "nodes": [{
             "name": name,
