@@ -1,0 +1,81 @@
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# Delivery vocabulary: deployment outcomes ingested as CDEvents (aegis-rb3).
+#
+# Accepted as Quipu schema proposal 31 (dearing, 2026-10-15T02:08:44Z): a new
+# DeploymentEvent class, distinct from WorkflowRun, Incident and the shuttle
+# TransitionEvent, reusing Service (deployedService) and keeping the artifact
+# as a purl string. STANDALONE: this file carries its own prefixes and the
+# class and predicate declarations, so it loads as one shape set and does not
+# depend on core.shapes.ttl or the ontology having been loaded first.
+#
+# What SHACL proves here is the record's shape. Monthly window routing, the
+# source+id identity and replay byte-identity are producer guarantees
+# (scripts/ingest_cdevents.py and its tests), not provable by a shape.
+
+aegis:DeploymentEvent a rdfs:Class ;
+    rdfs:label "Deployment event" ;
+    rdfs:comment "One deployment outcome of a service on an environment, from a CDEvents service event. succeeded, rolledback or failed; never coerced from service.removed. On rollback, artifactId is what serves AFTER the rollback and attemptedArtifactId is what did not stick." .
+
+aegis:deployedService a rdf:Property ;
+    rdfs:label "deployed service" ;
+    rdfs:comment "The service entity the deployment changed." .
+
+aegis:artifactId a rdf:Property ;
+    rdfs:label "artifact id" ;
+    rdfs:comment "Package URL (purl) of the artifact serving after this outcome." ;
+    rdfs:range xsd:string .
+
+aegis:attemptedArtifactId a rdf:Property ;
+    rdfs:label "attempted artifact id" ;
+    rdfs:comment "Package URL of the artifact a rolled-back or failed deployment attempted." ;
+    rdfs:range xsd:string .
+
+aegis:environment a rdf:Property ;
+    rdfs:label "environment" ;
+    rdfs:comment "The environment the deployment targeted, as the producer names it." ;
+    rdfs:range xsd:string .
+
+aegis:deploymentOutcome a rdf:Property ;
+    rdfs:label "deployment outcome" ;
+    rdfs:comment "Closed set: succeeded, rolledback, failed. Change failure rate counts rolledback and failed." ;
+    rdfs:range xsd:string .
+
+aegis:occurredAt a rdf:Property ;
+    rdfs:label "occurred at" ;
+    rdfs:comment "RFC 3339 instant the outcome happened (the CloudEvent time)." ;
+    rdfs:range xsd:string .
+
+aegis:cdeventsType a rdf:Property ;
+    rdfs:label "CDEvents type" ;
+    rdfs:comment "The versioned CDEvents type the record was mapped from." ;
+    rdfs:range xsd:string .
+
+aegis:cloudEventSource a rdf:Property ;
+    rdfs:label "CloudEvent source" ;
+    rdfs:comment "CloudEvents source attribute; with cloudEventId, the event's identity." ;
+    rdfs:range xsd:string .
+
+aegis:cloudEventId a rdf:Property ;
+    rdfs:label "CloudEvent id" ;
+    rdfs:comment "CloudEvents id attribute; unique within its source." ;
+    rdfs:range xsd:string .
+
+aegis:DeploymentEventShape a sh:NodeShape ;
+    sh:targetClass aegis:DeploymentEvent ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:deployedService ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path aegis:artifactId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^pkg:[a-z]+/" ] ;
+    sh:property [ sh:path aegis:attemptedArtifactId ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^pkg:[a-z]+/" ] ;
+    sh:property [ sh:path aegis:environment ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:deploymentOutcome ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("succeeded" "failed" "rolledback") ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" ] ;
+    sh:property [ sh:path aegis:cdeventsType ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^dev\\.cdevents\\." ] ;
+    sh:property [ sh:path aegis:cloudEventSource ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:cloudEventId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] .
