@@ -6,6 +6,7 @@ Cursor and pending IDs commit together, before any projection effect.
 """
 from __future__ import annotations
 import json
+import re
 import sqlite3
 from urllib.parse import unquote
 import seed_work_items as nw
@@ -49,6 +50,19 @@ def candidates(page,board,since):
             if isinstance(value,dict):refs.append(value.get('ref'))
         for ref in refs:
             if not isinstance(ref,str) or not ref.startswith(nw.ITEM):continue
+            # A Comment's own entity is "<item IRI>/comment/<n>" (item IDs are
+            # percent-encoded, so a raw "/" only appears in that sub-path). It
+            # changes its parent: map it to that exact parent, and only if the
+            # parent re-spells to the same IRI; anything else still refuses
+            # (aegis-ksd: one comment otherwise rejected every page).
+            comment=re.fullmatch(r'([^/]+)/comment/([0-9]+)',ref[len(nw.ITEM):])
+            if comment:
+                parent=unquote(comment.group(1))
+                if not parent.startswith(board.prefix+'-'):continue
+                if board.subject(parent)+'/comment/'+comment.group(2)!=ref:
+                    raise CustodyUnknown('comment identity spelling is ambiguous')
+                items[parent]=tx
+                continue
             item=unquote(ref[len(nw.ITEM):])
             if not item.startswith(board.prefix+'-'):continue
             if board.subject(item)!=ref:raise CustodyUnknown('candidate identity spelling is ambiguous')
