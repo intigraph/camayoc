@@ -28,6 +28,7 @@ import json
 import os
 import re
 import tempfile
+import uuid
 from datetime import datetime, timezone
 
 try:
@@ -46,21 +47,30 @@ DOCUMENTATION = """
 TYPE = "dev.cdevents.pipelinerun.finished.0.2.0"
 SPEC = "0.4.1"
 _PURL = re.compile(r"^pkg:[a-z]+/")
+_RUN_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 _ENV = ("CAMAYOC_CDEVENTS_SPOOL", "CAMAYOC_CDEVENTS_SOURCE",
         "CAMAYOC_CDEVENTS_SERVICE", "CAMAYOC_CDEVENTS_ARTIFACT")
 
 
 def build(host: str, recap: dict, *, source: str, service: str, artifact: str,
-          when: datetime) -> dict:
-    """The CloudEvent for one host's recap of an actual apply."""
+          when: datetime, run_id: str) -> dict:
+    """The CloudEvent for one host's recap of an actual apply.
+
+    run_id names ONE apply: shared by every host event of that run, distinct
+    across runs. It is part of the event id, so two applies of the same
+    revision to the same host in the same second stay two events, while
+    re-emitting one run's event reproduces the same id."""
+    if not isinstance(run_id, str) or not _RUN_ID.match(run_id):
+        raise ValueError("run_id must be 1-128 of [A-Za-z0-9._:-]")
     failed = recap.get("failures", 0) + recap.get("unreachable", 0) > 0
     stamp = when.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     event_id = hashlib.sha256("\0".join(
-        (TYPE, source, service, host, artifact, stamp)).encode()).hexdigest()[:32]
+        (TYPE, source, service, host, artifact, run_id, stamp)).encode()).hexdigest()[:32]
     custom = {
         # Declares the producer, so Camayoc binds this recap to the outcome.
         "emitter": "ansible",
         "deploymentAttempt": True,
+        "runId": run_id,
         "service": service,
         "environment": host,
         "attemptedArtifactId": artifact,
@@ -84,16 +94,28 @@ def build(host: str, recap: dict, *, source: str, service: str, artifact: str,
 
 
 def spool(event: dict, directory: str) -> str:
-    """Atomic, durable write of one event; the name sorts by time."""
+    """Atomic, durable write of one event; the name sorts by time.
+
+    Re-spooling the same event is a no-op. A DIFFERENT event at an existing
+    path is refused, never overwritten, so one event cannot erase another."""
     os.makedirs(directory, exist_ok=True)
     name = f"{event['time'].replace(':', '')}-{event['id']}.json"
-    fd, tmp = tempfile.mkstemp(dir=directory, prefix=".tmp-")
-    with os.fdopen(fd, "w") as fh:
-        json.dump(event, fh, sort_keys=True)
-        fh.flush()
-        os.fsync(fh.fileno())
     path = os.path.join(directory, name)
-    os.replace(tmp, path)
+    body = json.dumps(event, sort_keys=True)
+    if os.path.exists(path):
+        with open(path) as fh:
+            if fh.read() == body:
+                return path
+        raise FileExistsError(f"a different event already holds {name}")
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix=".tmp-")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(body)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.link(tmp, path)  # fails rather than replaces if the name appeared meanwhile
+    finally:
+        os.unlink(tmp)
     return path
 
 
@@ -106,6 +128,9 @@ class CallbackModule(CallbackBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.check_mode = False
+        # One identity per apply: a caller's trusted run id (e.g. a CI run
+        # index), else one generated for this callback instance.
+        self.run_id = os.environ.get("CAMAYOC_CDEVENTS_RUN_ID", "").strip() or uuid.uuid4().hex
 
     def v2_playbook_on_play_start(self, play):
         if getattr(play, "check_mode", False):
@@ -128,7 +153,8 @@ class CallbackModule(CallbackBase):
             recap = stats.summarize(host)
             event = build(host, recap, source=config["CAMAYOC_CDEVENTS_SOURCE"],
                           service=config["CAMAYOC_CDEVENTS_SERVICE"],
-                          artifact=config["CAMAYOC_CDEVENTS_ARTIFACT"], when=when)
+                          artifact=config["CAMAYOC_CDEVENTS_ARTIFACT"], when=when,
+                          run_id=self.run_id)
             try:
                 spool(event, config["CAMAYOC_CDEVENTS_SPOOL"])
             except OSError as exc:

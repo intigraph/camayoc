@@ -16,7 +16,11 @@ export CAMAYOC_CDEVENTS_SERVICE=web                     # the service the play d
 export CAMAYOC_CDEVENTS_ARTIFACT=pkg:generic/example-iac@<commit>   # what is applied
 ```
 
-Nothing is emitted unless all four variables are set.
+Nothing is emitted unless all four variables are set. Optionally set
+`CAMAYOC_CDEVENTS_RUN_ID` to your CI's run or attempt id; otherwise each
+playbook run gets a generated one. The run id is part of every event's
+identity, so two applies of the same revision to the same host stay two
+events, and re-emitting one run's event reproduces the same identity.
 
 ## What it reports
 

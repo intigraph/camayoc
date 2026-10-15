@@ -34,9 +34,9 @@ def plugin():
 class BuildTests(unittest.TestCase):
     when = datetime(2026, 10, 15, 7, 2, 11, tzinfo=timezone.utc)
 
-    def event(self, **recap):
+    def event(self, run_id="run-a", **recap):
         return plugin().build("web-1.example.invalid", recap, source="example-ci/ansible",
-                              service="web", artifact=ARTIFACT, when=self.when)
+                              service="web", artifact=ARTIFACT, when=self.when, run_id=run_id)
 
     def test_a_failed_host_is_a_failed_deployment_of_the_attempt(self):
         props = ingest.episode_for(self.event(ok=5, failures=1), actor="t")["nodes"][0]["properties"]
@@ -65,6 +65,52 @@ class BuildTests(unittest.TestCase):
     def test_the_same_apply_is_the_same_event(self):
         self.assertEqual(self.event(ok=1)["id"], self.event(ok=1)["id"])
 
+    # dearing's review of #125: same-second applies must not collapse.
+    def test_two_applies_in_the_same_second_stay_two_events(self):
+        spool_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, spool_dir)
+        m = plugin()
+        failed = self.event(run_id="run-a", ok=5, failures=1)
+        fixed = self.event(run_id="run-b", ok=6)
+        self.assertNotEqual(failed["id"], fixed["id"])
+        paths = {m.spool(failed, spool_dir), m.spool(fixed, spool_dir)}
+        self.assertEqual(2, len(paths))
+        self.assertEqual(2, len(os.listdir(spool_dir)))
+        outcomes = sorted(ingest.episode_for(json.loads(Path(p).read_text()), actor="t")["nodes"][0]
+                          ["properties"]["deploymentOutcome"] for p in paths)
+        self.assertEqual(["failed", "succeeded"], outcomes)
+
+    def test_replaying_one_run_never_makes_a_third_event(self):
+        spool_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, spool_dir)
+        m = plugin()
+        first = m.spool(self.event(run_id="run-a", ok=5, failures=1), spool_dir)
+        second = m.spool(self.event(run_id="run-b", ok=6), spool_dir)
+        again = m.spool(self.event(run_id="run-a", ok=5, failures=1), spool_dir)
+        self.assertEqual(first, again)
+        self.assertEqual(sorted([first, second]), sorted(str(p) for p in Path(spool_dir).glob("*.json")))
+        body = json.loads(Path(first).read_text())
+        name = ingest.episode_for(body, actor="t")["nodes"][0]["name"]
+        self.assertEqual(name, ingest.episode_for(body, actor="t")["nodes"][0]["name"])
+
+    def test_a_different_event_never_overwrites_a_spooled_one(self):
+        spool_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, spool_dir)
+        m = plugin()
+        event = self.event(run_id="run-a", ok=5, failures=1)
+        path = m.spool(event, spool_dir)
+        forged = json.loads(json.dumps(event))
+        forged["data"]["customData"]["recap"]["failures"] = 0
+        with self.assertRaises(FileExistsError):
+            m.spool(forged, spool_dir)
+        self.assertEqual(1, json.loads(Path(path).read_text())["data"]["customData"]["recap"]["failures"])
+
+    def test_run_id_is_required_and_bounded(self):
+        for bad in ("", "has space", "x" * 129, None):
+            with self.subTest(bad):
+                with self.assertRaises(ValueError):
+                    self.event(run_id=bad, ok=1)
+
 
 @unittest.skipUnless(HAVE_ANSIBLE, "ansible not installed")
 class RealPlaybookTests(unittest.TestCase):
@@ -80,9 +126,10 @@ class RealPlaybookTests(unittest.TestCase):
       when: inventory_hostname == 'bad'
 """
 
-    def run_play(self, *extra, env_drop=()):
-        tmp = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, tmp)
+    def run_play(self, *extra, env_drop=(), tmp=None, env_add=None):
+        if tmp is None:
+            tmp = Path(tempfile.mkdtemp())
+            self.addCleanup(shutil.rmtree, tmp)
         (tmp / "play.yml").write_text(self.PLAY)
         (tmp / "hosts").write_text("good ansible_connection=local\nbad ansible_connection=local\n")
         env = dict(os.environ, ANSIBLE_CALLBACKS_ENABLED="cdevents",
@@ -95,6 +142,7 @@ class RealPlaybookTests(unittest.TestCase):
                    CAMAYOC_CDEVENTS_SERVICE="web", CAMAYOC_CDEVENTS_ARTIFACT=ARTIFACT)
         for key in env_drop:
             env.pop(key)
+        env.update(env_add or {})
         run = subprocess.run(["ansible-playbook", "-i", str(tmp / "hosts"), str(tmp / "play.yml"), *extra],
                              env=env, capture_output=True, text=True, timeout=120)
         events = [json.loads(p.read_text()) for p in sorted((tmp / "spool").glob("*.json"))] \
@@ -109,6 +157,21 @@ class RealPlaybookTests(unittest.TestCase):
             props = ingest.episode_for(event, actor="t")["nodes"][0]["properties"]
             outcomes[props["environment"]] = props["deploymentOutcome"]
         self.assertEqual({"good": "succeeded", "bad": "failed"}, outcomes)
+
+    def test_two_real_runs_keep_both_runs_events(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        self.run_play(tmp=tmp)
+        _, events = self.run_play(tmp=tmp)
+        self.assertEqual(4, len(events), "2 hosts x 2 runs")
+        self.assertEqual(2, len({e["data"]["customData"]["runId"] for e in events}))
+
+    def test_an_explicit_run_id_replayed_adds_nothing(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        _, first = self.run_play(tmp=tmp, env_add={"CAMAYOC_CDEVENTS_RUN_ID": "ci-run-42"})
+        self.assertEqual({"ci-run-42"}, {e["data"]["customData"]["runId"] for e in first})
+        self.assertEqual(2, len(first))
 
     def test_a_check_run_is_not_a_deployment(self):
         _, events = self.run_play("--check")
