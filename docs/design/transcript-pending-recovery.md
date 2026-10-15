@@ -29,3 +29,21 @@ This command is not authorization to archive a particular production journal.
 Fault tests cover a committed POST with a lost response, no duplicate resend on
 landed recovery, two absent reads and an identical retry, partial/different task
 sets, unknown reads, corrupt/legacy journals, refusal, and exact archive retention.
+
+## Demo
+
+[Replayable terminal output](assets/transcript-pending-output.txt) and
+[original timing](assets/transcript-pending-timing.txt) show the same isolated
+committed-POST/lost-response fixture. Base `ca4164f84bd1` refuses recovery and
+leaves state uncommitted. Candidate `7642ad9f16e1` retains the payload, confirms
+complete read-back and commits state without a second POST. The producer and
+tests are byte-identical to the demonstrated candidate after the caption and
+recording commit; later CI and installed acceptance remain separate.
+
+This is a mocked transport calling the actual producer functions, not a live
+store or deployment. Repeat with
+`python3 docs/design/assets/transcript-pending-demo.py`. Download the two text
+files and run `scriptreplay --log-out transcript-pending-output.txt --log-timing
+transcript-pending-timing.txt` for playback; an inline browser player is not
+claimed. The small source fixture and recording are retained in this design
+folder with the PR, under the repository's ordinary Git history.
