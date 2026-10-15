@@ -185,6 +185,18 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
     override = rule.get("outcomeWhenFalse")
     if override and _get(cdevent, override["path"]) is False:
         outcome = override["outcome"]
+    for check in rule.get("recapRules", []):
+        # Only for the producer the rule names: its own counters decide, and
+        # the outcome word must agree. Missing or partial counters are UNKNOWN.
+        if _get(cdevent, check["when"]["path"]) != check["when"]["equals"]:
+            continue
+        recap = _get(cdevent, check["path"])
+        if not isinstance(recap, dict) or any(
+                type(recap.get(c)) is not int or recap[c] < 0 for c in check["counters"]):
+            raise Quarantined(f"{check['path']} is missing or incomplete: outcome UNKNOWN")
+        expected = "failed" if any(recap[c] > 0 for c in check["failWhenAny"]) else "succeeded"
+        if outcome != expected:
+            raise Quarantined(f"outcome {outcome} contradicts {check['path']} ({expected})")
     for name in rule.get("outcomeRequires", {}).get(outcome, []):
         if name not in values:
             raise Quarantined(f"a {outcome} record needs {name}")

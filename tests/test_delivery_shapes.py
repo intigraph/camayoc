@@ -158,6 +158,7 @@ class DeliveryShapes(unittest.TestCase):
         cases["pipelinerun-failed+observed-serving"] = observed
         succeeded = json.loads(json.dumps(observed))
         succeeded["data"]["subject"]["content"]["outcome"] = "success"
+        succeeded["data"]["customData"]["recap"] = dict(succeeded["data"]["customData"]["recap"], failures=0)
         cases["pipelinerun-succeeded"] = succeeded
         for name, event in cases.items():
             with self.subTest(name):

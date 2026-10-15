@@ -32,9 +32,13 @@
       "recap": {
         "ok": 7,
         "changed": 2,
-        "failed": 1,
-        "unreachable": 0
-      }
+        "failures": 1,
+        "unreachable": 0,
+        "skipped": 0,
+        "rescued": 0,
+        "ignored": 0
+      },
+      "emitter": "ansible"
     }
   }
 }
