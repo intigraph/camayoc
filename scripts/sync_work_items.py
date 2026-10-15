@@ -437,6 +437,15 @@ def native_main(args):
     # the previous success forward; it never manufactures a fresh one.
     last_success=None
     graph=None
+    # Read the carried success BEFORE anything that can fail: an early failure
+    # (authority, custody, journal) must not save None over a real success
+    # (ian, camayoc#127 review).
+    try:
+        carried=json.loads(args.state.with_suffix('.receipt.json').read_text()).get('last_success_at')
+        if type(carried) in (int,float) and math.isfinite(carried):
+            last_success=carried
+    except (OSError,ValueError,AttributeError):
+        pass
     with args.state.with_suffix('.lock').open('a') as lock:
         try:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -455,9 +464,6 @@ def native_main(args):
             last_path=args.state.with_suffix('.receipt.json')
             if last_path.exists():
                 previous=json.loads(last_path.read_text())
-                carried=previous.get('last_success_at')
-                if type(carried) in (int,float) and math.isfinite(carried):
-                    last_success=carried
                 previous_time=previous.get('attempted_at')
                 if type(previous_time) not in (int,float) or not math.isfinite(previous_time):
                     raise custody.CustodyUnknown('last native tick timestamp unproved')
