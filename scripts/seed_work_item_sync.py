@@ -40,7 +40,10 @@ TICK_REQUESTS=1+MAX_DELIVERIES*ITEM_REQUESTS
 #: four items' verify reads to it. The item in flight always finishes, so the
 #: stop itself never leaves an effect indeterminate. The first item is always
 #: attempted, so a slow store keeps the old one-item-per-tick rate.
-READ_BUDGET_SECONDS=1.0
+#: 2.5s, not 1.0 (aegis-ksd, sattler 2026-10-16): measured ingress /query mean 0.70s and
+#: p90 0.97s, so a 1.0s budget stopped nearly every tick after one item. Incident reads
+#: (2-8s) still stop the tick.
+READ_BUDGET_SECONDS=2.5
 
 
 def deliver(reader,journal,call,pending,*,plane,actor,wrote):
