@@ -18,12 +18,14 @@ def context_rows(raw: dict) -> list[dict]:
     floor = context.get("similarity_floor")
     if isinstance(floor, bool) or not isinstance(floor, (int, float)) or not math.isfinite(floor) or not 0.52 <= floor <= 1:
         raise ContextUnknown("UNKNOWN search context floor")
+    rows = raw.get("context_results")
     insufficient = raw.get("insufficient_context")
     if insufficient is True and context.get("outcome") == "NO CONTEXT":
+        if not isinstance(rows, list) or rows:
+            raise ContextUnknown("UNKNOWN negative context evidence")
         return []
     if insufficient is not False or context.get("outcome") != "CONTEXT":
         raise ContextUnknown("UNKNOWN search context outcome")
-    rows = raw.get("context_results")
     if not isinstance(rows, list) or not rows:
         raise ContextUnknown("UNKNOWN admitted context")
     for row in rows:

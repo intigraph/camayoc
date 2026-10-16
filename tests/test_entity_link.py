@@ -142,6 +142,22 @@ class EntityLinkTest(unittest.TestCase):
         self.assertEqual(client.offered, [])
         self.assertIsNone(result["error"])
 
+    def test_negative_context_requires_explicit_empty_admitted_rows(self):
+        for rows in [[{"entity": "urn:wrong", "similarity": 0.8}], None, {}, "missing"]:
+            with self.subTest(rows=rows):
+                raw = {"results": [{"entity": "urn:diagnostic", "similarity": 0.99}],
+                       "insufficient_context": True,
+                       "context": {"contract": "quipu-context/v1", "outcome": "NO CONTEXT",
+                                   "similarity_floor": 0.52}}
+                if rows != "missing":
+                    raw["context_results"] = rows
+                client = StubClient([])
+                result = el.link("subject", "description", client, lambda _: raw)
+                self.assertEqual(result["context_outcome"], "UNKNOWN")
+                self.assertIn("ContextUnknown", result["error"])
+                self.assertIsNone(result["choice"])
+                self.assertEqual(client.offered, [])
+
     def test_legacy_or_malformed_context_is_unknown_not_abstention(self):
         for raw in [{"results": [{"entity": "urn:wrong"}]}, {"error": "unavailable"},
                     {"insufficient_context": False, "context_results": [],
