@@ -1,4 +1,4 @@
-"""One bounded native metadata projection per tick; effects never blindly resent.
+"""Bounded serial native metadata projections per tick; effects never blindly resent.
 
 This library has no automatic enrollment, initial cursor, board or schedule.
 The reviewed producer supplies the canonical Reader and durable custody.
@@ -30,13 +30,75 @@ def verify(post,envelope,item):
     return sum(native.lexical(row.get('v'))==expected for row in rows)==1
 
 
-def tick(reader,journal,post,*,changes,plane,actor):
-    requests=0;writes=0
+#: Serial deliveries per tick (wu ACK, aegis-ksd): one feed read plus at most four
+#: requests per item (native read, /knot, two-pattern verify) stays within 20.
+MAX_DELIVERIES=4
+ITEM_REQUESTS=4
+TICK_REQUESTS=1+MAX_DELIVERIES*ITEM_REQUESTS
+#: A request slower than this ends the tick after the item in flight (sattler,
+#: aegis-ksd): a slow store degrades to one item per tick instead of exposing
+#: four items' verify reads to it. The item in flight always finishes, so the
+#: stop itself never leaves an effect indeterminate. The first item is always
+#: attempted, so a slow store keeps the old one-item-per-tick rate.
+READ_BUDGET_SECONDS=1.0
+
+
+def deliver(reader,journal,call,pending,*,plane,actor,wrote):
+    """Prove one pending item and return its version. Raises on any doubt.
+
+    `wrote()` is called BEFORE the one writer request, so a write whose response
+    is lost is still counted.
+    """
+    item,tx,stored=pending
+    journal.mark_attempt(item,time.time())
+    if stored:
+        envelope=json.loads(stored)
+        if not verify(call,envelope,item):
+            raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
+        journal.acknowledge(item,tx,envelope['version'])
+        return envelope['version']
+    # Reader's own request gets the same total budget accounting.
+    canonical=native.Reader(call,reader.board).get(item)
+    previous=journal.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
+    if previous and canonical.version<previous[0]:
+        raise custody.CustodyUnknown('native source version regressed')
+    request=projection.body(canonical,plane=plane,actor=actor)
+    description=projection.description(canonical)
+    envelope={'request':request,'version':canonical.version,'description':description}
+    if previous and canonical.version==previous[0]:
+        if not verify(call,envelope,item):
+            raise custody.CustodyUnknown('same native version lost projection; no automatic repair/replay')
+        journal.prepare(item,tx,envelope)
+    else:
+        journal.prepare(item,tx,envelope)
+        wrote()
+        response=call('/knot',request)
+        if (not isinstance(response,dict) or response.get('conforms') is False
+            or not response.get('replaced') or type(response.get('tx_id')) is not int):
+            raise custody.CustodyUnknown('projection write outcome unproved; preserve exact pending effect')
+        if not verify(call,envelope,item):
+            raise custody.CustodyUnknown('projection effect not readable; preserve exact pending effect')
+    journal.acknowledge(item,tx,envelope['version'])
+    return envelope['version']
+
+
+def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
+    requests=0;writes=0;slowest=0.0
+    def wrote():
+        nonlocal writes
+        writes+=1
     def call(endpoint,body):
         nonlocal requests
         requests+=1
-        if requests>5:raise custody.CustodyUnknown('tick request budget exhausted')
-        return post(endpoint,body)
+        if requests>TICK_REQUESTS:raise custody.CustodyUnknown('tick request budget exhausted')
+        return timed(post,endpoint,body)
+    def timed(function,*args,**kwargs):
+        nonlocal slowest
+        started=clock()
+        try:
+            return function(*args,**kwargs)
+        finally:
+            slowest=max(slowest,clock()-started)
     receipt={'status':'UNKNOWN','writes':0,'requests':0,'verified':0}
     try:
         pending=journal.next()
@@ -45,7 +107,7 @@ def tick(reader,journal,post,*,changes,plane,actor):
         if backlog < custody.MAX_PENDING:
             requests+=1
             try:
-                page=changes(since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
+                page=timed(changes,since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
                              capture='new_values',graph=reader.board.graph)
                 journal.retain(page)
             except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
@@ -54,43 +116,23 @@ def tick(reader,journal,post,*,changes,plane,actor):
             pending=journal.next()
         else:
             feed_error='PendingCapacityReached'
-        if pending is None:
-            receipt['status']='OK'
-        else:
-            item,tx,stored=pending
-            journal.mark_attempt(item,time.time())
-            if stored:
-                envelope=json.loads(stored)
-                if not verify(call,envelope,item):
-                    raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
-            else:
-                # Reader's own request gets the same total budget accounting.
-                canonical=native.Reader(call,reader.board).get(item)
-                previous=journal.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
-                if previous and canonical.version<previous[0]:
-                    raise custody.CustodyUnknown('native source version regressed')
-                request=projection.body(canonical,plane=plane,actor=actor)
-                description=projection.description(canonical)
-                envelope={'request':request,'version':canonical.version,'description':description}
-                if previous and canonical.version==previous[0]:
-                    if not verify(call,envelope,item):
-                        raise custody.CustodyUnknown('same native version lost projection; no automatic repair/replay')
-                    journal.prepare(item,tx,envelope)
-                else:
-                    journal.prepare(item,tx,envelope)
-                    writes=1
-                    response=call('/knot',request)
-                    if (not isinstance(response,dict) or response.get('conforms') is False
-                        or not response.get('replaced') or type(response.get('tx_id')) is not int):
-                        raise custody.CustodyUnknown('projection write outcome unproved; preserve exact pending effect')
-                    if not verify(call,envelope,item):
-                        raise custody.CustodyUnknown('projection effect not readable; preserve exact pending effect')
-            journal.acknowledge(item,tx,envelope['version'])
-            receipt.update(status='OK',verified=1,item=item,version=envelope['version'])
+        receipt['status']='OK'
+        seen=set()
+        # Serial: the first doubt stops the tick; earlier items stay acknowledged.
+        while (pending is not None and len(seen)<MAX_DELIVERIES
+               and pending[0] not in seen and requests+ITEM_REQUESTS<=TICK_REQUESTS
+               and (not seen or slowest<=READ_BUDGET_SECONDS)):
+            seen.add(pending[0])
+            receipt['status']='UNKNOWN'
+            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote)
+            receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)
+            pending=journal.next()
         if feed_error:
             receipt.update(status='UNKNOWN',feed_error=feed_error)
     except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
-        receipt['error']=type(exc).__name__
+        receipt.update(status='UNKNOWN',error=type(exc).__name__)
+    if slowest>READ_BUDGET_SECONDS:
+        receipt['slow_read']=round(slowest,3)
     receipt.update(requests=requests,writes=writes,cursor=journal.cursor,
                    backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0])
     return receipt
