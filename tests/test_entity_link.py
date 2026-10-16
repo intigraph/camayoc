@@ -168,6 +168,17 @@ class EntityLinkTest(unittest.TestCase):
             self.assertIn("ContextUnknown", result["error"])
             self.assertEqual(client.offered, [])
 
+    def test_huge_admitted_cosine_is_unknown_without_model_call(self):
+        raw = {"insufficient_context": False,
+               "context_results": [{"entity": "urn:wrong", "similarity": 10 ** 400}],
+               "context": {"contract": "quipu-context/v1", "outcome": "CONTEXT",
+                           "similarity_floor": 0.52}}
+        client = StubClient([])
+        result = el.link("subject", "description", client, lambda _: raw)
+        self.assertEqual(result["context_outcome"], "UNKNOWN")
+        self.assertIn("ContextUnknown", result["error"])
+        self.assertEqual(client.offered, [])
+
     def test_false_admission_cannot_offer_a_below_floor_hit(self):
         raw = {"results": [], "insufficient_context": False,
                "context_results": [{"entity": "urn:wrong", "text": "neighbor", "similarity": 0.51}],
@@ -285,7 +296,7 @@ if __name__ == "__main__":
 class ContextFloorTests(unittest.TestCase):
     def test_unsupported_floor_is_unknown_even_for_negative_outcome(self):
         from search_context import ContextUnknown, context_rows
-        for floor in [0.2, None, True, "0.52", float("nan"), 1.1]:
+        for floor in [0.2, None, True, "0.52", float("nan"), 1.1, 10 ** 400]:
             for accepted in [False, True]:
                 with self.subTest(floor=floor, accepted=accepted):
                     body = {"insufficient_context": not accepted,

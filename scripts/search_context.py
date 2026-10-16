@@ -16,7 +16,7 @@ def context_rows(raw: dict) -> list[dict]:
     if not isinstance(context, dict) or context.get("contract") != "quipu-context/v1":
         raise ContextUnknown("UNKNOWN search context contract")
     floor = context.get("similarity_floor")
-    if isinstance(floor, bool) or not isinstance(floor, (int, float)) or not math.isfinite(floor) or not 0.52 <= floor <= 1:
+    if isinstance(floor, bool) or not isinstance(floor, (int, float)) or not 0.52 <= floor <= 1 or not math.isfinite(floor):
         raise ContextUnknown("UNKNOWN search context floor")
     rows = raw.get("context_results")
     insufficient = raw.get("insufficient_context")
@@ -32,6 +32,6 @@ def context_rows(raw: dict) -> list[dict]:
         if not isinstance(row, dict):
             raise ContextUnknown("UNKNOWN context row")
         similarity = row.get("similarity")
-        if isinstance(similarity, bool) or not isinstance(similarity, (int, float)) or not math.isfinite(similarity) or not floor <= similarity <= 1:
+        if isinstance(similarity, bool) or not isinstance(similarity, (int, float)) or not floor <= similarity <= 1 or not math.isfinite(similarity):
             raise ContextUnknown("UNKNOWN admitted similarity")
     return rows
