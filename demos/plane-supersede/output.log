@@ -1,0 +1,12 @@
+Script started on 2026-10-17 03:58:46-04:00 [COMMAND="python3 tests/demo_supersede_plane.py" <not executed on terminal>]
+Synthetic private loopback stores; no production writes. Baseline 6e1556a14476273e254bbf928bcb3f0ec2e936da
+promote_plane.py candidate SHA256 473e15b2216f5ddd4af42bd80f19fbec7f809e310049ab1d6e66a8c0da545670
+planes.py candidate SHA256 0239fd77ed21bedad8a5f1357a6fe3cfb2e93663dd635883803461e689344f04
+before: promote-plane (ordinary promotion)
+promoted 1 triples into crew:declared by bob (tx 8, digest 3def1ae2417b61f5); all read back; source interval LEFT OPEN
+{'current_claims': 2, 'old_current': True, 'new_current': True, 'old_as_of': True, 'siblings_kept': 9, 'inferred_source_kept': True}
+after: promote-plane --supersedes old.nt
+superseded exactly one target fact (tx 8, digest 2b76a6d5a9a9ff66); replacement and old absence read back; inferred source remains open
+{'current_claims': 1, 'old_current': False, 'new_current': True, 'old_as_of': True, 'siblings_kept': 9, 'inferred_source_kept': True}
+
+Script done on 2026-10-17 03:58:50-04:00 [COMMAND_EXIT_CODE="0"]
