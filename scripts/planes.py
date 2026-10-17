@@ -39,6 +39,7 @@ import socket
 import sys
 import urllib.error
 import urllib.request
+import urllib.parse
 from pathlib import Path
 
 SERVER = os.environ.get("QUIPU_SERVER", "http://localhost:3030").rstrip("/")
@@ -144,11 +145,11 @@ def provenance_headers(client: str, env=None) -> dict[str, str]:
     return out
 
 
-def _post(path: str, body: dict, *, client: str) -> dict:
+def _post(path: str, body: dict, *, client: str, form: bool = False) -> dict:
     req = urllib.request.Request(
         f"{SERVER}{path}",
-        data=json.dumps(body, sort_keys=True).encode(),
-        headers={"Content-Type": "application/json", "X-Quipu-Client": client,
+        data=(urllib.parse.urlencode(body) if form else json.dumps(body, sort_keys=True)).encode(),
+        headers={"Content-Type": "application/x-www-form-urlencoded" if form else "application/json", "X-Quipu-Client": client,
                  **provenance_headers(client)},
         method="POST",
     )
