@@ -443,3 +443,29 @@ ID is available. The diagnostic names process-only suppression when no session
 ID exists or persistence fails. Public reads remain available. Obtain an accepted
 credential from the service administrator, verify it with `caboodle doctor`, and
 start a new session after repairing a refused credential.
+
+### Replacing one promoted fact
+
+Use `promote_plane.py --triples-file replacement.nt --supersedes old.nt --to
+crew:declared --by <authorized-reviewer> --authored-by <different-author>
+--reason <evidence>` to supersede one exact target fact. Both files contain one
+N-Triples statement, with the same subject and predicate and a changed object.
+The replacement must already exist in `crew:inferred`; the old fact must exist
+in the target, with no competing value for that property. Existing authority
+and no-self-promotion rules apply. `--emit` performs the preflight reads and
+prints the proposed conditional update without writing.
+
+The server rechecks those conditions under its writer lock. One target-graph
+transaction closes the old fact, asserts the replacement, and records both exact
+statements as `camayoc:supersededTriple` and `camayoc:replacementTriple` on the
+plane-promotion record. The record digest includes both statements and target.
+Other facts in the carrier episode remain untouched; the old fact remains
+available through historical reads. Store commit time determines the interval
+close; the optional timestamp only dates the audit record.
+
+This mode leaves the inferred source open and refuses `--source-episode`.
+It verifies new target presence, old target absence, and source presence after
+the write. A refused or indeterminate write is never automatically retried.
+An existing client-side authority grant is still required; this does not enroll
+principals or grant authority merely because someone supplies a `--by` value.
+Production replacement remains a separate governed operation.
