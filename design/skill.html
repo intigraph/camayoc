@@ -181,18 +181,17 @@
                     <main>
                         <h1 id="design-the-skill-is-the-interface"><a class="header" href="#design-the-skill-is-the-interface">Design: The Skill Is the Interface</a></h1>
 <blockquote>
-<p><strong>Implementation status (2026-08-22):</strong> 🟡 <strong>The skill ships in this repo
-(<code>skills/camayoc/SKILL.md</code>); the quipu substrate it leans on is partly
-landed.</strong> Labels (#65) are no longer the gap they were: quipu's
-<code>/graph/create</code> + <code>/graph/label</code> routes exist and <code>scripts/planes.py</code> uses
-them to label the quarantine planes (camayoc-s0h). Server-side stored
-queries (#79) remain pending as far as this repo can verify — camayoc's
-half is done ahead of them: every named definition in <code>queries/</code> ships,
-executed against fixture graphs in tests, ready to load when #79 lands.
-(The count lives in <code>just query-coverage</code>'s <code>stored_query_count</code>, not here —
-stating it in prose is how this line went stale twice.)
-Where machinery is unbuilt the skill still says so and gives the raw-SPARQL
-fallback — it never pretends.</p>
+<p><strong>Implementation status (2026-10-17):</strong> 🟡 <strong>The skill and server-side
+stored-query loading path ship.</strong> <code>scripts/bootstrap.sh</code> loads the named
+definitions in <code>queries/</code> through Quipu's <code>/queries</code> API; the server lists
+and runs them through <code>/ask</code>. Fixture tests exercise the definitions, and
+<code>just query-coverage</code> reports coverage and names gaps without freezing a
+count in prose. <a href="../getting-started.html">Getting started</a> documents loading.
+Labels also ship: <code>/graph/create</code> + <code>/graph/label</code> are used by
+<code>scripts/planes.py</code> for quarantine planes. These implemented APIs do not
+prove that every deployment has loaded the definitions or that every
+competency question has faithful answers from real records. Raw SPARQL is
+an alternative for inspection, not a workaround for an unbuilt #79 API.</p>
 </blockquote>
 <h2 id="1-the-usage-model"><a class="header" href="#1-the-usage-model">1. The usage model</a></h2>
 <p>Camayoc's primary consumer is <strong>an agent in a session</strong>, not a pipeline. The
@@ -218,7 +217,7 @@ is UX; the shapes are the contract.</li>
 <h2 id="2-the-four-pillars-as-the-skill-enables-them"><a class="header" href="#2-the-four-pillars-as-the-skill-enables-them">2. The four pillars, as the skill enables them</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Pillar</th><th>What the skill has the agent do</th></tr></thead><tbody>
 <tr><td><strong>Bootstrap</strong></td><td>Stand up governed memory from nothing: check the quipu is reachable, load <code>ontology/</code> + <code>shapes/</code> (idempotent), verify with a probe write that SHACL refusal is live — <em>prove the gate is on, not assume it</em>.</td></tr>
-<tr><td><strong>Query first</strong></td><td>Before deciding or re-deriving: run the competency questions (stored queries once quipu #79 lands; the skill carries raw-SPARQL equivalents until then). "What did we decide about X and why" is asked <em>before</em> X is re-decided.</td></tr>
+<tr><td><strong>Query first</strong></td><td>Before deciding or re-deriving: run the named competency queries loaded by bootstrap through <code>/ask</code>; the skill also carries raw-SPARQL patterns. "What did we decide about X and why" is asked <em>before</em> X is re-decided.</td></tr>
 <tr><td><strong>Record at the moment</strong></td><td>When a decision happens, write it then — an episode carrying a <code>Decision</code> (what was chosen, over what, why, under which work item), tagged with its honest <code>sourceKind</code>. Work items and outcomes likewise. Session end = outcomes recorded, not summarized into oblivion.</td></tr>
 <tr><td><strong>Tag honestly</strong></td><td><code>observed</code> = a record exists and was parsed; <code>declared</code> = a human said so (quote them); <code>inferred</code> = the agent concluded it — and inferred lands in the inferred plane, low-trust, promotable later. Never up-tag. The store refuses untagged writes; the skill makes the honest tag the path of least resistance.</td></tr>
 </tbody></table>

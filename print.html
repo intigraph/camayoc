@@ -1399,18 +1399,17 @@ importance           -&gt; sets curation effort. never a write-time filter.
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-the-skill-is-the-interface"><a class="header" href="#design-the-skill-is-the-interface">Design: The Skill Is the Interface</a></h1>
 <blockquote>
-<p><strong>Implementation status (2026-08-22):</strong> 🟡 <strong>The skill ships in this repo
-(<code>skills/camayoc/SKILL.md</code>); the quipu substrate it leans on is partly
-landed.</strong> Labels (#65) are no longer the gap they were: quipu's
-<code>/graph/create</code> + <code>/graph/label</code> routes exist and <code>scripts/planes.py</code> uses
-them to label the quarantine planes (camayoc-s0h). Server-side stored
-queries (#79) remain pending as far as this repo can verify — camayoc's
-half is done ahead of them: every named definition in <code>queries/</code> ships,
-executed against fixture graphs in tests, ready to load when #79 lands.
-(The count lives in <code>just query-coverage</code>'s <code>stored_query_count</code>, not here —
-stating it in prose is how this line went stale twice.)
-Where machinery is unbuilt the skill still says so and gives the raw-SPARQL
-fallback — it never pretends.</p>
+<p><strong>Implementation status (2026-10-17):</strong> 🟡 <strong>The skill and server-side
+stored-query loading path ship.</strong> <code>scripts/bootstrap.sh</code> loads the named
+definitions in <code>queries/</code> through Quipu's <code>/queries</code> API; the server lists
+and runs them through <code>/ask</code>. Fixture tests exercise the definitions, and
+<code>just query-coverage</code> reports coverage and names gaps without freezing a
+count in prose. <a href="design/../getting-started.html">Getting started</a> documents loading.
+Labels also ship: <code>/graph/create</code> + <code>/graph/label</code> are used by
+<code>scripts/planes.py</code> for quarantine planes. These implemented APIs do not
+prove that every deployment has loaded the definitions or that every
+competency question has faithful answers from real records. Raw SPARQL is
+an alternative for inspection, not a workaround for an unbuilt #79 API.</p>
 </blockquote>
 <h2 id="1-the-usage-model"><a class="header" href="#1-the-usage-model">1. The usage model</a></h2>
 <p>Camayoc's primary consumer is <strong>an agent in a session</strong>, not a pipeline. The
@@ -1436,7 +1435,7 @@ is UX; the shapes are the contract.</li>
 <h2 id="2-the-four-pillars-as-the-skill-enables-them"><a class="header" href="#2-the-four-pillars-as-the-skill-enables-them">2. The four pillars, as the skill enables them</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Pillar</th><th>What the skill has the agent do</th></tr></thead><tbody>
 <tr><td><strong>Bootstrap</strong></td><td>Stand up governed memory from nothing: check the quipu is reachable, load <code>ontology/</code> + <code>shapes/</code> (idempotent), verify with a probe write that SHACL refusal is live — <em>prove the gate is on, not assume it</em>.</td></tr>
-<tr><td><strong>Query first</strong></td><td>Before deciding or re-deriving: run the competency questions (stored queries once quipu #79 lands; the skill carries raw-SPARQL equivalents until then). "What did we decide about X and why" is asked <em>before</em> X is re-decided.</td></tr>
+<tr><td><strong>Query first</strong></td><td>Before deciding or re-deriving: run the named competency queries loaded by bootstrap through <code>/ask</code>; the skill also carries raw-SPARQL patterns. "What did we decide about X and why" is asked <em>before</em> X is re-decided.</td></tr>
 <tr><td><strong>Record at the moment</strong></td><td>When a decision happens, write it then — an episode carrying a <code>Decision</code> (what was chosen, over what, why, under which work item), tagged with its honest <code>sourceKind</code>. Work items and outcomes likewise. Session end = outcomes recorded, not summarized into oblivion.</td></tr>
 <tr><td><strong>Tag honestly</strong></td><td><code>observed</code> = a record exists and was parsed; <code>declared</code> = a human said so (quote them); <code>inferred</code> = the agent concluded it — and inferred lands in the inferred plane, low-trust, promotable later. Never up-tag. The store refuses untagged writes; the skill makes the honest tag the path of least resistance.</td></tr>
 </tbody></table>
@@ -1480,7 +1479,7 @@ re-centered on the skill.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-first-slice--task-lifecycle--decisions"><a class="header" href="#design-first-slice--task-lifecycle--decisions">Design: First Slice — task lifecycle + decisions</a></h1>
 <blockquote>
-<p><strong>Implementation status (2026-08-22):</strong> 🟡 <strong>The spine is built and proven
+<p><strong>Implementation status (2026-10-17):</strong> 🟡 <strong>The spine is built and proven
 end-to-end</strong>: <code>ontology/core.ttl</code> + <code>shapes/core.shapes.ttl</code> ship (v1,
 deliverable 1), the skill and plugin ship, and the loop was verified
 against a live quipu with <code>validate_on_write</code> — bare store → bootstrap →
@@ -1490,9 +1489,12 @@ deliverable 5's substance landed in <code>just test</code> rather than <code>jus
 the stored queries execute against seeded fixture graphs with positive and
 control-negative arms (<code>tests/test_competency_queries.py</code>,
 <code>tests/test_golden_path_queries.py</code>), and <code>just query-coverage</code> reports
-per-question coverage with gaps named. Deliverable 4's camayoc half is
-every definition in <code>queries/</code> (counted by <code>just query-coverage</code>, not
-restated here), still awaiting quipu #79 to serve them.
+per-question coverage with gaps named. Deliverable 4's stored-query
+loading and serving path ships:
+<code>scripts/bootstrap.sh</code> POSTs definitions from <code>queries/</code> to <code>/queries</code>,
+and Quipu lists and runs them through <code>/ask</code>. Counts and gaps come from
+<code>just query-coverage</code>; loading still has to succeed on each deployment.
+Real-record answer acceptance below remains separate from API availability.
 Remaining: the crew-domain vocabulary beyond core (deliverable 2 — no
 <code>ontology/crew.ttl</code> exists; later slices minted into core instead) and the
 optional shantytown-records enrichment parser (deliverable 6 — unbuilt; the
@@ -1537,7 +1539,8 @@ convention promotes them. Start with (a) — declared/observed beats inferred.</
 <p>The slice's question set lives in
 <a href="https://github.com/scbrown/camayoc/blob/main/competency/crew-task-lifecycle.md">competency/crew-task-lifecycle.md</a>
 and doubles as the test suite: the slice is <strong>done</strong> when each question runs
-as a named stored query (quipu #79) against a graph built from <em>real</em>
+as a named stored query through the implemented <code>/ask</code> API against a graph
+built from <em>real</em>
 shantytown records, and an agent (or Stiwi) accepts the answers as faithful.
 That definition-of-done is stolen deliberately from the claims planning doc:
 model with sign-off, real historical data validated, questions running as
@@ -1551,10 +1554,11 @@ slice actually needs (and no more).</li>
 already; the slice proves it — a skill-guided agent bootstraps a bare
 store, records a real session's decisions/work/outcomes, and the
 competency questions answer from what it recorded.</li>
-<li>The competency queries as stored queries, shipped for <code>crew.pendant.db</code> when
-quipu #79/#81 land; runnable as raw SPARQL until then (the skill carries
-the patterns).</li>
-<li>An eval gate: <code>just check</code> runs the questions against a fixture graph —
+<li>The competency queries as stored queries: bootstrap loads <code>queries/</code>
+through <code>/queries</code>, and <code>/ask</code> serves them. Raw-SPARQL patterns remain
+available in the skill. Pack delivery and acceptance on real records are
+separate from this implemented loading path.</li>
+<li>An eval gate: <code>just test</code> runs the questions against a fixture graph —
 built from skill-recorded episodes, optionally corroborated by the
 enrichment parser.</li>
 <li><em>(Optional, unblocking nothing)</em> <code>camayoc crew ingest &lt;records-root&gt;</code> —
