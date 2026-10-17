@@ -490,6 +490,42 @@ lessons §1.5 inherits.</li>
 <li>quipu <code>docs/design/graph-labels.md</code> — the lattice that makes quarantine
 enforceable rather than aspirational.</li>
 </ul>
+<h2 id="workitem-graph-scope-and-historical-identities"><a class="header" href="#workitem-graph-scope-and-historical-identities">WorkItem graph scope and historical identities</a></h2>
+<p>An unqualified direct-type query such as <code>?item a ?type</code>, even with a
+<code>WorkItem</code> type filter, reads the default graph. It does not establish
+presence or absence in the tracker records graph. The default graph retains
+historical WorkItems; use the explicitly authorized records graph for tracker
+evidence. Do not interpret a large default-graph answer as current tracker
+coverage.</p>
+<p>The original September 2026 population counts are historical measurements,
+not a maintained census. A bounded October follow-up found current identifiers
+in records but absent from default, and an older identifier present in both.
+The populations must not be assumed disjoint, and identifier length is not a
+routing rule. Direct typing proves presence in a scope; it does not establish
+current status, the latest tracker revision, or completeness.</p>
+<p>Keep the two identity questions separate. Canonical tracker identities use the
+bare tracker ID, as described above; historical <code>code/bead/&lt;id&gt;</code> provenance
+aliases require explicit reconciliation. Supporting multiple WorkItem
+vocabularies, including the native tracker's <code>schema:Action</code>, does not select
+a graph or make an unqualified catalogue query a current-tracker query.
+Review both the graph scope and the vocabulary of each consumer.</p>
+<p>For a bounded diagnostic, supply a small explicit <code>VALUES ?item</code> set of
+known identifiers and inspect their asserted types separately in default and
+the configured records graph. Use <code>?item a ?type</code> with an exact type
+<code>FILTER</code> and a row limit large enough for the supplied identifiers and types.
+Include a known positive control in each scope, check truncation, and report
+the identifiers, graph, query and result. A failed query is UNKNOWN. A positive
+control proves execution, not population coverage. Read labels separately
+rather than adding a broad join.</p>
+<p>For current state, use a consumer that explicitly selects the records graph
+and its latest-state model, such as the
+<a href="planned-work-queries.html">planned-work queries</a>. Those queries have their own
+supported-input and result-limit boundaries. Catalogue source presence is
+separate from installed query definitions and observed live acceptance.</p>
+<p>This signpost authorizes no union into default, graph promotion, alias
+rewriting, retraction, backfill, or query-library replacement. A retrospective
+repair needs producer provenance, consumer coverage and a separate reviewed
+decision. Preserve the historical facts while investigating that decision.</p>
 <h2 id="observed-workitem-consumer-authority"><a class="header" href="#observed-workitem-consumer-authority">Observed WorkItem consumer authority</a></h2>
 <p>The cost publisher reads deterministic tracker WorkItems from <code>crew:records</code>.
 This is an explicitly granted read of observed evidence, not a move into ROOT
