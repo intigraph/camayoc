@@ -469,3 +469,8 @@ the write. A refused or indeterminate write is never automatically retried.
 An existing client-side authority grant is still required; this does not enroll
 principals or grant authority merely because someone supplies a `--by` value.
 Production replacement remains a separate governed operation.
+
+The supersede client requires a server that reports `/update` transaction counts
+and graph identity; the integration suite pins the verified Quipu 0.14.1 release.
+A legacy server's empty response is UNKNOWN, even if its write committed. Verify
+the resulting state before any retry; an empty response is never called success.
