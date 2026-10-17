@@ -50,6 +50,19 @@ the promotion still proceeds, the source interval stays open, and the
 promotion record says so out loud (`camayoc:sourceLeftOpen true`) — an open
 interval on the record beats a close that silently never happened.
 
+## Exact target supersession
+
+`--supersedes old.nt` replaces ONE current target fact while promoting ONE
+inferred replacement with the same subject/predicate. The usual authority and
+no-self-promotion gates still apply. A conditional `/update` rechecks both facts
+and refuses competing target values under the writer lock. It closes the old
+valid interval and writes the replacement and audit record in ONE target-graph
+transaction. The carrier episode and other target facts are never retracted.
+The inferred source remains open, explicitly recorded. `--source-episode` is
+incompatible. Store valid-time uses commit wall time; `--timestamp` dates the
+promotion record, not a backdated target close. Missing/changed preconditions
+refuse without a write; an indeterminate response must be verified, not retried.
+
 Usage:
     python3 scripts/promote_plane.py \\
         --triples-file edges.nt --to crew:records \\
@@ -200,6 +213,7 @@ def promotion_write(
     reason: str,
     timestamp: str,
     source_left_open: bool = True,
+    superseded: Triple | None = None,
 ) -> dict:
     """The `/knot` body that ASSERTS the promoted triples in the target plane,
     with the promotion record beside them in the same transaction.
@@ -211,6 +225,8 @@ def promotion_write(
     though the facts it moves were inferred.
     """
     digest = promotion_digest(triples, target_plane)
+    if superseded is not None:
+        digest = hashlib.sha256(("supersede\0" + digest + "\0" + " ".join(superseded)).encode()).hexdigest()[:16]
     record_iri = f"<urn:camayoc:plane-promotion:{digest}>"
     facts = "\n".join(f"{s} {p} {o} ." for s, p, o in sorted(set(triples)))
     subjects = sorted({t[0] for t in triples})
@@ -232,6 +248,9 @@ def promotion_write(
     prov:wasDerivedFrom   {derived} ;
     camayoc:reason        {_literal(reason)} .
 """
+    if superseded is not None:
+        record += (f"{record_iri} camayoc:supersededTriple {_literal(' '.join(superseded) + ' .')} ;\n"
+                   f"    camayoc:replacementTriple {_literal(' '.join(triples[0]) + ' .')} .\n")
     turtle = (
         "@prefix camayoc: <https://camayoc.local/ontology/> .\n"
         "@prefix aegis:   <http://aegis.gastown.local/ontology/> .\n"
@@ -320,6 +339,76 @@ def promote(
     return write, close
 
 
+
+def supersede(
+    triples: list[Triple], target_plane: str, promoted_by: str,
+    authored_by: str, reason: str, timestamp: str, superseded: Triple,
+    grants=None, source_has=None, target_has=None,
+) -> dict:
+    """One same-property compare-and-swap, audited in the SAME target graph.
+
+    Preflight reads are diagnostic. The old target and new source facts and
+    absence of another target value are rechecked by the server under its writer
+    lock. No source episode is closed; no multi-graph atomicity is assumed.
+    """
+    if (len(triples) != 1 or triples[0][:2] != superseded[:2]
+            or triples[0] == superseded):
+        raise PromotionRefused("supersede requires one changed object on the same subject/predicate")
+    # Reuse every authority, ranking, authorship and source-presence gate.
+    promote(triples, target_plane, promoted_by, authored_by, reason, timestamp,
+            grants=grants, source_has=source_has)
+    if target_has is None or not target_has(superseded):
+        raise PromotionRefused("the exact superseded fact is not present in the target plane")
+    write = promotion_write(triples, target_plane, promoted_by, authored_by,
+                            reason, timestamp, superseded=superseded)
+    prefixes, facts = write.pop("turtle").split("\n\n", 1)
+    prefixes = "\n".join(line.replace("@prefix ", "PREFIX ", 1).removesuffix(" .")
+                         for line in prefixes.splitlines())
+    graph = write["graph"]
+    source = planes.PLANES[SOURCE_PLANE]["iri"]
+    old = " ".join(superseded) + " ."
+    new = " ".join(triples[0]) + " ."
+    subject, predicate, old_object = superseded
+    write["update"] = (f"{prefixes}\nDELETE {{ GRAPH <{graph}> {{ {old} }} }}\n"
+        f"INSERT {{ GRAPH <{graph}> {{ {facts} }} }}\n"
+        f"WHERE {{ GRAPH <{graph}> {{ {old} }} GRAPH <{source}> {{ {new} }} "
+        f"FILTER NOT EXISTS {{ GRAPH <{graph}> {{ {subject} {predicate} ?other . "
+        f"FILTER (!sameTerm(?other, {old_object})) }} }} }}")
+    return write
+
+
+def commit_supersede(write: dict, old: Triple, new: Triple) -> int:
+    """Never retry an indeterminate write; verify both planes after one commit."""
+    try:
+        result = planes._post("/update", {k: write[k] for k in ("update", "actor", "source")},
+                              client="camayoc-planes", form=True)
+    except planes.PlaneError as exc:
+        print(f"SUPERSEDE indeterminate: verify before retrying: {exc}", file=sys.stderr)
+        return 3
+    graphs = result.get("graphs") if isinstance(result, dict) else None
+    if (not isinstance(result, dict) or type(result.get("tx")) is not int
+            or type(result.get("retracted")) is not int or result["retracted"] != 1
+            or type(result.get("asserted")) is not int or result["asserted"] < 1
+            or not isinstance(graphs, list) or len(graphs) != 1
+            or not isinstance(graphs[0], dict)
+            or graphs[0].get("graph") != write["graph"]):
+        print("SUPERSEDE not confirmed: precondition did not match or report UNKNOWN; verify before retrying",
+              file=sys.stderr)
+        return 3
+    try:
+        verified = (ask_in_graph(write["graph"], new)
+                    and not ask_in_graph(write["graph"], old)
+                    and ask_in_graph(planes.PLANES[SOURCE_PLANE]["iri"], new))
+    except planes.PlaneError:
+        verified = False
+    if not verified:
+        print(f"SUPERSEDE committed tx {result['tx']} but read-back UNKNOWN; no retry", file=sys.stderr)
+        return 5
+    print(f"superseded exactly one target fact (tx {result['tx']}, digest {write['digest']}); "
+          "replacement and old absence read back; inferred source remains open")
+    return 0
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -340,6 +429,7 @@ def main() -> int:
         "EVERYTHING that episode carried, so pass it only when the triples file is that "
         "episode's complete edge set",
     )
+    ap.add_argument("--supersedes", help="N-Triples file containing exactly one old target fact; never a source episode")
     ap.add_argument("--emit", action="store_true",
                     help="run every gate (including the read-only source check), print the "
                     "write and the close, and write nothing")
@@ -349,6 +439,18 @@ def main() -> int:
 
     try:
         triples = parse_ntriples(Path(args.triples_file).read_text())
+        if args.supersedes:
+            old = parse_ntriples(Path(args.supersedes).read_text())
+            if len(old) != 1 or args.source_episode:
+                raise PromotionRefused("supersede needs exactly one old fact and forbids source-episode retraction")
+            write = supersede(triples, args.target, args.by, args.authored_by,
+                              args.reason, timestamp, old[0],
+                              source_has=lambda t: ask_in_graph(source_iri, t),
+                              target_has=lambda t: ask_in_graph(planes.PLANES[args.target]["iri"], t))
+            if args.emit:
+                print(json.dumps({"supersession": write, "close": None}, indent=2))
+                return 0
+            return commit_supersede(write, old[0], triples[0])
         write, close = promote(
             triples, args.target, args.by, args.authored_by, args.reason, timestamp,
             source_episode=args.source_episode,

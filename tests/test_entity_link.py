@@ -19,7 +19,11 @@ import jev  # noqa: E402
 def search_of(by_query: dict[str, list[str]]):
     def search(q):
         key = "title" if "\n" not in q else "full"
-        return {"results": [{"entity": e, "text": f"text of {e}"} for e in by_query[key]]}
+        rows = [{"entity": e, "text": f"text of {e}", "similarity": 0.9} for e in by_query[key]]
+        return {"results": rows, "context_results": rows,
+                "insufficient_context": not bool(rows),
+                "context": {"contract": "quipu-context/v1", "similarity_floor": 0.52,
+                            "outcome": "CONTEXT" if rows else "NO CONTEXT"}}
     return search
 
 
@@ -128,6 +132,62 @@ class EntityLinkTest(unittest.TestCase):
         self.assertIsNone(res["choice"])
         self.assertEqual(client.offered, [])
 
+    def test_no_context_never_offers_diagnostic_neighbors_to_jev(self):
+        client = StubClient([])
+        raw = {"results": [{"entity": "urn:wrong", "text": "wrong neighbor", "similarity": 0.99}],
+               "insufficient_context": True, "context_results": [],
+               "context": {"contract": "quipu-context/v1", "outcome": "NO CONTEXT", "similarity_floor": 0.52}}
+        result = el.link("subject", "description", client, lambda _: raw)
+        self.assertEqual(result["context_outcome"], "NO CONTEXT")
+        self.assertEqual(client.offered, [])
+        self.assertIsNone(result["error"])
+
+    def test_negative_context_requires_explicit_empty_admitted_rows(self):
+        for rows in [[{"entity": "urn:wrong", "similarity": 0.8}], None, {}, "missing"]:
+            with self.subTest(rows=rows):
+                raw = {"results": [{"entity": "urn:diagnostic", "similarity": 0.99}],
+                       "insufficient_context": True,
+                       "context": {"contract": "quipu-context/v1", "outcome": "NO CONTEXT",
+                                   "similarity_floor": 0.52}}
+                if rows != "missing":
+                    raw["context_results"] = rows
+                client = StubClient([])
+                result = el.link("subject", "description", client, lambda _: raw)
+                self.assertEqual(result["context_outcome"], "UNKNOWN")
+                self.assertIn("ContextUnknown", result["error"])
+                self.assertIsNone(result["choice"])
+                self.assertEqual(client.offered, [])
+
+    def test_legacy_or_malformed_context_is_unknown_not_abstention(self):
+        for raw in [{"results": [{"entity": "urn:wrong"}]}, {"error": "unavailable"},
+                    {"insufficient_context": False, "context_results": [],
+                     "context": {"contract": "future", "outcome": "CONTEXT"}}]:
+            client = StubClient([])
+            result = el.link("subject", "description", client, lambda _: raw)
+            self.assertEqual(result["context_outcome"], "UNKNOWN")
+            self.assertIn("ContextUnknown", result["error"])
+            self.assertEqual(client.offered, [])
+
+    def test_huge_admitted_cosine_is_unknown_without_model_call(self):
+        raw = {"insufficient_context": False,
+               "context_results": [{"entity": "urn:wrong", "similarity": 10 ** 400}],
+               "context": {"contract": "quipu-context/v1", "outcome": "CONTEXT",
+                           "similarity_floor": 0.52}}
+        client = StubClient([])
+        result = el.link("subject", "description", client, lambda _: raw)
+        self.assertEqual(result["context_outcome"], "UNKNOWN")
+        self.assertIn("ContextUnknown", result["error"])
+        self.assertEqual(client.offered, [])
+
+    def test_false_admission_cannot_offer_a_below_floor_hit(self):
+        raw = {"results": [], "insufficient_context": False,
+               "context_results": [{"entity": "urn:wrong", "text": "neighbor", "similarity": 0.51}],
+               "context": {"contract": "quipu-context/v1", "outcome": "CONTEXT", "similarity_floor": 0.52}}
+        client = StubClient([])
+        result = el.link("subject", "description", client, lambda _: raw)
+        self.assertEqual(result["context_outcome"], "UNKNOWN")
+        self.assertEqual(client.offered, [])
+
     def _write(self, responses):
         """Run write_link against scripted /knot answers; return (posts, ensured)."""
         import io
@@ -231,3 +291,17 @@ class AuthoritativeInputTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ContextFloorTests(unittest.TestCase):
+    def test_unsupported_floor_is_unknown_even_for_negative_outcome(self):
+        from search_context import ContextUnknown, context_rows
+        for floor in [0.2, None, True, "0.52", float("nan"), 1.1, 10 ** 400]:
+            for accepted in [False, True]:
+                with self.subTest(floor=floor, accepted=accepted):
+                    body = {"insufficient_context": not accepted,
+                            "context_results": [{"entity": "urn:good", "similarity": 0.9}] if accepted else [],
+                            "context": {"contract": "quipu-context/v1", "similarity_floor": floor,
+                                        "outcome": "CONTEXT" if accepted else "NO CONTEXT"}}
+                    with self.assertRaises(ContextUnknown):
+                        context_rows(body)

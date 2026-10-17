@@ -147,3 +147,44 @@ class SerialTicks(unittest.TestCase):
         self.assertEqual(self.writes.count(self.ITEMS[0]),1)  # verified from custody, never resent
         self.assertEqual(sorted(self.writes),self.ITEMS)
         self.assertEqual(self.backlog(),0)
+
+
+class SlowReadStop(SerialTicks):
+    """A request over READ_BUDGET_SECONDS ends the tick after the item in flight."""
+    def setUp(self):
+        super().setUp();self.now=0.0;self.slow_on=set()
+    def clock(self):return self.now
+    def post(self,endpoint,body):
+        # Each request advances the clock; a chosen request number is slow.
+        self.now+=5.0 if self.calls+1 in self.slow_on else 0.01
+        return super().post(endpoint,body)
+    def tick(self,feed_seconds=0.01):
+        def feed(**args):
+            self.now+=feed_seconds
+            return {'records':[],'next_tx':args['since'],'watermark_tx':args['since'],'capture':'new_values'}
+        return sync.tick(self.reader,self.j,self.post,changes=feed,plane='urn:private:knowledge',
+                         actor='fixture',clock=self.clock)
+
+    def test_fast_reads_keep_four_per_tick(self):
+        result=self.tick()
+        self.assertEqual((result['status'],result['verified']),('OK',4))
+        self.assertNotIn('slow_read',result)
+
+    def test_slow_read_finishes_the_item_in_flight_then_stops(self):
+        self.slow_on={2}  # the first item's /knot
+        result=self.tick()
+        self.assertEqual((result['status'],result['verified'],result['writes']),('OK',1,1))
+        self.assertGreater(result['slow_read'],sync.READ_BUDGET_SECONDS)
+        self.assertEqual(self.backlog(),4)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM pending WHERE body IS NOT NULL').fetchone()[0],0)
+
+    def test_slow_feed_still_attempts_one_item(self):
+        result=self.tick(feed_seconds=5.0)
+        self.assertEqual((result['status'],result['verified']),('OK',1))
+        self.assertIn('slow_read',result)
+
+    def test_slow_read_on_a_later_item_keeps_earlier_ones(self):
+        self.slow_on={sync.ITEM_REQUESTS+1}  # second item's native read
+        result=self.tick()
+        self.assertEqual((result['status'],result['verified']),('OK',2))
+        self.assertEqual(self.backlog(),3)

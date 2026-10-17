@@ -9,11 +9,11 @@ steps:
    node is the record of a write, and code chunks and doc sections are passages.
    A work item is about none of those.
 2. DECIDE. ONE Jev `choice` over the candidates plus none-of-these. The
-   none-of-these option IS the abstention, so there is no numeric floor here.
-   That is deliberate: the bead asks to share the bobbin retrieval floor's
-   calibration (aegis-4hhqoe.3) rather than invent a second threshold, and that
-   calibration does not exist yet. A per-candidate noul against .3's floor can
-   replace this once it lands.
+   none-of-these option IS the inference abstention. Retrieval first requires
+   Quipu's versioned context contract. NO CONTEXT never offers diagnostic
+   neighbors; UNKNOWN remains an error. Jev's choice is still an inference,
+   not a promotion or proof of the subject.
+
 
 `--write` records the accepted link as `<item> aegis:about <entity>` with
 `sourceKind inferred`, routed by `planes.plane_for('inferred')` into the
@@ -36,6 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jev  # noqa: E402
+from search_context import ContextUnknown, context_rows  # noqa: E402
 
 SERVER = os.environ.get("QUIPU_SERVER", "http://localhost:3030").rstrip("/")
 ONTOLOGY = "http://aegis.gastown.local/ontology/"
@@ -90,7 +91,7 @@ def is_entity(iri: str) -> bool:
 
 def _entities(raw: dict) -> dict[str, str]:
     out: dict[str, str] = {}
-    for hit in raw.get("results", []):
+    for hit in context_rows(raw):
         iri = hit.get("entity") or ""
         if iri and iri not in out and is_entity(iri):
             out[iri] = (hit.get("text") or "")[:300]
@@ -126,11 +127,17 @@ def _local(iri: str) -> str:
 
 def link(title: str, description: str, client=None, search=None, item: str = "") -> dict:
     """{'candidates', 'choice' (an entity or None), 'confidence', 'usage'}."""
-    cands = candidates(title, description, search, item)
+    try:
+        cands = candidates(title, description, search, item)
+    except ContextUnknown:
+        return {"candidates": [], "choice": None, "confidence": None, "usage": {},
+                "error": "ContextUnknown: UNKNOWN search context",
+                "context_outcome": "UNKNOWN"}
     result = {"candidates": cands, "choice": None, "confidence": None, "usage": {},
               "error": None}
     if not cands:
-        result["reason"] = "search returned no entity candidates"
+        result["reason"] = "NO CONTEXT: search admitted no entity candidates"
+        result["context_outcome"] = "NO CONTEXT"
         return result
     # Option keys are the entity IRIs themselves, so the answer needs no lookup
     # table and cannot name anything that was not offered.

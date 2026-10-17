@@ -4,6 +4,8 @@ import hashlib
 import importlib.util
 import json
 import subprocess
+import sys
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -61,6 +63,28 @@ class SourceRelease(unittest.TestCase):
         self.assertNotEqual(subprocess.run(["sha256sum", "-c", "SHA256SUMS"], cwd=output, capture_output=True).returncode, 0)
         archive.unlink()
         self.assertNotEqual(subprocess.run(["sha256sum", "-c", "SHA256SUMS"], cwd=output, capture_output=True).returncode, 0)
+
+    def test_context_consumer_and_required_helper_travel_in_source_archive(self):
+        source = Path(__file__).resolve().parents[1] / "scripts"
+        scripts = self.repo / "scripts"
+        scripts.mkdir()
+        for name in ("entity_link.py", "jev.py", "search_context.py"):
+            shutil.copy2(source / name, scripts / name)
+        self.git("add", "scripts")
+        self.git("commit", "-qm", "context consumer fixture")
+        proof = PACK.package("HEAD", "0.1.0", self.root / "context-release")
+        extracted = self.root / "extracted"
+        extracted.mkdir()
+        with tarfile.open(self.root / "context-release" / proof["artifact"]) as bundle:
+            bundle.extractall(extracted, filter="data")
+        installed = extracted / "camayoc-v0.1.0/scripts"
+        self.assertEqual((installed / "search_context.py").read_bytes(), (source / "search_context.py").read_bytes())
+        result = subprocess.run([sys.executable, str(installed / "entity_link.py"), "--help"], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        (installed / "search_context.py").unlink()
+        missing = subprocess.run([sys.executable, str(installed / "entity_link.py"), "--help"], capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("search_context", missing.stderr)
 
     def test_same_revision_repeats_identical_bytes(self):
         one = PACK.package("HEAD", "0.1.0", self.root / "one")
