@@ -324,6 +324,49 @@ moves. See [entity-mentions.md](entity-mentions.md).
 - quipu `docs/design/graph-labels.md` — the lattice that makes quarantine
   enforceable rather than aspirational.
 
+## WorkItem graph scope and historical identities
+
+An unqualified direct-type query such as `?item a ?type`, even with a
+`WorkItem` type filter, reads the default graph. It does not establish
+presence or absence in the tracker records graph. The default graph retains
+historical WorkItems; use the explicitly authorized records graph for tracker
+evidence. Do not interpret a large default-graph answer as current tracker
+coverage.
+
+The original September 2026 population counts are historical measurements,
+not a maintained census. A bounded October follow-up found current identifiers
+in records but absent from default, and an older identifier present in both.
+The populations must not be assumed disjoint, and identifier length is not a
+routing rule. Direct typing proves presence in a scope; it does not establish
+current status, the latest tracker revision, or completeness.
+
+Keep the two identity questions separate. Canonical tracker identities use the
+bare tracker ID, as described above; historical `code/bead/<id>` provenance
+aliases require explicit reconciliation. Supporting multiple WorkItem
+vocabularies, including the native tracker's `schema:Action`, does not select
+a graph or make an unqualified catalogue query a current-tracker query.
+Review both the graph scope and the vocabulary of each consumer.
+
+For a bounded diagnostic, supply a small explicit `VALUES ?item` set of
+known identifiers and inspect their asserted types separately in default and
+the configured records graph. Use `?item a ?type` with an exact type
+`FILTER` and a row limit large enough for the supplied identifiers and types.
+Include a known positive control in each scope, check truncation, and report
+the identifiers, graph, query and result. A failed query is UNKNOWN. A positive
+control proves execution, not population coverage. Read labels separately
+rather than adding a broad join.
+
+For current state, use a consumer that explicitly selects the records graph
+and its latest-state model, such as the
+[planned-work queries](planned-work-queries.md). Those queries have their own
+supported-input and result-limit boundaries. Catalogue source presence is
+separate from installed query definitions and observed live acceptance.
+
+This signpost authorizes no union into default, graph promotion, alias
+rewriting, retraction, backfill, or query-library replacement. A retrospective
+repair needs producer provenance, consumer coverage and a separate reviewed
+decision. Preserve the historical facts while investigating that decision.
+
 ## Observed WorkItem consumer authority
 
 The cost publisher reads deterministic tracker WorkItems from `crew:records`.
