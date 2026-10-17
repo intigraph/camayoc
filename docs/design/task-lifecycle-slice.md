@@ -1,6 +1,6 @@
 # Design: First Slice — task lifecycle + decisions
 
-> **Implementation status (2026-08-22):** 🟡 **The spine is built and proven
+> **Implementation status (2026-10-17):** 🟡 **The spine is built and proven
 > end-to-end**: `ontology/core.ttl` + `shapes/core.shapes.ttl` ship (v1,
 > deliverable 1), the skill and plugin ship, and the loop was verified
 > against a live quipu with `validate_on_write` — bare store → bootstrap →
@@ -10,9 +10,12 @@
 > the stored queries execute against seeded fixture graphs with positive and
 > control-negative arms (`tests/test_competency_queries.py`,
 > `tests/test_golden_path_queries.py`), and `just query-coverage` reports
-> per-question coverage with gaps named. Deliverable 4's camayoc half is
-> every definition in `queries/` (counted by `just query-coverage`, not
-> restated here), still awaiting quipu #79 to serve them.
+> per-question coverage with gaps named. Deliverable 4's stored-query
+> loading and serving path ships:
+> `scripts/bootstrap.sh` POSTs definitions from `queries/` to `/queries`,
+> and Quipu lists and runs them through `/ask`. Counts and gaps come from
+> `just query-coverage`; loading still has to succeed on each deployment.
+> Real-record answer acceptance below remains separate from API availability.
 > Remaining: the crew-domain vocabulary beyond core (deliverable 2 — no
 > `ontology/crew.ttl` exists; later slices minted into core instead) and the
 > optional shantytown-records enrichment parser (deliverable 6 — unbuilt; the
@@ -66,7 +69,8 @@ convention promotes them. Start with (a) — declared/observed beats inferred.
 The slice's question set lives in
 [competency/crew-task-lifecycle.md](https://github.com/scbrown/camayoc/blob/main/competency/crew-task-lifecycle.md)
 and doubles as the test suite: the slice is **done** when each question runs
-as a named stored query (quipu #79) against a graph built from *real*
+as a named stored query through the implemented `/ask` API against a graph
+built from *real*
 shantytown records, and an agent (or Stiwi) accepts the answers as faithful.
 That definition-of-done is stolen deliberately from the claims planning doc:
 model with sign-off, real historical data validated, questions running as
@@ -81,10 +85,11 @@ named queries, and a trace a reviewer accepts.
    already; the slice proves it — a skill-guided agent bootstraps a bare
    store, records a real session's decisions/work/outcomes, and the
    competency questions answer from what it recorded.
-4. The competency queries as stored queries, shipped for `crew.pendant.db` when
-   quipu #79/#81 land; runnable as raw SPARQL until then (the skill carries
-   the patterns).
-5. An eval gate: `just check` runs the questions against a fixture graph —
+4. The competency queries as stored queries: bootstrap loads `queries/`
+   through `/queries`, and `/ask` serves them. Raw-SPARQL patterns remain
+   available in the skill. Pack delivery and acceptance on real records are
+   separate from this implemented loading path.
+5. An eval gate: `just test` runs the questions against a fixture graph —
    built from skill-recorded episodes, optionally corroborated by the
    enrichment parser.
 6. *(Optional, unblocking nothing)* `camayoc crew ingest <records-root>` —

@@ -1,0 +1,64 @@
+name: Camayoc deployment event
+description: >-
+  Record this job's deployment outcome in Quipu as a CDEvents
+  pipelineRun.finished, mapped by Camayoc to a DeploymentEvent.
+  Run it as the last step of a deploy job with `if: always()`.
+inputs:
+  quipu-url:
+    description: Base URL of your Quipu server.
+    required: true
+  quipu-token:
+    description: A Quipu write token. Pass it from a secret.
+    required: true
+  service:
+    description: Stable id of what this job deploys.
+    required: true
+  environment:
+    description: Where it deploys (for example production).
+    required: true
+  status:
+    description: The job status to record. Leave the default.
+    default: ${{ job.status }}
+  artifact:
+    description: Package URL of the revision deployed. Defaults to pkg:github/<owner>/<repo>@<sha>.
+    default: ""
+  instance:
+    description: >-
+      Distinguishes matrix legs of this job; pass the matrix as JSON (toJSON(matrix)). Without it
+      each execution gets a generated instance, so legs still never collide.
+    default: ""
+  fail-on-error:
+    description: Fail the job when the event cannot be recorded. Default false; a missing record never fails a deploy.
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Record the deployment event
+      shell: bash
+      env:
+        QUIPU_SERVER: ${{ inputs.quipu-url }}
+        QUIPU_AUTH_TOKEN: ${{ inputs.quipu-token }}
+        CD_STATUS: ${{ inputs.status }}
+        CD_SERVICE: ${{ inputs.service }}
+        CD_ENVIRONMENT: ${{ inputs.environment }}
+        CD_ARTIFACT: ${{ inputs.artifact }}
+        CD_INSTANCE: ${{ inputs.instance }}
+        CD_STRICT: ${{ inputs.fail-on-error }}
+        CAMAYOC_ROOT: ${{ github.action_path }}/../..
+      run: |
+        set -uo pipefail
+        args=(--status "$CD_STATUS" --service "$CD_SERVICE" --environment "$CD_ENVIRONMENT")
+        if [ -n "$CD_ARTIFACT" ]; then args+=(--artifact "$CD_ARTIFACT"); fi
+        if [ -n "$CD_INSTANCE" ]; then args+=(--instance "$CD_INSTANCE"); fi
+        event=$(python3 "$CAMAYOC_ROOT/emitters/actions/cdevents.py" "${args[@]}") || rc=$?
+        if [ "${rc:-0}" -eq 0 ] && [ -z "$event" ]; then exit 0; fi
+        if [ "${rc:-0}" -eq 0 ]; then
+          printf '%s' "$event" | python3 "$CAMAYOC_ROOT/scripts/ingest_cdevents.py" \
+            --actor github-actions --post > "$RUNNER_TEMP/camayoc-ingest.json" || rc=$?
+        fi
+        if [ "${rc:-0}" -ne 0 ]; then
+          echo "::warning::Camayoc deployment event not recorded (exit ${rc})"
+          head -c 2000 "$RUNNER_TEMP/camayoc-ingest.json" 2>/dev/null || true
+          [ "$CD_STRICT" = "true" ] && exit 1
+        fi
+        exit 0

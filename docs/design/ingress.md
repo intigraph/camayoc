@@ -324,6 +324,49 @@ moves. See [entity-mentions.md](entity-mentions.md).
 - quipu `docs/design/graph-labels.md` — the lattice that makes quarantine
   enforceable rather than aspirational.
 
+## WorkItem graph scope and historical identities
+
+An unqualified direct-type query such as `?item a ?type`, even with a
+`WorkItem` type filter, reads the default graph. It does not establish
+presence or absence in the tracker records graph. The default graph retains
+historical WorkItems; use the explicitly authorized records graph for tracker
+evidence. Do not interpret a large default-graph answer as current tracker
+coverage.
+
+The original September 2026 population counts are historical measurements,
+not a maintained census. A bounded October follow-up found current identifiers
+in records but absent from default, and an older identifier present in both.
+The populations must not be assumed disjoint, and identifier length is not a
+routing rule. Direct typing proves presence in a scope; it does not establish
+current status, the latest tracker revision, or completeness.
+
+Keep the two identity questions separate. Canonical tracker identities use the
+bare tracker ID, as described above; historical `code/bead/<id>` provenance
+aliases require explicit reconciliation. Supporting multiple WorkItem
+vocabularies, including the native tracker's `schema:Action`, does not select
+a graph or make an unqualified catalogue query a current-tracker query.
+Review both the graph scope and the vocabulary of each consumer.
+
+For a bounded diagnostic, supply a small explicit `VALUES ?item` set of
+known identifiers and inspect their asserted types separately in default and
+the configured records graph. Use `?item a ?type` with an exact type
+`FILTER` and a row limit large enough for the supplied identifiers and types.
+Include a known positive control in each scope, check truncation, and report
+the identifiers, graph, query and result. A failed query is UNKNOWN. A positive
+control proves execution, not population coverage. Read labels separately
+rather than adding a broad join.
+
+For current state, use a consumer that explicitly selects the records graph
+and its latest-state model, such as the
+[planned-work queries](planned-work-queries.md). Those queries have their own
+supported-input and result-limit boundaries. Catalogue source presence is
+separate from installed query definitions and observed live acceptance.
+
+This signpost authorizes no union into default, graph promotion, alias
+rewriting, retraction, backfill, or query-library replacement. A retrospective
+repair needs producer provenance, consumer coverage and a separate reviewed
+decision. Preserve the historical facts while investigating that decision.
+
 ## Observed WorkItem consumer authority
 
 The cost publisher reads deterministic tracker WorkItems from `crew:records`.
@@ -462,3 +505,34 @@ ID is available. The diagnostic names process-only suppression when no session
 ID exists or persistence fails. Public reads remain available. Obtain an accepted
 credential from the service administrator, verify it with `caboodle doctor`, and
 start a new session after repairing a refused credential.
+
+### Replacing one promoted fact
+
+Use `promote_plane.py --triples-file replacement.nt --supersedes old.nt --to
+crew:declared --by <authorized-reviewer> --authored-by <different-author>
+--reason <evidence>` to supersede one exact target fact. Both files contain one
+N-Triples statement, with the same subject and predicate and a changed object.
+The replacement must already exist in `crew:inferred`; the old fact must exist
+in the target, with no competing value for that property. Existing authority
+and no-self-promotion rules apply. `--emit` performs the preflight reads and
+prints the proposed conditional update without writing.
+
+The server rechecks those conditions under its writer lock. One target-graph
+transaction closes the old fact, asserts the replacement, and records both exact
+statements as `camayoc:supersededTriple` and `camayoc:replacementTriple` on the
+plane-promotion record. The record digest includes both statements and target.
+Other facts in the carrier episode remain untouched; the old fact remains
+available through historical reads. Store commit time determines the interval
+close; the optional timestamp only dates the audit record.
+
+This mode leaves the inferred source open and refuses `--source-episode`.
+It verifies new target presence, old target absence, and source presence after
+the write. A refused or indeterminate write is never automatically retried.
+An existing client-side authority grant is still required; this does not enroll
+principals or grant authority merely because someone supplies a `--by` value.
+Production replacement remains a separate governed operation.
+
+The supersede client requires a server that reports `/update` transaction counts
+and graph identity; the integration suite pins the verified Quipu 0.14.1 release.
+A legacy server's empty response is UNKNOWN, even if its write committed. Verify
+the resulting state before any retry; an empty response is never called success.
