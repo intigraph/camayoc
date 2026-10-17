@@ -83,6 +83,17 @@ class SupersedeStoreTests(promotion_tests.PromotionAgainstARealStoreTests):
     test_1_the_mutant_record_only_promotion_moves_nothing = None
     test_2_a_real_promotion_puts_the_triple_in_the_target_plane = None
 
+    @classmethod
+    def call(cls, path, payload=None):
+        import json
+        import urllib.request
+        data = None if payload is None else json.dumps(payload).encode()
+        request = urllib.request.Request(cls.base + path, data=data,
+            headers={'Content-Type': 'application/json', 'X-Quipu-Client': 'camayoc-planes',
+                     'Authorization': 'Bearer isolated-test-fixture'})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return json.loads(response.read() or b'{}')
+
     def fixture(self, suffix):
         subject, predicate = f'<urn:supersede:{suffix}>', '<urn:claim>'
         old, new = (subject, predicate, '"old"'), (subject, predicate, '"new"')
@@ -122,6 +133,10 @@ class SupersedeStoreTests(promotion_tests.PromotionAgainstARealStoreTests):
         from pathlib import Path
         old, new, siblings, graph, source = self.fixture('happy')
         root_probe = 'ASK { ' + ' '.join(old) + ' . }'
+        carrier_probe = ('PREFIX c: <https://camayoc.local/ontology/> '
+                         f'ASK {{ GRAPH <{graph}> {{ {old[0]} c:planePromotion ?r . '
+                         '?r c:promotedTripleCount 10 . } }')
+        self.assertTrue(self.call('/query', {'query': carrier_probe})['result'])
         self.call('/knot', {'turtle': ' '.join(old) + ' .', 'actor': 'root-control'})
         self.assertTrue(self.call('/query', {'query': root_probe})['result'])
         self.assertTrue(all(self.present(graph, t) for t in [old] + siblings))
@@ -145,6 +160,7 @@ class SupersedeStoreTests(promotion_tests.PromotionAgainstARealStoreTests):
         self.assertTrue(self.present(graph, old, valid_at=cut))
         self.assertTrue(all(self.present(graph, t) for t in siblings))
         self.assertTrue(self.present(source, new))
+        self.assertTrue(self.call('/query', {'query': carrier_probe})['result'])
         self.assertTrue(self.call('/query', {'query': root_probe})['result'])
         rows = self.call('/query', {'query': f'SELECT ?o WHERE {{ GRAPH <{graph}> {{ {new[0]} {new[1]} ?o }} }}'})
         self.assertEqual(1, len(rows['rows']))
@@ -167,7 +183,9 @@ class SupersedeStoreTests(promotion_tests.PromotionAgainstARealStoreTests):
         import json
         body = urllib.parse.urlencode({k: write[k] for k in ('update', 'actor', 'source')}).encode()
         req = urllib.request.Request(self.base + '/update', data=body,
-                                     headers={'Content-Type': 'application/x-www-form-urlencoded'})
+                                     headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                              'X-Quipu-Client': 'camayoc-planes',
+                                              'Authorization': 'Bearer isolated-test-fixture'})
         with urllib.request.urlopen(req, timeout=10) as response:
             result = json.loads(response.read())
         self.assertIsNone(result['tx'])

@@ -3,7 +3,8 @@
 This terminal recording compares baseline
 `6e1556a14476273e254bbf928bcb3f0ec2e936da` with the candidate source identified
 by the two SHA256 values in the recording. Each run uses a fresh private
-loopback Quipu store with the same ten target facts and one inferred replacement.
+loopback Quipu store with the same ten facts first promoted into the target,
+and one inferred replacement.
 It performs no production writes.
 
 Ordinary promotion leaves two current claims. `--supersedes old.nt` leaves
