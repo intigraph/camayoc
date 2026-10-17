@@ -226,6 +226,138 @@ class Delivery(unittest.TestCase):
                                     result['pending_oldest_seconds'], result['exhausted_retries']))
         self.assertEqual(3, len([p for p, _ in self.calls if p == '/episode']))
 
+    def exhaust(self):
+        self.lost = True
+        self.present = False
+        for now in (1000, 1060, 1120, 1180, 1240, 1300, 1360):
+            self.tick(now=now)
+        return copy.deepcopy(self.state['items']['proj-a']['pending']['body'])
+
+    def test_hourly_recovery_survives_restart_and_tracker_change(self):
+        original = self.exhaust()
+        self.state = json.loads(self.path.read_text())
+        changed = [{**RECORD, 'title': 'new tracker version'}]
+        self.tick(changed, now=2260)
+        self.tick(changed, now=3160)
+        self.tick(changed, now=4060)
+        self.assertEqual(3, len([p for p, _ in self.calls if p == '/episode']))
+        self.lost = False
+        self.present = True
+        result = self.tick(changed, now=4960)
+        self.assertEqual((1, 1, 3), (result['verified'], result['writes'], result['requests']))
+        self.assertEqual([original] * 4, [b for p, b in self.calls if p == '/episode'])
+        self.assertEqual(1, result['backlog'])  # newer version remains separately owed
+
+    def test_missing_legacy_retry_clock_starts_a_new_hour_wait(self):
+        self.exhaust()
+        self.state['items']['proj-a']['pending'].pop('retry_after')
+        self.tick(now=2260)
+        pending = self.state['items']['proj-a']['pending']
+        self.assertEqual(5860, pending['retry_after'])
+        self.tick(now=3160)
+        self.tick(now=4060)
+        self.tick(now=4960)
+        self.assertEqual(3, pending['attempts'])
+        self.lost = False
+        self.present = True
+        self.assertEqual(1, self.tick(now=5860)['verified'])
+
+    def test_expired_or_invalid_clock_never_rearms(self):
+        for start in (None, True, '1000', -1, float('nan'), float('inf'), 2000, 10 ** 1000):
+            pending = {'attempts': 3, 'retry_after': 0, 'started_at': start}
+            self.assertFalse(sync.retry_ready(pending, 1000))
+        pending = {'attempts': 3, 'retry_after': 4600, 'started_at': 1000}
+        self.assertTrue(sync.retry_ready(pending, 5000))
+        self.assertFalse(sync.retry_ready({**pending, 'retry_after': 2000}, 5000))
+        self.assertTrue(sync.retry_ready(pending, 1000 + sync.RECOVERY_WINDOW - 1))
+        self.assertFalse(sync.retry_ready(pending, 1000 + sync.RECOVERY_WINDOW))
+        for after in (None, True, '1', -1, 0, float('nan'), float('inf'), 2000, 10 ** 1000):
+            self.assertFalse(sync.retry_ready({**pending, 'retry_after': after}, 1000))
+
+    def test_definitive_write_refusal_is_not_erased_by_absent_reads(self):
+        import urllib.error
+        for status in (400, 401, 403, 409, 422):
+            self.state = {}; self.calls = []; self.present = False
+            def post(endpoint, body):
+                if endpoint == '/episode':
+                    self.calls.append((endpoint, copy.deepcopy(body)))
+                    with urllib.error.HTTPError('http://fixture.invalid', status, 'refused', {}, None) as error:
+                        raise error
+                return self.post(endpoint, body)
+            for now in (1000, 1060, 1120, 1180, 4600, 8200):
+                result = sync.tick([RECORD], self.state, self.path, actor='tracker',
+                                   source='br:fixture', now=now, post=post)
+                self.assertEqual('UNKNOWN', result['status'])
+                self.assertLessEqual(result['requests'], 3)
+            self.assertEqual(1, len([p for p, _ in self.calls if p == '/episode']))
+            self.assertEqual(status, self.state['items']['proj-a']['pending']['retry_refusal_status'])
+
+    def test_failed_control_discards_prior_absence_evidence(self):
+        self.exhaust()
+        self.tick(now=2260)
+        self.tick(now=3160)
+        self.assertEqual(2, self.state['items']['proj-a']['pending']['absent_reads'])
+        self.control = False
+        self.tick(now=4060)
+        self.assertEqual(0, self.state['items']['proj-a']['pending']['absent_reads'])
+        self.control = True
+        result = self.tick(now=4960)
+        self.assertEqual(0, result['writes'])
+        self.assertEqual(3, len([p for p, _ in self.calls if p == '/episode']))
+
+    def test_permanent_outage_has_a_finite_window_without_extra_tick_budget(self):
+        self.exhaust()
+        for now in range(2260, 100000, 900):
+            result = self.tick(now=now)
+            self.assertLessEqual(result['requests'], 3)
+            self.assertLessEqual(result['writes'], 1)
+        count = len([p for p, _ in self.calls if p == '/episode'])
+        self.assertGreater(count, 3)
+        self.assertLessEqual(count, 26)
+        self.tick(now=200000)
+        self.assertEqual(count, len([p for p, _ in self.calls if p == '/episode']))
+        self.assertEqual('UNKNOWN', result['status'])
+
+    def test_expired_recovery_only_reads_and_can_still_confirm_a_landed_body(self):
+        self.exhaust()
+        result = self.tick(now=1000 + sync.RECOVERY_WINDOW)
+        self.assertEqual(('UNKNOWN', 0), (result['status'], result['writes']))
+        self.assertEqual(3, self.state['items']['proj-a']['pending']['attempts'])
+        self.present = True
+        result = self.tick(now=1000 + sync.RECOVERY_WINDOW + 900)
+        self.assertEqual((1, 0), (result['verified'], result['writes']))
+
+    def test_truncated_read_does_not_count_toward_an_extended_retry(self):
+        self.exhaust()
+        self.tick(now=2260)
+        self.tick(now=3160)
+        real = self.post
+        def truncated(endpoint, body):
+            if endpoint == '/query' and 'LIMIT 1' not in body['query']:
+                return {'rows': [], 'truncated': True}
+            return real(endpoint, body)
+        self.post = truncated
+        self.tick(now=4060)
+        self.assertEqual(0, self.state['items']['proj-a']['pending']['absent_reads'])
+        self.post = real
+        self.assertEqual(0, self.tick(now=4960)['writes'])
+
+    def test_extended_recovery_rotates_ahead_of_an_older_fresh_backlog(self):
+        original = self.exhaust()
+        for now in (2260, 3160, 4060):
+            self.tick(now=now)
+        records = [RECORD] + [{**RECORD, 'id': f'proj-new-{i}'} for i in range(100)]
+        self.state['items'].update({r['id']: {'first_seen': 0, 'last_attempt': 0}
+                                    for r in records[1:]})
+        self.lost = False
+        self.present = True
+        results = [self.tick(records, now=now) for now in (4960, 5020)]
+        self.assertTrue(any(r['item'] == 'proj-a' and r['verified'] == 1 for r in results))
+        self.assertTrue(all(r['requests'] <= 3 and r['writes'] <= 1 for r in results))
+        self.assertEqual([original] * 4,
+                         [b for p, b in self.calls if p == '/episode'
+                          and b['nodes'][0]['name'] == 'proj-a'])
+
     def test_backlog_wait_does_not_age_a_new_recovery(self):
         self.lost = True
         self.state['items'] = {'proj-a': {'first_seen': 0, 'last_attempt': 0, 'due_since': 0}}

@@ -27,6 +27,8 @@ INTERVAL = 60
 RECHECK = 24 * 3600
 MAX_BODY = 256 * 1024
 MAX_ATTEMPTS = 3
+RECOVERY_INTERVAL = 3600
+RECOVERY_WINDOW = 24 * 3600
 MAX_BATCH = 4
 MAX_TRIAL_SECONDS = 3600
 
@@ -211,6 +213,27 @@ def recovery_metrics(entries, now):
     }
 
 
+def recovery_window_open(pending, now):
+    """An unknown first-write clock cannot authorize extended retries."""
+    start = pending.get('started_at')
+    return (type(start) in (int, float) and 0 <= start <= now
+            and math.isfinite(start) and now - start < RECOVERY_WINDOW)
+
+
+def retry_ready(pending, now):
+    """Three fast attempts, then at most hourly within the retained 24h window."""
+    attempts = pending.get('attempts')
+    if type(attempts) is not int or attempts < 0 or 'retry_refusal_status' in pending:
+        return False
+    if attempts < MAX_ATTEMPTS:
+        return True
+    after = pending.get('retry_after')
+    return (recovery_window_open(pending, now)
+            and type(after) in (int, float)
+            and pending['started_at'] + RECOVERY_INTERVAL <= after <= now
+            and math.isfinite(after))
+
+
 def tick(records, state, path, *, actor, source, now, post, max_items=1):
     if type(max_items) is not int or not 1 <= max_items <= MAX_BATCH:
         raise ValueError('invalid ingress item budget')
@@ -304,7 +327,9 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     # recovery preference with the fair queue so an unreachable read control
     # cannot starve new work. A retry write still needs two absent reads.
     recovery = [i for i in candidates if entries[i].get('pending')
-                and entries[i]['pending']['attempts'] < MAX_ATTEMPTS]
+                and (retry_ready(entries[i]['pending'], now)
+                     or (recovery_window_open(entries[i]['pending'], now)
+                         and 'retry_refusal_status' not in entries[i]['pending']))]
     prefer_recovery = bool(recovery) and not state.get('last_was_recovery', False)
     if prefer_recovery:
         candidates.remove(recovery[0])
@@ -317,20 +342,38 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
         receipt['item'] = item
         entry['last_attempt'] = now
         pending = entry.get('pending')
+        write_attempted = False
+        controlled_absent = False
         try:
             if pending:
+                # Keep retained 4xx evidence conservative even when old state
+                # did not identify which endpoint refused. Reads may reconcile;
+                # they cannot erase a refusal and authorize another write.
+                status = entry.get('error_status')
+                if type(status) is int and 400 <= status < 500 and status not in (408, 429):
+                    pending.setdefault('retry_refusal_status', status)
+                # Old exhausted state has no last-write clock. Start a NEW wait,
+                # never invent a historical retry time or reset its attempt count.
+                if (type(pending.get('attempts')) is int
+                        and pending['attempts'] >= MAX_ATTEMPTS
+                        and recovery_window_open(pending, now)):
+                    pending.setdefault('retry_after', now + RECOVERY_INTERVAL)
                 # No repeat write until two separately scheduled, controlled
                 # absent reads. Never replace this body with a fresher record.
-                if pending.get('absent_reads', 0) >= 2 and pending['attempts'] < MAX_ATTEMPTS:
+                if pending.get('absent_reads', 0) >= 2 and retry_ready(pending, now):
                     pending['attempts'] += 1
                     pending['absent_reads'] = 0
+                    pending['retry_after'] = now + RECOVERY_INTERVAL
                     save(path, state)
                     receipt['writes'] += 1
+                    write_attempted = True
                     response = request('/episode', pending['body'])
+                    write_attempted = False
                     entry['write_receipt'] = {k: response.get(k) for k in ('outcome', 'tx_id', 'count')}
                     if response.get('outcome') not in ('created', 'updated', 'unchanged'):
                         raise ValueError('episode outcome unproven')
                 if not readback(pending['body'], request):
+                    controlled_absent = True
                     pending['absent_reads'] = pending.get('absent_reads', 0) + 1
                     raise ValueError('pending tracker episode not readable')
             else:
@@ -349,9 +392,12 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
                     # exact pending body for later, without a same-tick write.
                     if item_requests == 0:
                         pending['attempts'] = 1
+                        pending['retry_after'] = now + RECOVERY_INTERVAL
                         save(path, state)
                         receipt['writes'] += 1
+                        write_attempted = True
                         response = request('/episode', body)
+                        write_attempted = False
                         entry['write_receipt'] = {k: response.get(k) for k in ('outcome', 'tx_id', 'count')}
                         if response.get('outcome') not in ('created', 'updated', 'unchanged'):
                             raise ValueError('episode outcome unproven')
@@ -371,6 +417,8 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
             entry.pop('error_status', None)
             entry.pop('not_before', None)
         except Exception as exc:
+            if pending and not write_attempted and not controlled_absent:
+                pending['absent_reads'] = 0
             # Do not print transport response bodies or credential-bearing URLs.
             entry['error'] = type(exc).__name__
             # The HTTP status alone is safe and separates a refusal (4xx: a
@@ -379,6 +427,9 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
             if status:
                 entry['error_status'] = status
                 receipt['error_status'] = status
+                if (write_attempted and pending and 400 <= status < 500
+                        and status not in (408, 429)):
+                    pending['retry_refusal_status'] = status
             else:
                 entry.pop('error_status', None)
             entry.setdefault('due_since', now)  # owed from now (see the candidate loop)
