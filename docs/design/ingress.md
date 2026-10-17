@@ -435,11 +435,13 @@ tracker authority and the item ID is appended to it. Exact payloads are persiste
 before writes. Delivery requires a positive same-plane WorkItem control and a
 read-back of the exact direct WorkItem/Observation assertions. Neither `unchanged`
 nor a nonzero transaction count proves delivery. Lost responses keep the payload;
-two separately scheduled controlled absent reads permit a byte-identical retry,
-with at most three write attempts. Further failures stay parked for inspection.
+two separately scheduled controlled absent reads permit a byte-identical retry.
+After three fast attempts, recovery permits at most one further attempt per hour,
+only within 24 hours of the retained first-write time. This prevents one short
+store incident from permanently consuming the entire recovery budget.
 Changed tracker fields cannot replace an unresolved payload.
 
-Confirmed versions receive a periodic six-hour read-back. Retraction is detected
+Confirmed versions receive a periodic 24-hour read-back. Retraction is detected
 and enters the same pending reconciliation path. Receipt and status metrics report
 errors and backlog age; a backlog older than twice its bounded drain interval
 (minimum fifteen minutes) is unhealthy. `--publish-status` emits independent
@@ -450,6 +452,10 @@ their own canonical-presence checks.
 
 ### Standing WorkItem recovery receipts
 
+These JSON adapter rules apply to repository-local tracker stores. The primary
+Seeds lane uses the separate SQLite custody implementation; this change neither
+imports legacy pending state nor rearms that lane.
+
 The standing tracker sync distinguishes `DEGRADED` from `UNKNOWN`:
 verified delivery with retryable indeterminate entries is degraded (exit 0),
 while a tick unable to verify pending work, invalid records, exhausted attempts,
@@ -459,17 +465,30 @@ Recovery receives priority on alternating ticks; the other ticks retain
 least-recently-attempted fairness. This prevents both a fresh backlog delaying
 all recovery reads and a broken control starving fresh work. Retry writes still
 require two separately scheduled controlled absent reads and the original body.
+Failed or truncated reads discard accumulated absence evidence. Every write
+persists the next hourly retry time before sending; restart cannot shorten it.
+An old exhausted entry without that clock starts a fresh one-hour wait. Missing,
+invalid or future first-write clocks never authorize extended retries, and the
+first-write time is never reset. At 24 hours, further writes stop but controlled
+reads may still confirm a previously landed body. Repeated outage remains UNKNOWN.
+
+Definitive HTTP 4xx refusals are retained across subsequent reads and prohibit
+another write (408 and 429 remain transient). Old retained 4xx status without an
+endpoint is held conservatively rather than silently forgotten. Neither a healthy
+control nor an absent target erases that refusal. No response bodies are logged.
 
 `pending_oldest_seconds` measures time since a retained body entered recovery,
 not time waiting in the delivery backlog. Its `started_at` is persisted before
 the first write and survives reads, retries, tracker changes and restarts.
 Backoff ticks recompute the age without making requests. Missing legacy clocks,
 invalid clocks or a clock in the future report `-1` (unknown), never zero.
-`exhausted_retries` counts pending bodies at the existing three-attempt limit;
+`exhausted_retries` counts pending bodies whose three fast attempts are exhausted,
+including those waiting for bounded hourly recovery;
 invalid attempt counters also report `-1`. Both are exported with the
 `camayoc_workitem_ingress_` prefix. Confirming every body clears both to zero.
-These signals distinguish designed recovery from stuck delivery without changing
-the write budget, controlled-read requirement or immutable retry payload.
+These signals distinguish designed recovery from stuck delivery. The default
+one-item/three-request/one-write per-tick budget is unchanged; lifetime attempts
+extend only within the recovery window. No live replay or backfill is authorized.
 
 ### Quipu client credentials
 
