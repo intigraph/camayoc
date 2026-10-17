@@ -149,6 +149,18 @@ Usage is logged to `JEV_USAGE_LOG`, otherwise
 `SHANTY_ROOT/jev-usage.jsonl`, otherwise the local state path declared in
 `scripts/jev_mcp.py`. Logging failure does not retry a decision.
 
+## Deployment events
+
+Camayoc records deployments from the tools that make them, as CDEvents mapped
+to `DeploymentEvent`. Each emitter reports what the tool itself says
+happened, including failures that a surrounding job reports as green.
+
+| Tool | How | Standard |
+| --- | --- | --- |
+| GitHub or Forgejo Actions | [reusable Action](actions/deployment-event/README.md) | CDEvents `pipelineRun.finished` |
+| Ansible | [callback plugin](emitters/ansible/README.md) | CDEvents `pipelineRun.finished`, one per host |
+| Terraform | [`apply -json` wrapper](emitters/terraform/README.md) | CDEvents `pipelineRun.finished` |
+
 ## Before you start
 
 **Platforms.** Bootstrap downloads a quipu release on Linux x86_64. On other
