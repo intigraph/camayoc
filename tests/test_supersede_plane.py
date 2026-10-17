@@ -90,7 +90,22 @@ class SupersedeStoreTests(promotion_tests.PromotionAgainstARealStoreTests):
         graph = pp.planes.PLANES['crew:declared']['iri']
         source = pp.planes.PLANES['crew:inferred']['iri']
         nt = lambda ts: '\n'.join(' '.join(t) + ' .' for t in ts)
-        self.call('/knot', {'graph': graph, 'turtle': nt([old] + siblings), 'actor': 'fixture'})
+        # Exercise the reported case: all ten original facts share a real
+        # promotion transaction, not ten independently seeded target writes.
+        self.call('/knot', {'graph': source, 'turtle': nt([old] + siblings), 'actor': 'fixture'})
+        import os
+        import subprocess
+        import sys
+        from pathlib import Path
+        initial = Path(self.temp.name) / f'initial-{suffix}.nt'
+        initial.write_text(nt([old] + siblings))
+        env = dict(os.environ, QUIPU_SERVER=self.base, CAMAYOC_AUTHORITY=str(self.auth),
+                   QUIPU_AUTH_TOKEN='isolated-test-fixture')
+        result = subprocess.run([sys.executable, str(pp.ROOT / 'promote_plane.py'),
+            '--triples-file', str(initial), '--to', 'crew:declared', '--by', 'bob',
+            '--authored-by', 'claude', '--reason', 'private ten-fact promotion'],
+            env=env, capture_output=True, text=True, timeout=30)
+        self.assertEqual(0, result.returncode, result.stderr)
         self.call('/knot', {'graph': source, 'turtle': nt([new]), 'actor': 'fixture'})
         return old, new, siblings, graph, source
 
