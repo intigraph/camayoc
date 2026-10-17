@@ -1,17 +1,16 @@
 # Design: The Skill Is the Interface
 
-> **Implementation status (2026-08-22):** 🟡 **The skill ships in this repo
-> (`skills/camayoc/SKILL.md`); the quipu substrate it leans on is partly
-> landed.** Labels (#65) are no longer the gap they were: quipu's
-> `/graph/create` + `/graph/label` routes exist and `scripts/planes.py` uses
-> them to label the quarantine planes (camayoc-s0h). Server-side stored
-> queries (#79) remain pending as far as this repo can verify — camayoc's
-> half is done ahead of them: every named definition in `queries/` ships,
-> executed against fixture graphs in tests, ready to load when #79 lands.
-> (The count lives in `just query-coverage`'s `stored_query_count`, not here —
-> stating it in prose is how this line went stale twice.)
-> Where machinery is unbuilt the skill still says so and gives the raw-SPARQL
-> fallback — it never pretends.
+> **Implementation status (2026-10-17):** 🟡 **The skill and server-side
+> stored-query loading path ship.** `scripts/bootstrap.sh` loads the named
+> definitions in `queries/` through Quipu's `/queries` API; the server lists
+> and runs them through `/ask`. Fixture tests exercise the definitions, and
+> `just query-coverage` reports coverage and names gaps without freezing a
+> count in prose. [Getting started](../getting-started.md) documents loading.
+> Labels also ship: `/graph/create` + `/graph/label` are used by
+> `scripts/planes.py` for quarantine planes. These implemented APIs do not
+> prove that every deployment has loaded the definitions or that every
+> competency question has faithful answers from real records. Raw SPARQL is
+> an alternative for inspection, not a workaround for an unbuilt #79 API.
 
 ## 1. The usage model
 
@@ -41,7 +40,7 @@ This kills two design risks at once:
 | Pillar | What the skill has the agent do |
 |---|---|
 | **Bootstrap** | Stand up governed memory from nothing: check the quipu is reachable, load `ontology/` + `shapes/` (idempotent), verify with a probe write that SHACL refusal is live — *prove the gate is on, not assume it*. |
-| **Query first** | Before deciding or re-deriving: run the competency questions (stored queries once quipu #79 lands; the skill carries raw-SPARQL equivalents until then). "What did we decide about X and why" is asked *before* X is re-decided. |
+| **Query first** | Before deciding or re-deriving: run the named competency queries loaded by bootstrap through `/ask`; the skill also carries raw-SPARQL patterns. "What did we decide about X and why" is asked *before* X is re-decided. |
 | **Record at the moment** | When a decision happens, write it then — an episode carrying a `Decision` (what was chosen, over what, why, under which work item), tagged with its honest `sourceKind`. Work items and outcomes likewise. Session end = outcomes recorded, not summarized into oblivion. |
 | **Tag honestly** | `observed` = a record exists and was parsed; `declared` = a human said so (quote them); `inferred` = the agent concluded it — and inferred lands in the inferred plane, low-trust, promotable later. Never up-tag. The store refuses untagged writes; the skill makes the honest tag the path of least resistance. |
 
