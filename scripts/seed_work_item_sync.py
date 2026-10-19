@@ -15,7 +15,7 @@ import seed_work_items as native
 def verify(post,envelope,item):
     request=envelope['request'];graph=request['graph'];subject=projection.A+item
     # Separate single-pattern control, avoiding the asserted-type/label join.
-    control=post('/query',{'query':f'SELECT ?t WHERE {{ GRAPH <{graph}> {{ <{subject}> a ?t }} }}'})
+    control=post('/query',{'query':f'SELECT (STR(?raw_type) AS ?t) WHERE {{ GRAPH <{graph}> {{ <{subject}> a ?raw_type }} }}'})
     if (not isinstance(control,dict) or control.get('truncated') or
         not isinstance(control.get('rows'),list) or
         not any(row.get('t') in (projection.A+'WorkItem','aegis:WorkItem') for row in control['rows'])):
