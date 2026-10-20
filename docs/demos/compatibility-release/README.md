@@ -20,16 +20,18 @@ Its producer SHA256 is
 `4f39037d917b759b9f48f1bda704eb6b60aa506b115d0ee3c55d2f87865b047a`.
 The final caption/recording commit does not change that implementation.
 
-[Output transcript and recording](output.log), [timing track](timing.log).
+[Terminal recording](recording.cast), [readable transcript](transcript.txt).
 This is a replayable terminal recording, not an inline video. Playback was
 verified with:
 
 ```sh
-scriptreplay --log-out docs/demos/compatibility-release/output.log --log-timing docs/demos/compatibility-release/timing.log
+python3 docs/demos/compatibility-release/replay.py docs/demos/compatibility-release/recording.cast
 ```
 
 Observed: before `0` compatibility files, after `7`; the positive bootstrap
 member exists in both. The new manifest reports `120` shapes and union
 isomorphism, with digest
 `0d93ddab56ccd217d47f1e1f837d124b45f775f19ce86befe536e33095ff83b3`.
-The small output/timing pair is retained with the source demonstration.
+The asciicast preserves the exact timed terminal bytes; the readable transcript
+normalizes PTY CRLF to LF. Round-trip reconstruction and playback were verified.
+The original util-linux output/timing pair is retained in the evidence archive.

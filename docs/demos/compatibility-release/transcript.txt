@@ -1,0 +1,11 @@
+Downloading cpython-3.12.13-linux-x86_64-gnu (download) (32.6MiB)
+ Downloaded cpython-3.12.13-linux-x86_64-gnu (download)
+Installed 2 packages in 3ms
+Target: immutable local source archive; no release publication or installation.
+Shared input revision: af388d436ebb676cf9dd41f7e07a2e15e21dd76a
+Base producer: ba1cb3c7f01303e8930cdd58e229bcd39dabcdf0
+Candidate producer SHA256: 4f39037d917b759b9f48f1bda704eb6b60aa506b115d0ee3c55d2f87865b047a
+before compatibility_files= 0 bootstrap_positive= True
+after compatibility_files= 7 bootstrap_positive= True
+after manifest: {"automatic_load": false, "node_shapes": 120, "union_isomorphic": true}
+after manifest_sha256: 0d93ddab56ccd217d47f1e1f837d124b45f775f19ce86befe536e33095ff83b3
