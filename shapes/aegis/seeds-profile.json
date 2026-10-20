@@ -1,0 +1,21 @@
+{
+  "repository": "scbrown/seeds",
+  "commit": "8d5d10b9acde55cf1709d972297b07b9c78ccc4a",
+  "profiles": [
+    {
+      "path": "shapes/seeds.shapes.ttl",
+      "role": "full-profile",
+      "sha256": "41f6a57991e75db097a111bd44aee25a0f27eadcca112d02edea4b51a1b2adcd"
+    },
+    {
+      "path": "shapes/quipu-gate.shapes.ttl",
+      "role": "server-admission",
+      "sha256": "8804820a3fd5b8d59e81e0c875eeb4805b016e7e751229554bf428152a8dda1d"
+    }
+  ],
+  "canonical_type": "https://schema.org/Action",
+  "calendar_type": "http://www.w3.org/2002/12/cal/ical#Vtodo",
+  "calendar_relation": "http://www.w3.org/2004/02/skos/core#exactMatch",
+  "vendored": false,
+  "automatic_load": false
+}

@@ -2,7 +2,7 @@
   "action": "load",
   "name": "camayoc_ex_blocked_by_chain",
   "description": "The whole chain of what a work item waits on, transitively through aegis:blockedOn, with each link's closedAt when it has one. Answers 'why can this not start' in one call rather than one hop at a time.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?blocker ?label ?closedAt WHERE { <{item}> aegis:blockedOn+ ?blocker . ?blocker rdfs:label ?label . OPTIONAL { ?blocker aegis:closedAt ?closedAt } } ORDER BY ?label",
+  "template": "PREFIX quechua: <https://scbrown.github.io/quechua/ns#> PREFIX schema: <https://schema.org/> PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?blocker ?label ?closedAt WHERE { <{item}> quechua:blockedOn+ ?blocker . ?blocker rdfs:label ?label . OPTIONAL { ?blocker schema:endTime ?closedAt } } ORDER BY ?label",
   "params": [
     {
       "name": "item",

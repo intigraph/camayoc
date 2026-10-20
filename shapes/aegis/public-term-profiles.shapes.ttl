@@ -1,0 +1,224 @@
+# Staged source only. No automatic loading. Original IRIs retained.
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix org: <http://www.w3.org/ns/org#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+aegis:APIEndpointShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:EntryPoint .
+
+aegis:AgentToolShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:sourceRepo ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:version ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:providesCommand ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareApplication .
+
+aegis:CLIShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:binary ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:version ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareApplication .
+
+aegis:ConceptShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass skos:Concept .
+
+aegis:DataCorpusShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass dcat:Dataset .
+
+aegis:DecisionRecordShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:status ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:alternatives ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:DigitalDocument .
+
+aegis:DesignDocShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:status ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:author ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:DigitalDocument .
+
+aegis:FamilyMemberShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:relationship ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:Person .
+
+aegis:GitRepoShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:url ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:host ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareSourceCode .
+
+aegis:MCPServerShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:path aegis:port ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:tools ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareApplication .
+
+aegis:MLModelShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:CreativeWork .
+
+aegis:MovieShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:title ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:path aegis:year ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:plexId ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:Movie .
+
+aegis:ObservationShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:source ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:confidence ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass sosa:Observation .
+
+aegis:PersonShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:Person .
+
+aegis:PluginShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:pluginType ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:triggers ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareApplication .
+
+aegis:ResponsibilityDomainShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass org:Role .
+
+aegis:ScriptShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:path ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:trigger ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:schedule ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareSourceCode .
+
+aegis:SoftwareVersionShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:version ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareApplication .
+
+aegis:TVSeriesShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:title ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:plexId ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:TVSeries .
+
+aegis:ToolShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:SoftwareApplication .
+
+aegis:WebApplicationShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:externalUrl ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:WebApplication .
+
+aegis:WorkItemScopeShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:minCount 0 ;
+            sh:nodeKind sh:IRI ;
+            sh:path aegis:touchesRepo ],
+        [ sh:minCount 0 ;
+            sh:nodeKind sh:IRI ;
+            sh:path aegis:touchesHost ],
+        [ sh:minCount 0 ;
+            sh:nodeKind sh:IRI ;
+            sh:path aegis:touchesService ],
+        [ sh:datatype xsd:string ;
+            sh:in ( "edit" "commit" "push" "deploy" "restart" "delete" ) ;
+            sh:minCount 0 ;
+            sh:path aegis:grantsAction ],
+        [ sh:in ( "declared" "derived" "observed" ) ;
+            sh:maxCount 1 ;
+            sh:minCount 0 ;
+            sh:path aegis:scopeProvenance ] ;
+    sh:targetClass schema:Action .
+
+aegis:WorkstreamShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass schema:Project .
+

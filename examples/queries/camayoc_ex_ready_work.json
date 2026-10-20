@@ -2,6 +2,6 @@
   "action": "load",
   "name": "camayoc_ex_ready_work",
   "description": "Work ready to start: open work items (no aegis:closedAt) none of whose aegis:blockedOn targets is still open. A Blocker node has no closedAt, so it keeps its item off this list until the blocker itself is modelled as cleared.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?label WHERE { ?item a aegis:WorkItem ; rdfs:label ?label . FILTER NOT EXISTS { ?item aegis:closedAt ?closed } FILTER NOT EXISTS { ?item aegis:blockedOn ?dependency . FILTER NOT EXISTS { ?dependency aegis:closedAt ?dependencyClosed } } } ORDER BY ?label",
+  "template": "PREFIX quechua: <https://scbrown.github.io/quechua/ns#> PREFIX schema: <https://schema.org/> PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?label WHERE { ?item a schema:Action ; rdfs:label ?label . FILTER NOT EXISTS { ?item schema:endTime ?closed } FILTER NOT EXISTS { ?item quechua:blockedOn ?dependency . FILTER NOT EXISTS { ?dependency schema:endTime ?dependencyClosed } } } ORDER BY ?label",
   "params": []
 }

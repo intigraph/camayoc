@@ -1,0 +1,2316 @@
+# SHACL shapes for the aegis homelab ontology.
+#
+# Defines validation constraints for all entity labels and relationships
+# in the ontology extraction guide (docs/ontology-extraction-guide.md).
+#
+# Load via POST /shapes:
+#   curl -s localhost:3030/shapes -X POST \
+#     -H "Content-Type: application/json" \
+#     -d '{"action": "load", "name": "aegis-ontology", "turtle": "<contents>"}'
+
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix quipu:  <http://quipu.dev/ontology/> .
+@prefix aegis:  <http://aegis.gastown.local/ontology/> .
+
+# ═══════════════════════════════════════════════════════════════════
+# Global Constraints
+# ═══════════════════════════════════════════════════════════════════
+
+# All aegis entities must have at least one rdfs:label.
+aegis:LabelRequiredShape a sh:NodeShape ;
+    sh:targetSubjectsOf aegis:runs_on, aegis:depends_on, aegis:managed_by,
+        aegis:member_of, aegis:owns, aegis:monitors, aegis:routes_to,
+        aegis:connects_to, aegis:deployed_on ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ════════��══════════════════════════════════════════════════════════
+# Infrastructure
+# ═════════════════════════════���═════════════════════════════════════
+
+# ── LXCContainer ──────────────────────────────────────────────────
+#
+# A Proxmox LXC container. Must have a container ID, IP address,
+# and hostname.
+
+aegis:LXCContainerShape a sh:NodeShape ;
+    sh:targetClass aegis:LXCContainer ;
+    sh:property [
+        sh:path aegis:ctId ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:ipAddress ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:hostname ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ProxmoxNode ────────��────────────────────────────────────��────
+#
+# A physical Proxmox host (e.g., korimako, kotare).
+
+aegis:ProxmoxNodeShape a sh:NodeShape ;
+    sh:targetClass aegis:ProxmoxNode ;
+    sh:property [
+        sh:path aegis:nodeId ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:role ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── BareMetalHost ─────────────────────────────────────────��──────
+#
+# A non-Proxmox host (e.g., luvu, a Pi).
+
+aegis:BareMetalHostShape a sh:NodeShape ;
+    sh:targetClass aegis:BareMetalHost ;
+    sh:property [
+        sh:path aegis:ipAddress ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:hostname ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── SystemdService ───────���───────────────────────────────────���───
+#
+# A systemd unit running on a host or container.
+
+aegis:SystemdServiceShape a sh:NodeShape ;
+    sh:targetClass aegis:SystemdService ;
+    sh:property [
+        sh:path aegis:port ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:healthEndpoint ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:healthScore ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 100 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── WebApplication ───────���───────────────────────────────────────
+#
+# An HTTP-serving service (Tapestry, Forgejo, Grafana, etc.).
+
+aegis:WebApplicationShape a sh:NodeShape ;
+    sh:targetClass aegis:WebApplication ;
+    sh:property [
+        sh:path aegis:externalUrl ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── DatabaseService ──��───────────────────────────────────────���───
+#
+# A data store (PostgreSQL, FalkorDB, Dolt, etc.).
+
+aegis:DatabaseServiceShape a sh:NodeShape ;
+    sh:targetClass aegis:DatabaseService ;
+    sh:property [
+        sh:path aegis:dataPath ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:storageBackend ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── SearchService ────────────────────────────────────────────────
+#
+# A search/indexing service (bobbin). Declared rdfs:subClassOf
+# aegis:Service like its three siblings above, but it was the ONLY
+# declared subclass — of any parent — with no sh:targetClass
+# (aegis-19gip). It stayed invisible because the inference-expanded
+# Service count swallowed it: asking `?s a aegis:Service` returns it
+# already, so coverage looked complete from every angle that counted
+# the parent. Its siblings are shaped; a declared child that is not
+# is unshaped emission by the I5 rule, one level down.
+#
+# Optional-only beyond rdfs:label, per I1: aegis:indexes is emitted
+# on the live instance, aegis:externalUrl is not universal.
+
+aegis:SearchServiceShape a sh:NodeShape ;
+    sh:targetClass aegis:SearchService ;
+    sh:property [
+        sh:path aegis:indexes ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ZFSDataset ─────────────────────────────────────���─────────────
+#
+# A ZFS dataset for storage.
+
+aegis:ZFSDatasetShape a sh:NodeShape ;
+    sh:targetClass aegis:ZFSDataset ;
+    sh:property [
+        sh:path aegis:pool ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:mountpoint ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ReverseProxyRoute ─────��────────────────────────────────────��─
+#
+# A Traefik route mapping hostname to backend.
+
+aegis:ReverseProxyRouteShape a sh:NodeShape ;
+    sh:targetClass aegis:ReverseProxyRoute ;
+    sh:property [
+        sh:path aegis:hostname ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:backend ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        # VALUE QUALITY, not mere presence — the first such constraint here.
+        # 60 of 61 backend facts were once UNEXPANDED JINJA ("http://{{ ... }}"):
+        # the ingest read the ansible TEMPLATE and stored the placeholder as the
+        # service address, and every count/coverage check read green. A backend
+        # must be a concrete address; any brace means a template leaked through.
+        # (minCount deliberately still absent: 61/63 coverage — 2 routes carry
+        # no backend, so requiring it needs those triaged first, and I1 amended.)
+        sh:pattern "^https?://[^{]+$" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── NetworkSegment ───────────────────────────────────────────────
+#
+# A VLAN, subnet, or DNS zone.
+
+aegis:NetworkSegmentShape a sh:NodeShape ;
+    sh:targetClass aegis:NetworkSegment ;
+    sh:property [
+        sh:path aegis:subnet ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:gateway ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:purpose ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ════════════════════════════════════════��══════════════════════════
+# Agent Platform
+# ═════════��═════════════════════════════════════════════════════════
+
+# ── AgentTool ────────────────────────────────────────────────────
+#
+# A tool in the agent platform (parent of CLI, MCPServer).
+
+aegis:AgentToolShape a sh:NodeShape ;
+    sh:targetClass aegis:AgentTool ;
+    sh:property [
+        sh:path aegis:sourceRepo ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:version ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:providesCommand ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Rig ─────────��──────────────────────────��─────────────────────
+#
+# A gastown rig (aegis, quipu, bobbin, etc.).
+
+aegis:RigShape a sh:NodeShape ;
+    sh:targetClass aegis:Rig ;
+    sh:property [
+        sh:path aegis:prefix ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:purpose ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── CrewMember ───────────────────────────────────────────────────
+#
+# A crew agent (malcolm, goldblum, ellie, etc.).
+
+aegis:CrewMemberShape a sh:NodeShape ;
+    sh:targetClass aegis:CrewMember ;
+    sh:property [
+        # SUPERSEDED by aegis:hasRole. Kept for the migration
+        # window: role was one closed enum value doubling as tree-position.
+        # Drop only once every member carries hasRole.
+        sh:path aegis:role ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # The role SET — no maxCount on purpose. A member stacks several
+        # (arnold: worker + keeper + escalation-target).
+        sh:path aegis:hasRole ;
+        sh:class aegis:CrewRole ;
+    ] ;
+    sh:property [
+        sh:path aegis:tier ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:domain ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # Non-live CrewMembers (ruled 2026-07-23, teyk residue 1): a node that
+        # is historically a crew member but must NOT appear in live-agent
+        # projections carries crewStatus. ABSENCE means live/active — chosen
+        # for its failure asymmetry: forgetting to mark someone retired shows
+        # a stale card (visible, annoying); the inverse convention would hide
+        # a live agent (invisible, dangerous — that is how a live agent
+        # vanished from st during the teyk retract). "retired" = was real
+        # (strider, walker); "never-instantiated" = typed by directive/context
+        # episodes but no such process ever ran on this host (mayor — a card
+        # for it recreates the black-hole dispatch target).
+        sh:path aegis:crewStatus ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:in ("retired" "never-instantiated") ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ResponsibilityDomain ─────────────────────────────────────────
+#
+# An area of standing responsibility a crew member owns (iac, comms,
+# security-signoff) — abstract, not a service or host. Minted 2026-07-23
+# (teyk residue 3): the ownership facts malcolm->iac, ellie->comms,
+# sentinel->security-signoff previously hung off UNTYPED nodes whose only
+# typing arrived incidentally and was lost in a retract. Naming rule:
+# bare kebab (guide 1b, unlisted-kind rule -> this row).
+
+aegis:ResponsibilityDomainShape a sh:NodeShape ;
+    sh:targetClass aegis:ResponsibilityDomain ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── CrewRole ─────────────────────────────────────────────────────
+#
+# A composable trait-preset a CrewMember can hold. NOT an
+# aegis:AnsibleRole — that is an IaC role, a different plane entirely.
+#
+# WHY A CLASS AND NOT MORE ENUM VALUES: st's tier.py carries
+# VALID_ROLES = worker|lead|administrator, where role IS tree-position. The
+# crew already runs roles that cannot be said in that enum — an advisor is
+# UNATTACHED (no reports_to, no reportees) and so fails tier.py's reports-to
+# validation outright; a keeper is domain-scoped with an in-domain veto; and
+# a member holds SEVERAL at once (arnold ran worker + keeper + escalation-
+# target). So a role is a named preset over six orthogonal axes, and a
+# member's effective traits are the UNION across the roles it holds
+# (single-valued axes: most-specific wins; multi-valued: set-union).
+#
+# The axes are prefixed `trait` on purpose. aegis:authority is already the
+# Stiwi-authority of an aegis:Directive and aegis:roleName is already the
+# name of an aegis:AnsibleRole; reusing either would conflate two planes in
+# one predicate and quietly poison `?x aegis:roleName ?n` for both.
+#
+# Parameters that vary PER MEMBER — which domain a keeper owns, which lead a
+# worker reports to — stay on the CrewMember (aegis:domain, aegis:reports_to)
+# and never on the role, so a role stays reusable across members.
+#
+# Only rdfs:label is required, per I1: a sh:minCount must follow a proven
+# emitter, never precede one. crewRoleName is the machine slug st carries in
+# ST_ROLES, and stays optional until something demonstrably emits it.
+
+aegis:CrewRoleShape a sh:NodeShape ;
+    sh:targetClass aegis:CrewRole ;
+    sh:property [
+        sh:path aegis:crewRoleName ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # Is it in the tree at all? `unattached` is what makes an advisor
+        # legal — the admin skips the reports-to rules entirely for it.
+        sh:path aegis:traitAttachment ;
+        sh:in ( "rooted" "reports-to" "unattached" ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # MULTI on purpose — a worker is dispatched AND self-directed.
+        sh:path aegis:traitWorkIntake ;
+        sh:in ( "dispatched" "self-directed" "consulted" "escalations-only" "none" ) ;
+    ] ;
+    sh:property [
+        # MULTI on purpose — a lead absorbs AND dispatches.
+        sh:path aegis:traitCoordination ;
+        sh:in ( "absorbs" "dispatches" "neither" ) ;
+    ] ;
+    sh:property [
+        sh:path aegis:traitScope ;
+        sh:in ( "fleet-wide" "domain-scoped" "single-task" ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:traitLifecycle ;
+        sh:in ( "persistent" "ephemeral" ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:traitAuthority ;
+        sh:in ( "veto-in-scope" "gate" "none" ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── TraitValue — precedence for the SINGLE-VALUED CrewRole axes ──
+#
+# THE PROBLEM. A CrewRole's MULTI axes (traitWorkIntake, traitCoordination)
+# compose by set-union — unambiguous. The SINGLE-valued axes (traitAttachment,
+# traitScope, traitLifecycle, traitAuthority) do NOT: when a member stacks roles
+# that disagree, e.g. keeper(scope=domain-scoped, authority=veto-in-scope) +
+# worker(scope=single-task, authority=none), nothing in the data says which wins.
+# The prior design prose said "most-specific/most-privileged wins" — but prose is not
+# computable, so every admin would hardcode a tie-break, which is the closed-enum
+# problem reappearing one layer up (the exact thing composable roles killed).
+#
+# THE RULE. Each single-valued axis has a TOTAL ORDER over its values, declared
+# as DATA (one aegis:TraitValue per (axis,value) with an integer aegis:precedence).
+# The effective value for a member = the value with the MAX precedence across the
+# member's roles on that axis. Set as data, NOT as sh:in list position — implicit
+# ordering inside a validation construct is invisible to a reader and silently
+# reorderable (called out on the bead as the thing NOT to do).
+#
+# WHY MAX IS RIGHT PER AXIS (each is a genuine ladder, not an arbitrary pick):
+#   attachment  rooted > reports-to > unattached  — ANY attached role makes the
+#     member attached; unattached only wins when ALL roles are unattached, which
+#     is exactly the condition that legitimately skips the tier.py reports-to check.
+#   scope       fleet-wide > domain-scoped > single-task — broadest reach a member
+#     holds is real reach; an administrator who also holds a single-task role is
+#     still fleet-wide.
+#   authority   veto-in-scope > gate > none — most-privileged authority the member
+#     holds is the one it can exercise.
+#   lifecycle   persistent > ephemeral — a member with any persistent role persists.
+#
+# NOTE this shapes the value-ranking rows; the MULTI axes need no TraitValue rows
+# (set-union has no tie to break). Only rdfs:label required, per invariant I1.
+
+aegis:TraitValueShape a sh:NodeShape ;
+    sh:targetClass aegis:TraitValue ;
+    sh:property [
+        sh:path aegis:axis ;
+        sh:datatype xsd:string ;
+        sh:in ( "attachment" "scope" "authority" "lifecycle" ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:traitValue ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:precedence ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── DesiredCrewShape / DesiredCrewSlot ──────────────────────────
+#
+# Declarative input to the admin-owned crew-reconcile skill. This is the
+# DESIRED plane; CrewMember + reports_to remain the observed/live plane. st
+# supplies atomic mechanisms only after an administrator compares the two.
+#
+# A plan owns total target and scope; slots own composition. Slots reuse
+# CrewRole so survival and precedence remain existing role-catalogue DATA.
+# Completeness, cross-node arithmetic, one-active-plan-per-scope, and cycle
+# checks belong to reconciliation. I1 permits no required non-label property
+# before an emitter is proven, and core SHACL cannot express the latter checks
+# without SPARQL constraints. The skill therefore REFUSES an incomplete active
+# plan; SHACL constrains every value that is present.
+
+aegis:DesiredCrewShapeShape a sh:NodeShape ;
+    sh:targetClass aegis:DesiredCrewShape ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    sh:property [
+        sh:path aegis:crewPlanStatus ;
+        sh:in ( "draft" "active" "retired" ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:scopeKind ;
+        sh:in ( "fleet" "rig" "group" "lane" ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # Omit only for fleet scope. Rig/group/lane plans point at the graph
+        # entity being planned; the reconciler enforces that conditional.
+        sh:path aegis:scopeEntity ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:targetSize ; sh:datatype xsd:integer ;
+        sh:minInclusive 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:hasCrewSlot ; sh:class aegis:DesiredCrewSlot ;
+    ] .
+
+aegis:DesiredCrewSlotShape a sh:NodeShape ;
+    sh:targetClass aegis:DesiredCrewSlot ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    sh:property [
+        # Multi-valued: slots can require composable roles. Harness, survival
+        # and precedence are resolved from those role facts, not redefined.
+        sh:path aegis:requiresRole ; sh:class aegis:CrewRole ;
+    ] ;
+    sh:property [
+        sh:path aegis:desiredCount ; sh:datatype xsd:integer ;
+        sh:minInclusive 0 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # A root says minimumCount=1 and elastic=false; it cannot satisfy a
+        # smaller target by disappearing. targetSize includes this floor.
+        sh:path aegis:minimumCount ; sh:datatype xsd:integer ;
+        sh:minInclusive 0 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:elastic ; sh:datatype xsd:boolean ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # Current policy is lead=claude, worker=codex; keeping it as data lets
+        # the policy change without changing st or the reconciliation skill.
+        sh:path aegis:desiredHarness ;
+        sh:in ( "claude" "codex" ) ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # Desired hierarchy between slots. Root slots omit it.
+        sh:path aegis:reportsToSlot ; sh:class aegis:DesiredCrewSlot ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # Destination for duties when this slot sheds capacity. Omit where
+        # consolidation requires fresh administrator judgment.
+        sh:path aegis:consolidatesInto ; sh:class aegis:DesiredCrewSlot ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:domain ; sh:datatype xsd:string ; sh:maxCount 1 ;
+    ] .
+
+# ── Polecat ──────────────���───────────────────────────────────────
+#
+# A worker agent dispatched to execute a formula.
+
+aegis:PolecatShape a sh:NodeShape ;
+    sh:targetClass aegis:Polecat ;
+    sh:property [
+        sh:path aegis:rig ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:status ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── CLI ─────────��───────────────────────────���────────────────────
+#
+# A command-line tool (gt, bd, bobbin, etc.).
+
+aegis:CLIShape a sh:NodeShape ;
+    sh:targetClass aegis:CLI ;
+    sh:property [
+        sh:path aegis:binary ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:version ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── MCPServer ────────────────���─────────────────────────────��─────
+#
+# An MCP server providing tools to agents.
+
+aegis:MCPServerShape a sh:NodeShape ;
+    sh:targetClass aegis:MCPServer ;
+    sh:property [
+        sh:path aegis:port ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:tools ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Plugin ─────────��──────────────────────────��──────────────────
+#
+# A gastown plugin (marshal, witness, refinery, etc.).
+
+aegis:PluginShape a sh:NodeShape ;
+    sh:targetClass aegis:Plugin ;
+    sh:property [
+        sh:path aegis:pluginType ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:triggers ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Skill ──────────────��──────────────────────────────────��──────
+#
+# A Claude Code skill available to agents.
+
+aegis:SkillShape a sh:NodeShape ;
+    sh:targetClass aegis:Skill ;
+    sh:property [
+        sh:path aegis:skillName ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Formula ────��─────────────────────────────────────────────────
+#
+# A molecule template defining a polecat workflow.
+
+aegis:FormulaShape a sh:NodeShape ;
+    sh:targetClass aegis:Formula ;
+    sh:property [
+        sh:path aegis:formulaName ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ════════════════════════════════════════════���══════════════════════
+# People & Family
+# ═════════���════════════════���═════════════════════════��══════════════
+
+# ── Person ────────────��──────────────────────────────────────────
+
+aegis:PersonShape a sh:NodeShape ;
+    sh:targetClass aegis:Person ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── FamilyMember ─────────────────────────────────────────────────
+
+aegis:FamilyMemberShape a sh:NodeShape ;
+    sh:targetClass aegis:FamilyMember ;
+    sh:property [
+        sh:path aegis:relationship ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Overseer ─────────────────────────────────────────────────────
+#
+# Stiwi — the human operator.
+
+aegis:OverseerShape a sh:NodeShape ;
+    sh:targetClass aegis:Overseer ;
+    sh:property [
+        sh:path aegis:pronouns ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── GoogleAccount ────────────────────────────────────────────────
+#
+# A Google account linked to a person.
+
+aegis:GoogleAccountShape a sh:NodeShape ;
+    sh:targetClass aegis:GoogleAccount ;
+    sh:property [
+        sh:path aegis:email ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ══════════��═════════════════════════════��══════════════════════════
+# Knowledge
+# ═════════════════════════════════════════════════════════════���═════
+
+# ── Directive ───────────────���────────────────────────────────────
+#
+# A Stiwi directive from HLA.
+
+aegis:DirectiveShape a sh:NodeShape ;
+    sh:targetClass aegis:Directive ;
+    sh:property [
+        sh:path aegis:authority ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:issuedBy ;
+        # Preserve legacy string issuers while allowing the relational form
+        # (`aegis:issuedBy aegis:Stiwi`) used by graph-native provenance.
+        # `sh:class` is deliberately absent: validation is payload-scoped, so
+        # requiring it would force every directive write to repeat the
+        # already-stored issuer type.
+        sh:or ( [ sh:datatype xsd:string ] [ sh:nodeKind sh:IRI ] ) ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Directive traceability ────────────────────────────────────────
+#
+# Stiwi 2026-09-24 (verbatim): "For each directive, we should have workitems
+# and policy attached to direct to it. Create the shape and work it to true."
+# Tracking: aegis-q9m5mp.
+#
+# Every directive names the WORK that carries it out (aegis:trackedBy a
+# WorkItem, i.e. a bead) and the POLICY that governs it (aegis:governedBy a
+# Policy). Policy and AlertRule are subclasses of Directive but ARE the
+# executable form, so they are exempt; OperationalRule and plain Directive
+# are not.
+#
+# EMIT, deliberately, while the backfill runs: measured 2026-09-24, about
+# 1,030 directives are untraced, so a reject shape would refuse every
+# directive write in the fleet. Emitted violations become shacl.violation
+# events and the write commits. Those events depend on the write path and on
+# shacl.validate_on_write, so they are NOT the progress metric: progress is
+# `quipu validate` (or SPARQL) over the stored graph (ian ruling, aegis-4c3ppi).
+# Drop the annotation (enforcement reverts to reject) once that count reads
+# zero AND both predicates are in REQUIRED_PREDICATE_PROVEN at measured 100%:
+# "work it to true". When it flips to reject, drop sh:severity too.
+#
+# sh:severity sh:Warning (aegis-1mv0to): emit protects only the write paths
+# that route by onViolation. Share import and compose gate on conforms, and a
+# defaulted sh:Violation quarantined the whole v0.10.0 repository share for 2
+# untraced directives. Warning is the spec's word for "report, do not block",
+# and the 4c3ppi spec already said Warning until 100%.
+#
+# Store-context validation (emit path) is what lets
+# sh:class see the linked WorkItem/Policy types that are not in the payload.
+#
+# Pilot, proven end to end 2026-09-24: directive-patent-filings-private-no-
+# history-rewrite -> trackedBy aegis-vqf0p5, governedBy
+# policy_no-patent-filings-in-public-repos -> enforcedBy
+# textrule_patent-application-number (projected and executed by yupana).
+
+aegis:DirectiveTraceabilityShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass aegis:Directive ;
+    # I2 label floor. DirectiveShape already requires it, so this asserts
+    # nothing new about the data; it keeps every targetClass shape honest.
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] ;
+    sh:or (
+        [ sh:class aegis:Policy ]
+        [ sh:class aegis:AlertRule ]
+        [
+            sh:property [
+                sh:path aegis:trackedBy ;
+                sh:minCount 1 ;
+                sh:class aegis:WorkItem ;
+            ] ;
+            sh:property [
+                sh:path aegis:governedBy ;
+                sh:minCount 1 ;
+                sh:class aegis:Policy ;
+            ] ;
+        ]
+    ) ;
+    sh:message "Untraced directive: it needs aegis:trackedBy a WorkItem and aegis:governedBy a Policy (aegis-q9m5mp)" .
+
+# ── Observation ─────���────────────────────────────────────────────
+#
+# An agent observation from Pensieve.
+
+aegis:ObservationShape a sh:NodeShape ;
+    sh:targetClass aegis:Observation ;
+    sh:property [
+        sh:path aegis:source ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:confidence ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── CommandDiskImpactObservation ──────────────────────────────────
+#
+# One measured command/filesystem sample. Positive diskDeltaBytes means
+# consumed space; negative means the command freed space. Aggregates such as
+# sample count and quantiles deliberately belong to a separate summary type.
+
+aegis:CommandDiskImpactObservation rdfs:subClassOf aegis:Observation .
+
+aegis:CommandDiskImpactObservationShape a sh:NodeShape ;
+    sh:targetClass aegis:CommandDiskImpactObservation ;
+    sh:property [
+        sh:path aegis:commandSignature ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        # Canonical classes, never raw argv or an absolute cwd:
+        # binary:subcommand|repo:<class>|cwd:<class>
+        sh:pattern "^[^\\s/]+:[^\\s/]+\\|repo:[a-z0-9._-]+\\|cwd:[a-z0-9._-]+$" ;
+    ] ;
+    sh:property [
+        sh:path aegis:filesystemIdentity ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        # Distinguishes root, tmpfs and other mounts without storing raw paths.
+        sh:pattern "^(root|tmpfs|mount):[a-z0-9._-]+$" ;
+    ] ;
+    sh:property [
+        sh:path aegis:diskDeltaBytes ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:observedAt ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── DecisionRecord ──────────���────────────────────────────────��───
+#
+# An architectural decision record (ADR).
+
+aegis:DecisionRecordShape a sh:NodeShape ;
+    sh:targetClass aegis:DecisionRecord ;
+    sh:property [
+        sh:path aegis:status ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:alternatives ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── DesignDoc ──────────────────────────────────────��─────────────
+#
+# A design document.
+
+aegis:DesignDocShape a sh:NodeShape ;
+    sh:targetClass aegis:DesignDoc ;
+    sh:property [
+        sh:path aegis:status ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:author ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Probe ────────────────────────────────────────────────────────
+#
+# An investigation probe document.
+
+aegis:ProbeShape a sh:NodeShape ;
+    sh:targetClass aegis:Probe ;
+    sh:property [
+        sh:path aegis:title ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:domain ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:date ;
+        sh:datatype xsd:date ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ════════��═════════════════════════════════════���════════════════════
+# Artifacts
+# ══════���══════════════════��═════════════════════════════════════════
+
+# ── GitCommit ────────────────────────────────────────────────────
+#
+# A specific git commit.
+
+aegis:GitCommitShape a sh:NodeShape ;
+    sh:targetClass aegis:GitCommit ;
+    sh:property [
+        sh:path aegis:hash ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:repo ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:author ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:date ;
+        sh:datatype xsd:dateTime ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── GitRepo ────────���─────────────────────────────��───────────────
+#
+# A git repository.
+
+aegis:GitRepoShape a sh:NodeShape ;
+    sh:targetClass aegis:GitRepo ;
+    sh:property [
+        sh:path aegis:url ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:host ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ConfigFile ─────────────────────────────────────────���─────────
+#
+# A configuration file for a service.
+
+aegis:ConfigFileShape a sh:NodeShape ;
+    sh:targetClass aegis:ConfigFile ;
+    sh:property [
+        # Exact lookup key used by config-drift consumers. Optional during the
+        # migration of pre-existing ConfigFile entities; unique when present.
+        sh:path aegis:configPath ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # Full lowercase SHA-256 of canonicalized proposed content.
+        sh:path aegis:contentSha256 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9a-f]{64}$" ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:path ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:service ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Script ───────���───────────────────────────────────────────────
+#
+# An automation script.
+
+aegis:ScriptShape a sh:NodeShape ;
+    sh:targetClass aegis:Script ;
+    sh:property [
+        sh:path aegis:path ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:trigger ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:schedule ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── CronJob ─────��───────────────────────────────────────��────────
+#
+# A scheduled cron job.
+
+aegis:CronJobShape a sh:NodeShape ;
+    sh:targetClass aegis:CronJob ;
+    sh:property [
+        sh:path aegis:schedule ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:script ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:host ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── AnsibleRole ────────��───────────────────────────────��─────────
+#
+# An IaC role in the goldblum repo.
+
+aegis:AnsibleRoleShape a sh:NodeShape ;
+    sh:targetClass aegis:AnsibleRole ;
+    sh:property [
+        sh:path aegis:roleName ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:target ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── AnsibleGroup ─────────────────────────────────────────────────
+#
+# An inventory group (a leaf host-group, a :children parent, or `all`).
+# DECLARED layer — see the extraction guide §3a. A group is not the hosts in it.
+
+aegis:AnsibleGroupShape a sh:NodeShape ;
+    sh:targetClass aegis:AnsibleGroup ;
+    sh:property [
+        sh:path aegis:groupName ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:src ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── TerraformResource ────────────────────────────────────────────
+#
+# A resource block declared in terraform/*.tf, named `{resourceType}.{resourceName}`.
+# DECLARED layer — see the extraction guide §3a. A `proxmox_lxc` resource is NOT
+# the LXCContainer it provisions; they are related by aegis:provisions and must
+# never be merged, or drift becomes unrepresentable.
+
+aegis:TerraformResourceShape a sh:NodeShape ;
+    sh:targetClass aegis:TerraformResource ;
+    sh:property [
+        sh:path aegis:resourceType ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:resourceName ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:src ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── DockerImage ──────��───────────────────────────────────────────
+#
+# A container image.
+
+aegis:DockerImageShape a sh:NodeShape ;
+    sh:targetClass aegis:DockerImage ;
+    sh:property [
+        sh:path aegis:registry ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:tag ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── WorkItem ────��─────────────────────────────��──────────────────
+#
+# Tracker-agnostic work. Beads/st records are one Camayoc ingress source;
+# Quipu does not mint a tracker-specific class.
+
+# ── WorkItemScope (aegis-6adcf / aegis-368cu.5, ian 2026-08-23) ────────────
+#
+# Tier 2 of the bead-scope contract. Tier 1 landed as /propose proposal_id 6 —
+# and an ACCEPTED PROPOSAL IS LOST ON REDEPLOY unless it is also in this file,
+# which is why this is a shape and not a note on the bead.
+#
+# THREE THINGS A REVIEWER SHOULD NOT TIDY UP.
+#
+# 1. Every property is minCount 0. That is not laxness, it is rule 1 of
+#    368cu.5 — "unknown scope ADVISES, never blocks" — made structural.
+#    160+ open beads carry no scope, so a required property makes all of them
+#    violations overnight and pressures the guard into reading ABSENCE as
+#    DENIAL. That is the aegis-unbuw failure: a guard refused an operator for
+#    having ALREADY done what it demanded, unrecoverable short of a host restart.
+#
+# 2. grantsAction excludes "read", deliberately. Rule 2: scope governs
+#    MUTATION, not observation. Investigation legitimately reads far outside a
+#    bead's scope — clearing aegis-0jv06 needed 24 agents' transcripts. If read
+#    were grantable somebody would eventually deny it, and advisories on reads
+#    train everyone to ignore advisories. Unrepresentable beats
+#    documented-as-discouraged.
+#
+# 3. touches* are IRIs, not strings. They point at referents that already
+#    exist (repo_shantytown, repo_quipu, repo_bobbin, repo_hank, repo_goldblum).
+#    A string would mint a second referent vocabulary beside the entity graph —
+#    the aegis-hpav5 / aegis-7n1ya fragmentation this graph keeps paying for.
+#
+# The closed action set is the SAME vocabulary the trace emits (368cu.1's
+# resolver returns verbs). Records and rules share one vocabulary, so a policy
+# is a saved query over records plus an effect; changing one side silently
+# invalidates the other.
+#
+# Describing reality, not proposing it — worked example asserted and read back
+# conforms:true at tx 34475:
+#     aegis-9mehy  touchesRepo repo_shantytown ;
+#                  grantsAction "edit","commit","push","deploy" ;
+#                  scopeProvenance "declared"
+#
+# Scope applies to the tracker-agnostic WorkItem Camayoc owns. Identity and
+# lifecycle fields are governed by Camayoc's core shape, not duplicated here.
+aegis:WorkItemScopeShape a sh:NodeShape ;
+    sh:targetClass aegis:WorkItem ;
+    # I2 (verify_shape_invariants.py): a targetClass shape that requires
+    # nothing asserts nothing. This block is that floor and NOTHING MORE —
+    # it does not weaken rule 1 above, because a label is independent of
+    # scope: a bead with no scope at all still satisfies it, which is the
+    # whole point. Camayoc's WorkItem shape already requires the same label,
+    # so it refuses nothing that conforms there. Do not read
+    # it as licence to add a second sh:minCount 1 here.
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:touchesRepo ;
+        sh:minCount 0 ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path aegis:touchesHost ;
+        sh:minCount 0 ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path aegis:touchesService ;
+        sh:minCount 0 ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path aegis:grantsAction ;
+        sh:minCount 0 ;
+        sh:datatype xsd:string ;
+        sh:in ( "edit" "commit" "push" "deploy" "restart" "delete" ) ;
+    ] ;
+    sh:property [
+        sh:path aegis:scopeProvenance ;
+        sh:minCount 0 ;
+        sh:maxCount 1 ;
+        sh:in ( "declared" "derived" "observed" ) ;
+    ] .
+
+# ══════��════════════════════════════════════════════════════════════
+# Media
+# ══════���════════════════════════════════════════════════════════════
+
+# ── FileCollection ───────────────────────────────────────────────
+#
+# A folder on a filesystem export, summarised: how many files, how many
+# bytes, the newest mtime, and every file extension present anywhere in its
+# SUBTREE (aegis-1v555n, Stiwi 2026-09-27). It is how the graph answers
+# "where is my GoldenEye 64 cart backup" without crawling 255k files over
+# NFS: ask which collection hasExtension ".z64".
+#
+# ONE generic class on purpose (sattler, 2026-09-30): not Show / Season /
+# Album / Book. A season is a FileCollection whose parentCollection is its
+# show. MediaLibrary is a subclass rather than a second media concept.
+# Tied to the existing NFSExport through inExport; no parallel export class.
+#
+# Only the label is required, so a MediaLibrary that is not a folder (a
+# Plex library, say) is not forced to invent a path. Measured 2026-09-30:
+# 0 FileCollection and 0 MediaLibrary instances, so this rejects safely.
+aegis:MediaLibrary rdfs:subClassOf aegis:FileCollection .
+
+aegis:FileCollectionShape a sh:NodeShape ;
+    sh:targetClass aegis:FileCollection ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    sh:property [ sh:path aegis:inExport ; sh:class aegis:NFSExport ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:parentCollection ; sh:class aegis:FileCollection ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:relativePath ; sh:datatype xsd:string ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:fileCount ; sh:datatype xsd:integer ; sh:maxCount 1 ; sh:minInclusive 0 ; ] ;
+    sh:property [ sh:path aegis:byteCount ; sh:datatype xsd:integer ; sh:maxCount 1 ; sh:minInclusive 0 ; ] ;
+    sh:property [ sh:path aegis:newestMtime ; sh:datatype xsd:string ; sh:maxCount 1 ;
+        sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" ; ] ;
+    sh:property [ sh:path aegis:hasExtension ; sh:datatype xsd:string ;
+        sh:pattern "^\\.[a-z0-9_+-]{1,16}$" ; ] ;
+    sh:property [ sh:path aegis:extensionCounts ; sh:datatype xsd:string ; sh:maxCount 1 ; ] .
+
+# ── MediaLibrary ─────────────────────────────────────────────────
+
+aegis:MediaLibraryShape a sh:NodeShape ;
+    sh:targetClass aegis:MediaLibrary ;
+    # A MediaLibrary IS a FileCollection (the subClassOf above gives query-time
+    # inference). The validator does not carry a shapes-graph subClassOf onto
+    # data instances (measured, aegis-1v555n), so the constraints are applied
+    # explicitly here rather than silently skipped.
+    sh:node aegis:FileCollectionShape ;
+    sh:property [
+        sh:path aegis:platform ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Movie ────────────────────────────────────────────────────────
+#
+# A movie in a media library.
+
+aegis:MovieShape a sh:NodeShape ;
+    sh:targetClass aegis:Movie ;
+    sh:property [
+        sh:path aegis:title ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:year ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:plexId ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── TVSeries ─────────────────────────────────────────────────────
+#
+# A TV series in a media library.
+
+aegis:TVSeriesShape a sh:NodeShape ;
+    sh:targetClass aegis:TVSeries ;
+    sh:property [
+        sh:path aegis:title ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:plexId ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Watchlist ────────────────────────────────────────────────────
+#
+# A curated watchlist.
+
+aegis:WatchlistShape a sh:NodeShape ;
+    sh:targetClass aegis:Watchlist ;
+    sh:property [
+        sh:path aegis:owner ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ThemePark ────────────────────────────────────────────────────
+
+aegis:ThemeParkShape a sh:NodeShape ;
+    sh:targetClass aegis:ThemePark ;
+    sh:property [
+        sh:path aegis:name ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ThemeParkVisit ───────────────────────────────────────────────
+#
+# A visit to a theme park.
+
+aegis:ThemeParkVisitShape a sh:NodeShape ;
+    sh:targetClass aegis:ThemeParkVisit ;
+    sh:property [
+        sh:path aegis:visitDate ;
+        sh:datatype xsd:date ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:park ;
+        sh:class aegis:ThemePark ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Attraction ───────────────────────────────────────────────────
+#
+# A theme park attraction.
+
+aegis:AttractionShape a sh:NodeShape ;
+    sh:targetClass aegis:Attraction ;
+    sh:property [
+        sh:path aegis:name ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:park ;
+        sh:class aegis:ThemePark ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── Events & Software (aegis-rtht) ───────────────────────────────
+#
+# These four kinds are sanctioned by the extraction guide and were ALREADY IN
+# THE GRAPH before they were declared here — 32 live nodes between them at the
+# time of writing. They are reconciliation to the guide, not new vocabulary.
+#
+# Nobody noticed because nothing validated: for as long as zero shapes were
+# loaded server-side (aegis-1y3q), /episode accepted them silently. The
+# disagreement would first have surfaced as a validation failure on CORRECTLY
+# extracted data, in the same change that turned enforcement on. Declared now,
+# while enforcement is still off, so that flip stays boring.
+#
+# Only rdfs:label is required, per this file's own invariant (I1): a required
+# predicate nothing emits is the 133-violation defect aegis-z0xi removed. The
+# structured predicates below are maxCount-only — they constrain shape IF
+# present and demand nothing.
+
+# ── Incident ─────────────────────────────────────────────────────
+#
+# A discrete failure event with a start and (usually) an end. Bare kebab-case
+# per guide §1b. Distinct from FailurePattern: an Incident HAPPENED ONCE,
+# a FailurePattern RECURS. (aegis-dqn2: no similarity threshold can separate
+# "Dolt" the DatabaseService from "dolt-2.1.8-drop-pk-crash" the Incident —
+# which is exactly why they are different kinds and not one fuzzy pile.)
+
+aegis:IncidentShape a sh:NodeShape ;
+    sh:targetClass aegis:Incident ;
+    sh:property [
+        sh:path aegis:severity ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── FailurePattern ───────────────────────────────────────────────
+#
+# A RECURRING failure class abstracted from one or more incidents — the graph's
+# most-used abstract kind (22 live nodes) and, until now, its largest undeclared
+# one (aegis-49qs). Naming is `fp-<kebab>` per guide §1b; note the live graph
+# already carries both `fp-`-prefixed and bare-kebab nodes, which aegis-4oeg
+# tracks. Declaring the kind does NOT fix that split — a shape constrains
+# properties, not identity — so do not read this block as closing 4oeg.
+
+aegis:FailurePatternShape a sh:NodeShape ;
+    sh:targetClass aegis:FailurePattern ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# Metric — RULED IN (the schema-gate call the proposal asked for): a scraped
+# series is a first-class node because "which metrics exist but drive no rule?"
+# is a standing operational question that wants to be queryable — proven by the
+# zombie-series / noise-buried-outage incidents, where the WRONG answer to that
+# question hid a 66-day outage. Label-only contract, per the R1/R2 ruling (no
+# required scalar the emitters do not produce).
+aegis:MetricShape a sh:NodeShape ;
+    sh:targetClass aegis:Metric ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ═══ vt9m: legitimized legacy classes (label-only per the R1/R2 contract) ═══
+# Each was minted before the closed vocabulary existed, audited 2026-07-23,
+# and EARNED declaration: real distinct semantics, live instances, active use.
+# Synonym classes were NOT declared — their instances retype to canonicals
+# (PrometheusAlert->AlertRule, ConfigArtifact->ConfigFile, Repo/GitRepository->
+# GitRepo, Hook->ClaudeCodeHook, and the abstract parents Host/Service are
+# never emitted on instances).
+# AlertRule carries the optional properties a Prometheus-style rule actually has.
+# These were proposed as a separate PrometheusAlertRule class; that class is a
+# synonym (see the retype list above) so the class was declined and the PROPERTIES
+# adopted here instead — the useful part of that proposal was never the new name.
+# guardsProducer is the one that earns its keep: it turns "which producer must
+# exist for this rule to fire" from a comment in a template into a graph question,
+# which is what makes an absent()-guard rule auditable.
+aegis:AlertRuleShape a sh:NodeShape ;
+    sh:targetClass aegis:AlertRule ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    sh:property [ sh:path aegis:alertExpr ; sh:datatype xsd:string ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:severity ; sh:datatype xsd:string ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:keeper ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:guardsProducer ; sh:nodeKind sh:IRI ; ] .
+
+aegis:TextRuleShape a sh:NodeShape ;
+    sh:targetClass aegis:TextRule ;
+    sh:property [ sh:path aegis:regex ; sh:minCount 1 ; ] ;
+    sh:property [ sh:path aegis:enforcementTier ; sh:minCount 1 ; ] ;
+    # Optional text-only examples; readiness requires both polarities to pass.
+    sh:property [ sh:path aegis:mustMatch ; sh:datatype xsd:string ; ] ;
+    sh:property [ sh:path aegis:mustNotMatch ; sh:datatype xsd:string ; ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    # Optional exemptions (aegis-40j2pq / jdl6lr): additive, so existing rules conform.
+    sh:property [ sh:path aegis:exemptPathRegex ; sh:datatype xsd:string ; ] ;
+    sh:property [ sh:path aegis:exemptRepo ; sh:datatype xsd:string ; ] ;
+    sh:property [ sh:path aegis:exemptLineMarker ; sh:datatype xsd:string ; sh:maxCount 1 ; ] .
+
+aegis:InternalIdentifierPatternShape a sh:NodeShape ;
+    sh:targetClass aegis:InternalIdentifierPattern ;
+    sh:property [ sh:path aegis:mustMatch ; sh:datatype xsd:string ; ] ;
+    sh:property [ sh:path aegis:mustNotMatch ; sh:datatype xsd:string ; ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:ConfigSettingShape a sh:NodeShape ;
+    sh:targetClass aegis:ConfigSetting ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:SecurityFindingShape a sh:NodeShape ;
+    sh:targetClass aegis:SecurityFinding ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:WorkstreamShape a sh:NodeShape ;
+    sh:targetClass aegis:Workstream ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:DesignPrincipleShape a sh:NodeShape ;
+    sh:targetClass aegis:DesignPrinciple ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:FeatureShape a sh:NodeShape ;
+    sh:targetClass aegis:Feature ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:RequirementShape a sh:NodeShape ;
+    sh:targetClass aegis:Requirement ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:LimitationShape a sh:NodeShape ;
+    sh:targetClass aegis:Limitation ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:MonitoringProbeShape a sh:NodeShape ;
+    sh:targetClass aegis:MonitoringProbe ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+# ── Credential (aegis-5eovj, ian 2026-08-23) ───────────────────
+#
+# ACCEPTED into the vocabulary after inspecting all 9 instances, per this
+# repo's rule that a generic class must be justified by its nodes and not by
+# its name: TELEGRAM_BOT_TOKEN_secret, prometheus-basic-auth-credential,
+# homelab-mcp-ssh-key, dolt-backup-pull-key, terraform-ansible-controller-key,
+# infisical-vault-access, crew-host-infisical-identity,
+# homelab-mcp-ntfy-publisher, telegram_bot_8152168925.
+#
+# A secret or access identity is a real kind here — it has a reader path we
+# already depend on (rotation runbooks, the pushgateway credential, the quipu
+# bearer). SSHKey covers 3 of the 9 and is the SPECIAL case, so the hierarchy
+# runs that way round rather than widening SSHKey to mean "any secret".
+#
+# Label floor only, deliberately: these nodes are authored by hand across
+# several lanes and no emitter guarantees any other property. A shape must
+# refuse nothing that already exists.
+#
+# ⚠️ NEVER put a credential VALUE in this graph — the class names the secret,
+# it does not hold it. Nothing enforces that; it is a rule about what you write.
+# Concept, Component, and Credential were accepted together after inspecting
+# their live instances. Keep all three in the loaded vocabulary: omitting the
+# first two made valid /episode writes succeed with an ungoverned-type advisory.
+# Their producers share only the ordinary entity label contract, so stronger
+# constraints would reject already-valid incremental writes.
+aegis:ConceptShape a sh:NodeShape ;
+    sh:targetClass aegis:Concept ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:ComponentShape a sh:NodeShape ;
+    sh:targetClass aegis:Component ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:CredentialShape a sh:NodeShape ;
+    sh:targetClass aegis:Credential ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    # aegis-zjpqjr: every property below is OPTIONAL (legacy Credential nodes carry none) and
+    # constrained only when present. LOCATIONS AND METADATA ONLY — never a value.
+    sh:property [ sh:path aegis:status ; sh:maxCount 1 ; sh:in ( "active" "retired" ) ; ] ;
+    sh:property [ sh:path aegis:expiresAt ; sh:maxCount 1 ;
+                  sh:pattern "^(none|unknown|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2}))$" ; ] ;
+    sh:property [ sh:path aegis:keeper ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:probe ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:heldOn ; sh:class aegis:Host ; ] .
+
+# Adds result/verifiedAt. camayoc-core's CamayocVerificationShape already requires
+# rdfs:label, sourceKind and falsifier on every aegis:Verification; both shapes apply.
+# The rdfs:label floor is restated here because every shape file must carry it on its
+# own (invariant I2): the union enforces it today, but a file is checked alone.
+aegis:VerificationShape a sh:NodeShape ;
+    sh:targetClass aegis:Verification ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    sh:property [ sh:path aegis:result ; sh:maxCount 1 ; sh:in ( "works" "dead" "unknown" ) ; ] ;
+    sh:property [ sh:path aegis:verifiedAt ; sh:maxCount 1 ;
+                  sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$" ; ] .
+
+aegis:SSHKeyShape a sh:NodeShape ;
+    sh:targetClass aegis:SSHKey ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:NFSExportShape a sh:NodeShape ;
+    sh:targetClass aegis:NFSExport ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:APIEndpointShape a sh:NodeShape ;
+    sh:targetClass aegis:APIEndpoint ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:SystemdTimerShape a sh:NodeShape ;
+    sh:targetClass aegis:SystemdTimer ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:DockerContainerShape a sh:NodeShape ;
+    sh:targetClass aegis:DockerContainer ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:CIWorkflowShape a sh:NodeShape ;
+    sh:targetClass aegis:CIWorkflow ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:CiJobShape a sh:NodeShape ;
+    sh:targetClass aegis:CiJob ;
+    sh:property [
+        sh:path aegis:localEquivalent ;
+        sh:class aegis:LocalCommand ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:gatesPath ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:LocalCommandShape a sh:NodeShape ;
+    sh:targetClass aegis:LocalCommand ;
+    sh:property [
+        sh:path aegis:commandText ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:PushgatewayJobShape a sh:NodeShape ;
+    sh:targetClass aegis:PushgatewayJob ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:RemoteHostShape a sh:NodeShape ;
+    sh:targetClass aegis:RemoteHost ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:FailureModeShape a sh:NodeShape ;
+    sh:targetClass aegis:FailureMode ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:OperationalFactShape a sh:NodeShape ;
+    sh:targetClass aegis:OperationalFact ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:MLModelShape a sh:NodeShape ;
+    sh:targetClass aegis:MLModel ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:DataCorpusShape a sh:NodeShape ;
+    sh:targetClass aegis:DataCorpus ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+aegis:TraefikRouteShape a sh:NodeShape ;
+    sh:targetClass aegis:TraefikRoute ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] .
+
+# ── ExternalService ──────────────────────────────────────────────
+#
+# A third-party service we CONSUME but do not operate: MusicBrainz, ListenBrainz,
+# Discogs, Spotify. Modelled because consuming one carries obligations we need to
+# be able to query (rate limits enforced by blocking, contact-carrying User-Agent
+# requirements, optional tokens that only raise a quota).
+#
+# DELIBERATELY NOT rdfs:subClassOf aegis:Service. The Service hierarchy answers
+# "what do we RUN" — every existing child (SystemdService, WebApplication,
+# DatabaseService, SearchService) is something we operate. Filing consumed
+# third-party dependencies under it would silently inflate every "our services"
+# query with things we neither run nor can fix. This is not hypothetical: because
+# a constant-IRI type query resolves subclasses, `?s a aegis:Service` already
+# returns ~6x the directly-asserted count, and every child added widens that gap
+# for every caller. We do not add a fifth child to widen it further.
+# If a "everything we depend on, ours or not" query is ever wanted, it wants its
+# own parent, not a reuse of this one.
+
+aegis:ExternalServiceShape a sh:NodeShape ;
+    sh:targetClass aegis:ExternalService ;
+    sh:property [
+        sh:path aegis:externalUrl ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:comment ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] .
+
+# ═══ vt9m: the declared class hierarchy (also asserted as graph data) ═══
+# Abstract parents Host and Service exist ONLY as query targets via the
+# hierarchy — never emit them on an instance (guide §2).
+aegis:ProxmoxNode rdfs:subClassOf aegis:Host .
+aegis:BareMetalHost rdfs:subClassOf aegis:Host .
+aegis:LXCContainer rdfs:subClassOf aegis:Host .
+aegis:SystemdService rdfs:subClassOf aegis:Service .
+aegis:WebApplication rdfs:subClassOf aegis:Service .
+aegis:DatabaseService rdfs:subClassOf aegis:Service .
+aegis:SearchService rdfs:subClassOf aegis:Service .
+aegis:ClaudeCodeHook rdfs:subClassOf aegis:Script .
+aegis:AlertRule rdfs:subClassOf aegis:Directive .
+aegis:SSHKey rdfs:subClassOf aegis:Credential .
+
+# ⚠️ READ THE PARENTHESIS IN THE HEADER ABOVE — IT IS THE WHOLE MECHANISM.
+#
+# "(also asserted as graph data)" is not a note, it is the load-bearing half.
+# Subclass expansion reads the FACTS TABLE, never this file: `collect_class_and
+# _subclasses` (src/sparql/rdfs.rs) does `SELECT e FROM facts WHERE a = subClassOf`.
+# Loading a shapes file puts it in the SHAPES table, which drives SHACL validation
+# and nothing else. So an axiom that lives ONLY here is inert — `?s a Parent` will
+# not return the child, and no error says so.
+#
+# MEASURED 2026-08-04, and it has already bitten: shapes/governance.ttl
+# declares `aegis:Decision rdfs:subClassOf aegis:DecisionRecord` and
+# `aegis:Verdict rdfs:subClassOf aegis:Observation` on two ADJACENT lines with the
+# comment "so the parent's shape ALSO applies to the child via inference". Both were
+# absent from the facts table; `?s a DecisionRecord` applied no inference at all and
+# missed its Decision instance. Their neighbour `aegis:Policy` worked — same file,
+# same commit — which is exactly why the failure was invisible.
+#
+# So: adding a line HERE changes nothing on its own. Assert it too:
+#   POST /knot {"actor":"<you>","turtle":"@prefix aegis: … rdfs:subClassOf … ."}
+# then PROVE it by expansion, not by re-reading the file:
+#   ?s a <Parent>  ->  the response's `inference.expandedTypes` must name the child.
+
+# ── Retired the hand dual-typing convention ─────────────────────
+#
+# Descriptive defect knowledge had no common parent, so a reader asking
+# `?s a Directive` silently missed every FailureMode — and the documented answer
+# was to hand dual-type each node forever. These two axiom sets replace that
+# discipline. FailureMode is deliberately NOT a subclass of Directive: a defect is
+# not a rule, and asserting it would both be false and flood Directive with ~250
+# descriptive nodes.
+aegis:FailureKnowledge rdfs:subClassOf aegis:OperationalKnowledge .
+aegis:FailureMode rdfs:subClassOf aegis:FailureKnowledge .
+aegis:FailurePattern rdfs:subClassOf aegis:FailureKnowledge .
+aegis:IncidentClass rdfs:subClassOf aegis:FailureKnowledge .
+aegis:Directive rdfs:subClassOf aegis:OperationalKnowledge .
+
+# ── Legacy aegis:Bead: deprecated, governed, never written (aegis-ks4oph) ──
+#
+# 2631 nodes still carry aegis:Bead beside aegis:WorkItem. aegis-ykuhen kept the
+# old type deliberately as auditable history when it moved them to WorkItem, and
+# the ruling on aegis-ks4oph (2026-10-07) keeps it: Bead is a DEPRECATED LEGACY
+# subclass of WorkItem. Producers emit WorkItem; nothing writes Bead.
+#
+# The shape exists so the live census (I7) sees a governed legacy kind, not an
+# unshaped one, and it asserts the one thing that makes a Bead legitimate: it is
+# ALSO a WorkItem. A Bead-only node, which is what a new Bead write would be,
+# violates it. Note that the vocabulary gate admits any targeted class, so this
+# shape does not by itself refuse such a write at /episode. It makes one visible.
+aegis:Bead rdfs:subClassOf aegis:WorkItem ;
+    owl:deprecated true .
+
+aegis:BeadLegacyShape a sh:NodeShape ;
+    sh:targetClass aegis:Bead ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; ] ;
+    sh:property [ sh:path rdf:type ; sh:hasValue aegis:WorkItem ; ] .
+
+# ── Asserted in the store before they were ever written down ─────
+#
+# These 12 were asserted via /set and were live for a day with no
+# file recording them. Written here so the declared hierarchy is reviewable in one
+# place — NOT because writing them here is what makes them work. See the warning
+# above: they work because they are in the facts table.
+aegis:AgentTool rdfs:subClassOf aegis:Tool .
+aegis:CLI rdfs:subClassOf aegis:Tool .
+aegis:CLITool rdfs:subClassOf aegis:CLI .
+aegis:Container rdfs:subClassOf aegis:Host .
+aegis:RemoteHost rdfs:subClassOf aegis:Host .
+aegis:DockerContainer rdfs:subClassOf aegis:Host .
+aegis:DecisionRecord rdfs:subClassOf aegis:Document .
+aegis:DesignDoc rdfs:subClassOf aegis:Document .
+aegis:ExternalService rdfs:subClassOf aegis:Service .
+aegis:OperationalRule rdfs:subClassOf aegis:Directive .
+aegis:Procedure rdfs:subClassOf aegis:Directive .
+aegis:InternalIdentifierPattern rdfs:subClassOf aegis:TextRule .
+
+# ── De-facto vocabulary, governed ────────────────────────────────
+#
+# Three kinds that earned their way in by USAGE and had no shape: Host (66
+# instances), OperationalRule (28), Capability (7). They are not one author's
+# typos — they span many episodes over months — so the disposition is to GOVERN
+# them, not to retract the instances. (FailureMode was the fourth and is already
+# governed; do not re-add it.)
+#
+# Each requires only rdfs:label, which is this file's floor for any entity and is
+# NOT a tightening: MEASURED before landing, all 101 instances across the three
+# already carry a label (66/66, 28/28, 7/7), so these shapes refuse nothing that
+# exists. Shapes here enforce on every write, so an untested constraint would
+# start bouncing legitimate data — hence the floor and the measurement, with any
+# real tightening left to a deliberate pass.
+#
+# Modelling calls, made rather than deferred:
+#
+#   Host — a SUPERCLASS, not redundant. Six children already resolve to it
+#   (ProxmoxNode, BareMetalHost, LXCContainer, Container, RemoteHost,
+#   DockerContainer), so `?s a Host` already expands to the whole population and
+#   retyping its direct instances away would break that. Shaping the parent is one
+#   of the two sanctioned remedies for an unshaped abstract parent.
+#
+#   OperationalRule — kept DISTINCT and subclassed under Directive (asserted
+#   above). It was already reachable from a Directive query while unvalidated,
+#   which is the retrievability trap in reverse: covered to a reader, ungoverned
+#   in fact.
+#
+#   Capability — kept DISTINCT from AgentTool. The original proposal said the two
+#   overlapped, citing verify_release; MEASURED, none of the seven current
+#   Capability instances carries AgentTool. They name what the system CAN DO
+#   (crew-only-guard, st-stalled-detector, skein-dispatch-work-skill), which is
+#   not the same claim as a tool an agent invokes. Folding them would assert an
+#   overlap the data does not show.
+
+aegis:HostShape a sh:NodeShape ;
+    sh:targetClass aegis:Host ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+aegis:OperationalRuleShape a sh:NodeShape ;
+    sh:targetClass aegis:OperationalRule ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+aegis:CapabilityShape a sh:NodeShape ;
+    sh:targetClass aegis:Capability ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── The last two asserted abstract parents ───────────────────────
+#
+# Service (65 direct assertions) and Tool (18) were the remaining classes
+# reported by invariant I8: a parent with children and no shape of its own, so a
+# node typed with the PARENT is governed by nothing while `?s a Service` returns
+# it anyway. Shaping them is the second of I8's two sanctioned remedies, and it
+# is the SAME call ec1f082 made for Host directly above — made the same way,
+# from the same measurement, so the two do not have to be argued separately.
+#
+# Why shape rather than retype, per class, MEASURED not assumed:
+#
+#   Service — five children already resolve to it (WebApplication,
+#   DatabaseService, SystemdService, SearchService, ExternalService), so the
+#   constant-IRI query already expands to 370 while only 65 are asserted.
+#   Retyping those 65 away would break that expansion for the ones that are
+#   genuinely just "a service" and nothing narrower — 26 of the 65 carry no
+#   other type at all, which is the population a child class does not exist for.
+#
+#   Tool — same shape, smaller: children CLI and AgentTool, 18 asserted, 11 of
+#   them bare. The bare ones are guards, skills and probes (dangerous-command-
+#   guard, hank-census, st_doctor); "a tool" is the honest claim for those and
+#   inventing a child to hold them would be modelling for the checker's benefit.
+#
+# NOT a tightening, and measured before landing exactly as ec1f082 required:
+# 65/65 Service and 18/18 Tool instances already carry rdfs:label, so these two
+# shapes refuse nothing that exists. The asserted counts come from the FILTER
+# form (`?s a ?c . FILTER(?c = <...>)`); the constant form expands over
+# subClassOf and would have reported 370 — see the note on I8 in
+# verify_shape_invariants.py.
+#
+# Landing these takes I8's direct-assertion count to ZERO, which is the trigger
+# its own docstring names for promoting it from a REPORT to a FAILURE. That flip
+# is in the same change, because the report is what let the backlog re-grow.
+
+aegis:ServiceShape a sh:NodeShape ;
+    sh:targetClass aegis:Service ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+aegis:ToolShape a sh:NodeShape ;
+    sh:targetClass aegis:Tool ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── SoftwareVersion ──────────────────────────────────────────────
+#
+# A specific released version of a piece of software, so an incident can point
+# at the version that carried it rather than at the product in general.
+
+aegis:SoftwareVersionShape a sh:NodeShape ;
+    sh:targetClass aegis:SoftwareVersion ;
+    sh:property [
+        sh:path aegis:version ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── StoragePool ──────────────────────────────────────────────────
+#
+# A backing storage pool (e.g. fastpool). Distinct from ZFSDataset: a dataset
+# lives IN a pool.
+
+aegis:StoragePoolShape a sh:NodeShape ;
+    sh:targetClass aegis:StoragePool ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ── ClaudeCodeHook ───────────────────────────────────────────────
+#
+# A Claude Code hook — a PreToolUse/Stop/SessionStart entry wired into a
+# settings.json. Declared because it was IN USE and undeclared (4 nodes:
+# gt-tap-guard, graph-capture-hook, quipu-session-capture.sh,
+# crew-only-guard.sh) — an aegis-rt9c I6 instance, found by ruling on
+# aegis-gljx rather than by any check.
+#
+# THIS IS THE CANONICAL KIND FOR A GUARD, and aegis:Guard was deliberately NOT
+# declared. Guard-ness is a ROLE, not a kind: the live graph realizes it as
+# ClaudeCodeHook, CLI, Script, Directive, SystemdService and DesignDoc. A Guard
+# class would have become a SEVENTH way to type a guard while consolidating
+# none of them. Type a guard by WHAT IT IS; say that it guards with an edge.
+
+aegis:ClaudeCodeHookShape a sh:NodeShape ;
+    sh:targetClass aegis:ClaudeCodeHook ;
+    sh:property [
+        sh:path aegis:event ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] .
+
+# ═══════════════════════════════════════════════════════════════════
+# Relationship Constraints — WIRED 2026-07-23 (was: inert by construction)
+# ═══════════════════════════════════════════════════════════════════
+#
+# Every shape below is TARGETED (sh:targetSubjectsOf) and annotated
+# quipu:onViolation "emit" — on a binary with event P3, violations become
+# shacl.violation events without gating the write. P3 IS NOW LIVE (src/shacl.rs
+# split_shapes_by_policy; corrected 2026-09-30, aegis-cpfw7a): these shapes
+# OBSERVE and do not enforce. When wired they were measured at ZERO live
+# violations first
+# (ranges widened to cover legitimate emergent usage; three data-bug edges
+# repaired; the un-wireable four held below).
+#
+# RANGE WIDENINGS, each from measurement of live usage (not guesswork):
+#   member_of    += AnsibleGroup (declared-layer host groups, 40 edges), Skill
+#   committed_to += GitRepository, Repo (the class-name drift family, vt9m)
+#   authored_by  += Polecat (historical polecat-era authors)
+#   triggered_by += GitCommit (bead provenance), CLI (tool-invoked scripts)
+#   triggered_by += SystemdTimer (a .timer activating its .service is the
+#                   canonical trigger sense, same as CronJob; aegis-6bh4g4)
+#
+# STILL UNWIRED — HELD, with the measured blocker for each (fmt5-class
+# semantic-migration work, not range tweaks):
+#   runs_on       12/118 mixed: direction-inverted edges (container runs_on app)
+#                 + substrate usage (X runs_on ZFSDataset)
+#   managed_by    23/35 multi-sense: directive-governs (should be applies_to,
+#                 inverted) + component-of (should be part_of) alongside the
+#                 canonical person/role senses
+#   implements    7/27 multi-sense: code-implements-service, doc-implements-design
+#   configured_in 9/13 direction-drift: config-file -> consumer (inverted from
+#                 the canonical "thing configured_in file")
+
+aegis:RunsOnShape a sh:PropertyShape ;
+    # HELD — see section header. No target on purpose.
+    sh:path aegis:runs_on ;
+    sh:or (
+        [ sh:class aegis:ProxmoxNode ]
+        [ sh:class aegis:BareMetalHost ]
+        [ sh:class aegis:LXCContainer ]
+    ) .
+
+aegis:ManagedByShape a sh:PropertyShape ;
+    # HELD — see section header. No target on purpose.
+    sh:path aegis:managed_by ;
+    sh:or ( [ sh:class aegis:CrewMember ] [ sh:class aegis:Person ] ) .
+
+aegis:ImplementsShape a sh:PropertyShape ;
+    # HELD — see section header. No target on purpose.
+    sh:path aegis:implements ;
+    sh:class aegis:WorkItem .
+
+aegis:ConfiguredInShape a sh:PropertyShape ;
+    # HELD — see section header. No target on purpose.
+    sh:path aegis:configured_in ;
+    sh:or ( [ sh:class aegis:ConfigFile ] [ sh:class aegis:AnsibleRole ] ) .
+
+aegis:MemberOfShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:member_of ;
+    sh:property [
+        sh:path aegis:member_of ;
+        sh:or ( [ sh:class aegis:Rig ] [ sh:class aegis:AnsibleGroup ] [ sh:class aegis:Skill ] ) ;
+    ] .
+
+aegis:ReportsToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:reports_to ;
+    sh:property [ sh:path aegis:reports_to ; sh:class aegis:CrewMember ; ] .
+
+# WIRED at birth: measured 0 live aegis:hasRole edges and 0
+# aegis:CrewRole instances before wiring, so the zero-violations precondition
+# in the section header holds trivially. Wiring a predicate on the day it is
+# minted is the only moment that precondition is free — after usage accretes
+# it costs a migration, which is how the four HELD shapes above got stuck.
+aegis:HasRoleShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:hasRole ;
+    sh:property [ sh:path aegis:hasRole ; sh:class aegis:CrewRole ; ] .
+
+# aegis:leadFor — a review/design LEAD paired 1:1 with the KEEPER whose
+# domain it reviews (aegis-cpfw7a, for the aegis-vj3uet role redesign;
+# quipu proposal 26). NOT reports_to: it routes design/review work, not the
+# stop-event tree. WIRED at birth: measured 0 live aegis:leadFor edges on
+# 2026-09-30, so the zero-violations precondition holds trivially.
+#
+# 1:1 is enforced from BOTH ends: a lead names at most one keeper
+# (LeadForShape), and a keeper is named by at most one lead
+# (LeadForKeeperShape). Roles are matched by VALUE (sh:hasValue on
+# aegis:hasRole), so the shape does not depend on aegis:keeper also being
+# used as a predicate elsewhere (a pre-existing pun, measured live).
+#
+# REJECT, deliberately NOT "emit" (wu, review of quipu#354). "emit" now only
+# OBSERVES (event P3 is live; the header above predates it), so an emit shape
+# would not enforce 1:1 at all. Reject is safe because nothing violates it
+# yet. It also keeps all three shapes in ONE routed document: the splitter is
+# textual, and an emit LeadForShape would reference, via sh:node, a
+# KeeperRoleShape routed to the reject document instead.
+aegis:LeadForShape a sh:NodeShape ;
+    sh:targetSubjectsOf aegis:leadFor ;
+    sh:property [ sh:path aegis:hasRole ; sh:hasValue aegis:lead ;
+        sh:message "only a CrewMember holding aegis:lead may declare aegis:leadFor" ] ;
+    sh:property [ sh:path aegis:leadFor ; sh:maxCount 1 ; sh:class aegis:CrewMember ;
+        sh:node aegis:KeeperRoleShape ;
+        sh:message "aegis:leadFor names exactly one CrewMember holding aegis:keeper" ] .
+
+aegis:KeeperRoleShape a sh:NodeShape ;
+    sh:property [ sh:path aegis:hasRole ; sh:hasValue aegis:keeper ] .
+
+aegis:LeadForKeeperShape a sh:NodeShape ;
+    sh:targetObjectsOf aegis:leadFor ;
+    sh:property [ sh:path [ sh:inversePath aegis:leadFor ] ; sh:maxCount 1 ;
+        sh:message "a keeper is paired with at most one lead" ] .
+
+aegis:CommittedToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:committed_to ;
+    sh:property [
+        sh:path aegis:committed_to ;
+        sh:or ( [ sh:class aegis:GitRepo ] [ sh:class aegis:GitRepository ] [ sh:class aegis:Repo ] ) ;
+    ] .
+
+aegis:AuthoredByShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:authored_by ;
+    sh:property [
+        sh:path aegis:authored_by ;
+        sh:or ( [ sh:class aegis:Person ] [ sh:class aegis:CrewMember ] [ sh:class aegis:Polecat ] ) ;
+    ] .
+
+aegis:TriggeredByShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:triggered_by ;
+    sh:property [
+        sh:path aegis:triggered_by ;
+        sh:or ( [ sh:class aegis:CronJob ] [ sh:class aegis:SystemdTimer ] [ sh:class aegis:Script ] [ sh:class aegis:GitCommit ] [ sh:class aegis:CLI ] ) ;
+    ] .
+
+# The ten structure-only relationship guards: objects must be IRIs (an entity
+# edge to a literal is a typo'd fact that reads like a fact — measured zero
+# live literals on all ten before wiring, so these are true-and-armed).
+aegis:DependsOnShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:depends_on ;
+    sh:property [ sh:path aegis:depends_on ; sh:nodeKind sh:IRI ; ] .
+
+aegis:ConnectsToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:connects_to ;
+    sh:property [ sh:path aegis:connects_to ; sh:nodeKind sh:IRI ; ] .
+
+aegis:BacksUpShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:backs_up ;
+    sh:property [ sh:path aegis:backs_up ; sh:nodeKind sh:IRI ; ] .
+
+aegis:RoutesToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:routes_to ;
+    sh:property [ sh:path aegis:routes_to ; sh:nodeKind sh:IRI ; ] .
+
+aegis:MonitorsShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:monitors ;
+    sh:property [ sh:path aegis:monitors ; sh:nodeKind sh:IRI ; ] .
+
+aegis:AppliesToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:applies_to ;
+    sh:property [ sh:path aegis:applies_to ; sh:nodeKind sh:IRI ; ] .
+
+aegis:DerivedFromShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:derived_from ;
+    sh:property [ sh:path aegis:derived_from ; sh:nodeKind sh:IRI ; ] .
+
+aegis:DeployedOnShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:deployed_on ;
+    sh:property [ sh:path aegis:deployed_on ; sh:nodeKind sh:IRI ; ] .
+
+aegis:OwnsShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:owns ;
+    sh:property [ sh:path aegis:owns ; sh:nodeKind sh:IRI ; ] .
+
+aegis:ModifiesShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:targetSubjectsOf aegis:modifies ;
+    sh:property [ sh:path aegis:modifies ; sh:nodeKind sh:IRI ; ] .
+
+# chaski (aegis-1mqrob) — a Reaction is a governed, bitemporal rule that chaski
+# evaluates post-commit (triggerKind "event", over GET /events) or on a schedule
+# (triggerKind "schedule", over POST /query). A ReactionFiring records one
+# TRANSITION of a (reaction, focus) pair — never an evaluation — so steady state
+# writes nothing. Reuses the existing string predicates aegis:severity,
+# aegis:owner and aegis:schedule rather than minting near-duplicates.
+
+aegis:ReactionShape a sh:NodeShape ;
+    sh:targetClass aegis:Reaction ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [
+        sh:path aegis:triggerKind ; sh:datatype xsd:string ;
+        sh:minCount 1 ; sh:maxCount 1 ; sh:in ( "event" "schedule" ) ;
+    ] ;
+    sh:property [
+        # event triggers only: comma-separated quipu.event/v1 types
+        # (entity.added, entity.updated, edge.added, edge.retracted, ...)
+        sh:path aegis:eventTypes ; sh:datatype xsd:string ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # schedule triggers only: an ISO-8601 duration, e.g. "PT5M"
+        sh:path aegis:schedule ; sh:datatype xsd:string ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        # SPARQL SELECT ?focus — the nodes for which the reaction is FIRING now.
+        # Absent from the result = resolved. A timeout/error is UNKNOWN, never resolved.
+        sh:path aegis:condition ; sh:datatype xsd:string ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:severity ; sh:datatype xsd:string ;
+        sh:minCount 1 ; sh:maxCount 1 ; sh:in ( "info" "warning" "critical" "page" ) ;
+    ] ;
+    sh:property [
+        # what happens on a false->true transition, beyond the metric every
+        # reaction exports; "page" never dedupes (escalate-verified semantics)
+        sh:path aegis:action ; sh:datatype xsd:string ;
+        sh:minCount 1 ; sh:in ( "alert" "page" "bead" "webhook" ) ;
+    ] ;
+    sh:property [ sh:path aegis:owner ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:enabled ; sh:datatype xsd:boolean ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path rdfs:comment ; sh:maxCount 1 ; ] .
+
+aegis:ReactionFiringShape a sh:NodeShape ;
+    sh:targetClass aegis:ReactionFiring ;
+    sh:property [ sh:path aegis:firedBy ; sh:class aegis:Reaction ; sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    # the focus node the condition returned; any IRI
+    sh:property [ sh:path aegis:focus ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path aegis:startedAt ; sh:datatype xsd:dateTime ; sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    # absent while firing; set once (via /set) on the true->false transition
+    sh:property [ sh:path aegis:resolvedAt ; sh:datatype xsd:dateTime ; sh:maxCount 1 ; ] ;
+    # Optional delivery identity. The producer derives the firing IRI from
+    # (reaction label, eventId) and freezes the payload before its first send.
+    # SHACL does not prove deterministic identity or receiver idempotence.
+    sh:property [ sh:path aegis:eventId ; sh:datatype xsd:string ; sh:maxCount 1 ; ] .
+
+# Episode context references can point into an explicitly selected records graph.
+# SHACL checks the reference shape; the producer checks direct WorkItem typing
+# in that graph. Do not copy or infer a WorkItem into the episode graph.
+aegis:AboutWorkItemShape a sh:NodeShape ;
+    sh:targetSubjectsOf aegis:aboutWorkItem ;
+    sh:property [
+        sh:path aegis:aboutWorkItem ;
+        sh:nodeKind sh:IRI ;
+        sh:maxCount 1 ;
+    ] .
+
+# Canonical curated Daily Brief rows (aegis-hqz, schema proposal 32).
+# JSON semantics, identity uniqueness and CAS are checked by the application.
+aegis:DailyBriefRow rdfs:subClassOf aegis:Artifact .
+aegis:DailyBriefRowShape a sh:NodeShape ;
+  sh:targetClass aegis:DailyBriefRow ;
+  sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path aegis:reference ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ; sh:maxLength 1024 ] ;
+  sh:property [ sh:path aegis:briefArtifact ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path aegis:briefCollection ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ; sh:maxLength 64 ] ;
+  sh:property [ sh:path aegis:briefDocumentId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ; sh:maxLength 256 ] ;
+  sh:property [ sh:path aegis:briefPayloadJson ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 2 ; sh:maxLength 16384 ] ;
+  sh:property [ sh:path aegis:briefRevision ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ;
+  sh:property [ sh:path aegis:briefCurator ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ; sh:maxLength 128 ] ;
+  sh:property [ sh:path aegis:briefSourceVersion ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] .
