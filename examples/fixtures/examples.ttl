@@ -1,81 +1,159 @@
-# Fixture for the example query library (examples/README.md).
-#
-# One small graph that exercises every example: a work ledger with a blocker
-# chain, tracker observations, a decision, two directives (one superseded), a
-# code module with symbols, and one deliberately orphaned node. Each example in
-# examples/cases.json names the rows it must return AND is written so a query
-# that returned every row would fail — see tests/test_examples.py.
-#
-# Conforms to shapes/core.shapes.ttl, shapes/code-entities.ttl and
-# examples/shapes/directives.shapes.ttl, so a receiver with those shapes loaded
-# stages it rather than quarantining it.
-
-@prefix aegis:  <http://aegis.gastown.local/ontology/> .
+# Synthetic Seeds Action fixture; profile owned by scbrown/seeds.
 @prefix bobbin: <http://aegis.gastown.local/ontology/> .
-@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix ex:     <http://camayoc.test/examples/> .
+@prefix ex: <http://camayoc.test/examples/> .
+@prefix quechua: <https://scbrown.github.io/quechua/ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix seeds: <https://seeds.local/ontology/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# ---- principals (untyped: a label is all these examples need) ----------
-ex:alice rdfs:label "alice" .
-ex:bob   rdfs:label "bob" .
-
-# ---- work ledger: w4 -> w3 -> w2 -> w1 ---------------------------------
-ex:w1 a aegis:WorkItem ; aegis:sourceKind "declared" ;
-    rdfs:label "Design share queries" ;
-    aegis:assignedTo ex:alice ; aegis:closedAt "2026-09-01T12:00:00Z" .
-ex:w2 a aegis:WorkItem ; aegis:sourceKind "declared" ;
-    rdfs:label "Implement queries.ttl" ;
-    aegis:assignedTo ex:alice ; aegis:blockedOn ex:w1 .
-ex:w3 a aegis:WorkItem ; aegis:sourceKind "declared" ;
-    rdfs:label "Write example queries" ;
-    aegis:assignedTo ex:bob ; aegis:blockedOn ex:w2 .
-ex:w4 a aegis:WorkItem ; aegis:sourceKind "declared" ;
-    rdfs:label "Publish the qpack" ;
-    aegis:assignedTo ex:alice ; aegis:blockedOn ex:w3 .
-ex:w5 a aegis:WorkItem ; aegis:sourceKind "declared" ;
-    rdfs:label "Triage the backlog" ;
-    aegis:assignedTo ex:bob ; aegis:reviewAfter "2026-09-10" .
-
-# ---- tracker observations (one per record version) ---------------------
-ex:obs-w2 a aegis:Observation ; aegis:sourceKind "observed" ;
-    rdfs:label "tracker snapshot of w2" ; aegis:about ex:w2 ;
-    aegis:observedAt "2026-09-25T10:00:00Z" ; aegis:observedStatus "in_progress" ;
-    aegis:observedValue "{\"id\":\"w2\",\"status\":\"in_progress\"}" .
-ex:obs-w5 a aegis:Observation ; aegis:sourceKind "observed" ;
-    rdfs:label "tracker snapshot of w5" ; aegis:about ex:w5 ;
-    aegis:observedAt "2026-09-02T09:00:00Z" ; aegis:observedStatus "open" ;
-    aegis:observedValue "{\"id\":\"w5\",\"status\":\"open\"}" .
-
-# ---- decisions and directives about one topic --------------------------
-ex:qpack-format rdfs:label "qpack format" .
-ex:d1 a aegis:Decision ; aegis:sourceKind "declared" ;
+ex:d1 a bobbin:Decision ;
     rdfs:label "Carry stored queries as queries.ttl" ;
-    aegis:chose "queries.ttl" ; aegis:about ex:qpack-format ;
-    aegis:decidedBy ex:alice ; aegis:decidedIn ex:w1 .
-ex:dir0 a aegis:Directive ; aegis:sourceKind "declared" ;
+    bobbin:about ex:qpack-format ;
+    bobbin:chose "queries.ttl" ;
+    bobbin:decidedBy ex:alice ;
+    bobbin:decidedIn ex:w1 ;
+    bobbin:sourceKind "declared" .
+
+ex:dir0 a bobbin:Directive ;
     rdfs:label "Stored queries travel only in SQLite packs" ;
-    aegis:about ex:qpack-format ; aegis:supersededBy ex:dir1 ;
-    aegis:reviewAfter "2026-08-01" .
-ex:dir1 a aegis:Directive ; aegis:sourceKind "declared" ;
-    rdfs:label "qpacks carry their stored queries" ;
-    aegis:about ex:qpack-format ; aegis:reviewAfter "2027-01-01" .
+    bobbin:about ex:qpack-format ;
+    bobbin:reviewAfter "2026-08-01" ;
+    bobbin:sourceKind "declared" ;
+    bobbin:supersededBy ex:dir1 .
 
-# ---- code graph ---------------------------------------------------------
-ex:mod-share a bobbin:CodeModule ; aegis:sourceKind "observed" ;
-    rdfs:label "src/share.rs" ; bobbin:filePath "src/share.rs" ;
-    bobbin:repo "quipu" ; bobbin:language "rust" .
-ex:mod-queries a bobbin:CodeModule ; aegis:sourceKind "observed" ;
-    rdfs:label "src/share_queries.rs" ; bobbin:filePath "src/share_queries.rs" ;
-    bobbin:repo "quipu" ; bobbin:language "rust" .
-ex:sym-share a bobbin:CodeSymbol ; aegis:sourceKind "observed" ;
-    rdfs:label "share" ; bobbin:name "share" ; bobbin:symbolKind "function" ;
-    bobbin:definedIn ex:mod-share .
-ex:sym-payload a bobbin:CodeSymbol ; aegis:sourceKind "observed" ;
-    rdfs:label "build_share_payload" ; bobbin:name "build_share_payload" ;
-    bobbin:symbolKind "function" ; bobbin:definedIn ex:mod-share .
-ex:sym-select a bobbin:CodeSymbol ; aegis:sourceKind "observed" ;
-    rdfs:label "select" ; bobbin:name "select" ; bobbin:symbolKind "function" ;
-    bobbin:definedIn ex:mod-queries .
-
-# ---- the orphan ----------------------------------------------------------
 ex:lonely rdfs:label "Unlinked note" .
+
+ex:obs-w2 a bobbin:Observation ;
+    rdfs:label "tracker snapshot of w2" ;
+    bobbin:about ex:w2 ;
+    bobbin:observedAt "2026-09-25T10:00:00Z" ;
+    bobbin:observedStatus "in_progress" ;
+    bobbin:observedValue "{\"id\":\"w2\",\"status\":\"in_progress\"}" ;
+    bobbin:sourceKind "observed" .
+
+ex:obs-w5 a bobbin:Observation ;
+    rdfs:label "tracker snapshot of w5" ;
+    bobbin:about ex:w5 ;
+    bobbin:observedAt "2026-09-02T09:00:00Z" ;
+    bobbin:observedStatus "open" ;
+    bobbin:observedValue "{\"id\":\"w5\",\"status\":\"open\"}" ;
+    bobbin:sourceKind "observed" .
+
+ex:sym-payload a bobbin:CodeSymbol ;
+    rdfs:label "build_share_payload" ;
+    bobbin:definedIn ex:mod-share ;
+    bobbin:name "build_share_payload" ;
+    bobbin:sourceKind "observed" ;
+    bobbin:symbolKind "function" .
+
+ex:sym-select a bobbin:CodeSymbol ;
+    rdfs:label "select" ;
+    bobbin:definedIn ex:mod-queries ;
+    bobbin:name "select" ;
+    bobbin:sourceKind "observed" ;
+    bobbin:symbolKind "function" .
+
+ex:sym-share a bobbin:CodeSymbol ;
+    rdfs:label "share" ;
+    bobbin:definedIn ex:mod-share ;
+    bobbin:name "share" ;
+    bobbin:sourceKind "observed" ;
+    bobbin:symbolKind "function" .
+
+ex:w4 a schema:Action ;
+    rdfs:label "Publish the qpack" ;
+    quechua:blockedOn ex:w3 ;
+    quechua:sourceKind "declared" ;
+    schema:actionStatus schema:PotentialActionStatus ;
+    schema:agent ex:alice ;
+    schema:dateCreated "2026-09-01T00:00:00+00:00"^^xsd:dateTime ;
+    schema:identifier "w4" ;
+    schema:name "Publish the qpack" ;
+    schema:version 1 ;
+    seeds:issueType "task" ;
+    seeds:priority 2 ;
+    seeds:status "open" .
+
+ex:dir1 a bobbin:Directive ;
+    rdfs:label "qpacks carry their stored queries" ;
+    bobbin:about ex:qpack-format ;
+    bobbin:reviewAfter "2027-01-01" ;
+    bobbin:sourceKind "declared" .
+
+ex:mod-queries a bobbin:CodeModule ;
+    rdfs:label "src/share_queries.rs" ;
+    bobbin:filePath "src/share_queries.rs" ;
+    bobbin:language "rust" ;
+    bobbin:repo "quipu" ;
+    bobbin:sourceKind "observed" .
+
+ex:w3 a schema:Action ;
+    rdfs:label "Write example queries" ;
+    quechua:blockedOn ex:w2 ;
+    quechua:sourceKind "declared" ;
+    schema:actionStatus schema:PotentialActionStatus ;
+    schema:agent ex:bob ;
+    schema:dateCreated "2026-09-01T00:00:00+00:00"^^xsd:dateTime ;
+    schema:identifier "w3" ;
+    schema:name "Write example queries" ;
+    schema:version 1 ;
+    seeds:issueType "task" ;
+    seeds:priority 2 ;
+    seeds:status "open" .
+
+ex:w5 a schema:Action ;
+    rdfs:label "Triage the backlog" ;
+    bobbin:reviewAfter "2026-09-10" ;
+    quechua:sourceKind "declared" ;
+    schema:actionStatus schema:PotentialActionStatus ;
+    schema:agent ex:bob ;
+    schema:dateCreated "2026-09-01T00:00:00+00:00"^^xsd:dateTime ;
+    schema:identifier "w5" ;
+    schema:name "Triage the backlog" ;
+    schema:version 1 ;
+    seeds:issueType "task" ;
+    seeds:priority 2 ;
+    seeds:status "open" .
+
+ex:bob rdfs:label "bob" .
+
+ex:mod-share a bobbin:CodeModule ;
+    rdfs:label "src/share.rs" ;
+    bobbin:filePath "src/share.rs" ;
+    bobbin:language "rust" ;
+    bobbin:repo "quipu" ;
+    bobbin:sourceKind "observed" .
+
+ex:w1 a schema:Action ;
+    rdfs:label "Design share queries" ;
+    quechua:outcome "done" ;
+    quechua:sourceKind "declared" ;
+    schema:actionStatus schema:CompletedActionStatus ;
+    schema:agent ex:alice ;
+    schema:dateCreated "2026-09-01T00:00:00+00:00"^^xsd:dateTime ;
+    schema:endTime "2026-09-01T12:00:00+00:00"^^xsd:dateTime ;
+    schema:identifier "w1" ;
+    schema:name "Design share queries" ;
+    schema:version 1 ;
+    seeds:issueType "task" ;
+    seeds:priority 2 ;
+    seeds:status "closed" .
+
+ex:w2 a schema:Action ;
+    rdfs:label "Implement queries.ttl" ;
+    quechua:blockedOn ex:w1 ;
+    quechua:sourceKind "declared" ;
+    schema:actionStatus schema:PotentialActionStatus ;
+    schema:agent ex:alice ;
+    schema:dateCreated "2026-09-01T00:00:00+00:00"^^xsd:dateTime ;
+    schema:identifier "w2" ;
+    schema:name "Implement queries.ttl" ;
+    schema:version 1 ;
+    seeds:issueType "task" ;
+    seeds:priority 2 ;
+    seeds:status "open" .
+
+ex:qpack-format rdfs:label "qpack format" .
+
+ex:alice rdfs:label "alice" .

@@ -15,6 +15,9 @@
       "camayoc_ex_who_said_this",
       "camayoc_ex_stale_facts",
       "camayoc_ex_orphaned_entities"
+    ],
+    "external_profiles": [
+      "shapes/aegis/seeds-profile.json"
     ]
   },
   "code-graph": {
@@ -26,6 +29,9 @@
     "queries": [
       "camayoc_ex_symbols_in_module",
       "camayoc_ex_orphaned_entities"
+    ],
+    "external_profiles": [
+      "shapes/aegis/seeds-profile.json"
     ]
   },
   "directive-graph": {
@@ -43,6 +49,9 @@
       "camayoc_ex_who_said_this",
       "camayoc_ex_stale_facts",
       "camayoc_ex_orphaned_entities"
+    ],
+    "external_profiles": [
+      "shapes/aegis/seeds-profile.json"
     ]
   }
 }

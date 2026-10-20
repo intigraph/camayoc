@@ -13,41 +13,24 @@
 @prefix sh:    <http://www.w3.org/ns/shacl#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix schema: <https://schema.org/> .
 @prefix quipu: <http://quipu.dev/ontology/> .
 
-aegis:CamayocWorkItemShape a sh:NodeShape ;
-    sh:targetClass aegis:WorkItem ;
-    sh:property [
-        sh:path aegis:sourceKind ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:in ("observed" "declared" "inferred") ;
-        sh:message "camayoc: every WorkItem carries exactly one sourceKind of observed|declared|inferred — the tag is the reader's only signal of trust" ;
-    ] ;
-    sh:property [
-        sh:path rdfs:label ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:datatype xsd:string ;
-        sh:message "camayoc: a WorkItem needs exactly one rdfs:label" ;
-    ] ;
-    sh:property [
-        sh:path aegis:outcome ;
-        sh:maxCount 1 ;
-        sh:in ("done" "abandoned" "superseded" "failed") ;
-        sh:message "camayoc: outcome, when set, is one of done|abandoned|superseded|failed — absence means open; never store a decaying 'in progress'" ;
-    ] ;
-    sh:property [
-        sh:path aegis:blockedOn ;
-        sh:or ( [ sh:class aegis:WorkItem ] [ sh:class aegis:Blocker ] ) ;
-        sh:message "camayoc: blockedOn must point at a WorkItem or a Blocker the graph actually holds — an unresolvable target is a blocker nobody can clear" ;
-    ] ;
-    sh:property [
-        sh:path aegis:inWorkflowRun ;
-        sh:maxCount 1 ;
-        sh:class aegis:WorkflowRun ;
-        sh:message "camayoc: inWorkflowRun, when set, names exactly one WorkflowRun the graph holds — a work item that cannot find its run cannot advance it" ;
-    ] .
+# Work-item validation belongs to the pinned Seeds profile (schema:Action).
+# See shapes/aegis/seeds-profile.json; legacy names are deprecated aliases only.
+
+# Workflow linkage is a producer-owned property constraint, not another tracker
+# shape. It applies to canonical Actions and to retained historical records.
+aegis:ActionWorkflowRunShape a sh:NodeShape ;
+    sh:targetSubjectsOf aegis:inWorkflowRun ;
+    sh:property [ sh:path aegis:inWorkflowRun ; sh:maxCount 1 ; sh:class aegis:WorkflowRun ] .
+
+# Retained legacy relation checks do not sanction new WorkItem writes. New work
+# uses quechua:blockedOn on schema:Action, governed by the Seeds profile.
+aegis:LegacyBlockedOnShape a sh:NodeShape ;
+    sh:targetSubjectsOf aegis:blockedOn ;
+    sh:property [ sh:path aegis:blockedOn ;
+                  sh:or ( [ sh:class aegis:WorkItem ] [ sh:class schema:Action ] [ sh:class aegis:Blocker ] ) ] .
 
 # A declared review age must be machine-readable, or the reactor can never
 # tell due from not-due (aegis-kxjack). Any subject that declares one is
@@ -519,8 +502,8 @@ aegis:CamayocUsageRecordShape a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path aegis:attributedTo ;
-        sh:class aegis:WorkItem ;
-        sh:message "camayoc: usage attribution, when present, points at a WorkItem — cost as a property of work, not of a window" ;
+        sh:class schema:Action ;
+        sh:message "camayoc: usage attribution, when present, points at a Seeds Action — cost as a property of work, not of a window" ;
     ] .
 
 # aegis:ownedBy names a PRINCIPAL, so its object is an IRI on every subject, not

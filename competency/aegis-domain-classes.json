@@ -1,0 +1,601 @@
+{
+  "queries": [
+    {
+      "class": "http://aegis.gastown.local/ontology/APIEndpoint",
+      "effective_target": "https://schema.org/EntryPoint",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/EntryPoint> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which APIEndpoint records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/AgentTool",
+      "effective_target": "https://schema.org/SoftwareApplication",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareApplication> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which AgentTool records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/AlertRule",
+      "effective_target": "http://aegis.gastown.local/ontology/AlertRule",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/AlertRule> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which AlertRule records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/AnsibleGroup",
+      "effective_target": "http://aegis.gastown.local/ontology/AnsibleGroup",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/AnsibleGroup> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which AnsibleGroup records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/AnsibleRole",
+      "effective_target": "http://aegis.gastown.local/ontology/AnsibleRole",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/AnsibleRole> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which AnsibleRole records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Attraction",
+      "effective_target": "http://aegis.gastown.local/ontology/Attraction",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Attraction> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Attraction records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/BareMetalHost",
+      "effective_target": "http://aegis.gastown.local/ontology/BareMetalHost",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/BareMetalHost> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which BareMetalHost records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Bead",
+      "effective_target": "https://schema.org/Action",
+      "profile": "shapes/aegis/seeds-profile.json",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/Action> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Seeds Actions carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/CIWorkflow",
+      "effective_target": "http://aegis.gastown.local/ontology/CIWorkflow",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/CIWorkflow> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which CIWorkflow records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/CLI",
+      "effective_target": "https://schema.org/SoftwareApplication",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareApplication> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which CLI records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Capability",
+      "effective_target": "http://aegis.gastown.local/ontology/Capability",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Capability> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Capability records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/CiJob",
+      "effective_target": "http://aegis.gastown.local/ontology/CiJob",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/CiJob> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which CiJob records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ClaudeCodeHook",
+      "effective_target": "http://aegis.gastown.local/ontology/ClaudeCodeHook",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ClaudeCodeHook> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ClaudeCodeHook records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/CommandDiskImpactObservation",
+      "effective_target": "http://aegis.gastown.local/ontology/CommandDiskImpactObservation",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/CommandDiskImpactObservation> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which CommandDiskImpactObservation records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Component",
+      "effective_target": "http://aegis.gastown.local/ontology/Component",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Component> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Component records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Concept",
+      "effective_target": "http://www.w3.org/2004/02/skos/core#Concept",
+      "query": "SELECT ?entity WHERE { ?entity a <http://www.w3.org/2004/02/skos/core#Concept> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Concept records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ConfigFile",
+      "effective_target": "http://aegis.gastown.local/ontology/ConfigFile",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ConfigFile> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ConfigFile records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ConfigSetting",
+      "effective_target": "http://aegis.gastown.local/ontology/ConfigSetting",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ConfigSetting> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ConfigSetting records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Credential",
+      "effective_target": "http://aegis.gastown.local/ontology/Credential",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Credential> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Credential records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/CrewMember",
+      "effective_target": "http://aegis.gastown.local/ontology/CrewMember",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/CrewMember> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which CrewMember records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/CrewRole",
+      "effective_target": "http://aegis.gastown.local/ontology/CrewRole",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/CrewRole> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which CrewRole records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/CronJob",
+      "effective_target": "http://aegis.gastown.local/ontology/CronJob",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/CronJob> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which CronJob records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DailyBriefRow",
+      "effective_target": "http://aegis.gastown.local/ontology/DailyBriefRow",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/DailyBriefRow> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DailyBriefRow records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DataCorpus",
+      "effective_target": "http://www.w3.org/ns/dcat#Dataset",
+      "query": "SELECT ?entity WHERE { ?entity a <http://www.w3.org/ns/dcat#Dataset> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DataCorpus records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DatabaseService",
+      "effective_target": "http://aegis.gastown.local/ontology/DatabaseService",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/DatabaseService> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DatabaseService records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DecisionRecord",
+      "effective_target": "https://schema.org/DigitalDocument",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/DigitalDocument> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DecisionRecord records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DesignDoc",
+      "effective_target": "https://schema.org/DigitalDocument",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/DigitalDocument> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DesignDoc records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DesignPrinciple",
+      "effective_target": "http://aegis.gastown.local/ontology/DesignPrinciple",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/DesignPrinciple> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DesignPrinciple records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DesiredCrewShape",
+      "effective_target": "http://aegis.gastown.local/ontology/DesiredCrewShape",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/DesiredCrewShape> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DesiredCrewShape records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DesiredCrewSlot",
+      "effective_target": "http://aegis.gastown.local/ontology/DesiredCrewSlot",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/DesiredCrewSlot> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DesiredCrewSlot records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Directive",
+      "effective_target": "http://aegis.gastown.local/ontology/Directive",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Directive> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Directive records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Directive",
+      "effective_target": "http://aegis.gastown.local/ontology/Directive",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Directive> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Directive records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DockerContainer",
+      "effective_target": "http://aegis.gastown.local/ontology/DockerContainer",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/DockerContainer> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DockerContainer records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/DockerImage",
+      "effective_target": "http://aegis.gastown.local/ontology/DockerImage",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/DockerImage> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which DockerImage records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ExternalService",
+      "effective_target": "http://aegis.gastown.local/ontology/ExternalService",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ExternalService> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ExternalService records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/FailureMode",
+      "effective_target": "http://aegis.gastown.local/ontology/FailureMode",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/FailureMode> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which FailureMode records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/FailurePattern",
+      "effective_target": "http://aegis.gastown.local/ontology/FailurePattern",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/FailurePattern> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which FailurePattern records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/FamilyMember",
+      "effective_target": "https://schema.org/Person",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/Person> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which FamilyMember records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Feature",
+      "effective_target": "http://aegis.gastown.local/ontology/Feature",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Feature> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Feature records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/FileCollection",
+      "effective_target": "http://aegis.gastown.local/ontology/FileCollection",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/FileCollection> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which FileCollection records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Formula",
+      "effective_target": "http://aegis.gastown.local/ontology/Formula",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Formula> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Formula records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/GitCommit",
+      "effective_target": "http://aegis.gastown.local/ontology/GitCommit",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/GitCommit> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which GitCommit records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/GitRepo",
+      "effective_target": "https://schema.org/SoftwareSourceCode",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareSourceCode> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which GitRepo records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/GoogleAccount",
+      "effective_target": "http://aegis.gastown.local/ontology/GoogleAccount",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/GoogleAccount> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which GoogleAccount records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Host",
+      "effective_target": "http://aegis.gastown.local/ontology/Host",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Host> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Host records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Incident",
+      "effective_target": "http://aegis.gastown.local/ontology/Incident",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Incident> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Incident records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/InternalIdentifierPattern",
+      "effective_target": "http://aegis.gastown.local/ontology/InternalIdentifierPattern",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/InternalIdentifierPattern> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which InternalIdentifierPattern records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/LXCContainer",
+      "effective_target": "http://aegis.gastown.local/ontology/LXCContainer",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/LXCContainer> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which LXCContainer records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Limitation",
+      "effective_target": "http://aegis.gastown.local/ontology/Limitation",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Limitation> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Limitation records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/LocalCommand",
+      "effective_target": "http://aegis.gastown.local/ontology/LocalCommand",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/LocalCommand> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which LocalCommand records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/MCPServer",
+      "effective_target": "https://schema.org/SoftwareApplication",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareApplication> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which MCPServer records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/MLModel",
+      "effective_target": "https://schema.org/CreativeWork",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/CreativeWork> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which MLModel records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/MediaLibrary",
+      "effective_target": "http://aegis.gastown.local/ontology/MediaLibrary",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/MediaLibrary> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which MediaLibrary records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Metric",
+      "effective_target": "http://aegis.gastown.local/ontology/Metric",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Metric> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Metric records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/MonitoringProbe",
+      "effective_target": "http://aegis.gastown.local/ontology/MonitoringProbe",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/MonitoringProbe> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which MonitoringProbe records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Movie",
+      "effective_target": "https://schema.org/Movie",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/Movie> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Movie records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/NFSExport",
+      "effective_target": "http://aegis.gastown.local/ontology/NFSExport",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/NFSExport> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which NFSExport records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/NetworkSegment",
+      "effective_target": "http://aegis.gastown.local/ontology/NetworkSegment",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/NetworkSegment> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which NetworkSegment records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Observation",
+      "effective_target": "http://www.w3.org/ns/sosa/Observation",
+      "query": "SELECT ?entity WHERE { ?entity a <http://www.w3.org/ns/sosa/Observation> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Observation records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/OperationalFact",
+      "effective_target": "http://aegis.gastown.local/ontology/OperationalFact",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/OperationalFact> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which OperationalFact records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/OperationalRule",
+      "effective_target": "http://aegis.gastown.local/ontology/OperationalRule",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/OperationalRule> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which OperationalRule records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Overseer",
+      "effective_target": "http://aegis.gastown.local/ontology/Overseer",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Overseer> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Overseer records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Person",
+      "effective_target": "https://schema.org/Person",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/Person> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Person records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Plugin",
+      "effective_target": "https://schema.org/SoftwareApplication",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareApplication> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Plugin records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Polecat",
+      "effective_target": "http://aegis.gastown.local/ontology/Polecat",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Polecat> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Polecat records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Probe",
+      "effective_target": "http://aegis.gastown.local/ontology/Probe",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Probe> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Probe records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ProxmoxNode",
+      "effective_target": "http://aegis.gastown.local/ontology/ProxmoxNode",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ProxmoxNode> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ProxmoxNode records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/PushgatewayJob",
+      "effective_target": "http://aegis.gastown.local/ontology/PushgatewayJob",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/PushgatewayJob> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which PushgatewayJob records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ReactionFiring",
+      "effective_target": "http://aegis.gastown.local/ontology/ReactionFiring",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ReactionFiring> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ReactionFiring records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Reaction",
+      "effective_target": "http://aegis.gastown.local/ontology/Reaction",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Reaction> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Reaction records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/RemoteHost",
+      "effective_target": "http://aegis.gastown.local/ontology/RemoteHost",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/RemoteHost> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which RemoteHost records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Requirement",
+      "effective_target": "http://aegis.gastown.local/ontology/Requirement",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Requirement> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Requirement records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ResponsibilityDomain",
+      "effective_target": "http://www.w3.org/ns/org#Role",
+      "query": "SELECT ?entity WHERE { ?entity a <http://www.w3.org/ns/org#Role> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ResponsibilityDomain records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ReverseProxyRoute",
+      "effective_target": "http://aegis.gastown.local/ontology/ReverseProxyRoute",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ReverseProxyRoute> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ReverseProxyRoute records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Rig",
+      "effective_target": "http://aegis.gastown.local/ontology/Rig",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Rig> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Rig records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/SSHKey",
+      "effective_target": "http://aegis.gastown.local/ontology/SSHKey",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/SSHKey> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which SSHKey records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Script",
+      "effective_target": "https://schema.org/SoftwareSourceCode",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareSourceCode> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Script records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/SearchService",
+      "effective_target": "http://aegis.gastown.local/ontology/SearchService",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/SearchService> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which SearchService records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/SecurityFinding",
+      "effective_target": "http://aegis.gastown.local/ontology/SecurityFinding",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/SecurityFinding> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which SecurityFinding records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Service",
+      "effective_target": "http://aegis.gastown.local/ontology/Service",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Service> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Service records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Skill",
+      "effective_target": "http://aegis.gastown.local/ontology/Skill",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Skill> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Skill records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/SoftwareVersion",
+      "effective_target": "https://schema.org/SoftwareApplication",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareApplication> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which SoftwareVersion records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/StoragePool",
+      "effective_target": "http://aegis.gastown.local/ontology/StoragePool",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/StoragePool> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which StoragePool records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/SystemdService",
+      "effective_target": "http://aegis.gastown.local/ontology/SystemdService",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/SystemdService> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which SystemdService records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/SystemdTimer",
+      "effective_target": "http://aegis.gastown.local/ontology/SystemdTimer",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/SystemdTimer> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which SystemdTimer records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/TVSeries",
+      "effective_target": "https://schema.org/TVSeries",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/TVSeries> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which TVSeries records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/TerraformResource",
+      "effective_target": "http://aegis.gastown.local/ontology/TerraformResource",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/TerraformResource> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which TerraformResource records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/TextRule",
+      "effective_target": "http://aegis.gastown.local/ontology/TextRule",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/TextRule> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which TextRule records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ThemePark",
+      "effective_target": "http://aegis.gastown.local/ontology/ThemePark",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ThemePark> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ThemePark records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ThemeParkVisit",
+      "effective_target": "http://aegis.gastown.local/ontology/ThemeParkVisit",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ThemeParkVisit> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ThemeParkVisit records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Tool",
+      "effective_target": "https://schema.org/SoftwareApplication",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/SoftwareApplication> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Tool records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/TraefikRoute",
+      "effective_target": "http://aegis.gastown.local/ontology/TraefikRoute",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/TraefikRoute> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which TraefikRoute records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/TraitValue",
+      "effective_target": "http://aegis.gastown.local/ontology/TraitValue",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/TraitValue> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which TraitValue records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Verification",
+      "effective_target": "http://aegis.gastown.local/ontology/Verification",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Verification> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Verification records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Watchlist",
+      "effective_target": "http://aegis.gastown.local/ontology/Watchlist",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/Watchlist> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Watchlist records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/WebApplication",
+      "effective_target": "https://schema.org/WebApplication",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/WebApplication> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which WebApplication records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/WorkItem",
+      "effective_target": "https://schema.org/Action",
+      "profile": "shapes/aegis/seeds-profile.json",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/Action> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Seeds Actions carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/Workstream",
+      "effective_target": "https://schema.org/Project",
+      "query": "SELECT ?entity WHERE { ?entity a <https://schema.org/Project> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which Workstream records carry their required label?"
+    },
+    {
+      "class": "http://aegis.gastown.local/ontology/ZFSDataset",
+      "effective_target": "http://aegis.gastown.local/ontology/ZFSDataset",
+      "query": "SELECT ?entity WHERE { ?entity a <http://aegis.gastown.local/ontology/ZFSDataset> ; <http://www.w3.org/2000/01/rdf-schema#label> ?label }",
+      "question": "Which ZFSDataset records carry their required label?"
+    }
+  ],
+  "schema": "aegis-domain-cq/v1"
+}

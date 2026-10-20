@@ -1,0 +1,53 @@
+# Aegis class-subsumption rules — kept SEPARATE from `aegis-rules.ttl` on purpose.
+#
+# `aegis-rules.ttl` holds two transitive closures (`depends_on`, `runs_on`) whose
+# blast radius is the whole graph. This file holds only vocabulary-convergence
+# rules, so it can be loaded on its own without also materialising those.
+#
+# Load as its own shape set (the reasoner reads every loaded set):
+#   POST /shapes {"action":"load","name":"class-subsumption","turtle":"<this file>"}
+#
+# The ruleset is a snapshot taken at server STARTUP (src/server.rs) — loading
+# through /shapes does not take effect until quipu restarts. Not a bug, but it
+# is the difference between "loaded" and "live", and this workstream has been
+# bitten by that gap five times.
+
+@prefix rule:  <http://quipu.local/rule#> .
+@prefix ex:    <http://aegis.gastown.local/rules/> .
+
+# ── Commit ⊑ GitCommit ────────────────────────────────────────────────
+#
+# aegis-h69po merged `aegis:Commit` into `aegis:GitCommit` with
+# `owl:equivalentClass`. OWL materialization is ONE-SHOT at ontology load and
+# nothing re-runs it, so that merge was a snapshot: correct once, then stale.
+# Once aegis-xvejp fixed commit-ingest.py to emit the canonical `GitCommit`,
+# the divergence did not close — it REVERSED, and both sides began to grow.
+#
+# Expressed as a rule instead, the reactive reasoner re-derives it on every
+# write, so it holds continuously rather than at one instant (aegis-jgxas).
+#
+# ONE DIRECTION, still deliberately — but the trap it guarded against is
+# FIXED (quipu-923). The symmetric encoding — adding
+# `type(?x, Commit) :- type(?x, GitCommit)` — used to make the two rules each
+# other's support: `World::load` read `current_facts()` without distinguishing
+# base facts from derived ones, so a retracted base type was never un-derived
+# — a STABLE non-converging fixpoint, pinned by
+# `probe_mutual_class_equivalence_under_retraction` in evaluate_tests.rs.
+# Since quipu-923, `World::load` excludes the evaluated rules' own prior
+# derivations from their premises, retraction propagates, and that probe
+# became the regression guard
+# `mutual_class_equivalence_converges_under_retraction`.
+#
+# One direction remains the right encoding HERE because the merge is a
+# subsumption (Commit is the legacy vocabulary, GitCommit the canonical one),
+# not a live equivalence — full TMS with support sets is still deferred.
+#
+# What this means for the numbers, so nobody reads the result as a half-fix:
+# every `Commit` also becomes a `GitCommit`, so `GitCommit` is the COMPLETE
+# population and Commit-only goes to 0. `GitCommit`-only stays non-zero and
+# GROWS — those are entities carrying only the canonical vocabulary, which is
+# the desired end state, not divergence. Query `GitCommit`.
+ex:git_commit_subsumes_commit a rule:Rule ;
+    rule:id "git_commit_subsumes_commit" ;
+    rule:head "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>(?x, <http://aegis.gastown.local/ontology/GitCommit>)" ;
+    rule:body "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>(?x, <http://aegis.gastown.local/ontology/Commit>)" .
