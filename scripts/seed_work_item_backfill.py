@@ -46,7 +46,11 @@ def discover(post, board, after):
 
 
 class Sweep(custody.Journal):
-    def __init__(self, path, board, *, server, plane, actor, initialise=False):
+    def __init__(self, path, board, *, server, plane, actor, initialise=False, item=None):
+        self.item = item
+        if item is not None:
+            board.subject(item)
+        selected_format = FORMAT if item is None else FORMAT+'-exact'
         # Refuse another adapter's state BEFORE opening it read/write. This never
         # migrates/adopts the standing native ingress or a legacy JSON journal.
         exists = path.exists()
@@ -54,8 +58,13 @@ class Sweep(custody.Journal):
             db = sqlite3.connect(path.resolve().as_uri()+'?mode=ro', uri=True)
             try:
                 row = db.execute('SELECT format,plane,actor FROM backfill').fetchall()
-                if row != [(FORMAT, plane, actor)]:
+                if row != [(selected_format, plane, actor)]:
                     raise custody.CustodyUnknown('foreign backfill identity')
+                if item is not None:
+                    if db.execute('SELECT after_id,exhausted FROM backfill').fetchall() != [(item, 1)]:
+                        raise custody.CustodyUnknown('exact selection differs from durable custody')
+                    if db.execute('SELECT id FROM pending UNION SELECT id FROM verified').fetchall() not in ([], [(item,)]):
+                        raise custody.CustodyUnknown('exact custody contains another item')
             finally:
                 db.close()
             if initialise:
@@ -65,7 +74,16 @@ class Sweep(custody.Journal):
         super().__init__(path, board, server=server, initial_tx=None if exists else 0)
         if not exists:
             self.db.execute('CREATE TABLE backfill(format TEXT,plane TEXT,actor TEXT,after_id TEXT,exhausted INTEGER)')
-            self.db.execute('INSERT INTO backfill VALUES(?,?,?,?,?)', (FORMAT, plane, actor, '', 0))
+            self.db.execute('BEGIN IMMEDIATE')
+            try:
+                self.db.execute('INSERT INTO backfill VALUES(?,?,?,?,?)',
+                                (selected_format, plane, actor, item or '', int(item is not None)))
+                if item is not None:
+                    self.db.execute('INSERT INTO pending(id,tx) VALUES(?,0)', (item,))
+                self.db.execute('COMMIT')
+            except Exception:
+                self.db.execute('ROLLBACK')
+                raise
 
     def discover(self, post):
         after, exhausted = self.db.execute('SELECT after_id,exhausted FROM backfill').fetchone()
@@ -89,16 +107,23 @@ class Sweep(custody.Journal):
 def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
     calls = writes = verified = 0
     slowest = 0.0
+    measurements = []
     def call(endpoint, body):
         nonlocal calls, slowest
         calls += 1
         if calls > delivery.TICK_REQUESTS:
             raise custody.CustodyUnknown('backfill request budget exceeded')
         started = clock()
+        response = None
         try:
-            return post(endpoint, body)
+            response = post(endpoint, body)
+            return response
         finally:
-            slowest = max(slowest, clock()-started)
+            elapsed = clock()-started
+            slowest = max(slowest, elapsed)
+            measurements.append({'route': endpoint, 'seconds': round(elapsed, 6),
+                'request_json_bytes': len(json.dumps(body, sort_keys=True).encode()),
+                'response_json_bytes': None if response is None else len(json.dumps(response).encode())})
     def wrote():
         nonlocal writes
         writes += 1
@@ -107,7 +132,10 @@ def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
         journal.discover(call)
         seen = set()
         while (pending := journal.next()) is not None:
-            if (len(seen) >= delivery.MAX_DELIVERIES or pending[0] in seen
+            if journal.item is not None and pending[0] != journal.item:
+                raise custody.CustodyUnknown('pending item differs from exact selection')
+            limit = 1 if journal.item is not None else delivery.MAX_DELIVERIES
+            if (len(seen) >= limit or pending[0] in seen
                     or calls+delivery.ITEM_REQUESTS > delivery.TICK_REQUESTS
                     or (seen and slowest > delivery.READ_BUDGET_SECONDS)):
                 break
@@ -115,12 +143,15 @@ def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
             delivery.deliver(reader, journal, call, pending, plane=plane, actor=actor, wrote=wrote)
             verified += 1
         exhausted = journal.db.execute('SELECT exhausted FROM backfill').fetchone()[0]
-        result.update(status='OK', enumeration_exhausted=bool(exhausted))
+        result.update(status='OK', enumeration_exhausted=bool(exhausted) if journal.item is None else False)
+        if journal.item is not None:
+            result.update(selection='exact', item=journal.item)
     except Exception as error:
         # Never print transport errors, credentials, records, or pending bodies.
         result['error'] = type(error).__name__
     return {**result, 'requests': calls, 'writes': writes, 'verified': verified,
-            'backlog': journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]}
+            'backlog': journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],
+            'calls': measurements}
 
 
 def main(argv=None):
@@ -130,6 +161,7 @@ def main(argv=None):
     parser.add_argument('--state', type=Path, required=True)
     parser.add_argument('--actor', required=True)
     parser.add_argument('--initialise', action='store_true')
+    parser.add_argument('--item', help='exact native ID only; dedicated custody; no discovery')
     args = parser.parse_args(argv)
     if not args.enable:
         print('{"status":"OFF","requests":0,"writes":0}')
@@ -148,7 +180,7 @@ def main(argv=None):
         with args.state.with_suffix('.lock').open('a') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             journal = Sweep(args.state, reader.board, server=planes.SERVER, plane=plane,
-                            actor=args.actor, initialise=args.initialise)
+                            actor=args.actor, initialise=args.initialise, item=args.item)
             receipt = tick(reader, journal, post, plane=plane, actor=args.actor)
     except Exception as error:
         receipt = {'status': 'UNKNOWN', 'error': type(error).__name__}
