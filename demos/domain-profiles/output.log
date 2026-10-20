@@ -1,0 +1,4 @@
+Script started on 2026-10-19 23:48:07-04:00 [COMMAND="stty -onlcr; uv run --no-project --with rdflib==7.6.0 python docs/demos/domain-profiles/reproduce.py" <not executed on terminal>]
+{"after_core_workitem_targets": 0, "base": "769a333ec5a654449720d7b1d84d85c0ba49178f", "before_core_workitem_targets": 1, "canonical_seeds_fixture_valid": true, "engine_sha256": "f7fc8aa0ee384e58e34a5cc85db386ac6baa811048a4160029753736ce3cc0a9", "missing_date_refused": true, "production_activation": false, "store_writes": 0}
+
+Script done on 2026-10-19 23:48:07-04:00 [COMMAND_EXIT_CODE="0"]
