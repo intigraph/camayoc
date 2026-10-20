@@ -52,3 +52,31 @@ commit and checks their SHA256 before use. CI uses that public read path; local
 checks may supply CAMAYOC_SEEDS_SOURCE with the same checked bytes. Missing,
 changed or unavailable source fails instead of selecting another version.
 No workflow change or additional credential is required.
+
+## Build a lossless compatibility candidate
+
+The public-term profiles change targets intentionally. They are not a drop-in
+replacement for the old graph. Prepare the unchanged-validation phase offline:
+
+```sh
+python3 scripts/build_aegis_compatibility.py \
+  --source /path/to/pinned/upstream/aegis-ontology.shapes.ttl \
+  --output /path/to/new/compatibility-bundle
+```
+
+The builder verifies the upstream SHA256 recorded in `placement.json`, restores
+the original targets, and requires the complete recombined graph to be
+RDF-isomorphic to that source. It emits deterministic domain compatibility files,
+shared declarations, and a **separate retained-engine candidate**. The engine
+file is an upstream handoff artifact; Camayoc does not acquire engine ownership.
+Each file has a hash and role in `manifest.json`. A missing constraint, changed
+source, duplicate assignment or unknown pack path refuses before output creation.
+An existing output directory is never overwritten.
+
+These are source candidates, not an installer or Quipu share bundle. There is no
+network request, release, shape load, data write or automatic activation. Rule
+and property files are not part of this constraint-only bundle; their inference
+behavior still needs its own review. A deployment must compose the declared
+files into its existing loaded-set contract, retain previous pins, and measure
+loaded vocabulary, data validation and alias-query behavior before removal of
+the upstream copies. Source isomorphism does not establish those runtime gates.

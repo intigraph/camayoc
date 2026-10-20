@@ -20,3 +20,21 @@ promised. The source resolver can use `CAMAYOC_SEEDS_SOURCE` for an existing
 checkout and verifies its bytes; otherwise it reads the immutable public source.
 This demo does not establish deployed pins, live alias equivalence or migration
 acceptance. Original Quipu domain constraints remain pending load-before-remove.
+
+## Compatibility composition
+
+The compatibility recording demonstrates the next source phase: restored
+original targets, an RDF-isomorphic union, identical bytes from two builds, and
+refusal of a changed upstream source. It produces no store writes or activation.
+The original source hash, shape count and individual artifact hashes are in the
+recording. The retained engine fragment is a separate upstream candidate.
+
+```sh
+uv run --no-project --with rdflib==7.6.0 python docs/demos/domain-profiles/compatibility.py
+scriptreplay --log-out docs/demos/domain-profiles/compatibility-output.log --log-timing docs/demos/domain-profiles/compatibility-timing.log
+```
+
+Download the [recording](compatibility-output.log) and
+[timing](compatibility-timing.log) to replay. These demonstrate constraint-source
+equivalence only. Loaded-set counts, inference, alias-query equivalence and
+current production data validation are still separate, unmeasured rollout gates.
