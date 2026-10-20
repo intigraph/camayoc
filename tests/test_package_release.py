@@ -86,6 +86,32 @@ class SourceRelease(unittest.TestCase):
         self.assertNotEqual(missing.returncode, 0)
         self.assertIn("search_context", missing.stderr)
 
+    def test_compatibility_travels_in_the_existing_source_release(self):
+        source = Path(__file__).resolve().parents[1]
+        for relative in ('shapes/aegis', 'tests/fixtures/aegis-upstream'):
+            shutil.copytree(source / relative, self.repo / relative)
+        (self.repo / 'scripts').mkdir()
+        shutil.copy2(source / 'scripts/build_aegis_compatibility.py', self.repo / 'scripts/build_aegis_compatibility.py')
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pinned compatibility inputs')
+        proof = PACK.package('HEAD', '0.1.0', self.root / 'compatibility-release')
+        self.assertEqual(proof['compatibility']['format'], 'aegis-compatibility-source/v1')
+        with tarfile.open(self.root / 'compatibility-release' / proof['artifact']) as archive:
+            manifest_bytes = archive.extractfile('camayoc-v0.1.0/' + proof['compatibility']['path']).read()
+            self.assertEqual(hashlib.sha256(manifest_bytes).hexdigest(), proof['compatibility']['sha256'])
+            manifest = json.loads(manifest_bytes)
+            self.assertEqual(manifest['node_shapes'], 120)
+            self.assertTrue(manifest['union_isomorphic'])
+            self.assertFalse(manifest['automatic_load'])
+            self.assertEqual(archive.pax_headers['comment'], proof['source_revision'])
+            for row in manifest['files']:
+                content = archive.extractfile('camayoc-v0.1.0/compatibility/aegis/' + row['path']).read()
+                self.assertEqual(hashlib.sha256(content).hexdigest(), row['sha256'])
+        # The existing one producer still emits identical bytes from the pinned Git revision.
+        (self.repo / 'tests/fixtures/aegis-upstream/original-aegis-ontology.ttl').write_text('dirty')
+        repeated = PACK.package('HEAD', '0.1.0', self.root / 'repeated-compatibility-release')
+        self.assertEqual(proof, repeated)
+
     def test_same_revision_repeats_identical_bytes(self):
         one = PACK.package("HEAD", "0.1.0", self.root / "one")
         two = PACK.package("HEAD", "0.1.0", self.root / "two")
