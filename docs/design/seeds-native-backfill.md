@@ -56,3 +56,20 @@ Rollback removes only the admitted backfill schedule/activation and reverts the
 source merge. Retain all pending bodies and journals, accepted graph facts,
 original disabled br schedule, and dataset/query receipts. Never migrate/reset
 custody or replay to make coverage appear complete.
+
+## Exact-ID admission
+
+`--item <existing-native-id>` selects exactly one ID in new dedicated custody,
+with `--initialise` only on first use. It issues no discovery query and does not
+open or adopt a sweep journal. A changed selection, foreign ID or sweep/exact
+mode mismatch refuses before writable state access. Reopening the same journal
+only reconciles its retained effect; it never replays a verified version.
+An uncertain writer result preserves the exact pending body and performs only
+controlled readback on a later admitted invocation. The receipt does not claim
+enumeration or whole-board coverage. Default OFF still performs no I/O.
+
+Receipts include bounded per-call latency and serialized JSON byte counts.
+Request bytes match the existing JSON transport encoding; response counts are
+re-encoded JSON sizes, not compressed wire lengths. No bodies, bearer or error
+text are printed. The existing 256 KiB response bound remains enforced by the
+transport. Exact selection adds no periodic enrollment or schedule authority.

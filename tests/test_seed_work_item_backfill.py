@@ -51,6 +51,49 @@ class Backfill(unittest.TestCase):
         if 'SELECT ?t' in q:return {'rows':[{'t':'http://aegis.gastown.local/ontology/WorkItem'}],'truncated':False}
         return {'rows':[{'v':self.descriptions[item]}] if item in self.descriptions else [],'truncated':False}
     def tick(self):return backfill.tick(self.reader,self.j,self.post,plane=PLANE,actor='fixture')
+    def exact(self, item='demo-000', initialise=True):
+        self.j.db.close()
+        self.path=Path(self.tmp.name)/'exact.sqlite3'
+        self.j=backfill.Sweep(self.path,self.board,server=PEER,plane=PLANE,
+                              actor='fixture',initialise=initialise,item=item)
+
+    def test_exact_selection_never_discovers_or_delivers_a_second_id(self):
+        self.exact()
+        r=self.tick()
+        self.assertEqual((r['status'],r['writes'],r['verified'],r['requests']),('OK',1,1,4))
+        self.assertFalse(r['enumeration_exhausted'])
+        self.assertEqual(r['item'],'demo-000')
+        self.assertFalse(any('SELECT ?id' in b.get('query','') for _,b in self.seen))
+        self.assertEqual(self.effects,['demo-000'])
+        self.assertEqual(len(r['calls']),4)
+        self.assertTrue(all(c['request_json_bytes']>0 and c['response_json_bytes']>0 for c in r['calls']))
+        self.assertEqual(self.tick()['writes'],0)
+        self.assertEqual(self.effects,['demo-000'])
+
+    def test_exact_rejects_an_unselected_pending_item(self):
+        self.exact()
+        self.j.db.execute('DELETE FROM pending')
+        self.j.db.execute('INSERT INTO pending(id,tx) VALUES(?,0)',('demo-001',))
+        r=self.tick()
+        self.assertEqual((r['status'],r['requests'],r['writes']),('UNKNOWN',0,0))
+        self.assertFalse(self.effects)
+
+    def test_exact_lost_response_reopens_only_for_controlled_readback(self):
+        self.exact();self.drop=True
+        self.assertEqual(self.tick()['status'],'UNKNOWN')
+        self.assertEqual(self.effects,['demo-000'])
+        self.exact(initialise=False)
+        r=self.tick();self.assertEqual((r['verified'],r['writes'],r['requests']),(1,0,2))
+        self.assertEqual(self.effects,['demo-000'])
+
+    def test_exact_rejects_another_selection_and_sweep_custody_before_write(self):
+        self.exact();self.tick();self.j.db.close();before=self.path.read_bytes()
+        for item in ('demo-001',None,'foreign-one'):
+            with self.subTest(item=item),self.assertRaises(ValueError):
+                backfill.Sweep(self.path,self.board,server=PEER,plane=PLANE,actor='fixture',item=item)
+            self.assertEqual(self.path.read_bytes(),before)
+        self.j=backfill.Sweep(self.path,self.board,server=PEER,plane=PLANE,actor='fixture',item='demo-000')
+
     def test_bounded_pages_full_native_coverage_repeat_no_effect(self):
         for _ in range(8):
             r=self.tick();self.assertEqual(r['status'],'OK');self.assertLessEqual(r['requests'],17)
