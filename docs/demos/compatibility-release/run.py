@@ -37,7 +37,7 @@ with tempfile.TemporaryDirectory(prefix='compatibility-release-demo-') as tempor
         proof = module.package(revision, version, root / label)
         with tarfile.open(root / label / proof['artifact']) as archive:
             files = [n for n in archive.getnames() if '/compatibility/aegis/' in n]
-            bootstrap = archive.getmember('camayoc-v' + version + '/bootstrap.sh').isfile()
+            bootstrap = archive.getmember('camayoc-v' + version + '/scripts/bootstrap.sh').isfile()
             print(label, 'compatibility_files=', len(files), 'bootstrap_positive=', bootstrap, flush=True)
             if label == 'before':
                 assert not files and 'compatibility' not in proof
