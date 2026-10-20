@@ -67,3 +67,8 @@ query-coverage *args:
 # queries.ttl, which is a dependency state, not a pass.
 examples-qpack *args:
     @python3 scripts/examples_qpack.py {{args}}
+
+# Verify the standalone installer using private release fixtures.
+installer-check:
+    sh -n install.sh
+    python3 scripts/test-install-release.py
