@@ -73,7 +73,8 @@ class Anchors(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(Unknown): judge(b, version(b, tx=value))
         for value in ('bad', 'B' * 64, None):
             with self.subTest(value=value), self.assertRaises(Unknown): judge(b, version(b, value))
-        with self.assertRaises(Unknown): binding(source='file relative')
+        for bad in ('file relative', 'http://[bad]/file'):
+            with self.subTest(iri=bad), self.assertRaises(Unknown): binding(source=bad)
 
     def test_idle_no_reads_and_changed_subject_only(self):
         calls = []

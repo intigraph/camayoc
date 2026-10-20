@@ -18,7 +18,11 @@ The proposed `anchoredTo`/`anchors` OWL inverse is only a navigational edge.
 It neither assigns a fingerprint nor proves an update obligation. The writer
 must atomically publish that edge and its binding, with the selected graph's
 ownership and current-byte proof. Materialize this explicit inverse only.
-Never materialize an inverse of all mention edges. An inverse cannot mean
+Never materialize an inverse of all mention edges. Consumers must explicitly
+select the registered source and its companion inferred graph when reading
+materialized inverses; default ROOT or a variable GRAPH clause is not an
+inference-coverage guarantee. A bound reverse lookup of the asserted relation
+is an alternative that needs no materialized copy. An inverse cannot mean
 "automatically edit the other end"; every action is an advisory review request.
 
 The existing `evidenceSource` property describes selector/predicate evidence

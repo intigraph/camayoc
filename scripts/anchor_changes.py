@@ -22,8 +22,13 @@ class Unknown(ValueError):
 
 def iri(value):
     if (not isinstance(value, str) or not value or
-            any(c.isspace() or c in '<>"{}\\' for c in value) or
-            not urlsplit(value).scheme):
+            any(c.isspace() or c in '<>"{}\\' for c in value)):
+        raise Unknown('expected an exact absolute IRI')
+    try:
+        scheme = urlsplit(value).scheme
+    except ValueError as exc:
+        raise Unknown('malformed absolute IRI') from exc
+    if not scheme:
         raise Unknown('expected an exact absolute IRI')
     return value
 
