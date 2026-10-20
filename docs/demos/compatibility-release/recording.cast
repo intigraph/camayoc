@@ -1,0 +1,10 @@
+{"version": 2, "width": 120, "height": 24, "title": "Immutable compatibility source release", "command": "uv run --no-project --python 3.12 --with rdflib==7.6.0 python docs/demos/compatibility-release/run.py --ref af388d4", "duration": 13.304340999999999}
+[0.247093, "o", "Downloading cpython-3.12.13-linux-x86_64-gnu (download) (32.6MiB)\r\n"]
+[1.165897, "o", " Downloaded cpython-3.12.13-linux-x86_64-gnu (download)\r\n"]
+[1.5903079999999998, "o", "Installed 2 packages in 3ms\r\n"]
+[1.8796559999999998, "o", "Target: immutable local source archive; no release publication or installation.\r\nShared input revision: af388d436ebb676cf9dd41f7e07a2e15e21dd76a\r\n"]
+[1.8827539999999998, "o", "Base producer: ba1cb3c7f01303e8930cdd58e229bcd39dabcdf0\r\n"]
+[1.8827679999999998, "o", "Candidate producer SHA256: 4f39037d917b759b9f48f1bda704eb6b60aa506b115d0ee3c55d2f87865b047a\r\n"]
+[2.1133319999999998, "o", "before compatibility_files= 0 bootstrap_positive= True\r\n"]
+[13.294578, "o", "after compatibility_files= 7 bootstrap_positive= True\r\n"]
+[13.304340999999999, "o", "after manifest: {\"automatic_load\": false, \"node_shapes\": 120, \"union_isomorphic\": true}\r\nafter manifest_sha256: 0d93ddab56ccd217d47f1e1f837d124b45f775f19ce86befe536e33095ff83b3\r\n"]

@@ -51,8 +51,8 @@ jobs:
       - run: just check
       - name: Fetch reviewed integration dependency
         env:
-          QUIPU_TAG: quipu-ai-v0.11.0
-          QUIPU_SHA256: 328eacceb9f9c0e8fcb03c0ef2a4af53ca390b65bc02ca25550fce72f98806c7
+          QUIPU_TAG: quipu-ai-v0.14.1
+          QUIPU_SHA256: 2796536df83381e6f17aa96446c750460002155ab6213e3e97360b1f893ff4b6
         run: |
           set -euo pipefail
           asset="quipu-${QUIPU_TAG}-x86_64-unknown-linux-gnu.tar.gz"
