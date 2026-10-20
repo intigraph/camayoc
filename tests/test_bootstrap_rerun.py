@@ -134,10 +134,39 @@ class BootstrapRerunTest(unittest.TestCase):
         record = {"id": "tracker-acceptance", "title": "Tracker acceptance",
                   "created_at": "2026-09-23T00:00:00Z", "status": "open"}
         body = episode_for(record, actor="test", source="test:tracker")
+        # Legacy writes are retired. Native Seeds Actions own the tracker gate.
+        status, result = post(body)
+        self.assertEqual(status, 400, result)
+        subject = BASE_NS + body['nodes'][0]['name']
+        turtle = (f'<{subject}> a <https://schema.org/Action> ; '
+                  '<http://www.w3.org/2000/01/rdf-schema#label> "Tracker acceptance" ; '
+                  '<https://schema.org/name> "Tracker acceptance" ; '
+                  '<https://schema.org/identifier> "fixture-1" ; '
+                  '<https://schema.org/version> 1 ; '
+                  '<https://schema.org/dateCreated> "2026-09-23T00:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ; '
+                  '<https://seeds.local/ontology/priority> 2 ; '
+                  '<https://seeds.local/ontology/issueType> "task" ; '
+                  '<https://seeds.local/ontology/status> "open" ; '
+                  '<https://schema.org/actionStatus> <https://schema.org/PotentialActionStatus> ; '
+                  '<https://scbrown.github.io/quechua/ns#sourceKind> "declared" .')
+        status, result = post({'turtle': turtle, 'graph': body['graph'],
+                               'actor': 'test', 'source': 'test:seed-profile'}, '/knot')
+        self.assertEqual(status, 200, result)
+        self.assertIs(result.get('conforms'), True, result)
+        missing_date = turtle.replace(subject, subject+'-missing-date').replace(
+            '<https://schema.org/dateCreated> "2026-09-23T00:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ; ', '')
+        status, result = post({'turtle': missing_date, 'graph': body['graph'],
+                               'actor': 'test', 'source': 'test:seed-profile-negative'}, '/knot')
+        self.assertEqual(status, 200, result)
+        self.assertIs(result.get('conforms'), False, result)
+        status, result = post({'query': f'SELECT ?t WHERE {{ GRAPH <{body["graph"]}> {{ <{subject}-missing-date> a ?t }} }}'}, '/query')
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result['count'], 0, result)
+        body['nodes'] = body['nodes'][1:]
         status, result = post(body)
         self.assertEqual(status, 200, result)
         self.assertIn(result["outcome"], ("created", "updated"))
-        observation = body["nodes"][1]["name"]
+        observation = body["nodes"][0]["name"]
         status, result = post({"query":
             f"SELECT ?target WHERE {{ GRAPH <{body['graph']}> {{ "
             f"<{BASE_NS}{observation}> <{BASE_NS}about> ?target }} }}"}, "/query")
@@ -147,7 +176,8 @@ class BootstrapRerunTest(unittest.TestCase):
         # A new episode/name avoids idempotence masking this negative control.
         invalid = episode_for({**record, "id": "tracker-unanchored"},
                               actor="test", source="test:tracker")
-        observation = invalid["nodes"][1]["name"]
+        invalid['nodes'] = invalid['nodes'][1:]
+        observation = invalid["nodes"][0]["name"]
         invalid["edges"] = [edge for edge in invalid["edges"]
                             if not (edge["source"] == observation
                                     and edge["relation"] == "about")]

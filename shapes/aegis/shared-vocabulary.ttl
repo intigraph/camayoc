@@ -1,0 +1,86 @@
+# Existing declarations not owned by a single shape; staged, no automatic load.
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://aegis.gastown.local/ontology/AgentTool> rdfs:subClassOf <http://aegis.gastown.local/ontology/Tool> .
+
+<http://aegis.gastown.local/ontology/AlertRule> rdfs:subClassOf <http://aegis.gastown.local/ontology/Directive> .
+
+<http://aegis.gastown.local/ontology/Bead> rdfs:subClassOf <http://aegis.gastown.local/ontology/WorkItem> ;
+    owl:deprecated true .
+
+<http://aegis.gastown.local/ontology/CLITool> rdfs:subClassOf <http://aegis.gastown.local/ontology/CLI> .
+
+<http://aegis.gastown.local/ontology/ClaudeCodeHook> rdfs:subClassOf <http://aegis.gastown.local/ontology/Script> .
+
+<http://aegis.gastown.local/ontology/CommandDiskImpactObservation> rdfs:subClassOf <http://aegis.gastown.local/ontology/Observation> .
+
+<http://aegis.gastown.local/ontology/ConfiguredInShape> a sh:PropertyShape ;
+    sh:or ( [ sh:class <http://aegis.gastown.local/ontology/ConfigFile> ] [ sh:class <http://aegis.gastown.local/ontology/AnsibleRole> ] ) ;
+    sh:path <http://aegis.gastown.local/ontology/configured_in> .
+
+<http://aegis.gastown.local/ontology/Container> rdfs:subClassOf <http://aegis.gastown.local/ontology/Host> .
+
+<http://aegis.gastown.local/ontology/DailyBriefRow> rdfs:subClassOf <http://aegis.gastown.local/ontology/Artifact> .
+
+<http://aegis.gastown.local/ontology/DatabaseService> rdfs:subClassOf <http://aegis.gastown.local/ontology/Service> .
+
+<http://aegis.gastown.local/ontology/DecisionRecord> rdfs:subClassOf <http://aegis.gastown.local/ontology/Document> .
+
+<http://aegis.gastown.local/ontology/DesignDoc> rdfs:subClassOf <http://aegis.gastown.local/ontology/Document> .
+
+<http://aegis.gastown.local/ontology/DockerContainer> rdfs:subClassOf <http://aegis.gastown.local/ontology/Host> .
+
+<http://aegis.gastown.local/ontology/ExternalService> rdfs:subClassOf <http://aegis.gastown.local/ontology/Service> .
+
+<http://aegis.gastown.local/ontology/FailureMode> rdfs:subClassOf <http://aegis.gastown.local/ontology/FailureKnowledge> .
+
+<http://aegis.gastown.local/ontology/FailurePattern> rdfs:subClassOf <http://aegis.gastown.local/ontology/FailureKnowledge> .
+
+<http://aegis.gastown.local/ontology/ImplementsShape> a sh:PropertyShape ;
+    sh:class <http://aegis.gastown.local/ontology/WorkItem> ;
+    sh:path <http://aegis.gastown.local/ontology/implements> .
+
+<http://aegis.gastown.local/ontology/IncidentClass> rdfs:subClassOf <http://aegis.gastown.local/ontology/FailureKnowledge> .
+
+<http://aegis.gastown.local/ontology/InternalIdentifierPattern> rdfs:subClassOf <http://aegis.gastown.local/ontology/TextRule> .
+
+<http://aegis.gastown.local/ontology/ManagedByShape> a sh:PropertyShape ;
+    sh:or ( [ sh:class <http://aegis.gastown.local/ontology/CrewMember> ] [ sh:class <http://aegis.gastown.local/ontology/Person> ] ) ;
+    sh:path <http://aegis.gastown.local/ontology/managed_by> .
+
+<http://aegis.gastown.local/ontology/MediaLibrary> rdfs:subClassOf <http://aegis.gastown.local/ontology/FileCollection> .
+
+<http://aegis.gastown.local/ontology/OperationalRule> rdfs:subClassOf <http://aegis.gastown.local/ontology/Directive> .
+
+<http://aegis.gastown.local/ontology/Procedure> rdfs:subClassOf <http://aegis.gastown.local/ontology/Directive> .
+
+<http://aegis.gastown.local/ontology/RemoteHost> rdfs:subClassOf <http://aegis.gastown.local/ontology/Host> .
+
+<http://aegis.gastown.local/ontology/RunsOnShape> a sh:PropertyShape ;
+    sh:or ( [ sh:class <http://aegis.gastown.local/ontology/ProxmoxNode> ] [ sh:class <http://aegis.gastown.local/ontology/BareMetalHost> ] [ sh:class <http://aegis.gastown.local/ontology/LXCContainer> ] ) ;
+    sh:path <http://aegis.gastown.local/ontology/runs_on> .
+
+<http://aegis.gastown.local/ontology/SSHKey> rdfs:subClassOf <http://aegis.gastown.local/ontology/Credential> .
+
+<http://aegis.gastown.local/ontology/SearchService> rdfs:subClassOf <http://aegis.gastown.local/ontology/Service> .
+
+<http://aegis.gastown.local/ontology/SystemdService> rdfs:subClassOf <http://aegis.gastown.local/ontology/Service> .
+
+<http://aegis.gastown.local/ontology/WebApplication> rdfs:subClassOf <http://aegis.gastown.local/ontology/Service> .
+
+<http://aegis.gastown.local/ontology/BareMetalHost> rdfs:subClassOf <http://aegis.gastown.local/ontology/Host> .
+
+<http://aegis.gastown.local/ontology/CLI> rdfs:subClassOf <http://aegis.gastown.local/ontology/Tool> .
+
+<http://aegis.gastown.local/ontology/LXCContainer> rdfs:subClassOf <http://aegis.gastown.local/ontology/Host> .
+
+<http://aegis.gastown.local/ontology/ProxmoxNode> rdfs:subClassOf <http://aegis.gastown.local/ontology/Host> .
+
+<http://aegis.gastown.local/ontology/Directive> rdfs:subClassOf <http://aegis.gastown.local/ontology/OperationalKnowledge> .
+
+<http://aegis.gastown.local/ontology/FailureKnowledge> rdfs:subClassOf <http://aegis.gastown.local/ontology/OperationalKnowledge> .
+

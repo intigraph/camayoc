@@ -17,12 +17,21 @@
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
 @prefix owl:   <http://www.w3.org/2002/07/owl#> .
 @prefix camayoc: <https://camayoc.local/ontology/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema: <https://schema.org/> .
 
 # ---- Classes -----------------------------------------------------------
 
 aegis:WorkItem a rdfs:Class ;
     rdfs:label "Work item" ;
-    rdfs:comment "A unit of intended work (a task, a bead, an issue). Tracker-agnostic: models the work, never the tracker's message format." .
+    owl:deprecated true ;
+    dcterms:isReplacedBy schema:Action ;
+    rdfs:comment "Legacy stored work-item type. New work uses schema:Action and the Seeds-owned profile; this replacement declaration is not a data rewrite or owl:sameAs." .
+
+aegis:Bead a rdfs:Class ;
+    rdfs:label "Bead (legacy work item)" ;
+    owl:deprecated true ;
+    rdfs:subClassOf aegis:WorkItem .
 
 aegis:Decision a rdfs:Class ;
     rdfs:label "Decision" ;

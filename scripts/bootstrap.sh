@@ -190,6 +190,11 @@ R=$(python3 "$PLUGIN_ROOT/scripts/planes.py" ensure 2>&1) \
   && say "planes: registered and labelled" \
   || { say "plane setup FAILED: $R"; say "Refusing to proceed: unrouted writes would land in ROOT alongside observed facts."; exit 1; }
 
+# The tracker profile remains Seeds-owned and checksum-pinned, never a copy in
+# Camayoc. Resolve/load it before retiring the old core WorkItem target.
+R=$(python3 "$PLUGIN_ROOT/scripts/seed_profile.py" "$SERVER" 2>&1) \
+  && say "shapes: $R" || { say "Seeds profile load FAILED: $R"; exit 1; }
+
 R=$(python3 -c 'import json,sys; print(json.dumps({"action":"load","name":"camayoc-core","turtle":open(sys.argv[1]).read()}))' "$SHAPES" \
     | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) \
   && say "shapes: loaded (camayoc-core)" || { say "shapes load FAILED: $R"; exit 1; }

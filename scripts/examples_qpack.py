@@ -85,6 +85,14 @@ def cli(quipu: str, *args: str) -> str:
 
 
 def load_shapes(quipu: str, db: Path) -> None:
+    import seed_profile
+    # The profile travels from its owner at a verified immutable revision,
+    # never from a Camayoc copy. Temporary files belong only to this test store.
+    with tempfile.TemporaryDirectory() as directory:
+        for name, turtle in seed_profile.profiles(source=os.environ.get('CAMAYOC_SEEDS_SOURCE')):
+            path = Path(directory)/(name+'.ttl')
+            path.write_text(turtle)
+            cli(quipu, 'shapes', 'load', 'seeds-'+name, str(path), '--db', str(db))
     for path in shape_files():
         cli(quipu, "shapes", "load", f"example-{path.stem}", str(path), "--db", str(db))
 

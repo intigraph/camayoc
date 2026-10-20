@@ -2,7 +2,7 @@
   "action": "load",
   "name": "camayoc_ex_my_plate",
   "description": "What is on a principal's plate: open work items aegis:assignedTo them.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?label WHERE { ?item a aegis:WorkItem ; aegis:assignedTo <{assignee}> ; rdfs:label ?label . FILTER NOT EXISTS { ?item aegis:closedAt ?closed } } ORDER BY ?label",
+  "template": "PREFIX quechua: <https://scbrown.github.io/quechua/ns#> PREFIX schema: <https://schema.org/> PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?label WHERE { ?item a schema:Action ; schema:agent <{assignee}> ; rdfs:label ?label . FILTER NOT EXISTS { ?item schema:endTime ?closed } } ORDER BY ?label",
   "params": [
     {
       "name": "assignee",

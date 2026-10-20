@@ -1,0 +1,399 @@
+# Staged source only. No automatic loading. Original IRIs retained.
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix quipu: <http://quipu.dev/ontology/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+aegis:AboutWorkItemShape a sh:NodeShape ;
+    sh:property [ sh:maxCount 1 ;
+            sh:nodeKind sh:IRI ;
+            sh:path aegis:aboutWorkItem ] ;
+    sh:targetSubjectsOf aegis:aboutWorkItem .
+
+aegis:AppliesToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:applies_to ] ;
+    sh:targetSubjectsOf aegis:applies_to .
+
+aegis:AuthoredByShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:or ( [ sh:class aegis:Person ] [ sh:class aegis:CrewMember ] [ sh:class aegis:Polecat ] ) ;
+            sh:path aegis:authored_by ] ;
+    sh:targetSubjectsOf aegis:authored_by .
+
+aegis:BeadLegacyShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:hasValue aegis:WorkItem ;
+            sh:path rdf:type ] ;
+    sh:targetClass aegis:Bead .
+
+aegis:CIWorkflowShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:CIWorkflow .
+
+aegis:CapabilityShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Capability .
+
+aegis:CiJobShape a sh:NodeShape ;
+    sh:property [ sh:class aegis:LocalCommand ;
+            sh:maxCount 1 ;
+            sh:path aegis:localEquivalent ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:gatesPath ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:CiJob .
+
+aegis:ClaudeCodeHookShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:event ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ClaudeCodeHook .
+
+aegis:CommittedToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:or ( [ sh:class aegis:GitRepo ] [ sh:class aegis:GitRepository ] [ sh:class aegis:Repo ] ) ;
+            sh:path aegis:committed_to ] ;
+    sh:targetSubjectsOf aegis:committed_to .
+
+aegis:ComponentShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Component .
+
+aegis:CrewMemberShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:role ],
+        [ sh:class aegis:CrewRole ;
+            sh:path aegis:hasRole ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:tier ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:domain ],
+        [ sh:datatype xsd:string ;
+            sh:in ( "retired" "never-instantiated" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:crewStatus ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:CrewMember .
+
+aegis:CrewRoleShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:crewRoleName ],
+        [ sh:in ( "rooted" "reports-to" "unattached" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:traitAttachment ],
+        [ sh:in ( "dispatched" "self-directed" "consulted" "escalations-only" "none" ) ;
+            sh:path aegis:traitWorkIntake ],
+        [ sh:in ( "absorbs" "dispatches" "neither" ) ;
+            sh:path aegis:traitCoordination ],
+        [ sh:in ( "fleet-wide" "domain-scoped" "single-task" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:traitScope ],
+        [ sh:in ( "persistent" "ephemeral" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:traitLifecycle ],
+        [ sh:in ( "veto-in-scope" "gate" "none" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:traitAuthority ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:CrewRole .
+
+aegis:DailyBriefRowShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:maxLength 1024 ;
+            sh:minCount 1 ;
+            sh:minLength 1 ;
+            sh:path aegis:reference ],
+        [ sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:nodeKind sh:IRI ;
+            sh:path aegis:briefArtifact ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:maxLength 64 ;
+            sh:minCount 1 ;
+            sh:minLength 1 ;
+            sh:path aegis:briefCollection ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:maxLength 256 ;
+            sh:minCount 1 ;
+            sh:minLength 1 ;
+            sh:path aegis:briefDocumentId ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:maxLength 16384 ;
+            sh:minCount 1 ;
+            sh:minLength 2 ;
+            sh:path aegis:briefPayloadJson ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:minInclusive 1 ;
+            sh:path aegis:briefRevision ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:maxLength 128 ;
+            sh:minCount 1 ;
+            sh:minLength 1 ;
+            sh:path aegis:briefCurator ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:minInclusive 1 ;
+            sh:path aegis:briefSourceVersion ] ;
+    sh:targetClass aegis:DailyBriefRow .
+
+aegis:DerivedFromShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:derived_from ] ;
+    sh:targetSubjectsOf aegis:derived_from .
+
+aegis:DesignPrincipleShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:DesignPrinciple .
+
+aegis:DesiredCrewShapeShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:in ( "draft" "active" "retired" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:crewPlanStatus ],
+        [ sh:in ( "fleet" "rig" "group" "lane" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:scopeKind ],
+        [ sh:maxCount 1 ;
+            sh:path aegis:scopeEntity ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minInclusive 1 ;
+            sh:path aegis:targetSize ],
+        [ sh:class aegis:DesiredCrewSlot ;
+            sh:path aegis:hasCrewSlot ] ;
+    sh:targetClass aegis:DesiredCrewShape .
+
+aegis:DesiredCrewSlotShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minInclusive 0 ;
+            sh:path aegis:minimumCount ],
+        [ sh:datatype xsd:boolean ;
+            sh:maxCount 1 ;
+            sh:path aegis:elastic ],
+        [ sh:in ( "claude" "codex" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:desiredHarness ],
+        [ sh:class aegis:DesiredCrewSlot ;
+            sh:maxCount 1 ;
+            sh:path aegis:reportsToSlot ],
+        [ sh:class aegis:DesiredCrewSlot ;
+            sh:maxCount 1 ;
+            sh:path aegis:consolidatesInto ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:domain ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:class aegis:CrewRole ;
+            sh:path aegis:requiresRole ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minInclusive 0 ;
+            sh:path aegis:desiredCount ] ;
+    sh:targetClass aegis:DesiredCrewSlot .
+
+aegis:FeatureShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Feature .
+
+aegis:FileCollectionShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:class aegis:NFSExport ;
+            sh:maxCount 1 ;
+            sh:path aegis:inExport ],
+        [ sh:class aegis:FileCollection ;
+            sh:maxCount 1 ;
+            sh:path aegis:parentCollection ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:relativePath ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minInclusive 0 ;
+            sh:path aegis:fileCount ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minInclusive 0 ;
+            sh:path aegis:byteCount ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:newestMtime ;
+            sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:hasExtension ;
+            sh:pattern "^\\.[a-z0-9_+-]{1,16}$" ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:extensionCounts ] ;
+    sh:targetClass aegis:FileCollection .
+
+aegis:FormulaShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:formulaName ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Formula .
+
+aegis:HasRoleShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:class aegis:CrewRole ;
+            sh:path aegis:hasRole ] ;
+    sh:targetSubjectsOf aegis:hasRole .
+
+aegis:LabelRequiredShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetSubjectsOf aegis:connects_to,
+        aegis:depends_on,
+        aegis:deployed_on,
+        aegis:managed_by,
+        aegis:member_of,
+        aegis:monitors,
+        aegis:owns,
+        aegis:routes_to,
+        aegis:runs_on .
+
+aegis:LeadForKeeperShape a sh:NodeShape ;
+    sh:property [ sh:maxCount 1 ;
+            sh:message "a keeper is paired with at most one lead" ;
+            sh:path [ sh:inversePath aegis:leadFor ] ] ;
+    sh:targetObjectsOf aegis:leadFor .
+
+aegis:LeadForShape a sh:NodeShape ;
+    sh:property [ sh:hasValue aegis:lead ;
+            sh:message "only a CrewMember holding aegis:lead may declare aegis:leadFor" ;
+            sh:path aegis:hasRole ],
+        [ sh:class aegis:CrewMember ;
+            sh:maxCount 1 ;
+            sh:message "aegis:leadFor names exactly one CrewMember holding aegis:keeper" ;
+            sh:node aegis:KeeperRoleShape ;
+            sh:path aegis:leadFor ] ;
+    sh:targetSubjectsOf aegis:leadFor .
+
+aegis:LimitationShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Limitation .
+
+aegis:LocalCommandShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:commandText ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:LocalCommand .
+
+aegis:MemberOfShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:or ( [ sh:class aegis:Rig ] [ sh:class aegis:AnsibleGroup ] [ sh:class aegis:Skill ] ) ;
+            sh:path aegis:member_of ] ;
+    sh:targetSubjectsOf aegis:member_of .
+
+aegis:ModifiesShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:modifies ] ;
+    sh:targetSubjectsOf aegis:modifies .
+
+aegis:PolecatShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:rig ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:status ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Polecat .
+
+aegis:ReportsToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:class aegis:CrewMember ;
+            sh:path aegis:reports_to ] ;
+    sh:targetSubjectsOf aegis:reports_to .
+
+aegis:RigShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:prefix ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:purpose ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Rig .
+
+aegis:SecurityFindingShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:SecurityFinding .
+
+aegis:SkillShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:skillName ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Skill .
+
+aegis:TraitValueShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:in ( "attachment" "scope" "authority" "lifecycle" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:axis ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:traitValue ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:path aegis:precedence ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:TraitValue .
+
+aegis:TriggeredByShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:or ( [ sh:class aegis:CronJob ] [ sh:class aegis:SystemdTimer ] [ sh:class aegis:Script ] [ sh:class aegis:GitCommit ] [ sh:class aegis:CLI ] ) ;
+            sh:path aegis:triggered_by ] ;
+    sh:targetSubjectsOf aegis:triggered_by .
+
+aegis:KeeperRoleShape a sh:NodeShape ;
+    sh:property [ sh:hasValue aegis:keeper ;
+            sh:path aegis:hasRole ] .
+

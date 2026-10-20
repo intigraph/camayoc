@@ -1,0 +1,60 @@
+# Staged source only. No automatic loading. Original IRIs retained.
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+aegis:AttractionShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:name ],
+        [ sh:class aegis:ThemePark ;
+            sh:maxCount 1 ;
+            sh:path aegis:park ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Attraction .
+
+aegis:GoogleAccountShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:email ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:GoogleAccount .
+
+aegis:MediaLibraryShape a sh:NodeShape ;
+    sh:node aegis:FileCollectionShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:platform ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:MediaLibrary .
+
+aegis:ThemeParkShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:name ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ThemePark .
+
+aegis:ThemeParkVisitShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:date ;
+            sh:maxCount 1 ;
+            sh:path aegis:visitDate ],
+        [ sh:class aegis:ThemePark ;
+            sh:maxCount 1 ;
+            sh:path aegis:park ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ThemeParkVisit .
+
+aegis:WatchlistShape a sh:NodeShape ;
+    sh:property [ sh:maxCount 1 ;
+            sh:path aegis:owner ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Watchlist .
+
