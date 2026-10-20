@@ -2,7 +2,8 @@
 
 Status: source prototype for `aegis-eno48m`, not an installed feature. No schema,
 subscription, scheduled job, public endpoint or editor hook is enabled here.
-`file-anchors-proposal.ttl` is **pending schema proposal38**, not a shape to load.
+`file-anchors-proposal.ttl` is a **replacement draft for rejected proposal38**,
+not an accepted or loaded shape. The replacement must cite38 when submitted.
 
 ## One relationship, one baseline
 
@@ -27,7 +28,11 @@ is an alternative that needs no materialized copy. An inverse cannot mean
 
 The existing `evidenceSource` property describes selector/predicate evidence
 (grammar, regex or equivalent), not a file-link relation. `evidenceHash` binds
-what a verifier judged, not a file's current version. Do not overload them.
+the exact source fingerprint judged when each directional binding was asserted
+or acknowledged. Store it on the binding as its frozen baseline, with the
+recipe, epoch and committed version. The provider's authoritative current
+fingerprint remains separate; it never advances the baseline automatically.
+Do not reinterpret an entity-level evidence digest as current file bytes.
 
 ## Incremental evaluator
 
