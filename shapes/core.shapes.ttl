@@ -502,8 +502,11 @@ aegis:CamayocUsageRecordShape a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path aegis:attributedTo ;
-        sh:class schema:Action ;
-        sh:message "camayoc: usage attribution, when present, points at a Seeds Action — cost as a property of work, not of a window" ;
+        # Retained records may still name an old WorkItem. Replacement metadata
+        # does not retype those records, and this compatibility reference grants
+        # no permission to create new deprecated work-item records.
+        sh:or ( [ sh:class schema:Action ] [ sh:class aegis:WorkItem ] ) ;
+        sh:message "camayoc: usage attribution, when present, points at a Seeds Action or retained WorkItem — cost as a property of work, not of a window" ;
     ] .
 
 # aegis:ownedBy names a PRINCIPAL, so its object is an IRI on every subject, not
