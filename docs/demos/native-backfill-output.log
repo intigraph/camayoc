@@ -1,0 +1,19 @@
+Script started on 2026-10-20 10:04:49-04:00 [COMMAND="stty -onlcr; bash docs/demos/native-backfill-demo.sh" <not executed on terminal>]
+Target: synthetic private fixture, not an installed service
+Before: native source entrypoint on base135d92a
+Native entrypoint absent; retired br backfill is the old source
+After: default OFF command
+{"status":"OFF","requests":0,"writes":0}
+After: 19 native records, page16, serial delivery4; replay and response-loss controls
+{"backlog": 12, "enumeration_exhausted": false, "requests": 17, "status": "OK", "tick": 1, "verified": 4, "writes": 4}
+{"backlog": 8, "enumeration_exhausted": false, "requests": 16, "status": "OK", "tick": 2, "verified": 4, "writes": 4}
+{"backlog": 4, "enumeration_exhausted": false, "requests": 16, "status": "OK", "tick": 3, "verified": 4, "writes": 4}
+{"backlog": 0, "enumeration_exhausted": false, "requests": 16, "status": "OK", "tick": 4, "verified": 4, "writes": 4}
+{"backlog": 0, "enumeration_exhausted": true, "requests": 13, "status": "OK", "tick": 5, "verified": 3, "writes": 3}
+{"backlog": 0, "enumeration_exhausted": true, "requests": 0, "status": "OK", "tick": 6, "verified": 0, "writes": 0}
+19 distinct source identities, no duplicate effect on completed sweep
+Lost writer response: {"backlog": 1, "error": "TimeoutError", "requests": 3, "status": "UNKNOWN", "verified": 0, "writes": 1}
+Readback reconciliation: {"backlog": 0, "enumeration_exhausted": true, "requests": 2, "status": "OK", "verified": 1, "writes": 0}
+One effect total; the pending body was never resent
+
+Script done on 2026-10-20 10:04:50-04:00 [COMMAND_EXIT_CODE="0"]

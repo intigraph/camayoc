@@ -2,7 +2,7 @@
   "action": "load",
   "name": "camayoc_ex_recently_changed",
   "description": "What changed since an instant: tracker Observations (one per record version) observed at or after it, newest first, with the status each recorded. Comparison is on ISO-8601 text, so pass the same form the observations carry.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?label ?observedAt ?status WHERE { ?observation a aegis:Observation ; aegis:about ?item ; aegis:observedAt ?observedAt . ?item a aegis:WorkItem ; rdfs:label ?label . OPTIONAL { ?observation aegis:observedStatus ?status } FILTER(?observedAt >= '{since}') } ORDER BY DESC(?observedAt) ?label",
+  "template": "PREFIX quechua: <https://scbrown.github.io/quechua/ns#> PREFIX schema: <https://schema.org/> PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?label ?observedAt ?status WHERE { ?observation a aegis:Observation ; aegis:about ?item ; aegis:observedAt ?observedAt . ?item a schema:Action ; rdfs:label ?label . OPTIONAL { ?observation aegis:observedStatus ?status } FILTER(?observedAt >= '{since}') } ORDER BY DESC(?observedAt) ?label",
   "params": [
     {
       "name": "since",

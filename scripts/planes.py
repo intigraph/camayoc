@@ -145,7 +145,10 @@ def provenance_headers(client: str, env=None) -> dict[str, str]:
     return out
 
 
-def _post(path: str, body: dict, *, client: str, form: bool = False) -> dict:
+def _post(path: str, body: dict, *, client: str, form: bool = False,
+          response_limit: int | None = None) -> dict:
+    if response_limit is not None and (type(response_limit) is not int or not 1 <= response_limit <= 262144):
+        raise PlaneError("Invalid explicit response budget")
     req = urllib.request.Request(
         f"{SERVER}{path}",
         data=(urllib.parse.urlencode(body) if form else json.dumps(body, sort_keys=True)).encode(),
@@ -169,7 +172,10 @@ def _post(path: str, body: dict, *, client: str, form: bool = False) -> dict:
             req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
-            return json.loads(r.read() or b"{}")
+            raw = r.read() if response_limit is None else r.read(response_limit + 1)
+            if response_limit is not None and len(raw) > response_limit:
+                raise PlaneError("Response exceeds explicit byte budget")
+            return json.loads(raw or b"{}")
     except urllib.error.HTTPError as e:
         if e.code == 401 and is_write:
             e.close()

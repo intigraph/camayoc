@@ -1,0 +1,1668 @@
+{
+  "automatic_load": false,
+  "phase": "additive-source-only",
+  "shapes": [
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/APIEndpoint": "https://schema.org/EntryPoint"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/APIEndpointShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/APIEndpoint"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AboutWorkItemShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/AgentTool": "https://schema.org/SoftwareApplication"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AgentToolShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/AgentTool"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AlertRuleShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/AlertRule"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AnsibleGroupShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/AnsibleGroup"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AnsibleRoleShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/AnsibleRole"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AppliesToShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/personal-media.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AttractionShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Attraction"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/AuthoredByShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/BacksUpShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/BareMetalHostShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/BareMetalHost"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/BeadLegacyShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Bead"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CIWorkflowShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/CIWorkflow"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/CLI": "https://schema.org/SoftwareApplication"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CLIShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/CLI"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CapabilityShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Capability"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CiJobShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/CiJob"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ClaudeCodeHookShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ClaudeCodeHook"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CommandDiskImpactObservationShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/CommandDiskImpactObservation"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CommittedToShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ComponentShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Component"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Concept": "http://www.w3.org/2004/02/skos/core#Concept"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ConceptShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Concept"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ConfigFileShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ConfigFile"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ConfigSettingShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ConfigSetting"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ConnectsToShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CredentialShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Credential"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CrewMemberShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/CrewMember"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CrewRoleShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/CrewRole"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/CronJobShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/CronJob"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DailyBriefRowShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DailyBriefRow"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/DataCorpus": "http://www.w3.org/ns/dcat#Dataset"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DataCorpusShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DataCorpus"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DatabaseServiceShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DatabaseService"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/DecisionRecord": "https://schema.org/DigitalDocument"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DecisionRecordShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DecisionRecord"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DependsOnShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DeployedOnShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DerivedFromShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/DesignDoc": "https://schema.org/DigitalDocument"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DesignDocShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DesignDoc"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DesignPrincipleShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DesignPrinciple"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DesiredCrewShapeShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DesiredCrewShape"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DesiredCrewSlotShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DesiredCrewSlot"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DirectiveShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Directive"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DirectiveTraceabilityShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Directive"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DockerContainerShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DockerContainer"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/DockerImageShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/DockerImage"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ExternalServiceShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ExternalService"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/FailureModeShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/FailureMode"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/FailurePatternShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/FailurePattern"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/FamilyMember": "https://schema.org/Person"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/FamilyMemberShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/FamilyMember"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/FeatureShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Feature"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/FileCollectionShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/FileCollection"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/FormulaShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Formula"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/GitCommitShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/GitCommit"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/GitRepo": "https://schema.org/SoftwareSourceCode"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/GitRepoShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/GitRepo"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/personal-media.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/GoogleAccountShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/GoogleAccount"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/HasRoleShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/HostShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Host"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/IncidentShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Incident"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/InternalIdentifierPatternShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/InternalIdentifierPattern"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/KeeperRoleShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/LXCContainerShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/LXCContainer"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/LabelRequiredShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/LeadForKeeperShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/LeadForShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/LimitationShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Limitation"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/LocalCommandShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/LocalCommand"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/MCPServer": "https://schema.org/SoftwareApplication"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MCPServerShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/MCPServer"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/MLModel": "https://schema.org/CreativeWork"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MLModelShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/MLModel"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/personal-media.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MediaLibraryShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/MediaLibrary"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MemberOfShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MetricShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Metric"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ModifiesShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MonitoringProbeShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/MonitoringProbe"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MonitorsShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Movie": "https://schema.org/Movie"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/MovieShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Movie"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/NFSExportShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/NFSExport"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/NetworkSegmentShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/NetworkSegment"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Observation": "http://www.w3.org/ns/sosa/Observation"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ObservationShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Observation"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/OperationalFactShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/OperationalFact"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/OperationalRuleShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/OperationalRule"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/OverseerShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Overseer"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/OwnsShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Person": "https://schema.org/Person"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/PersonShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Person"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Plugin": "https://schema.org/SoftwareApplication"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/PluginShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Plugin"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/PolecatShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Polecat"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ProbeShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Probe"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ProxmoxNodeShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ProxmoxNode"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/PushgatewayJobShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/PushgatewayJob"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ReactionFiringShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ReactionFiring"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ReactionShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Reaction"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/RemoteHostShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/RemoteHost"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ReportsToShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/RequirementShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Requirement"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/ResponsibilityDomain": "http://www.w3.org/ns/org#Role"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ResponsibilityDomainShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ResponsibilityDomain"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ReverseProxyRouteShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ReverseProxyRoute"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/RigShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Rig"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/RoutesToShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/SSHKeyShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/SSHKey"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Script": "https://schema.org/SoftwareSourceCode"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ScriptShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Script"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/SearchServiceShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/SearchService"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/SecurityFindingShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/SecurityFinding"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ServiceShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Service"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/SkillShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Skill"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/SoftwareVersion": "https://schema.org/SoftwareApplication"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/SoftwareVersionShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/SoftwareVersion"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/StoragePoolShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/StoragePool"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/SystemdServiceShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/SystemdService"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/SystemdTimerShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/SystemdTimer"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/TVSeries": "https://schema.org/TVSeries"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/TVSeriesShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/TVSeries"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/TerraformResourceShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/TerraformResource"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/TextRuleShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/TextRule"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/personal-media.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ThemeParkShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ThemePark"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/personal-media.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ThemeParkVisitShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ThemeParkVisit"
+      ],
+      "trim_decisions": [
+        "UNLISTED"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Tool": "https://schema.org/SoftwareApplication"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ToolShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Tool"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/TraefikRouteShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/TraefikRoute"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/TraitValueShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/TraitValue"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/TriggeredByShape",
+      "shared_constraint": true,
+      "source_targets": [],
+      "trim_decisions": []
+    },
+    {
+      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
+      "fixture_only": true,
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/VerificationShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Verification"
+      ],
+      "trim_decisions": [
+        "KEEP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/personal-media.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/WatchlistShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Watchlist"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/WebApplication": "https://schema.org/WebApplication"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/WebApplicationShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/WebApplication"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/WorkItem": "https://schema.org/Action"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/WorkItemScopeShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/WorkItem"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/public-term-profiles.shapes.ttl",
+      "public_target_substitutions": {
+        "http://aegis.gastown.local/ontology/Workstream": "https://schema.org/Project"
+      },
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/WorkstreamShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/Workstream"
+      ],
+      "trim_decisions": [
+        "DROP"
+      ]
+    },
+    {
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/homelab-infra.shapes.ttl",
+      "public_target_substitutions": {},
+      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "shape": "http://aegis.gastown.local/ontology/ZFSDatasetShape",
+      "shared_constraint": false,
+      "source_targets": [
+        "http://aegis.gastown.local/ontology/ZFSDataset"
+      ],
+      "trim_decisions": [
+        "INFRA"
+      ]
+    }
+  ],
+  "source_commit": "43a344b5c13aa8cf5beaf5448522b6d84014f894",
+  "source_repository": "scbrown/quipu",
+  "source_sha256": "9e3ad311f2703ac3a55eb367c92132a36f1086ebff897f938267a66aafb65843",
+  "trim_source_commit": "41a1c2e05359c3b9cfb0091e6daf469604acc293"
+}

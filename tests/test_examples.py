@@ -114,7 +114,7 @@ class ExampleCaseTests(unittest.TestCase):
     def test_the_negative_arms_are_real(self):
         """Each filter query must EXCLUDE something the fixture holds."""
         work = {str(s) for s in self.graph.subjects(
-            rdflib.RDF.type, rdflib.URIRef("http://aegis.gastown.local/ontology/WorkItem"))}
+            rdflib.RDF.type, rdflib.URIRef("https://schema.org/Action"))}
         ready = set(run(self.graph, definitions()["camayoc_ex_ready_work"], {}))
         self.assertTrue(ready and ready < work, "ready work must be a strict subset")
         directives = {str(s) for s in self.graph.subjects(

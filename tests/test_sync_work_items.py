@@ -276,12 +276,13 @@ class Delivery(unittest.TestCase):
 
     def test_definitive_write_refusal_is_not_erased_by_absent_reads(self):
         import urllib.error
+        import io
         for status in (400, 401, 403, 409, 422):
             self.state = {}; self.calls = []; self.present = False
             def post(endpoint, body):
                 if endpoint == '/episode':
                     self.calls.append((endpoint, copy.deepcopy(body)))
-                    with urllib.error.HTTPError('http://fixture.invalid', status, 'refused', {}, None) as error:
+                    with urllib.error.HTTPError('http://fixture.invalid', status, 'refused', {}, io.BytesIO(b'')) as error:
                         raise error
                 return self.post(endpoint, body)
             for now in (1000, 1060, 1120, 1180, 4600, 8200):

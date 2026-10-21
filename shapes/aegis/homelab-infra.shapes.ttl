@@ -1,0 +1,377 @@
+# Staged source only. No automatic loading. Original IRIs retained.
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix quipu: <http://quipu.dev/ontology/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+aegis:AlertRuleShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:alertExpr ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:severity ],
+        [ sh:maxCount 1 ;
+            sh:path aegis:keeper ],
+        [ sh:nodeKind sh:IRI ;
+            sh:path aegis:guardsProducer ] ;
+    sh:targetClass aegis:AlertRule .
+
+aegis:AnsibleGroupShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:groupName ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:src ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:AnsibleGroup .
+
+aegis:AnsibleRoleShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:roleName ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:target ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:AnsibleRole .
+
+aegis:BacksUpShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:backs_up ] ;
+    sh:targetSubjectsOf aegis:backs_up .
+
+aegis:BareMetalHostShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:hostname ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:ipAddress ] ;
+    sh:targetClass aegis:BareMetalHost .
+
+aegis:CommandDiskImpactObservationShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:commandSignature ;
+            sh:pattern "^[^\\s/]+:[^\\s/]+\\|repo:[a-z0-9._-]+\\|cwd:[a-z0-9._-]+$" ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:filesystemIdentity ;
+            sh:pattern "^(root|tmpfs|mount):[a-z0-9._-]+$" ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:diskDeltaBytes ],
+        [ sh:datatype xsd:dateTime ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:observedAt ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:CommandDiskImpactObservation .
+
+aegis:ConfigFileShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:configPath ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:contentSha256 ;
+            sh:pattern "^[0-9a-f]{64}$" ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:path ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:service ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ConfigFile .
+
+aegis:ConfigSettingShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ConfigSetting .
+
+aegis:ConnectsToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:connects_to ] ;
+    sh:targetSubjectsOf aegis:connects_to .
+
+aegis:CredentialShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:in ( "active" "retired" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:status ],
+        [ sh:maxCount 1 ;
+            sh:path aegis:expiresAt ;
+            sh:pattern "^(none|unknown|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2}))$" ],
+        [ sh:maxCount 1 ;
+            sh:path aegis:keeper ],
+        [ sh:maxCount 1 ;
+            sh:path aegis:probe ],
+        [ sh:class aegis:Host ;
+            sh:path aegis:heldOn ] ;
+    sh:targetClass aegis:Credential .
+
+aegis:CronJobShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:schedule ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:script ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:host ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:CronJob .
+
+aegis:DatabaseServiceShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:dataPath ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:storageBackend ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:DatabaseService .
+
+aegis:DependsOnShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:depends_on ] ;
+    sh:targetSubjectsOf aegis:depends_on .
+
+aegis:DeployedOnShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:deployed_on ] ;
+    sh:targetSubjectsOf aegis:deployed_on .
+
+aegis:DockerContainerShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:DockerContainer .
+
+aegis:DockerImageShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:registry ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:tag ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:DockerImage .
+
+aegis:ExternalServiceShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:externalUrl ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path rdfs:comment ],
+        [ sh:datatype xsd:string ;
+            sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ExternalService .
+
+aegis:HostShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Host .
+
+aegis:LXCContainerShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:path aegis:ctId ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:ipAddress ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:hostname ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:LXCContainer .
+
+aegis:MonitoringProbeShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:MonitoringProbe .
+
+aegis:MonitorsShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:monitors ] ;
+    sh:targetSubjectsOf aegis:monitors .
+
+aegis:NFSExportShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:NFSExport .
+
+aegis:NetworkSegmentShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:subnet ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:gateway ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:purpose ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:NetworkSegment .
+
+aegis:OwnsShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:owns ] ;
+    sh:targetSubjectsOf aegis:owns .
+
+aegis:ProbeShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:title ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:domain ],
+        [ sh:datatype xsd:date ;
+            sh:maxCount 1 ;
+            sh:path aegis:date ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Probe .
+
+aegis:ProxmoxNodeShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:nodeId ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:role ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ProxmoxNode .
+
+aegis:PushgatewayJobShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:PushgatewayJob .
+
+aegis:RemoteHostShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:RemoteHost .
+
+aegis:ReverseProxyRouteShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:hostname ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:backend ;
+            sh:pattern "^https?://[^{]+$" ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ReverseProxyRoute .
+
+aegis:RoutesToShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:routes_to ] ;
+    sh:targetSubjectsOf aegis:routes_to .
+
+aegis:SSHKeyShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:SSHKey .
+
+aegis:SearchServiceShape a sh:NodeShape ;
+    sh:property [ sh:nodeKind sh:IRI ;
+            sh:path aegis:indexes ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:SearchService .
+
+aegis:ServiceShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Service .
+
+aegis:StoragePoolShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:StoragePool .
+
+aegis:SystemdServiceShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:path aegis:port ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:healthEndpoint ],
+        [ sh:datatype xsd:integer ;
+            sh:maxCount 1 ;
+            sh:maxInclusive 100 ;
+            sh:minInclusive 0 ;
+            sh:path aegis:healthScore ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:SystemdService .
+
+aegis:SystemdTimerShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:SystemdTimer .
+
+aegis:TerraformResourceShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:resourceType ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:resourceName ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:src ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:TerraformResource .
+
+aegis:TraefikRouteShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:TraefikRoute .
+
+aegis:ZFSDatasetShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:pool ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:mountpoint ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:ZFSDataset .
+
