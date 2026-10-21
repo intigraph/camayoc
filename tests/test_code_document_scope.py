@@ -1,5 +1,4 @@
 """Repository file metadata must not constrain every shared Document."""
-import json
 import re
 from pathlib import Path
 import subprocess
@@ -10,6 +9,44 @@ from quipu_bin_guard import QUIPU, requires_quipu
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "@prefix a: <http://aegis.gastown.local/ontology/> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+
+
+def validation_report(output):
+    """Read the shared 0.14/0.15 text contract; unknown output is an error."""
+    lines = output.strip().splitlines()
+    if lines == ["valid (0 warnings)"]:
+        return {"conforms": True, "violations": 0, "warnings": 0, "results": []}
+    header = re.fullmatch(r"invalid: (\d+) violation\(s\), (\d+) warning\(s\)", lines[0] if lines else "")
+    if header is None:
+        raise ValueError(f"unrecognized validation report: {output!r}")
+    rows = []
+    for line in lines[1:]:
+        row = re.fullmatch(r"  \[\s*(Violation|Warning)\] (.+) -- (.+) \(path: ([^)]+)\)", line)
+        if row is None:
+            raise ValueError(f"unrecognized validation result: {line!r}")
+        rows.append({"severity": row[1], "path": row[4]})
+    violations, warnings = map(int, header.groups())
+    if (sum(row["severity"] == "Violation" for row in rows),
+            sum(row["severity"] == "Warning" for row in rows)) != (violations, warnings):
+        raise ValueError("validation counts do not match result rows")
+    return {"conforms": False, "violations": violations, "warnings": warnings, "results": rows}
+
+
+class ValidationReportContract(unittest.TestCase):
+    def test_unknown_or_incomplete_report_is_not_success(self):
+        for output in ("", "validation error: parse failed", "invalid: 1 violation(s), 0 warning(s)\n",
+                       "valid (1 warnings)", "valid (0 warnings)\nextra"):
+            with self.subTest(output=output), self.assertRaises(ValueError):
+                validation_report(output)
+
+    def test_warning_and_violation_counts_preserve_paths(self):
+        for severity in ("Warning", "Violation"):
+            violations = int(severity == "Violation")
+            warnings = int(severity == "Warning")
+            report = validation_report(f"invalid: {violations} violation(s), {warnings} warning(s)\n"
+                                       f"  [{severity:>9}] urn:doc -- constraint failed (path: urn:filePath)\n")
+            self.assertEqual(report["results"], [{"severity": severity, "path": "urn:filePath"}])
+            self.assertEqual((report["violations"], report["warnings"]), (violations, warnings))
 
 
 @requires_quipu
@@ -29,10 +66,10 @@ class CodeDocumentScope(unittest.TestCase):
             shapes.write_text(prefix + "\n".join(selected))
             result = subprocess.run([str(QUIPU), "validate", "--shapes",
                                      str(shapes),
-                                     "--data", str(data), "--format", "json"],
+                                     "--data", str(data)],
                                     capture_output=True, text=True)
             self.assertIn(result.returncode, (0, 1), result.stderr)
-            return json.loads(result.stdout)
+            return validation_report(result.stdout)
 
     def test_ordinary_document_is_not_repository_metadata(self):
         self.assertTrue(self.validate('a:doc a a:Document ; rdfs:label "write-up" .')["conforms"])
