@@ -67,3 +67,9 @@ query-coverage *args:
 # queries.ttl, which is a dependency state, not a pass.
 examples-qpack *args:
     @python3 scripts/examples_qpack.py {{args}}
+
+# Copied pointer-only repository-pendant controls; no publication or live store.
+repository-pendant-tests:
+    python3 scripts/test-repository-knowledge.py
+    python3 scripts/test-repository-share-query.py
+    python3 scripts/test-repository-share-publication.py
