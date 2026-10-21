@@ -155,3 +155,19 @@ jobs:
           echo "QUIPU_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
       - name: Prove offline governance stage and atomic server refusal
         run: python3 -m unittest discover -s tests -p integration_governance_loader.py -v
+
+  repository-pendant-source:
+    name: Repository pendant source controls
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install query control dependency
+        run: pip install rdflib==7.6.0
+      - name: Prove pointer scope and publication refusals
+        run: |
+          python3 scripts/test-repository-knowledge.py
+          python3 scripts/test-repository-share-query.py
+          python3 scripts/test-repository-share-publication.py
