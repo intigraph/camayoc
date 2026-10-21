@@ -481,6 +481,8 @@ bobbin:ChunkShape a sh:NodeShape ;
 
 # Temporary stored-data debt profiles: each routes independently to EMIT.
 # Counts are validation results on a retained snapshot, not entity counts.
+# Inline property shapes carry Warning too: severity does not inherit from
+# their containing NodeShape. This keeps import/compose advisory as intended.
 # Restore REJECT only after a measured zero and the normal reviewed shape lane.
 
 # Owner: Gennaro; burn-down aegis-42fj; due 2026-11-05.
@@ -492,6 +494,7 @@ bobbin:CodeEntityLabelMaxCountDebtShape a sh:NodeShape ;
         bobbin:Section, bobbin:Bundle, bobbin:Commit ;
     sh:targetObjectsOf bobbin:inDocument ;
     sh:property [
+        sh:severity sh:Warning ;
         sh:path rdfs:label ;
         sh:maxCount 1 ;
     ] .
@@ -504,6 +507,7 @@ bobbin:SectionHeadingMaxCountDebtShape a sh:NodeShape ;
     sh:severity sh:Warning ;
     sh:targetClass bobbin:Section ;
     sh:property [
+        sh:severity sh:Warning ;
         sh:path bobbin:heading ;
         sh:maxCount 1 ;
     ] .
@@ -516,10 +520,12 @@ bobbin:CommitRequiredMetadataDebtShape a sh:NodeShape ;
     sh:severity sh:Warning ;
     sh:targetClass bobbin:Commit ;
     sh:property [
+        sh:severity sh:Warning ;
         sh:path bobbin:sha ;
         sh:minCount 1 ;
     ] ;
     sh:property [
+        sh:severity sh:Warning ;
         sh:path bobbin:in_repo ;
         sh:minCount 1 ;
     ] .
@@ -533,6 +539,7 @@ bobbin:CodeModuleFilePathDebtShape a sh:NodeShape ;
     sh:severity sh:Warning ;
     sh:targetClass bobbin:CodeModule ;
     sh:property [
+        sh:severity sh:Warning ;
         sh:path bobbin:filePath ;
         sh:minCount 1 ;
     ] .

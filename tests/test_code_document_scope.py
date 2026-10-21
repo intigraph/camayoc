@@ -44,8 +44,10 @@ class CodeDocumentScope(unittest.TestCase):
                 self.assertTrue(self.validate(data)["conforms"])
 
     def test_document_subclass_without_filepath_is_untouched(self):
-        data = 'a:DesignDoc <http://www.w3.org/2000/01/rdf-schema#subClassOf> a:Document . a:doc a a:DesignDoc ; rdfs:label "design" .'
-        self.assertTrue(self.validate(data)["conforms"])
+        for kind in ("DesignDoc", "DecisionRecord"):
+            with self.subTest(kind=kind):
+                data = f'a:{kind} <http://www.w3.org/2000/01/rdf-schema#subClassOf> a:Document . a:doc a a:{kind} ; rdfs:label "write-up" .'
+                self.assertTrue(self.validate(data)["conforms"])
 
     def test_path_bearing_non_document_without_ownership_is_untouched(self):
         result = self.validate('a:entry a:filePath 42 ; rdfs:label "entry" .')
@@ -64,8 +66,9 @@ class CodeDocumentScope(unittest.TestCase):
                 self.assertEqual(result["violations"], 0, result)
                 self.assertTrue(result["conforms"], result)
                 debt = self.validate(('a:span a:inDocument a:doc . ' if 'a:doc ' in data else '') + data, policy="emit")
-                # The native batch validator reports inline property severity;
-                # write admission routes these top-level shapes by emit policy.
+                # Inline property Warning is explicit, not inherited.
+                self.assertEqual(debt["violations"], 0, debt)
+                self.assertGreater(debt["warnings"], 0)
                 self.assertTrue(any(row["path"].endswith(path) for row in debt["results"]))
 
     def test_other_constraints_still_reject(self):
