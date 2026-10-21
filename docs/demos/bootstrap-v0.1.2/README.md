@@ -15,7 +15,7 @@ results were simulated. The reports did not identify each missing property;
 the recording preserves that limitation. Optional components were not installed.
 
 To reproduce with the same release, download and verify the
-[0.1.2 source bundle](https://github.com/scbrown/camayoc/releases/tag/v0.1.2),
+[0.1.2 source bundle](https://github.com/intigraph/camayoc/releases/tag/v0.1.2),
 extract it, and register the extracted marketplace:
 
 ```text

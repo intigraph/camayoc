@@ -3,7 +3,7 @@
 > **Implementation status (2026-08-22, camayoc-gp1 + gp2):** 🟡 **Camayoc's
 > slice is done to its deferral line: terms minted, gates armed, queries
 > stored at 12/16.** The competency suite
-> ([competency/golden-paths.md](https://github.com/scbrown/camayoc/blob/main/competency/golden-paths.md)) is written;
+> ([competency/golden-paths.md](https://github.com/intigraph/camayoc/blob/main/competency/golden-paths.md)) is written;
 > the slice decided (see the §3 note) and the vocabulary is minted in
 > `ontology/core.ttl` with shapes in `shapes/core.shapes.ttl` and three
 > refusal arms in `scripts/gate_probe.sh` (proven able to fail by

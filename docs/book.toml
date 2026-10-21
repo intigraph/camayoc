@@ -12,4 +12,4 @@ build-dir = "../book-out"
 default-theme = "coal"
 preferred-dark-theme = "coal"
 additional-css = ["custom/css/custom.css"]
-git-repository-url = "https://github.com/scbrown/camayoc"
+git-repository-url = "https://github.com/intigraph/camayoc"
