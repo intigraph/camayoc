@@ -11,6 +11,7 @@
 @prefix sh:     <http://www.w3.org/ns/shacl#> .
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix quipu: <http://quipu.dev/ontology/> .
 @prefix bobbin: <http://aegis.gastown.local/ontology/> .
 # Same IRI as bobbin: above — spelled aegis: where the term is aegis's, so a reader
 # grepping core.shapes.ttl for sourceKind finds the same prefix on both sides.
@@ -73,12 +74,10 @@ bobbin:CodeModuleShape a sh:NodeShape ;
         sh:path rdfs:label ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path bobbin:filePath ;
         sh:datatype xsd:string ;
-        sh:minCount 1 ;
         sh:maxCount 1 ;
     ] ;
     sh:property [
@@ -184,7 +183,6 @@ bobbin:CodeSymbolShape a sh:NodeShape ;
         sh:path rdfs:label ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path bobbin:name ;
@@ -213,8 +211,16 @@ bobbin:CodeSymbolShape a sh:NodeShape ;
 #
 # A documentation file (Markdown, RST, plain text, etc.).
 
+# Keep the existing shared class sanctioned when this set is loaded alone.
+# Vocabulary admission uses targetClass; this declaration adds no constraints.
+bobbin:DocumentVocabularyShape a sh:NodeShape ;
+    sh:targetClass bobbin:Document .
+
 bobbin:DocumentShape a sh:NodeShape ;
-    sh:targetClass bobbin:Document ;
+    # Document is a shared vocabulary class, including ordinary write-ups.
+    # Repository documents are the objects of chunk/section inDocument links.
+    # A filePath on an unrelated subject does not establish this ownership.
+    sh:targetObjectsOf bobbin:inDocument ;
     # PROVENANCE TAG — value-constrained, deliberately NOT required yet.
     #
     # camayoc-42d: core.shapes.ttl makes aegis:sourceKind mandatory on every
@@ -265,7 +271,6 @@ bobbin:DocumentShape a sh:NodeShape ;
         sh:path rdfs:label ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path bobbin:filePath ;
@@ -331,13 +336,11 @@ bobbin:SectionShape a sh:NodeShape ;
         sh:path rdfs:label ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path bobbin:heading ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path bobbin:headingDepth ;
@@ -357,7 +360,6 @@ bobbin:BundleShape a sh:NodeShape ;
         sh:path rdfs:label ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path bobbin:contains ;
@@ -384,7 +386,6 @@ bobbin:CommitShape a sh:NodeShape ;
     sh:property [
         sh:path bobbin:sha ;
         sh:datatype xsd:string ;
-        sh:minCount 1 ;
         sh:maxCount 1 ;
     ] ;
     sh:property [
@@ -396,14 +397,12 @@ bobbin:CommitShape a sh:NodeShape ;
     sh:property [
         sh:path bobbin:in_repo ;
         sh:datatype xsd:string ;
-        sh:minCount 1 ;
         sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path rdfs:label ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path rdfs:comment ;
@@ -478,5 +477,62 @@ bobbin:ChunkShape a sh:NodeShape ;
     sh:property [
         sh:path rdfs:label ;
         sh:datatype xsd:string ;
+    ] .
+
+# Temporary stored-data debt profiles: each routes independently to EMIT.
+# Counts are validation results on a retained snapshot, not entity counts.
+# Restore REJECT only after a measured zero and the normal reviewed shape lane.
+
+# Owner: Gennaro; burn-down aegis-42fj; due 2026-11-05.
+# Retained ROOT label maxCount: 6268 reported; selected union summary 6263.
+bobbin:CodeEntityLabelMaxCountDebtShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass bobbin:Chunk, bobbin:CodeModule, bobbin:CodeSymbol,
+        bobbin:Section, bobbin:Bundle, bobbin:Commit ;
+    sh:targetObjectsOf bobbin:inDocument ;
+    sh:property [
+        sh:path rdfs:label ;
         sh:maxCount 1 ;
+    ] .
+
+# Owner: Gennaro; burn-down aegis-czs9; due 2026-11-05.
+# Retained ROOT heading maxCount: 2381, including dual-typed Chunk/Section.
+# ChunkShape has no heading constraint; do not invent one while splitting.
+bobbin:SectionHeadingMaxCountDebtShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass bobbin:Section ;
+    sh:property [
+        sh:path bobbin:heading ;
+        sh:maxCount 1 ;
+    ] .
+
+# Owner: Grant; burn-down aegis-yqfk; due 2026-11-05.
+# Retained ROOT minimum counts: sha 1075, in_repo 1076 result rows.
+# Datatype and maximum count remain in CommitShape and still reject.
+bobbin:CommitRequiredMetadataDebtShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass bobbin:Commit ;
+    sh:property [
+        sh:path bobbin:sha ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:in_repo ;
+        sh:minCount 1 ;
+    ] .
+
+# Owner: Gennaro; burn-down aegis-e4ec; due 2026-11-05.
+# Retained union: 710 filePath results across the Document family, of which
+# 10 have CodeModule type. Recount this precise target after Document scoping.
+# Document's filePath datatype/cardinality is NOT in this emit profile.
+bobbin:CodeModuleFilePathDebtShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass bobbin:CodeModule ;
+    sh:property [
+        sh:path bobbin:filePath ;
+        sh:minCount 1 ;
     ] .
