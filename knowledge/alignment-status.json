@@ -1,0 +1,8 @@
+{
+  "status": "no-approved-mappings",
+  "approved_record_count": 0,
+  "carrier_sha256": "0fe1c727907ae95c8be971b32b6d74a690d5c8f87c7eb28f5dc8a1aa889559d4",
+  "scope": "scbrown/camayoc repository pendant source",
+  "basis": "No verified approved artifact or pairs supplied at source review; empty carrier is explicit. This is not a global absence claim.",
+  "curation_contract": "https://github.com/scbrown/quipu/blob/main/docs/design/cross-graph-alignment.md"
+}
