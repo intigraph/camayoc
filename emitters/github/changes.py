@@ -111,9 +111,11 @@ def ci_result(contexts: list[dict], required: list[str]) -> tuple[str, str] | No
     """('pass'|'fail', time) for one commit's required checks, or None while undecided.
 
     Each required check is judged by its LATEST run, ordered by when the run
-    started (a check run) or was posted (a status), then by run id. A latest run
-    that has not completed is undecided, even when an older run of the same
-    check succeeded: a rerun in progress must not inherit the earlier green.
+    started (a check run) or was posted (a status), then by run id. A check run
+    that has not completed always counts as the latest: superseded attempts are
+    complete, and a queued run's start and completion times are null, so it
+    cannot be ordered by time. Such a check is undecided, even when an older run
+    of it succeeded: a rerun queued or in progress must not inherit that green.
     """
     latest: dict[str, tuple[tuple, str | None, str | None]] = {}
     for ctx in contexts:
@@ -121,7 +123,9 @@ def ci_result(contexts: list[dict], required: list[str]) -> tuple[str, str] | No
             name = ctx.get("name")
             done = ctx.get("status") == "COMPLETED" and ctx.get("conclusion") and ctx.get("completedAt")
             word, when = (ctx["conclusion"], ctx["completedAt"]) if done else (None, None)
-            order = (ctx.get("startedAt") or ctx.get("completedAt") or "", ctx.get("databaseId") or 0)
+            # "~" sorts after every RFC 3339 time: an unfinished run is the latest.
+            order = (("~" if not done else ctx.get("startedAt") or ctx.get("completedAt") or ""),
+                     ctx.get("databaseId") or 0)
         else:
             name, word, when = ctx.get("context"), ctx.get("state"), ctx.get("createdAt")
             order = (when or "", 0)

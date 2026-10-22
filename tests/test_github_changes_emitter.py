@@ -40,6 +40,12 @@ def pending(name, started, *, rid=0):
             "conclusion": None, "startedAt": started, "completedAt": None}
 
 
+def queued(name, *, rid=0):
+    """GitHub's nullable fields on a queued run: no start, no completion."""
+    return {"__typename": "CheckRun", "databaseId": rid, "name": name, "status": "QUEUED",
+            "conclusion": None, "startedAt": None, "completedAt": None}
+
+
 def pr(**over):
     base = {
         "number": 42, "createdAt": "2026-10-14T10:00:00Z", "updatedAt": "2026-10-14T18:00:00Z",
@@ -83,6 +89,16 @@ class GreenIsTheRequiredChecks(unittest.TestCase):
         self.assertIsNone(emitter.ci_result(older + [pending("Build", "2026-10-14T11:00:00Z", rid=2)], REQUIRED))
         # Control: the same rerun, completed, decides.
         done = run("Build", "SUCCESS", "2026-10-14T11:10:00Z", started="2026-10-14T11:00:00Z", rid=2)
+        self.assertEqual(("pass", "2026-10-14T11:10:00Z"), emitter.ci_result(older + [done], REQUIRED))
+
+    def test_a_queued_rerun_with_null_times_is_undecided_in_any_order(self):
+        older = [run("Build", "SUCCESS", "2026-10-14T10:20:00Z", rid=5), run("Test", "SUCCESS", "2026-10-14T10:30:00Z")]
+        for rid in (1, 9):   # a lower or higher run id than the dated success
+            with self.subTest(rid=rid):
+                self.assertIsNone(emitter.ci_result(older + [queued("Build", rid=rid)], REQUIRED))
+                self.assertIsNone(emitter.ci_result([queued("Build", rid=rid)] + older, REQUIRED))
+        # Control: once that rerun completes, it decides.
+        done = run("Build", "SUCCESS", "2026-10-14T11:10:00Z", started="2026-10-14T11:00:00Z", rid=9)
         self.assertEqual(("pass", "2026-10-14T11:10:00Z"), emitter.ci_result(older + [done], REQUIRED))
 
 
