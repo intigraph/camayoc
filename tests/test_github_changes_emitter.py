@@ -187,6 +187,43 @@ class BoundaryParsing(unittest.TestCase):
                 self.assertFalse(fetched)
 
 
+def review_status(state, description, created="2026-10-14T23:59:00Z"):
+    return {"__typename": "StatusContext", "context": "review/approved", "state": state,
+            "createdAt": created, "description": description}
+
+
+class NativeReviewStatus(unittest.TestCase):
+    """aegis-6ye: the native receipt's reviewed_at, never the status publication time."""
+
+    GOOD = "reviewer example-reviewer receipt r-0123456789abcdef reviewed_at 2026-10-14T11:15:30.123456789Z"
+
+    def nodes(self, *extra):
+        return [run("Build", "SUCCESS", "2026-10-14T10:20:00Z"), run("Test", "SUCCESS", "2026-10-14T10:30:00Z"), *extra]
+
+    def test_a_verified_approve_is_a_review_at_reviewed_at(self):
+        events = emitter.events_for("example/example-svc", with_ci(self.nodes(review_status("SUCCESS", self.GOOD))), REQUIRED)
+        native = [e for e in events if "/review/native-" in e["id"]]
+        self.assertEqual(1, len(native))
+        self.assertEqual("2026-10-14T11:15:30.123456789Z", native[0]["time"])   # not createdAt, precision kept
+        props = ingest.episode_for(native[0], actor="t")["nodes"][0]["properties"]
+        self.assertEqual(("reviewed", "approved", HEAD), (props["changeAction"], props["reviewState"], props["commitSha"]))
+
+    def test_revocation_legacy_and_offset_times_record_nothing(self):
+        for name, ctx in (("revoked", review_status("FAILURE", self.GOOD)),
+                          ("legacy", review_status("SUCCESS", "reviewer example-reviewer receipt r-0123")),
+                          ("offset", review_status("SUCCESS", "reviewer example-reviewer receipt r-1 reviewed_at 2026-10-14T11:15:30+02:00")),
+                          ("garbage", review_status("SUCCESS", "reviewer example-reviewer receipt r-1 reviewed_at yesterday"))):
+            with self.subTest(name):
+                events = emitter.events_for("example/example-svc", with_ci(self.nodes(ctx)), REQUIRED)
+                self.assertEqual([], [e for e in events if "/review/native-" in e["id"]])
+
+    def test_a_required_review_status_never_delays_green(self):
+        required = REQUIRED + ["review/approved"]
+        self.assertEqual(("pass", "2026-10-14T10:30:00Z"), emitter.ci_result(self.nodes(), required))
+        pending_review = self.nodes(review_status("PENDING", "", created="2026-10-14T12:00:00Z"))
+        self.assertEqual(("pass", "2026-10-14T10:30:00Z"), emitter.ci_result(pending_review, required))
+
+
 class ReviewVerdicts(unittest.TestCase):
     def test_verdict_words(self):
         cases = {
