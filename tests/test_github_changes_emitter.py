@@ -154,6 +154,39 @@ class Boundary(unittest.TestCase):
         self.assertTrue(any("_merged" in n for n in names) and any("_review_" in n for n in names))
 
 
+class BoundaryParsing(unittest.TestCase):
+    def run_main(self, not_before):
+        with tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(emitter, "required_checks", return_value=REQUIRED), \
+                unittest.mock.patch.object(emitter, "pull_requests", return_value=[pr()]) as fetch, \
+                unittest.mock.patch("sys.stdout"), unittest.mock.patch("sys.stderr"):
+            try:
+                rc = emitter.main(["--repo", "example/example-svc", "--since", "2026-10-14T00:00:00Z",
+                                   "--spool", tmp, "--not-before", not_before])
+            except SystemExit as exit_:
+                rc = exit_.code
+            return rc, sorted(p.name for p in Path(tmp).glob("*.json")), fetch.called
+
+    def test_fractional_boundary_is_compared_as_an_instant(self):
+        # review at 12:00:00Z is BEFORE 12:00:00.500Z, though it sorts after it as text.
+        rc, names, _ = self.run_main("2026-10-14T12:00:00.500Z")
+        self.assertEqual(0, rc)
+        self.assertEqual(1, len(names))
+        self.assertTrue(names[0].endswith("_merged.json"))
+
+    def test_the_exact_instant_is_included(self):
+        rc, names, _ = self.run_main("2026-10-14T12:00:00Z")
+        self.assertEqual((0, 2), (rc, len(names)))
+
+    def test_invalid_boundary_is_refused_before_any_forge_call(self):
+        for bad in ("yesterday", "2026-10-14T12:00:00"):
+            with self.subTest(bad):
+                rc, names, fetched = self.run_main(bad)
+                self.assertEqual(2, rc)
+                self.assertEqual([], names)
+                self.assertFalse(fetched)
+
+
 class ReviewVerdicts(unittest.TestCase):
     def test_verdict_words(self):
         cases = {
