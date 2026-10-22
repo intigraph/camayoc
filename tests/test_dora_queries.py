@@ -29,8 +29,13 @@ spec.loader.exec_module(ingest)
 
 REPO = "example/example-svc"
 STAGING = "urn:quipu:import:staging:example"
+NO_DATA = "urn:quipu:import:staging:none"
 WINDOW = {"repository": REPO, "start": "2026-10-14T00:00:00Z", "end": "2026-10-15T00:00:00Z",
-          "staging": STAGING}
+          "changeNow": "https://camayoc.local/window/change/2026-10",
+          "changePrev": "https://camayoc.local/window/change/2026-09",
+          "deployNow": "https://camayoc.local/window/deployment/2026-10",
+          "deployPrev": "https://camayoc.local/window/deployment/2026-09",
+          "staging1": STAGING, **{f"staging{i}": NO_DATA for i in range(2, 17)}}
 
 
 def sha(n: int) -> str:
@@ -166,7 +171,7 @@ class DoraQueries(unittest.TestCase):
     def test_without_staging_the_staged_rows_vanish(self):
         global WINDOW
         saved = WINDOW
-        WINDOW = dict(saved, staging="urn:quipu:import:staging:none")
+        WINDOW = dict(saved, staging1=NO_DATA)
         try:
             steps = self.rows("camayoc_dora_change_steps")
             self.assertNotIn(f"{REPO}#3", steps)

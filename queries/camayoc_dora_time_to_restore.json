@@ -1,8 +1,8 @@
 {
   "action": "load",
   "name": "camayoc_dora_time_to_restore",
-  "description": "DORA time to restore (aegis-rb3): each failure streak of one service that began in the window, from its first failed or rolled-back deployment to the next succeeded deployment. restoredAt is the literal \"open\" while no succeeded deployment has followed. The reader takes restoredAt - firstFailedAt; Quipu SPARQL has no dateTime arithmetic. Reads camayoc window graphs only.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?restoredAt (MIN(?at) AS ?firstFailedAt) (COUNT(?failure) AS ?failedAttempts) WHERE { { SELECT ?failure ?at (MIN(COALESCE(STR(?rat), \"open\")) AS ?restoredAt) WHERE { GRAPH ?g { ?failure a aegis:DeploymentEvent ; aegis:deployedService ?service ; aegis:deploymentOutcome ?outcome ; aegis:occurredAt ?at . } FILTER(STRSTARTS(STR(?g), \"https://camayoc.local/window/\") && ?outcome IN (\"failed\", \"rolledback\") && STR(?service) = CONCAT(\"http://aegis.gastown.local/ontology/\", \"{service}\") && STR(?at) >= \"{start}\" && STR(?at) < \"{end}\") OPTIONAL { GRAPH ?g2 { ?restore a aegis:DeploymentEvent ; aegis:deployedService ?service ; aegis:deploymentOutcome \"succeeded\" ; aegis:occurredAt ?rat . } FILTER(STRSTARTS(STR(?g2), \"https://camayoc.local/window/\") && STR(?rat) > STR(?at)) } } GROUP BY ?failure ?at } } GROUP BY ?restoredAt ORDER BY ?firstFailedAt",
+  "description": "DORA time to restore (aegis-rb3): each failure streak of one service that began in the window, from its first failed or rolled-back deployment to the next succeeded deployment. restoredAt is the literal \"open\" while no succeeded deployment has followed. The reader takes restoredAt - firstFailedAt; Quipu SPARQL has no dateTime arithmetic. Graphs are bound up front with VALUES: the current and previous monthly deployment window graphs only. A window must not span more than those two months. A restore after the deployNow month is not read.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?restoredAt (MIN(?at) AS ?firstFailedAt) (COUNT(?failure) AS ?failedAttempts) WHERE { { SELECT ?failure ?at (MIN(COALESCE(STR(?rat), \"open\")) AS ?restoredAt) WHERE { VALUES ?g { <{deployNow}> <{deployPrev}> } GRAPH ?g { ?failure a aegis:DeploymentEvent ; aegis:deployedService ?service ; aegis:deploymentOutcome ?outcome ; aegis:occurredAt ?at . } FILTER(?outcome IN (\"failed\", \"rolledback\") && STR(?service) = CONCAT(\"http://aegis.gastown.local/ontology/\", \"{service}\") && STR(?at) >= \"{start}\" && STR(?at) < \"{end}\") OPTIONAL { VALUES ?g2 { <{deployNow}> <{deployPrev}> } GRAPH ?g2 { ?restore a aegis:DeploymentEvent ; aegis:deployedService ?service ; aegis:deploymentOutcome \"succeeded\" ; aegis:occurredAt ?rat . } FILTER(STR(?rat) > STR(?at)) } } GROUP BY ?failure ?at } } GROUP BY ?restoredAt ORDER BY ?firstFailedAt",
   "params": [
     {
       "name": "service",
@@ -21,6 +21,18 @@
       "type": "text",
       "required": true,
       "description": "window end, RFC 3339 UTC (exclusive)"
+    },
+    {
+      "name": "deployNow",
+      "type": "iri",
+      "required": true,
+      "description": "deployment window graph for the window's end month, e.g. https://camayoc.local/window/deployment/2026-10"
+    },
+    {
+      "name": "deployPrev",
+      "type": "iri",
+      "required": true,
+      "description": "deployment window graph for the month before deployNow"
     }
   ]
 }
