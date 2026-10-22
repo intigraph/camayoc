@@ -1,8 +1,8 @@
 {
   "action": "load",
   "name": "camayoc_dora_deployments",
-  "description": "DORA deployment frequency and change failure rate inputs (aegis-rb3): deployments of one service in a window, by outcome, from aegis:DeploymentEvent. Deployment frequency is the succeeded count over the window; change failure rate is (failed + rolledback) / all. Times are compared as RFC 3339 UTC strings, so producers must emit Z times.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?outcome (COUNT(DISTINCT ?event) AS ?deployments) (COUNT(DISTINCT ?artifact) AS ?artifacts) WHERE { GRAPH ?g { ?event a aegis:DeploymentEvent ; aegis:deployedService ?service ; aegis:deploymentOutcome ?outcome ; aegis:occurredAt ?at . OPTIONAL { ?event aegis:artifactId ?artifact } } FILTER(STR(?service) = CONCAT(\"http://aegis.gastown.local/ontology/\", \"{service}\") && STR(?at) >= \"{start}\" && STR(?at) < \"{end}\") } GROUP BY ?outcome ORDER BY ?outcome",
+  "description": "DORA deployment frequency and change failure rate inputs (aegis-rb3): deployments of one service in a window, by outcome, from aegis:DeploymentEvent. Deployment frequency is the succeeded count over the window; change failure rate is (failed + rolledback) / all. Times are compared as RFC 3339 UTC strings, so producers must emit Z times. Reads camayoc window graphs only.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?outcome (COUNT(DISTINCT ?event) AS ?deployments) (COUNT(DISTINCT ?artifact) AS ?artifacts) WHERE { GRAPH ?g { ?event a aegis:DeploymentEvent ; aegis:deployedService ?service ; aegis:deploymentOutcome ?outcome ; aegis:occurredAt ?at . OPTIONAL { ?event aegis:artifactId ?artifact } } FILTER(STRSTARTS(STR(?g), \"https://camayoc.local/window/\") && STR(?service) = CONCAT(\"http://aegis.gastown.local/ontology/\", \"{service}\") && STR(?at) >= \"{start}\" && STR(?at) < \"{end}\") } GROUP BY ?outcome ORDER BY ?outcome",
   "params": [
     {
       "name": "service",

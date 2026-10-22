@@ -1,8 +1,8 @@
 {
   "action": "load",
   "name": "camayoc_dora_change_reviews",
-  "description": "DORA lead time review step (aegis-rb3): every review of each change merged in the window, with its time and verdict, from aegis:ChangeEvent. The reader takes the first review at or after the change's first green from camayoc_dora_change_steps; a change with no row had no recorded review. Only reviews at or before the merge are lifecycle steps.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change ?reviewedAt ?state WHERE { GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:occurredAt ?mergedAt . } FILTER(STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") GRAPH ?gr { ?r a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction \"reviewed\" ; aegis:occurredAt ?reviewedAt . OPTIONAL { ?r aegis:reviewState ?state } } FILTER(STR(?reviewedAt) <= STR(?mergedAt)) } ORDER BY ?change ?reviewedAt",
+  "description": "DORA lead time review step (aegis-rb3): every review of each change merged in the window, with its time and verdict, from aegis:ChangeEvent. The reader takes the first review at or after the change's first green from camayoc_dora_change_steps; a change with no row had no recorded review. Only reviews at or before the merge are lifecycle steps. Graph scope: camayoc window graphs, plus the one staged backfill graph named by {staging}; no other named graph is read.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change ?reviewedAt ?state WHERE { GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:occurredAt ?mergedAt . } FILTER((STRSTARTS(STR(?gm), \"https://camayoc.local/window/\") || ?gm = <{staging}>) && STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") GRAPH ?gr { ?r a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction \"reviewed\" ; aegis:occurredAt ?reviewedAt . OPTIONAL { ?r aegis:reviewState ?state } } FILTER((STRSTARTS(STR(?gr), \"https://camayoc.local/window/\") || ?gr = <{staging}>) && STR(?reviewedAt) <= STR(?mergedAt)) } ORDER BY ?change ?reviewedAt",
   "params": [
     {
       "name": "repository",
@@ -21,6 +21,12 @@
       "type": "text",
       "required": true,
       "description": "window end, RFC 3339 UTC (exclusive)"
+    },
+    {
+      "name": "staging",
+      "type": "iri",
+      "required": true,
+      "description": "exact IRI of the one reviewed staged-backfill graph read alongside the window graphs (aegis-rb3 B2); pass an IRI with no data, e.g. urn:quipu:import:staging:none, when there is none"
     }
   ]
 }

@@ -1,8 +1,8 @@
 {
   "action": "load",
   "name": "camayoc_dora_change_deployed",
-  "description": "DORA lead time last step (aegis-rb3): for each change merged in the window, the first SUCCEEDED deployment whose aegis:includesCommit names the change's merge commit. A change with deployedAt \"none\" is merged but not yet delivered; it is never credited to a deployment by time alone. A deployment earlier than the merge never delivers it, whatever it lists.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change ?mergedAt (MIN(COALESCE(STR(?deployedAt0), \"none\")) AS ?deployedAt) WHERE { GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:commitSha ?sha ; aegis:occurredAt ?mergedAt . } FILTER(STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") OPTIONAL { GRAPH ?gd { ?d a aegis:DeploymentEvent ; aegis:deploymentOutcome \"succeeded\" ; aegis:includesCommit ?sha ; aegis:occurredAt ?deployedAt0 . } FILTER(STR(?deployedAt0) >= STR(?mergedAt)) } } GROUP BY ?change ?mergedAt ORDER BY ?mergedAt",
+  "description": "DORA lead time last step (aegis-rb3): for each change merged in the window, the first SUCCEEDED deployment whose aegis:includesCommit names the change's merge commit. A change with deployedAt \"none\" is merged but not yet delivered; it is never credited to a deployment by time alone. A deployment earlier than the merge never delivers it, whatever it lists. Graph scope: camayoc window graphs, plus the one staged backfill graph named by {staging}; no other named graph is read. The includesCommit list may come from the staged graph (corrections to existing deployments); the deployment itself must be in a window graph.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change ?mergedAt (MIN(COALESCE(STR(?deployedAt0), \"none\")) AS ?deployedAt) WHERE { GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:commitSha ?sha ; aegis:occurredAt ?mergedAt . } FILTER((STRSTARTS(STR(?gm), \"https://camayoc.local/window/\") || ?gm = <{staging}>) && STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") OPTIONAL { GRAPH ?gi { ?d aegis:includesCommit ?sha } GRAPH ?gd { ?d a aegis:DeploymentEvent ; aegis:deploymentOutcome \"succeeded\" ; aegis:occurredAt ?deployedAt0 . } FILTER((STRSTARTS(STR(?gi), \"https://camayoc.local/window/\") || ?gi = <{staging}>) && STRSTARTS(STR(?gd), \"https://camayoc.local/window/\") && STR(?deployedAt0) >= STR(?mergedAt)) } } GROUP BY ?change ?mergedAt ORDER BY ?mergedAt",
   "params": [
     {
       "name": "repository",
@@ -21,6 +21,12 @@
       "type": "text",
       "required": true,
       "description": "window end, RFC 3339 UTC (exclusive)"
+    },
+    {
+      "name": "staging",
+      "type": "iri",
+      "required": true,
+      "description": "exact IRI of the one reviewed staged-backfill graph read alongside the window graphs (aegis-rb3 B2); pass an IRI with no data, e.g. urn:quipu:import:staging:none, when there is none"
     }
   ]
 }

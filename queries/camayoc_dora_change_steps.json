@@ -1,8 +1,8 @@
 {
   "action": "load",
   "name": "camayoc_dora_change_steps",
-  "description": "DORA lead time, decomposed per change (aegis-rb3): for each change MERGED in the window, its opened, first required-checks-green and merge times, from aegis:ChangeEvent. firstGreen is the literal \"none\" when no required-checks-green result was recorded. Reviews come from camayoc_dora_change_reviews and delivery from camayoc_dora_change_deployed; the reader joins the three on ?change and takes the differences. Only a green inside the change's lifecycle counts (at or after opening, at or before the merge); a green that first arrived after the merge is not a pre-merge green.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change (MIN(?openedAt) AS ?opened) (MIN(COALESCE(STR(?greenAt), \"none\")) AS ?firstGreen) (MIN(?mergedAt) AS ?merged) WHERE { GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:occurredAt ?mergedAt . } FILTER(STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") OPTIONAL { GRAPH ?go { ?o a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction \"created\" ; aegis:occurredAt ?openedAt . } } OPTIONAL { GRAPH ?gg { ?c a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction \"ci-passed\" ; aegis:occurredAt ?greenAt . } FILTER(STR(?greenAt) <= STR(?mergedAt) && (!BOUND(?openedAt) || STR(?greenAt) >= STR(?openedAt))) } } GROUP BY ?change ORDER BY ?merged",
+  "description": "DORA lead time, decomposed per change (aegis-rb3): for each change MERGED in the window, its opened, first required-checks-green and merge times, from aegis:ChangeEvent. firstGreen is the literal \"none\" when no required-checks-green result was recorded. Reviews come from camayoc_dora_change_reviews and delivery from camayoc_dora_change_deployed; the reader joins the three on ?change and takes the differences. Only a green inside the change's lifecycle counts (at or after opening, at or before the merge); a green that first arrived after the merge is not a pre-merge green. Graph scope: camayoc window graphs, plus the one staged backfill graph named by {staging}; no other named graph is read.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change (MIN(?openedAt) AS ?opened) (MIN(COALESCE(STR(?greenAt), \"none\")) AS ?firstGreen) (MIN(?mergedAt) AS ?merged) WHERE { GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:occurredAt ?mergedAt . } FILTER((STRSTARTS(STR(?gm), \"https://camayoc.local/window/\") || ?gm = <{staging}>) && STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") OPTIONAL { GRAPH ?go { ?o a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction \"created\" ; aegis:occurredAt ?openedAt . } FILTER((STRSTARTS(STR(?go), \"https://camayoc.local/window/\") || ?go = <{staging}>)) } OPTIONAL { GRAPH ?gg { ?c a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction \"ci-passed\" ; aegis:occurredAt ?greenAt . } FILTER((STRSTARTS(STR(?gg), \"https://camayoc.local/window/\") || ?gg = <{staging}>) && STR(?greenAt) <= STR(?mergedAt) && (!BOUND(?openedAt) || STR(?greenAt) >= STR(?openedAt))) } } GROUP BY ?change ORDER BY ?merged",
   "params": [
     {
       "name": "repository",
@@ -21,6 +21,12 @@
       "type": "text",
       "required": true,
       "description": "window end, RFC 3339 UTC (exclusive)"
+    },
+    {
+      "name": "staging",
+      "type": "iri",
+      "required": true,
+      "description": "exact IRI of the one reviewed staged-backfill graph read alongside the window graphs (aegis-rb3 B2); pass an IRI with no data, e.g. urn:quipu:import:staging:none, when there is none"
     }
   ]
 }

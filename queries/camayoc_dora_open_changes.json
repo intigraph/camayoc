@@ -1,8 +1,8 @@
 {
   "action": "load",
   "name": "camayoc_dora_open_changes",
-  "description": "Work in progress (aegis-rb3): changes of one repository opened before the instant and neither merged nor abandoned at it, with their opening time; age is the instant minus opened. From aegis:ChangeEvent.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change (MIN(?openedAt) AS ?opened) WHERE { GRAPH ?go { ?o a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"created\" ; aegis:occurredAt ?openedAt . } FILTER(STR(?openedAt) < \"{end}\") FILTER NOT EXISTS { GRAPH ?gc { ?x a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction ?closing ; aegis:occurredAt ?closedAt . } FILTER(?closing IN (\"merged\", \"abandoned\") && STR(?closedAt) < \"{end}\") } } GROUP BY ?change ORDER BY ?opened",
+  "description": "Work in progress (aegis-rb3): changes of one repository opened before the instant and neither merged nor abandoned at it, with their opening time; age is the instant minus opened. From aegis:ChangeEvent. Graph scope: camayoc window graphs, plus the one staged backfill graph named by {staging}; no other named graph is read.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change (MIN(?openedAt) AS ?opened) WHERE { GRAPH ?go { ?o a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"created\" ; aegis:occurredAt ?openedAt . } FILTER((STRSTARTS(STR(?go), \"https://camayoc.local/window/\") || ?go = <{staging}>) && STR(?openedAt) < \"{end}\") FILTER NOT EXISTS { GRAPH ?gc { ?x a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction ?closing ; aegis:occurredAt ?closedAt . } FILTER((STRSTARTS(STR(?gc), \"https://camayoc.local/window/\") || ?gc = <{staging}>) && ?closing IN (\"merged\", \"abandoned\") && STR(?closedAt) < \"{end}\") } } GROUP BY ?change ORDER BY ?opened",
   "params": [
     {
       "name": "repository",
@@ -15,6 +15,12 @@
       "type": "text",
       "required": true,
       "description": "the instant, RFC 3339 UTC"
+    },
+    {
+      "name": "staging",
+      "type": "iri",
+      "required": true,
+      "description": "exact IRI of the one reviewed staged-backfill graph read alongside the window graphs (aegis-rb3 B2); pass an IRI with no data, e.g. urn:quipu:import:staging:none, when there is none"
     }
   ]
 }
