@@ -41,8 +41,15 @@ Ingress separately budgets at most one `/changes` GET, one `/knot` and one exact
 `/query` verification per tick. A pending effect uses only the verification read.
 It is written durably before transmission and is never blindly resent after an
 uncertain outcome. Peer, board, assignee, priority and stream identity bind the
-SQLite custody; existing foreign custody is never adopted or reset. Enrollment
-is explicit, pinned and positive; there is no automatic initial cursor or cohort.
+SQLite custody; existing foreign custody is never adopted or reset. Before
+persisting an effect, preparation validates its exact verification query and
+expected reply against the same byte budget. The source-row limit bounds the
+observation count (at most two contributions per row plus a checkpoint), and
+readback selects those exact subjects with a one-extra-row truncation sentinel.
+A valid 70-item close therefore verifies all 141 observations in one request.
+An older large pending effect can reconcile only after exact complete readback;
+absence, partial values and tampering preserve UNKNOWN custody without resend.
+Enrollment is explicit, pinned and positive; there is no automatic initial cursor or cohort.
 
 `work_item_burndown_cli.py` exposes explicit enrollment, ingress and scrape
 commands. It receives the protected native authority projection on stdin.

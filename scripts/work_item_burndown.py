@@ -25,6 +25,8 @@ PROFILE = 'urn:camayoc:work-item-burndown:'
 FORMAT = 'camayoc-work-item-burndown-v1'
 MAX_ITEMS = 1000
 MAX_RECORDS = 4096
+# A source row can contribute at most two observations, plus one checkpoint.
+MAX_OBSERVATIONS = 2 * MAX_RECORDS + 1
 MAX_BYTES = 512 * 1024
 
 
@@ -184,6 +186,38 @@ def observation(scope, key, metric, status, amount, at, about, source_tx=0):
     return name, value, '\n'.join(f'{iri(name)} {iri(p)} {v} .' for p, v in triples)
 
 
+def readback_query(scope, expected):
+    """One bounded verification plan, admitted BEFORE durable pending custody.
+
+    Rows are limited by the source transaction bound, not an unrelated small
+    result cap. Both request and expected reply must fit the existing byte
+    budget. Unknown/partial replies still preserve pending and never resend.
+    """
+    if not isinstance(expected, dict) or not 0 < len(expected) <= MAX_OBSERVATIONS:
+        raise Unknown('effect exceeds source-derived observation bound')
+    subjects = ' '.join(iri(subject) for subject in expected)
+    query = (f'SELECT ?s ?value ?at ?kind ?status ?amount ?about WHERE {{ GRAPH {iri(scope.graph)} {{ '
+             f'VALUES ?s {{ {subjects} }} ?s a {iri(A+"Observation")} ; '
+             f'{iri(A+"sourceKind")} "observed" ; '
+             f'{iri(A+"observedValue")} ?value ; {iri(A+"observedAt")} ?at ; '
+             f'{iri(S+"additionalType")} ?kind ; {iri(native.SEEDS+"status")} ?status ; '
+             f'{iri(S+"value")} ?amount ; {iri(A+"about")} ?about . }} }} LIMIT {len(expected)+1}')
+    rows = []
+    try:
+        for subject, raw in expected.items():
+            value = json.loads(raw)
+            rows.append(dict(s=subject, value=raw, at=value['at'], kind=PROFILE+value['metric'],
+                             status=value['status'], amount=value['amount'], about=value['about']))
+    except (TypeError, ValueError, KeyError) as error:
+        raise Unknown('malformed effect verification plan') from error
+    # Reserve wrapper metadata headroom; a larger or changed server envelope
+    # is UNKNOWN under the unchanged transport response cap.
+    if (len(json.dumps(dict(query=query)).encode()) > MAX_BYTES or
+            len(json.dumps(dict(rows=rows, count=len(rows), truncated=False)).encode()) > MAX_BYTES-4096):
+        raise Unknown('effect verification exceeds byte budget')
+    return query
+
+
 class Journal:
     def __init__(self, path, scope):
         self.scope = scope
@@ -230,6 +264,9 @@ class Journal:
         if len(json.dumps(body).encode()) > MAX_BYTES:
             raise Unknown('event effect exceeds byte budget')
         expected = {o[0]: o[1] for o in observations}
+        if len(expected) != len(observations):
+            raise Unknown('duplicate effect observation identity')
+        readback_query(self.scope, expected)
         self.db.execute('INSERT INTO pending VALUES(?,?,?,?)',
                         (json.dumps(body), json.dumps(expected), json.dumps(updates), cursor))
         return body

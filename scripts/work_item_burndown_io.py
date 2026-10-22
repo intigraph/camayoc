@@ -14,7 +14,6 @@ import seed_work_items as n
 import work_item_burndown as b
 
 CLIENT = 'camayoc-workitem-burndown'
-READBACK_LIMIT = 129
 
 
 def expand(value):
@@ -95,15 +94,7 @@ def readback(post, journal):
     if pending is None:
         raise b.Unknown('no pending effect to verify')
     expected = json.loads(pending[1])
-    if not 0 < len(expected) < READBACK_LIMIT:
-        raise b.Unknown('effect exceeds bounded readback')
-    subjects = ' '.join(b.iri(subject) for subject in expected)
-    query = (f'SELECT ?s ?value ?at ?kind ?status ?amount ?about WHERE {{ GRAPH {b.iri(journal.scope.graph)} {{ '
-             f'VALUES ?s {{ {subjects} }} ?s a {b.iri(b.A+"Observation")} ; '
-             f'{b.iri(b.A+"sourceKind")} "observed" ; '
-             f'{b.iri(b.A+"observedValue")} ?value ; {b.iri(b.A+"observedAt")} ?at ; '
-             f'{b.iri(n.SCHEMA+"additionalType")} ?kind ; {b.iri(n.SEEDS+"status")} ?status ; '
-             f'{b.iri(n.SCHEMA+"value")} ?amount ; {b.iri(b.A+"about")} ?about . }} }} LIMIT {READBACK_LIMIT}')
+    query = b.readback_query(journal.scope, expected)
     response = post('/query', dict(query=query))
     rows = response.get('rows') if isinstance(response, dict) else None
     if not isinstance(rows, list) or response.get('truncated', False) is not False or len(rows) != len(expected) or response.get('count') != len(rows):
@@ -125,8 +116,9 @@ def readback(post, journal):
 
 
 def send_once(post, journal, body):
-    if len(json.loads(journal.pending()[1])) >= READBACK_LIMIT:
-        raise b.Unknown('effect exceeds bounded readback; preserve custody')
+    # Use the same preflight plan for a newly prepared send. Existing pending
+    # custody enters readback() directly from tick(), never this writer.
+    b.readback_query(journal.scope, json.loads(journal.pending()[1]))
     response = post('/knot', body)
     if not isinstance(response, dict) or response.get('conforms') is not True or type(response.get('tx_id')) is not int or response['tx_id'] < 0:
         raise b.Unknown('write outcome unknown; preserve pending, no resend')

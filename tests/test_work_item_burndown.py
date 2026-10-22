@@ -245,8 +245,89 @@ class TransportControls(unittest.TestCase):
                 v = json.loads(raw)
                 rows.append(dict(s=subject, value=raw, at=v['at'], kind=b.PROFILE+v['metric'],
                                  status=v['status'], amount=v['amount']+(1 if self.tamper else 0), about=v['about']))
+            limit=int(body['query'].rsplit('LIMIT ',1)[1])
+            rows=rows[:limit]
             return dict(rows=rows, count=len(rows), truncated=False)
         raise AssertionError('unexpected request')
+
+    def bulk(self, count=70):
+        # Same admitted source/cohort limits as ordinary ingress. One real source
+        # transaction must not become an un-sendable durable pending effect.
+        states=[b.state(self.scope,n.ITEM+f'test-bulk-{i}',row(f'test-bulk-{i}')) for i in range(count)]
+        with self.j.db:
+            self.j.db.execute('DELETE FROM items')
+            for value in states:
+                self.j.db.execute('INSERT INTO items VALUES(?,?)',(value['subject'],json.dumps(value)))
+        self.feed=page(*[(11,f'test-bulk-{i}',row(f'test-bulk-{i}',status='closed',version=2)) for i in range(count)])
+        for sequence,record in enumerate(self.feed['records']):record['sequence']=sequence
+
+    def test_legitimate_70_item_close_is_141_observations_and_advances_once(self):
+        self.bulk()
+        seen=[]
+        def post(path,body=None,**kwargs):
+            if path=='/knot':seen.append(len(json.loads(self.j.pending()[1])))
+            return self.post(path,body,**kwargs)
+        result=self.io.tick(post,self.j,observed_at=T)
+        self.assertEqual(seen,[141])
+        self.assertEqual(result['cursor'],11)
+        self.assertIsNone(self.j.pending())
+        self.assertEqual(self.calls,[('GET','/changes'),('POST','/knot'),('POST','/query')])
+        self.feed=page(since=11)
+        self.calls.clear()
+        self.io.tick(self.post,self.j,observed_at=T)
+        self.assertEqual(self.j.cursor,11)
+        self.assertIsNone(self.j.pending())
+
+    def test_large_unknown_write_recovery_is_read_only_including_reopened_custody(self):
+        self.bulk();self.fail_write=True
+        with self.assertRaises(TimeoutError):self.io.tick(self.post,self.j,observed_at=T)
+        self.assertEqual(self.calls,[('GET','/changes'),('POST','/knot')])
+        self.assertEqual(len(json.loads(self.j.pending()[1])),141)
+        self.assertEqual(self.j.cursor,10)
+        reopened=b.Journal(self.path,self.scope)
+        self.addCleanup(reopened.db.close)
+        self.calls.clear()
+        # The fixture readback supplies the committed immutable observations.
+        result=self.io.tick(self.post,reopened,observed_at=T)
+        self.assertEqual(result['status'],'reconciled')
+        self.assertEqual(self.calls,[('POST','/query')])
+        self.assertEqual(reopened.cursor,11)
+        self.assertIsNone(reopened.pending())
+
+    def test_large_existing_pending_tamper_preserves_custody_then_recovers_read_only(self):
+        self.bulk();self.j.consume(self.feed,observed_at=T)
+        pending=self.j.pending();self.tamper=True
+        with self.assertRaises(b.Unknown):self.io.tick(self.post,self.j,observed_at=T)
+        self.assertEqual(self.j.pending(),pending)
+        self.assertEqual(self.j.cursor,10)
+        self.assertEqual(self.calls,[('POST','/query')])
+        self.tamper=False;self.calls.clear()
+        self.io.tick(self.post,self.j,observed_at=T)
+        self.assertEqual(self.calls,[('POST','/query')])
+        self.assertEqual(self.j.cursor,11)
+        self.assertIsNone(self.j.pending())
+
+    def test_large_existing_pending_absence_is_unknown_never_a_resend(self):
+        self.bulk();self.j.consume(self.feed,observed_at=T);pending=self.j.pending()
+        calls=[]
+        def missing(path,body=None,**kwargs):
+            calls.append(path)
+            self.assertEqual(path,'/query')
+            return dict(rows=[],count=0,truncated=False)
+        for _ in range(2):
+            with self.assertRaises(b.Unknown):self.io.tick(missing,self.j,observed_at=T)
+        self.assertEqual(calls,['/query','/query'])
+        self.assertEqual(self.j.pending(),pending)
+        self.assertEqual(self.j.cursor,10)
+
+    def test_readback_unrepresentable_effect_refuses_before_persisting(self):
+        # A corrupt/oversized verification plan must not poison durable pending
+        # custody even when its claimed Turtle body is deceptively small.
+        raw=json.dumps(dict(at=T,metric='delta',status='open',amount=1,
+                            about='urn:'+('a'*b.MAX_BYTES)))
+        with self.assertRaises(b.Unknown):self.j.prepare(11,{},[('urn:effect',raw,'')])
+        self.assertIsNone(self.j.pending())
+        self.assertEqual(self.j.cursor,10)
 
     def test_tick_budgets_one_feed_one_write_one_readback(self):
         result = self.io.tick(self.post, self.j, observed_at=T)
