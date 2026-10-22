@@ -29,8 +29,15 @@ HEAD = "9f1c2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6"
 MERGE = "3392682256648f3ec088dd768b270a0097089a7a"
 
 
-def run(name, conclusion, at):
-    return {"__typename": "CheckRun", "name": name, "conclusion": conclusion, "completedAt": at}
+def run(name, conclusion, at, *, started=None, rid=0):
+    """A completed check run; started defaults to its completion."""
+    return {"__typename": "CheckRun", "databaseId": rid, "name": name, "status": "COMPLETED",
+            "conclusion": conclusion, "startedAt": started or at, "completedAt": at}
+
+
+def pending(name, started, *, rid=0):
+    return {"__typename": "CheckRun", "databaseId": rid, "name": name, "status": "IN_PROGRESS",
+            "conclusion": None, "startedAt": started, "completedAt": None}
 
 
 def pr(**over):
@@ -71,6 +78,50 @@ class GreenIsTheRequiredChecks(unittest.TestCase):
         self.assertIsNone(emitter.ci_result(cancelled, REQUIRED))
 
 
+    def test_a_rerun_in_progress_does_not_inherit_an_earlier_green(self):
+        older = [run("Build", "SUCCESS", "2026-10-14T10:20:00Z", rid=1), run("Test", "SUCCESS", "2026-10-14T10:30:00Z")]
+        self.assertIsNone(emitter.ci_result(older + [pending("Build", "2026-10-14T11:00:00Z", rid=2)], REQUIRED))
+        # Control: the same rerun, completed, decides.
+        done = run("Build", "SUCCESS", "2026-10-14T11:10:00Z", started="2026-10-14T11:00:00Z", rid=2)
+        self.assertEqual(("pass", "2026-10-14T11:10:00Z"), emitter.ci_result(older + [done], REQUIRED))
+
+
+def with_ci(nodes):
+    return pr(commits={"nodes": [{"commit": {"oid": HEAD, "statusCheckRollup": {"contexts": {"nodes": nodes}}}}]})
+
+
+class RetriesOnOneCommit(unittest.TestCase):
+    """Each observed CI result is its own event; a re-observation is not."""
+
+    def poll(self, spool_dir, nodes):
+        spooled = [emitter.spool(e, spool_dir) for e in emitter.events_for("example/example-svc", with_ci(nodes), REQUIRED)]
+        return [p.name for p in spooled if p and "_ci_" in p.name]
+
+    def deliver_all(self, spool_dir):
+        (spool_dir / "delivered").mkdir(exist_ok=True)
+        for p in spool_dir.glob("*.json"):
+            p.rename(spool_dir / "delivered" / p.name)
+
+    def test_fail_then_pass_then_fail_each_reach_the_spool(self):
+        red = [run("Build", "FAILURE", "2026-10-14T10:20:00Z", rid=1), run("Test", "SUCCESS", "2026-10-14T10:30:00Z")]
+        green = red[1:] + [run("Build", "SUCCESS", "2026-10-14T11:10:00Z", started="2026-10-14T11:00:00Z", rid=2)]
+        red_again = green[:1] + [run("Build", "FAILURE", "2026-10-14T12:10:00Z", started="2026-10-14T12:00:00Z", rid=3)]
+        with tempfile.TemporaryDirectory() as tmp:
+            spool_dir = Path(tmp)
+            self.assertEqual(1, len(self.poll(spool_dir, red)))
+            self.deliver_all(spool_dir)
+            self.assertEqual([], self.poll(spool_dir, red))          # same result, already delivered
+            got = self.poll(spool_dir, green)
+            self.assertEqual(1, len(got))
+            event = json.loads((spool_dir / got[0]).read_text())
+            self.assertEqual("ci-passed", ingest.episode_for(event, actor="t")["nodes"][0]["properties"]["changeAction"])
+            self.deliver_all(spool_dir)
+            later = self.poll(spool_dir, red_again)
+            self.assertEqual(1, len(later))
+            self.assertIn("fail", later[0])
+            self.assertEqual(3, len(list((spool_dir / "delivered").glob("*_ci_*"))) + len(later))
+
+
 class ReviewVerdicts(unittest.TestCase):
     def test_verdict_words(self):
         cases = {
@@ -91,7 +142,7 @@ class Events(unittest.TestCase):
     def test_lifecycle_and_every_event_maps(self):
         events = emitter.events_for("example/example-svc", pr(), REQUIRED)
         steps = [e["id"].split("/", 2)[2] for e in events]
-        self.assertEqual(["created", f"ci/{HEAD}", "review/comment-7", "merged"], steps)
+        self.assertEqual(["created", f"ci/{HEAD}/pass/2026-10-14T10:30:00Z", "review/comment-7", "merged"], steps)
         actions = [ingest.episode_for(e, actor="t")["nodes"][0]["properties"]["changeAction"] for e in events]
         self.assertEqual(["created", "ci-passed", "reviewed", "merged"], actions)
         merged = ingest.episode_for(events[-1], actor="t")["nodes"][0]["properties"]

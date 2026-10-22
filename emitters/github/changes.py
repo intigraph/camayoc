@@ -65,7 +65,7 @@ query($owner: String!, $name: String!, $after: String) {
         commits(last: 50) { nodes { commit { oid
           statusCheckRollup { contexts(first: 100) { nodes {
             __typename
-            ... on CheckRun { name conclusion completedAt }
+            ... on CheckRun { databaseId name status conclusion startedAt completedAt }
             ... on StatusContext { context state createdAt } } } } } } }
       }
     }
@@ -108,16 +108,26 @@ def event(repo: str, number: int, step: str, kind: str, time: str, *,
 
 
 def ci_result(contexts: list[dict], required: list[str]) -> tuple[str, str] | None:
-    """('pass'|'fail', time) for one commit's required checks, or None while undecided."""
-    latest: dict[str, tuple[str, str]] = {}
+    """('pass'|'fail', time) for one commit's required checks, or None while undecided.
+
+    Each required check is judged by its LATEST run, ordered by when the run
+    started (a check run) or was posted (a status), then by run id. A latest run
+    that has not completed is undecided, even when an older run of the same
+    check succeeded: a rerun in progress must not inherit the earlier green.
+    """
+    latest: dict[str, tuple[tuple, str | None, str | None]] = {}
     for ctx in contexts:
         if ctx.get("__typename") == "CheckRun":
-            name, word, when = ctx.get("name"), ctx.get("conclusion"), ctx.get("completedAt")
+            name = ctx.get("name")
+            done = ctx.get("status") == "COMPLETED" and ctx.get("conclusion") and ctx.get("completedAt")
+            word, when = (ctx["conclusion"], ctx["completedAt"]) if done else (None, None)
+            order = (ctx.get("startedAt") or ctx.get("completedAt") or "", ctx.get("databaseId") or 0)
         else:
             name, word, when = ctx.get("context"), ctx.get("state"), ctx.get("createdAt")
-        if name in required and word and when:
-            if name not in latest or when > latest[name][1]:
-                latest[name] = (word, when)
+            order = (when or "", 0)
+        if name in required and (name not in latest or order > latest[name][0]):
+            latest[name] = (order, word, when)
+    latest = {name: (word, when) for name, (_, word, when) in latest.items() if word and when}
     failed = [when for word, when in latest.values() if word in FAILING]
     if failed:
         return "fail", min(failed)
@@ -144,7 +154,11 @@ def events_for(repo: str, pr: dict, required: list[str]) -> list[dict]:
         result = ci_result(((rollup.get("contexts") or {}).get("nodes")) or [], required)
         if result:
             outcome, when = result
-            out.append(event(repo, n, f"ci/{commit['oid']}", "dev.cdevents.testsuiterun.finished.0.2.0", when,
+            # One identity per observed RESULT (sha, outcome, time): a later retry
+            # on the same commit is a new event, while re-observing the same
+            # result spools and maps byte-identically.
+            out.append(event(repo, n, f"ci/{commit['oid']}/{outcome}/{when}",
+                             "dev.cdevents.testsuiterun.finished.0.2.0", when,
                              subject={"id": f"{repo}#{n}@{commit['oid']}", "source": f"github.com/{repo}/pulls",
                                       "type": "testSuiteRun",
                                       "content": {"outcome": outcome, "environment": {"id": "ci"}}},
