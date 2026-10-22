@@ -172,15 +172,21 @@ class SuiteTotalTests(unittest.TestCase):
     reason and only that reason; no gap was closed by minting.
     """
 
+    def test_qname_detection_does_not_invent_predicates_inside_an_urn(self):
+        self.assertEqual(set(), coverage.query_predicates("<urn:camayoc:workitem-burndown:delta>"))
+        self.assertEqual({("camayoc", "unknown"), ("aegis", "Observation")},
+                         coverage.query_predicates("camayoc:unknown ?s . ?s a aegis:Observation"))
+
     def test_the_suite_total_is_reported_and_pinned(self):
+        # Event burn-down adds four: three stored, one external acceptance unwritten.
         # Priority adds seven questions: one stored, four unwritten, two gaps.
         # Delivery (aegis-rb3) adds seven gaps, all waiting on the proposed
         # aegis:DeploymentEvent class (Quipu proposal 31).
         figures = coverage.totals()
-        self.assertEqual(8, figures["slices"])
-        self.assertEqual(105, figures["total"])
-        self.assertEqual(41, figures["covered"])
-        self.assertEqual(26, figures["unwritten"])
+        self.assertEqual(9, figures["slices"])
+        self.assertEqual(109, figures["total"])
+        self.assertEqual(44, figures["covered"])
+        self.assertEqual(27, figures["unwritten"])
         self.assertEqual(38, figures["gaps"])
 
     def test_the_three_states_account_for_every_question(self):
