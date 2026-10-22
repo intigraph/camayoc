@@ -197,6 +197,99 @@ class DeliveryShapes(unittest.TestCase):
                 self.assertIs(producer_ok, accepted)
 
 
+CHANGE = {
+    "a": "aegis:ChangeEvent",
+    "rdfs:label": '"example/example-svc#42 merged"',
+    "aegis:sourceKind": '"observed"',
+    "aegis:changeId": '"example/example-svc#42"',
+    "aegis:changeRepository": '"example/example-svc"',
+    "aegis:changeAction": '"merged"',
+    "aegis:commitSha": '"3392682256648f3ec088dd768b270a0097089a7a"',
+    "aegis:occurredAt": '"2026-10-14T18:02:11Z"',
+    "aegis:cdeventsType": '"dev.cdevents.change.merged.0.2.0"',
+    "aegis:cloudEventSource": '"example-forge/changes"',
+    "aegis:cloudEventId": '"example/example-svc#42/merged"',
+}
+
+
+def change_record(**changes: str | None) -> str:
+    fields = dict(CHANGE)
+    for key, value in changes.items():
+        key = key.replace("__", ":")
+        if value is None:
+            fields.pop(key)
+        else:
+            fields[key] = value
+    return "aegis:c1 " + " ;\n  ".join(f"{k} {v}" for k, v in fields.items()) + " .\n"
+
+
+def as_turtle(body: dict) -> str:
+    """One ingest episode's node as the Turtle quipu's episode path would write."""
+    node = body["nodes"][0]
+    fields = {"a": f"aegis:{node['type']}", "rdfs:label": json.dumps(node["description"])}
+    for edge in body["edges"]:
+        fields[f"aegis:{edge['relation']}"] = "aegis:" + edge["target"]
+    for key, value in node["properties"].items():
+        values = value if isinstance(value, list) else [value]
+        fields[f"aegis:{key}"] = ", ".join(json.dumps(v) for v in values)
+    return "aegis:e1 " + " ;\n  ".join(f"{k} {v}" for k, v in fields.items()) + " .\n"
+
+
+@requires_quipu
+class ChangeShapes(unittest.TestCase):
+    report = DeliveryShapes.report
+    valid = DeliveryShapes.valid
+
+    def test_positive_controls(self):
+        self.assertTrue(self.valid(change_record()), self.report(change_record()))
+        for action in ("created", "reviewed", "abandoned", "ci-passed", "ci-failed"):
+            with self.subTest(action):
+                body = change_record(aegis__changeAction=f'"{action}"', aegis__commitSha=None)
+                self.assertTrue(self.valid(body), self.report(body))
+
+    def test_negative_controls(self):
+        cases = {
+            "unknown action": (change_record(aegis__changeAction='"pushed"'), "In constraint", "changeAction"),
+            "id without number": (change_record(aegis__changeId='"example/example-svc"'), "Pattern(", "changeId"),
+            "short sha": (change_record(aegis__commitSha='"3392682"'), "Pattern(", "commitSha"),
+            "no repository": (change_record(aegis__changeRepository=None), "MinCount(1)", "changeRepository"),
+            "no time": (change_record(aegis__occurredAt=None), "MinCount(1)", "occurredAt"),
+            "two actions": (change_record(aegis__changeAction='"created", "merged"'), "MaxCount(1)", "changeAction"),
+        }
+        for name, (body, constraint, path) in cases.items():
+            with self.subTest(name):
+                out = self.report(body)
+                self.assertIn("invalid: 1 violation(s)", out)
+                self.assertIn(constraint, out)
+                self.assertIn(f"ontology/{path}", out)
+
+    def test_a_merge_must_name_its_commit(self):
+        out = self.report(change_record(aegis__commitSha=None))
+        self.assertIn("invalid: 1 violation(s)", out)
+        self.assertIn("OR not satisfied", out)
+
+    def test_included_commits_are_full_shas(self):
+        sha = '"3392682256648f3ec088dd768b270a0097089a7a"'
+        self.assertTrue(self.valid(record(aegis__includesCommit=sha + ", " + sha.replace("3", "4"))))
+        out = self.report(record(aegis__includesCommit=sha + ', "3392682"'))
+        self.assertIn("invalid: 1 violation(s)", out)
+        self.assertIn("ontology/includesCommit", out)
+
+    def test_what_the_ingest_produces_conforms(self):
+        ingest = _ingest()
+        fixtures = ROOT / "tests" / "fixtures" / "cdevents"
+        deployed = json.loads((fixtures / "deployed.json").read_text())
+        deployed["data"]["customData"] = {"includedCommits": ["3392682256648f3ec088dd768b270a0097089a7a",
+                                                              "97e84848ab4977739280e4ce3f9f683e437733ba"]}
+        cases = {name: json.loads((fixtures / f"{name}.json").read_text())
+                 for name in ("change-merged", "testsuiterun-passed")}
+        cases["deployed+includedCommits"] = deployed
+        for name, event in cases.items():
+            with self.subTest(name):
+                ttl = as_turtle(ingest.episode_for(event, actor="tester"))
+                self.assertTrue(self.valid(ttl), self.report(ttl))
+
+
 def _ingest():
     sys.path.insert(0, str(ROOT / "scripts"))
     spec = importlib.util.spec_from_file_location("ingest_cdevents", ROOT / "scripts/ingest_cdevents.py")
@@ -214,15 +307,15 @@ class ProducerMatchesShape(unittest.TestCase):
         ingest = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ingest)
         declared = set(re.findall(r"^aegis:(\w+) a rdf:Property", SHAPES.read_text(), re.M))
-        for fixture in ("deployed", "rolledback"):
+        targets = set(re.findall(r"sh:targetClass aegis:(\w+)", SHAPES.read_text()))
+        for fixture in ("deployed", "rolledback", "change-merged", "testsuiterun-passed"):
             event = json.loads((ROOT / f"tests/fixtures/cdevents/{fixture}.json").read_text())
             body = ingest.episode_for(event, actor="t")
             props = set(body["nodes"][0]["properties"]) - {"sourceKind"}
             relations = {edge["relation"] for edge in body["edges"]}
             with self.subTest(fixture):
                 self.assertEqual(set(), (props | relations) - declared)
-                self.assertEqual(body["nodes"][0]["type"],
-                                 re.search(r"sh:targetClass aegis:(\w+)", SHAPES.read_text()).group(1))
+                self.assertIn(body["nodes"][0]["type"], targets)
 
 
 if __name__ == "__main__":

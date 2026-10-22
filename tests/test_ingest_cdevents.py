@@ -259,6 +259,16 @@ class CDEventsIngressTests(unittest.TestCase):
         for base, rule in mapping["types"].items():
             with self.subTest(base):
                 self.assertRegex(base, r"^dev\.cdevents\.[a-z]+\.[a-z]+$")
+                if rule["class"] == "ChangeEvent":
+                    actions = ({rule["action"]} if "action" in rule
+                               else set(rule["actionFrom"]["map"].values()))
+                    self.assertTrue(actions)
+                    self.assertLessEqual(actions, {"created", "reviewed", "merged", "abandoned",
+                                                   "ci-passed", "ci-failed"})
+                    self.assertTrue(rule["fields"]["changeId"]["required"])
+                    ingest.windows.window_iri(rule["window"], "2026-10")
+                    continue
+                self.assertEqual("DeploymentEvent", rule["class"])
                 outcomes = ({rule["outcome"]} if "outcome" in rule
                             else set(rule["outcomeFrom"]["map"].values()))
                 self.assertTrue(outcomes)

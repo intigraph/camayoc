@@ -1,5 +1,5 @@
 {
-  "_README": "CDEvents -> native graph record mapping (aegis-rb3). Governed DATA: adding a tool or an event type is a reviewed edit here, not code. Keys are CDEvents types WITHOUT the trailing version; 'versions' lists the accepted type-version majors. 'fields' are dotted paths into the CDEvent (context/subject/customData); a field marked required that is absent quarantines the event. 'outcomeFrom' maps the event's own outcome word through an explicit table (an unlisted word quarantines); 'requires' are literal-value preconditions (a pipeline run counts only when the emitter declares an actual deployment attempt); 'outcomeRequires' names fields an outcome must carry; 'recapRules' bind a declared producer's own counters to the outcome (for an Ansible run: a complete recap is required and failures or unreachable above zero must be failed; for a Terraform apply: complete change counters are required and errors or a non-zero exit must be failed; a contradiction quarantines); 'provenance' paths ride in the episode source. An event type that is not listed here is quarantined (parked with a reason), never dropped and never guessed. The sha256 of this file rides in every episode's source so each record names the mapping that produced it.",
+  "_README": "CDEvents -> native graph record mapping (aegis-rb3). Governed DATA: adding a tool or an event type is a reviewed edit here, not code. Keys are CDEvents types WITHOUT the trailing version; 'versions' lists the accepted type-version majors. 'fields' are dotted paths into the CDEvent (context/subject/customData); a field marked required that is absent quarantines the event. 'outcomeFrom' maps the event's own outcome word through an explicit table (an unlisted word quarantines); 'requires' are literal-value preconditions (a pipeline run counts only when the emitter declares an actual deployment attempt); 'outcomeRequires' names fields an outcome must carry; 'recapRules' bind a declared producer's own counters to the outcome (for an Ansible run: a complete recap is required and failures or unreachable above zero must be failed; for a Terraform apply: complete change counters are required and errors or a non-zero exit must be failed; a contradiction quarantines); 'provenance' paths ride in the episode source. An event type that is not listed here is quarantined (parked with a reason), never dropped and never guessed. The sha256 of this file rides in every episode's source so each record names the mapping that produced it. ChangeEvent rules (lead time, aegis-rb3) name the lifecycle step with 'action', or map the event's own outcome word through 'actionFrom'; 'actionRequires' names fields a step must carry (a merge names its merge commit). A field with 'list' is multi-valued and every element must match its 'pattern'.",
   "spec": {
     "cloudevents": ["1.0"],
     "cdevents": ["0.3", "0.4"]
@@ -13,7 +13,8 @@
       "fields": {
         "service": {"path": "subject.id", "required": true},
         "artifactId": {"path": "subject.content.artifactId", "required": true},
-        "environment": {"path": "subject.content.environment.id", "required": true}
+        "environment": {"path": "subject.content.environment.id", "required": true},
+        "includesCommit": {"path": "customData.includedCommits", "required": false, "list": true, "pattern": "^[0-9a-f]{40}$"}
       }
     },
     "dev.cdevents.service.upgraded": {
@@ -24,7 +25,8 @@
       "fields": {
         "service": {"path": "subject.id", "required": true},
         "artifactId": {"path": "subject.content.artifactId", "required": true},
-        "environment": {"path": "subject.content.environment.id", "required": true}
+        "environment": {"path": "subject.content.environment.id", "required": true},
+        "includesCommit": {"path": "customData.includedCommits", "required": false, "list": true, "pattern": "^[0-9a-f]{40}$"}
       }
     },
     "dev.cdevents.service.rolledback": {
@@ -54,6 +56,64 @@
         "attemptedArtifactId": {"path": "customData.attemptedArtifactId", "required": true},
         "artifactId": {"path": "customData.servingArtifactId", "required": false},
         "environment": {"path": "customData.environment", "required": true}
+      }
+    },
+    "dev.cdevents.change.created": {
+      "versions": ["0"],
+      "class": "ChangeEvent",
+      "window": "change",
+      "action": "created",
+      "fields": {
+        "changeId": {"path": "subject.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"},
+        "changeRepository": {"path": "subject.content.repository.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "commitSha": {"path": "customData.commitSha", "required": false, "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "dev.cdevents.change.reviewed": {
+      "versions": ["0"],
+      "class": "ChangeEvent",
+      "window": "change",
+      "action": "reviewed",
+      "fields": {
+        "changeId": {"path": "subject.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"},
+        "changeRepository": {"path": "subject.content.repository.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "commitSha": {"path": "customData.commitSha", "required": false, "pattern": "^[0-9a-f]{40}$"},
+        "reviewState": {"path": "customData.reviewState", "required": false}
+      }
+    },
+    "dev.cdevents.change.merged": {
+      "versions": ["0"],
+      "class": "ChangeEvent",
+      "window": "change",
+      "action": "merged",
+      "fields": {
+        "changeId": {"path": "subject.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"},
+        "changeRepository": {"path": "subject.content.repository.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "commitSha": {"path": "customData.commitSha", "required": false, "pattern": "^[0-9a-f]{40}$"}
+      },
+      "actionRequires": {"merged": ["commitSha"]}
+    },
+    "dev.cdevents.change.abandoned": {
+      "versions": ["0"],
+      "class": "ChangeEvent",
+      "window": "change",
+      "action": "abandoned",
+      "fields": {
+        "changeId": {"path": "subject.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"},
+        "changeRepository": {"path": "subject.content.repository.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "commitSha": {"path": "customData.commitSha", "required": false, "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "dev.cdevents.testsuiterun.finished": {
+      "versions": ["0"],
+      "class": "ChangeEvent",
+      "window": "change",
+      "actionFrom": {"path": "subject.content.outcome", "map": {"pass": "ci-passed", "fail": "ci-failed", "error": "ci-failed"}},
+      "provenance": ["subject.content.outcome"],
+      "fields": {
+        "changeId": {"path": "customData.changeId", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"},
+        "changeRepository": {"path": "customData.changeRepository", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "commitSha": {"path": "customData.commitSha", "required": true, "pattern": "^[0-9a-f]{40}$"}
       }
     }
   }

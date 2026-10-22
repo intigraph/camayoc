@@ -152,16 +152,24 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
         raise Quarantined(f"{base} major version {major} not mapped")
     month = event_month(attrs["time"])
 
-    values: dict[str, str] = {}
+    values: dict[str, str | list[str]] = {}
     for name, spec in rule["fields"].items():
         value = _get(cdevent, spec["path"])
         if value is None or (isinstance(value, str) and not value.strip()):
             if spec.get("required"):
                 raise Quarantined(f"required field {name} ({spec['path']}) absent")
             continue
-        if not isinstance(value, str):
-            raise Quarantined(f"field {name} ({spec['path']}) is not a string")
-        values[name] = value
+        # A 'list' field is multi-valued (one triple per element); every element
+        # must be a string, and an empty list is a malformed claim, not "none".
+        if spec.get("list") and not (isinstance(value, list) and value):
+            raise Quarantined(f"field {name} ({spec['path']}) is not a non-empty list of strings")
+        items = value if spec.get("list") else [value]
+        if not all(isinstance(v, str) for v in items):
+            kind = "a non-empty list of strings" if spec.get("list") else "a string"
+            raise Quarantined(f"field {name} ({spec['path']}) is not {kind}")
+        if spec.get("pattern") and not all(re.fullmatch(spec["pattern"], v) for v in items):
+            raise Quarantined(f"field {name} ({spec['path']}) does not match {spec['pattern']}")
+        values[name] = items if spec.get("list") else value
 
     for need in rule.get("requires", []):
         # A literal precondition, compared exactly: a pipeline run is a
@@ -172,6 +180,8 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
     for name in ("artifactId", "attemptedArtifactId"):
         if name in values and not _PURL.match(values[name]):
             raise Quarantined(f"{name} {values[name]!r} is not a package URL")
+    if rule["class"] == "ChangeEvent":
+        return _change_episode(rule, attrs, cdevent, values, month, actor=actor, mapping_sha=mapping_sha)
 
     outcome = rule.get("outcome")
     source = rule.get("outcomeFrom")
@@ -227,6 +237,51 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
             "properties": properties,
         }],
         "edges": [{"source": name, "target": service, "relation": "deployedService"}],
+    }
+
+
+def _change_episode(rule: dict, attrs: dict, cdevent: dict, values: dict, month: str, *,
+                    actor: str, mapping_sha: str) -> dict:
+    """The /episode body for one step of a change's lifecycle (aegis-rb3 lead time).
+
+    The step is the rule's fixed 'action', or the event's own outcome word
+    through 'actionFrom' (a CI result); an unmapped word is quarantined. A merge
+    must name its merge commit: without it no deployment can be joined to it.
+    """
+    action = rule.get("action")
+    source = rule.get("actionFrom")
+    if source:
+        word = _get(cdevent, source["path"])
+        if not isinstance(word, str) or word not in source["map"]:
+            raise Quarantined(f"action {word!r} at {source['path']} is not mapped")
+        action = source["map"][word]
+    for name in rule.get("actionRequires", {}).get(action, []):
+        if name not in values:
+            raise Quarantined(f"a {action} change step needs {name}")
+    key = hashlib.sha256(f"{attrs['source']}\0{attrs['id']}".encode()).hexdigest()[:16]
+    name = f"change-event-{key}"
+    properties = {
+        "sourceKind": SOURCE_KIND,
+        "changeAction": action,
+        "occurredAt": attrs["time"],
+        "cdeventsType": attrs["type"],
+        "cloudEventSource": attrs["source"],
+        "cloudEventId": attrs["id"],
+        **values,
+    }
+    return {
+        "name": f"cdevent:{key}",
+        "graph": windows.window_iri(rule["window"], month),
+        "episode_body": f"CDEvent {attrs['type']} for {values['changeId']}",
+        "source": f"cdevents:mapping={mapping_sha[:16]}:{attrs['source']}#{attrs['id']}" + _provenance(rule, cdevent),
+        "actor": actor,
+        "nodes": [{
+            "name": name,
+            "type": rule["class"],
+            "description": f"{values['changeId']} {action}",
+            "properties": properties,
+        }],
+        "edges": [],
     }
 
 
