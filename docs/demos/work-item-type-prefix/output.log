@@ -1,0 +1,8 @@
+Script started on 2026-10-18 22:26:30-04:00 [COMMAND="stty -onlcr; python3 docs/demos/work-item-type-prefix/probe.py" <not executed on terminal>]
+Target: isolated source fixture; no journal, network or live producer
+Same WorkItem IRI rendered with alias a:
+Base 769a333ec5a6: UNKNOWN
+Candidate: VERIFIED
+Wrong type control: UNKNOWN
+
+Script done on 2026-10-18 22:26:30-04:00 [COMMAND_EXIT_CODE="0"]

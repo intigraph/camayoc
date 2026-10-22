@@ -48,7 +48,8 @@ class Backfill(unittest.TestCase):
             record=rows(**{nw.SCHEMA+'identifier':item,nw.SEEDS+'status':'closed' if item.endswith('0') else 'deferred',nw.QUECHUA+'blockedOn':nw.ITEM+'demo-blocker'})
             for r in record:r['s']=nw.ITEM+item
             return {'rows':record,'truncated':False}
-        if 'SELECT ?t' in q:return {'rows':[{'t':'http://aegis.gastown.local/ontology/WorkItem'}],'truncated':False}
+        if 'SELECT ?t' in q or 'STR(?raw_type) AS ?t' in q:
+            return {'rows':[{'t':'http://aegis.gastown.local/ontology/WorkItem'}],'truncated':False}
         return {'rows':[{'v':self.descriptions[item]}] if item in self.descriptions else [],'truncated':False}
     def tick(self):return backfill.tick(self.reader,self.j,self.post,plane=PLANE,actor='fixture')
     def exact(self, item='demo-000', initialise=True):
@@ -77,6 +78,37 @@ class Backfill(unittest.TestCase):
         r=self.tick()
         self.assertEqual((r['status'],r['requests'],r['writes']),('UNKNOWN',0,0))
         self.assertFalse(self.effects)
+
+    def assert_type_control_refused_without_resend(self, reply):
+        self.exact()
+        original=self.post
+        def controlled(endpoint,body):
+            response=original(endpoint,body)
+            if 'STR(?raw_type) AS ?t' in body.get('query',''):
+                return reply
+            return response
+        self.post=controlled
+        self.assertEqual(self.tick()['status'],'UNKNOWN')
+        self.assertEqual(self.effects,['demo-000'])
+        pending=self.j.next()[2]
+        self.assertIsNotNone(pending)
+        self.assertEqual(self.tick()['status'],'UNKNOWN')
+        self.assertEqual(self.effects,['demo-000'])
+        self.assertEqual(self.j.next()[2],pending)
+        self.assertTrue(any('STR(?raw_type) AS ?t' in body.get('query','')
+                            for _,body in self.seen))
+
+    def test_wrong_type_control_keeps_the_pending_effect_without_resend(self):
+        self.assert_type_control_refused_without_resend({
+            'rows':[{'t':'http://aegis.gastown.local/ontology/Observation'}],
+            'truncated':False,
+        })
+
+    def test_truncated_type_control_keeps_the_pending_effect_without_resend(self):
+        self.assert_type_control_refused_without_resend({
+            'rows':[{'t':'http://aegis.gastown.local/ontology/WorkItem'}],
+            'truncated':True,
+        })
 
     def test_exact_lost_response_reopens_only_for_controlled_readback(self):
         self.exact();self.drop=True

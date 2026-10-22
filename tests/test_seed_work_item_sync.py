@@ -8,6 +8,10 @@ import seed_work_items as nw
 import seed_change_custody as sc
 import seed_work_item_sync as sync
 
+def type_query(query):
+    return 'SELECT ?t' in query or ' AS ?t)' in query
+
+
 class Tick(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'journal.db'
@@ -24,7 +28,7 @@ class Tick(unittest.TestCase):
         if self.unavailable:raise TimeoutError('readback unavailable')
         query=body['query']
         if 'BIND(' in query:return {'rows':rows(),'truncated':False}
-        if 'SELECT ?t' in query:return {'rows':[{'t':'aegis:WorkItem'}],'truncated':False}
+        if type_query(query):return {'rows':[{'t':'aegis:WorkItem'}],'truncated':False}
         return {'rows':[{'v':self.description}] if self.description else [],'truncated':False}
     def tick(self):
         return sync.tick(self.reader,self.j,self.post,changes=lambda **args:page() if args['since']<10 else page(records=[],next_tx=args['since'],watermark_tx=args['since']),plane='urn:private:knowledge',actor='fixture')
@@ -33,7 +37,7 @@ class Tick(unittest.TestCase):
         original=self.post
         def post(endpoint,body):
             value=original(endpoint,body)
-            if 'SELECT ?t' in body.get('query',''):value['rows']=[{'t':'http://aegis.gastown.local/ontology/WorkItem'}]
+            if type_query(body.get('query','')):value['rows']=[{'t':'http://aegis.gastown.local/ontology/WorkItem'}]
             return value
         self.post=post
         result=self.tick()
@@ -48,7 +52,7 @@ class Tick(unittest.TestCase):
         original=self.post
         def post(endpoint,body):
             value=original(endpoint,body)
-            if 'SELECT ?t' in body.get('query',''):value['rows']=[{'t':'http://aegis.gastown.local/ontology/WorkItem'}]
+            if type_query(body.get('query','')):value['rows']=[{'t':'http://aegis.gastown.local/ontology/WorkItem'}]
             return value
         self.post=post
         self.assertEqual(self.tick()['verified'],1);self.assertEqual(self.writes,1)
@@ -59,11 +63,36 @@ class Tick(unittest.TestCase):
         self.assertEqual((result['status'],result['writes'],result['verified']),('OK',0,1))
         self.assertEqual(self.writes,1)
 
+    def test_changed_output_prefix_verifies_without_a_second_effect(self):
+        original=self.post
+        def renamed(endpoint,body):
+            value=original(endpoint,body)
+            if type_query(body.get('query','')):
+                # A real query engine renders IRIs with any registered alias;
+                # STR returns the lexical full IRI regardless of that alias.
+                value['rows']=[{'t':sync.projection.A+'WorkItem' if 'STR(' in body['query'] else 'a:WorkItem'}]
+            return value
+        self.post=renamed
+        result=self.tick()
+        self.assertEqual((result['status'],result['verified'],self.writes),('OK',1,1))
+        self.assertIsNone(self.j.next())
+
+    def test_truncated_type_control_keeps_the_retained_effect(self):
+        original=self.post
+        def truncated(endpoint,body):
+            value=original(endpoint,body)
+            if type_query(body.get('query','')):value['truncated']=True
+            return value
+        self.post=truncated
+        self.assertEqual(self.tick()['status'],'UNKNOWN')
+        self.assertEqual(self.writes,1)
+        self.assertIsNotNone(self.j.next()[2])
+
     def test_unproven_control_never_acknowledges(self):
         original=self.post
         def bad_control(endpoint,body):
             result=original(endpoint,body)
-            if 'SELECT ?t' in body.get('query',''):result['rows']=[{'t':'unknown:WorkItem'}]
+            if type_query(body.get('query','')):result['rows']=[{'t':'unknown:WorkItem'}]
             return result
         self.post=bad_control
         result=self.tick();self.assertEqual(result['status'],'UNKNOWN')
@@ -101,7 +130,7 @@ class SerialTicks(unittest.TestCase):
         if 'BIND(' in query:
             found=rows(**{nw.SCHEMA+'identifier':item})
             return {'rows':[dict(row,s=nw.ITEM+item) for row in found],'truncated':False}
-        if 'SELECT ?t' in query:return {'rows':[{'t':'aegis:WorkItem'}],'truncated':False}
+        if type_query(query):return {'rows':[{'t':'aegis:WorkItem'}],'truncated':False}
         if item in self.drop:raise TimeoutError('readback unavailable')
         value=self.descriptions.get(item)
         return {'rows':[{'v':value}] if value else [],'truncated':False}
