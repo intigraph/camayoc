@@ -19,7 +19,6 @@ aegis:CamayocWorkItemShape a sh:NodeShape ;
     sh:targetClass aegis:WorkItem ;
     sh:property [
         sh:path aegis:sourceKind ;
-        sh:minCount 1 ;
         sh:maxCount 1 ;
         sh:in ("observed" "declared" "inferred") ;
         sh:message "camayoc: every WorkItem carries exactly one sourceKind of observed|declared|inferred — the tag is the reader's only signal of trust" ;

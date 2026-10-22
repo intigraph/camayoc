@@ -22,3 +22,13 @@ aegis:CamayocObservationProvenanceDebtShape a sh:NodeShape ;
     sh:property [ sh:path aegis:about ; sh:minCount 1 ; sh:severity sh:Warning ] ;
     sh:property [ sh:path aegis:observedAt ; sh:minCount 1 ; sh:severity sh:Warning ] ;
     sh:property [ sh:path aegis:observedValue ; sh:minCount 1 ; sh:severity sh:Warning ] .
+
+# The same debt for WorkItems (aegis-g51c C11): episode work-item links mint and
+# reuse WorkItem nodes that carry no sourceKind, so its minCount moved out of
+# CamayocWorkItemShape. Core still refuses a second sourceKind or a value outside
+# observed|declared|inferred.
+aegis:CamayocWorkItemProvenanceDebtShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass aegis:WorkItem ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:severity sh:Warning ] .
