@@ -7,6 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -136,6 +137,21 @@ class RetriesOnOneCommit(unittest.TestCase):
             self.assertEqual(1, len(later))
             self.assertIn("fail", later[0])
             self.assertEqual(3, len(list((spool_dir / "delivered").glob("*_ci_*"))) + len(later))
+
+
+class Boundary(unittest.TestCase):
+    def test_not_before_drops_earlier_steps_only(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(emitter, "required_checks", return_value=REQUIRED), \
+                unittest.mock.patch.object(emitter, "pull_requests", return_value=[pr()]), \
+                unittest.mock.patch("sys.stdout"):
+            rc = emitter.main(["--repo", "example/example-svc", "--since", "2026-10-14T00:00:00Z",
+                               "--spool", tmp, "--not-before", "2026-10-14T11:00:00Z"])
+            names = sorted(p.name for p in Path(tmp).glob("*.json"))
+        self.assertEqual(0, rc)
+        # created (10:00) and CI (10:30) predate the boundary; review (12:00) and merge (18:00) do not.
+        self.assertEqual(2, len(names))
+        self.assertTrue(any("_merged" in n for n in names) and any("_review_" in n for n in names))
 
 
 class ReviewVerdicts(unittest.TestCase):

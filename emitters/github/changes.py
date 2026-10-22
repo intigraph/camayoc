@@ -229,6 +229,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--since", required=True, help="RFC 3339 UTC; pull requests updated at or after it")
     ap.add_argument("--spool", type=Path, required=True)
     ap.add_argument("--branch", default="main", help="base branch whose required checks define green")
+    ap.add_argument("--not-before", help="RFC 3339 UTC; spool only steps at or after it (the boundary after a "
+                    "reviewed backfill, so no step is delivered twice)")
     args = ap.parse_args(argv)
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
         ap.error("--repo must be owner/name")
@@ -240,6 +242,9 @@ def main(argv: list[str] | None = None) -> int:
     for pr in pull_requests(args.repo, args.since):
         counts["prs"] += 1
         for ev in events_for(args.repo, pr, required):
+            if args.not_before and ev["time"] < args.not_before:
+                counts["before-boundary"] = counts.get("before-boundary", 0) + 1
+                continue
             counts["spooled" if spool(ev, args.spool) else "present"] += 1
     print("changes: " + " ".join(f"{k}={v}" for k, v in counts.items()) + f" required={len(required)}")
     return 0
