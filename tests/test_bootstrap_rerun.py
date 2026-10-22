@@ -118,6 +118,8 @@ class BootstrapRerunTest(unittest.TestCase):
 
         boot = self.bootstrap()
         self.assertEqual(boot.returncode, 0, boot.stdout + boot.stderr)
+        # The debt shape is its own set (aegis-g51c C10), never part of core.
+        self.assertIn("shapes: loaded (camayoc-observation-debt)", boot.stdout)
 
         def post(body, endpoint="/episode"):
             request = urllib.request.Request(
