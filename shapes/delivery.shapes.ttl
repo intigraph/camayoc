@@ -104,3 +104,69 @@ aegis:DeploymentEventShape a sh:NodeShape ;
         [ sh:property [ sh:path aegis:deploymentOutcome ; sh:hasValue "failed" ] ]
         [ sh:property [ sh:path aegis:artifactId ; sh:minCount 1 ] ]
     ) .
+
+# Change vocabulary: pull-request lifecycle ingested as CDEvents (aegis-rb3,
+# 2026-10-22). Lead time is a join, not a guess: a ChangeEvent with
+# changeAction "merged" names its merge commit, and the deployment that first
+# includes that commit (aegis:includesCommit) is when the change reached
+# production. A change whose merge commit no succeeded deployment includes is
+# NOT deployed, whatever the clock says.
+
+aegis:ChangeEvent a rdfs:Class ;
+    rdfs:label "Change event" ;
+    rdfs:comment "One lifecycle step of a source change (a pull request), from a CDEvents change event or a CI result for the change's head commit: created, reviewed, merged, abandoned, ci-passed or ci-failed. Distinct from DeploymentEvent (what reached an environment) and from WorkflowRun." .
+
+aegis:changeId a rdf:Property ;
+    rdfs:label "change id" ;
+    rdfs:comment "Repository-qualified change identity, owner/repo#number. Every step of one change carries the same value." ;
+    rdfs:range xsd:string .
+
+aegis:changeRepository a rdf:Property ;
+    rdfs:label "change repository" ;
+    rdfs:comment "The repository the change targets, as owner/repo." ;
+    rdfs:range xsd:string .
+
+aegis:changeAction a rdf:Property ;
+    rdfs:label "change action" ;
+    rdfs:comment "Closed set: created, reviewed, merged, abandoned, ci-passed, ci-failed." ;
+    rdfs:range xsd:string .
+
+aegis:commitSha a rdf:Property ;
+    rdfs:label "commit sha" ;
+    rdfs:comment "Full 40-hex commit id the step concerns: the merge commit on merged, the head commit on a CI result or review." ;
+    rdfs:range xsd:string .
+
+aegis:reviewState a rdf:Property ;
+    rdfs:label "review state" ;
+    rdfs:comment "The forge's review verdict word on a reviewed step (approved, changes_requested, commented, dismissed)." ;
+    rdfs:range xsd:string .
+
+aegis:includesCommit a rdf:Property ;
+    rdfs:label "includes commit" ;
+    rdfs:comment "Full 40-hex commit id newly delivered by a deployment: the commits reachable from the deployed artifact and not from the previous succeeded deployment's artifact. Multi-valued." ;
+    rdfs:range xsd:string .
+
+aegis:DeploymentEventIncludesShape a sh:NodeShape ;
+    sh:targetClass aegis:DeploymentEvent ;
+    sh:property [ sh:path aegis:includesCommit ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] .
+
+aegis:ChangeEventShape a sh:NodeShape ;
+    sh:targetClass aegis:ChangeEvent ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:changeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$" ] ;
+    sh:property [ sh:path aegis:changeRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" ] ;
+    sh:property [ sh:path aegis:changeAction ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("created" "reviewed" "merged" "abandoned" "ci-passed" "ci-failed") ] ;
+    sh:property [ sh:path aegis:commitSha ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:reviewState ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] ;
+    sh:property [ sh:path aegis:cdeventsType ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^dev\\.cdevents\\." ] ;
+    sh:property [ sh:path aegis:cloudEventSource ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:cloudEventId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    # A merge names the commit that a deployment must include for the change to
+    # count as delivered; without it, merge->deployed would be unjoinable.
+    sh:or (
+        [ sh:not [ sh:property [ sh:path aegis:changeAction ; sh:hasValue "merged" ] ] ]
+        [ sh:property [ sh:path aegis:commitSha ; sh:minCount 1 ] ]
+    ) .
