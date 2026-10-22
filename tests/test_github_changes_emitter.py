@@ -195,7 +195,7 @@ def review_status(state, description, created="2026-10-14T23:59:00Z"):
 class NativeReviewStatus(unittest.TestCase):
     """aegis-6ye: the native receipt's reviewed_at, never the status publication time."""
 
-    GOOD = "reviewer wu receipt r-0123456789abcdef reviewed_at 2026-10-14T11:15:30.123456789Z"
+    GOOD = "reviewer example-reviewer receipt r-0123456789abcdef reviewed_at 2026-10-14T11:15:30.123456789Z"
 
     def nodes(self, *extra):
         return [run("Build", "SUCCESS", "2026-10-14T10:20:00Z"), run("Test", "SUCCESS", "2026-10-14T10:30:00Z"), *extra]
@@ -210,9 +210,9 @@ class NativeReviewStatus(unittest.TestCase):
 
     def test_revocation_legacy_and_offset_times_record_nothing(self):
         for name, ctx in (("revoked", review_status("FAILURE", self.GOOD)),
-                          ("legacy", review_status("SUCCESS", "reviewer wu receipt r-0123")),
-                          ("offset", review_status("SUCCESS", "reviewer wu receipt r-1 reviewed_at 2026-10-14T11:15:30+02:00")),
-                          ("garbage", review_status("SUCCESS", "reviewer wu receipt r-1 reviewed_at yesterday"))):
+                          ("legacy", review_status("SUCCESS", "reviewer example-reviewer receipt r-0123")),
+                          ("offset", review_status("SUCCESS", "reviewer example-reviewer receipt r-1 reviewed_at 2026-10-14T11:15:30+02:00")),
+                          ("garbage", review_status("SUCCESS", "reviewer example-reviewer receipt r-1 reviewed_at yesterday"))):
             with self.subTest(name):
                 events = emitter.events_for("example/example-svc", with_ci(self.nodes(ctx)), REQUIRED)
                 self.assertEqual([], [e for e in events if "/review/native-" in e["id"]])
