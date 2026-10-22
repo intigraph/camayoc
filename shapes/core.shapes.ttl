@@ -233,7 +233,7 @@ aegis:CamayocBlockerShape a sh:NodeShape ;
         [ sh:and (
             [ sh:path aegis:blockerKind ; sh:hasValue "pr-merged" ]
             [ sh:path aegis:prRef ; sh:minCount 1 ; sh:maxCount 1 ;
-              sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$" ] ) ]
+              sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\u0023[0-9]+$" ] ) ]
         [ sh:and (
             [ sh:path aegis:blockerKind ; sh:hasValue "release-installed" ]
             [ sh:path aegis:tool ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^[A-Za-z0-9_.-]+$" ]
@@ -249,7 +249,7 @@ aegis:CamayocBlockerShape a sh:NodeShape ;
             [ sh:path aegis:blockerKind ; sh:hasValue "date" ]
             [ sh:path aegis:resolvesOn ; sh:minCount 1 ] ) ]
     ) ;
-    sh:message "camayoc: a kinded Blocker must carry its kind's probe parameters (pr-merged: prRef owner/repo#N; release-installed: tool + minVersion; ci-green: repoRef owner/repo@branch; human-action: resolutionQuery; date: resolvesOn)" .
+    sh:message "camayoc: a kinded Blocker must carry its kind's probe parameters (pr-merged: prRef owner/repo\u0023N; release-installed: tool + minVersion; ci-green: repoRef owner/repo@branch; human-action: resolutionQuery; date: resolvesOn)" .
 
 aegis:CamayocTrackerObservationStatusShape a sh:NodeShape ;
     sh:targetClass aegis:Observation ;
@@ -293,13 +293,14 @@ aegis:CamayocMetricShape a sh:NodeShape ;
     sh:property [ sh:path quipu:derivedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
     sh:property [ sh:path aegis:contentHash ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
 
+# The four minCount requirements of an Observation are write-validation
+# debt: see shapes/observation-debt.shapes.ttl (aegis-g51c C10).
 aegis:CamayocObservationShape a sh:NodeShape ;
     sh:targetClass aegis:Observation ;
-    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:maxCount 1 ; sh:in ("observed") ] ;
     sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
-    sh:property [ sh:path aegis:about ; sh:minCount 1 ] ;
-    sh:property [ sh:path aegis:observedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
-    sh:property [ sh:path aegis:observedValue ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+    sh:property [ sh:path aegis:observedAt ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:observedValue ; sh:maxCount 1 ; sh:datatype xsd:string ] .
 
 aegis:CamayocMetricDerivationShape a sh:NodeShape ;
     sh:targetSubjectsOf quipu:derivationSystem ;
