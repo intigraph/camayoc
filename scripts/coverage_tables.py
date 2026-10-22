@@ -524,7 +524,15 @@ COVERAGE_DD: dict[int, dict] = {
     7: {"query": None, "gap": "Needs the DeploymentEvent class; then the next succeeded event after a rolledback/failed one or an Incident.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
 }
 
+COVERAGE_WB: dict[int, dict] = {
+    1: {"query": "camayoc_work_item_burndown"},
+    2: {"query": "camayoc_work_item_burndown"},
+    3: {"query": "camayoc_work_item_burndown"},
+    4: {"query": None, "expressible": "The aggregate and canonical Seeds cohort can be compared, but timing and independent tracker-count verification are external controls, not an authored stored acceptance query."},
+}
+
 SLICES: dict[str, dict[int, dict]] = {
+    "work-item-burndown": COVERAGE_WB,
     "verification-and-liveness": COVERAGE_VL,
     "golden-paths": COVERAGE_GP,
     "metrics-and-requirements": COVERAGE_MR,
