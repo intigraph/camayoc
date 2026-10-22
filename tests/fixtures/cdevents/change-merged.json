@@ -1,0 +1,32 @@
+{
+  "data": {
+    "context": {
+      "id": "example/example-svc#42/merged",
+      "source": "example-forge/changes",
+      "timestamp": "2026-10-14T18:02:11Z",
+      "type": "dev.cdevents.change.merged.0.2.0",
+      "version": "0.4.1"
+    },
+    "customData": {
+      "commitSha": "3392682256648f3ec088dd768b270a0097089a7a"
+    },
+    "subject": {
+      "content": {
+        "repository": {
+          "id": "example/example-svc",
+          "source": "example-forge"
+        }
+      },
+      "id": "example/example-svc#42",
+      "source": "example-forge/changes",
+      "type": "change"
+    }
+  },
+  "datacontenttype": "application/json",
+  "id": "example/example-svc#42/merged",
+  "source": "example-forge/changes",
+  "specversion": "1.0",
+  "subject": "example/example-svc#42",
+  "time": "2026-10-14T18:02:11Z",
+  "type": "dev.cdevents.change.merged.0.2.0"
+}
