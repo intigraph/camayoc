@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"/></a>
-  <a href="https://github.com/scbrown/camayoc/actions/workflows/ci.yml"><img src="https://github.com/scbrown/camayoc/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  <a href="https://github.com/intigraph/camayoc/actions/workflows/ci.yml"><img src="https://github.com/intigraph/camayoc/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <a href="https://github.com/scbrown/caboodle"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the caboodle stack"/></a>
 </p>
 
@@ -38,21 +38,21 @@ was read back out of them.
   fails loudly if the store accepts one.
 
 The long form (its place in the stack, what runs today, what it deliberately is
-not): [Why camayoc](https://scbrown.github.io/camayoc/why-camayoc.html).
+not): [Why camayoc](https://intigraph.github.io/camayoc/why-camayoc.html).
 
 ## Install
 
 As a Claude Code plugin, in Claude Code:
 
 ```text
-/plugin marketplace add scbrown/camayoc
+/plugin marketplace add intigraph/camayoc
 /plugin install camayoc@camayoc
 ```
 
 From a shell, for any other agent or for scripts:
 
 ```bash
-git clone --depth 1 https://github.com/scbrown/camayoc
+git clone --depth 1 https://github.com/intigraph/camayoc
 ```
 
 There is nothing else to install first: bootstrap brings its own quipu.
@@ -62,7 +62,7 @@ There is nothing else to install first: bootstrap brings its own quipu.
 From an empty directory, bootstrap a governed memory and watch it prove its gate:
 
 ```bash
-git clone -q --depth 1 https://github.com/scbrown/camayoc
+git clone -q --depth 1 https://github.com/intigraph/camayoc
 QUIPU_SERVER=http://127.0.0.1:3030 bash camayoc/scripts/bootstrap.sh > bootstrap.log 2>&1
 grep -E '^(ontology|shapes|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
 ```
@@ -91,7 +91,7 @@ guarantee everything else rests on. Stop the server with
 | check a proposal against decisions already made | `python3 camayoc/scripts/settled_decisions.py "<proposal>" --declared <file>` |
 | see the quarantine planes and their labels | `python3 camayoc/scripts/planes.py status` |
 
-Every script: [Reference](https://scbrown.github.io/camayoc/reference.html).
+Every script: [Reference](https://intigraph.github.io/camayoc/reference.html).
 
 ## Wire it into your agent
 
@@ -107,7 +107,7 @@ From then on every session opens with a memory status line (`ACTIVE`,
 agent to query first, record at the moment, and tag honestly. Without the
 plugin, `bash camayoc/scripts/bootstrap.sh --with-claude-hooks` adds the same
 status hook to `.claude/settings.json`. The plugin also declares a `jev` MCP
-server for typed decisions. Details: [Using it with agents](https://scbrown.github.io/camayoc/agents.html).
+server for typed decisions. Details: [Using it with agents](https://intigraph.github.io/camayoc/agents.html).
 
 ### Typed decisions with jev-mcp
 
@@ -169,13 +169,13 @@ your `PATH`. The scripts need `bash`, `curl` and `python3`.
 
 **Exit codes.** Bootstrap exits 1 if nothing could be installed, 2 if the store
 accepted a record it must refuse, and 3 if no verdict could be reached. See
-[Getting started](https://scbrown.github.io/camayoc/getting-started.html#when-something-fails).
+[Getting started](https://intigraph.github.io/camayoc/getting-started.html#when-something-fails).
 
 ## What's next
 
-- [The camayoc book](https://scbrown.github.io/camayoc/): getting started, agents, reference and the design notes, in reading order
-- [Docs map](https://scbrown.github.io/camayoc/docs-map.html): every document in this repository, routed
-- [Ingress](https://scbrown.github.io/camayoc/design/ingress.html): how knowledge earns its way into the graph
+- [The camayoc book](https://intigraph.github.io/camayoc/): getting started, agents, reference and the design notes, in reading order
+- [Docs map](https://intigraph.github.io/camayoc/docs-map.html): every document in this repository, routed
+- [Ingress](https://intigraph.github.io/camayoc/design/ingress.html): how knowledge earns its way into the graph
 
 ## 🧺 The stack
 
@@ -192,7 +192,7 @@ when.
 |---|---|
 | [tambo](https://github.com/scbrown/tambo) | 🧰 Agent Platform Toolkit - installs and configures the quipu stack |
 | [quipu](https://github.com/scbrown/quipu) | stores shared facts with provenance and history; can check writes against your rules |
-| [camayoc](https://github.com/scbrown/camayoc) | prepares knowledge and vocabulary for Quipu, with checks before it is admitted |
+| [camayoc](https://github.com/intigraph/camayoc) | prepares knowledge and vocabulary for Quipu, with checks before it is admitted |
 | [quechua](https://github.com/scbrown/quechua) | shared vocabulary and shapes for interoperable knowledge |
 | [chaski](https://github.com/scbrown/chaski) | reacts to graph changes and delivers governed notifications |
 | [bobbin](https://github.com/scbrown/bobbin) | indexes your codebase and injects context from that index and Quipu knowledge |
