@@ -112,7 +112,7 @@ class BootstrapRerunTest(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertIn("camayoc-core", response.read().decode())
 
-    def test_bootstrapped_store_accepts_tracker_and_rejects_unanchored_observation(self):
+    def test_bootstrapped_store_accepts_tracker_and_unanchored_observation_debt(self):
         sys.path.insert(0, str(ROOT / "scripts"))
         from ingest_work_items import BASE_NS, episode_for
 
@@ -173,15 +173,30 @@ class BootstrapRerunTest(unittest.TestCase):
         self.assertEqual(status, 200, result)
         self.assertEqual(result["count"], 1, result)
 
-        # A new episode/name avoids idempotence masking this negative control.
-        invalid = episode_for({**record, "id": "tracker-unanchored"},
-                              actor="test", source="test:tracker")
-        invalid['nodes'] = invalid['nodes'][1:]
-        observation = invalid["nodes"][0]["name"]
-        invalid["edges"] = [edge for edge in invalid["edges"]
-                            if not (edge["source"] == observation
-                                    and edge["relation"] == "about")]
-        status, result = post(invalid)
+        # A MISSING anchor is write-validation debt (aegis-g51c C10): the
+        # Observation minCount constraints live in the emit + sh:Warning
+        # CamayocObservationProvenanceDebtShape until the writer burn-down
+        # (aegis-51t) restores them. So an unanchored observation is ACCEPTED,
+        # not refused.
+        # A new episode/name avoids idempotence masking this arm.
+        unanchored = episode_for({**record, "id": "tracker-unanchored"},
+                                 actor="test", source="test:tracker")
+        unanchored['nodes'] = unanchored['nodes'][1:]
+        observation = unanchored["nodes"][0]["name"]
+        unanchored["edges"] = [edge for edge in unanchored["edges"]
+                               if not (edge["source"] == observation
+                                       and edge["relation"] == "about")]
+        status, result = post(unanchored)
+        self.assertEqual(status, 200, result)
+
+        # What still REJECTS: a sourceKind outside sh:in ("observed") stays in
+        # CamayocObservationShape. Without this arm the one above would also
+        # pass with write validation switched off.
+        wrong_kind = episode_for({**record, "id": "tracker-wrong-kind"},
+                                 actor="test", source="test:tracker")
+        wrong_kind['nodes'] = wrong_kind['nodes'][1:]
+        wrong_kind["nodes"][0]["properties"]["sourceKind"] = "declared"
+        status, result = post(wrong_kind)
         self.assertEqual(status, 400, result)
         self.assertIn("SHACL", result)
 

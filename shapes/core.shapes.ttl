@@ -278,11 +278,27 @@ aegis:CamayocMetricShape a sh:NodeShape ;
 
 aegis:CamayocObservationShape a sh:NodeShape ;
     sh:targetClass aegis:Observation ;
-    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:maxCount 1 ; sh:in ("observed") ] ;
     sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:observedAt ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:observedValue ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+
+# Write-validation debt (aegis-g51c C10; writer burn-down: aegis-51t).
+# The four Observation minCount constraints below moved here from
+# CamayocObservationShape so that, with validate_on_write ON, a missing value is
+# EMITTED as a shacl.violation event instead of refusing the write. Measured on
+# the 2026-10-21 prod copy: 2,655 ROOT Observations miss at least one of them
+# (10,555 violations of these four constraints).
+# Every other Observation constraint still rejects. Keep this block's own text
+# free of comments: quipu routes a block to emit by the literal annotation in it.
+aegis:CamayocObservationProvenanceDebtShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass aegis:Observation ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ] ;
     sh:property [ sh:path aegis:about ; sh:minCount 1 ] ;
-    sh:property [ sh:path aegis:observedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
-    sh:property [ sh:path aegis:observedValue ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+    sh:property [ sh:path aegis:observedAt ; sh:minCount 1 ] ;
+    sh:property [ sh:path aegis:observedValue ; sh:minCount 1 ] .
 
 aegis:CamayocMetricDerivationShape a sh:NodeShape ;
     sh:targetSubjectsOf quipu:derivationSystem ;
