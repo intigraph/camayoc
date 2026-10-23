@@ -95,6 +95,20 @@ class IriLaneTests(unittest.TestCase):
 
     ONTO = "http://aegis.gastown.local/ontology/"
 
+    def test_commit_required_metadata_comes_from_the_same_git_record(self):
+        sha = "0123456789abcdef0123456789abcdef01234567"
+        for paths in ([], ["src/main.py"]):
+            with self.subTest(paths=paths):
+                lines = []
+                mod.emit('a"repo', sha, ["example-123"], paths, lines)
+                turtle = "\n".join(lines)
+                self.assertIn(f'<{mod.ONTOLOGY}sha> "{sha}"', turtle)
+                self.assertIn(f'<{mod.ONTOLOGY}in_repo> "a\\\"repo"', turtle)
+                self.assertIn(f'<{mod.iri('a"repo', "commit", sha)}>', turtle)
+                self.assertEqual(turtle.count(f'<{mod.ONTOLOGY}sha>'), 1)
+                self.assertEqual(turtle.count(f'<{mod.ONTOLOGY}in_repo>'), 1)
+                self.assertNotIn("aegis:sha", turtle)
+
     def test_linked_work_items_are_references_not_copied_records(self):
         lines = []
         mod.emit("example", "abc123", ["example-123"], ["src/main.py"], lines)
