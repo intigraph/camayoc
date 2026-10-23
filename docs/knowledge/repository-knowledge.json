@@ -1,0 +1,105 @@
+{
+  "source_revision": "09ec9ea0d3fc6ac4f11c45b594eaeee776ce4c92",
+  "reviewed_at": "2026-10-21T00:00:32.225913Z",
+  "max_age_seconds": 2592000,
+  "records": [
+    {
+      "kind": "idea",
+      "source": "docs/why-camayoc.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fwhy-camayoc.md",
+      "summary": "Camayoc owns ontology, provenance-aware ingress and domain knowledge packs outside the governed store; competency questions precede new classes.",
+      "source_sha256": "d61c6b4ff673329a3786ae83b01888a378bad814667ee10d925bc348f944b831",
+      "type": "Concept"
+    },
+    {
+      "kind": "idea",
+      "source": "docs/design/certified-knowledge-packs.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fdesign%2Fcertified-knowledge-packs.md",
+      "summary": "A Camayoc knowledge pack uses the existing Quipu distribution artifact; integrity, publisher identity and independent certification are distinct claims.",
+      "source_sha256": "dff74d27e659ff6645a515d6ee9a6173d262122c834aa1f3c4e48580b34ce18d",
+      "type": "Concept"
+    },
+    {
+      "kind": "interface",
+      "source": "docs/reference.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Freference.md",
+      "summary": "Script and just entry points expose bootstrap, competency coverage, planes and settled-decision checks; the reference points to the stored-query catalogue.",
+      "source_sha256": "732bba5183dd842006b8ccfa8b444cf31a594b3765364ecb4c1f22c1f450c150",
+      "properties": {
+        "interfaceKind": "CLI",
+        "publicName": "bootstrap, competency, planes, settled_decisions"
+      },
+      "depends_on": [
+        "http://aegis.gastown.local/ontology/repo_quipu"
+      ]
+    },
+    {
+      "kind": "interface",
+      "source": "scripts/jev_mcp.py",
+      "subject": "http://aegis.gastown.local/ontology/code/camayoc/scripts%2Fjev_mcp.py",
+      "summary": "The stdio MCP adapter delegates typed decisions to the existing Jev client; a missing key is a tool error and dry-run sends no provider request.",
+      "source_sha256": "8e899900f4e7a04ee5b0f24dc4c89d54b60bbc704e58e74daa83390b4c1d192a",
+      "properties": {
+        "interfaceKind": "MCP",
+        "publicName": "jev_noul, jev_choice, jev_score, jev_dry_run, map_question"
+      }
+    },
+    {
+      "kind": "interface",
+      "source": "docs/releases.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Freleases.md",
+      "summary": "Stable tags publish the tracked source archive, checksum and source.json; source releases contain no native Camayoc executable.",
+      "source_sha256": "4f82a5cbef1625f2bc36bc1b760c6054040430bf7389a002ea0133facfd0a549",
+      "properties": {
+        "interfaceKind": "file-format",
+        "publicName": "source archive, SHA256SUMS, source.json"
+      }
+    },
+    {
+      "kind": "decision",
+      "source": "docs/design/certified-knowledge-packs.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fdesign%2Fcertified-knowledge-packs.md",
+      "summary": "Use the existing governed distribution artifact and canonical graph hash; upload location is a copy, integrity is not certification, and import does not imply promotion.",
+      "source_sha256": "dff74d27e659ff6645a515d6ee9a6173d262122c834aa1f3c4e48580b34ce18d",
+      "type": "DecisionRecord",
+      "properties": {
+        "status": "active",
+        "supersessionStatus": "not-recorded-in-source"
+      },
+      "see_also": [
+        "https://scbrown.github.io/quechua/ns#Decision"
+      ]
+    },
+    {
+      "kind": "start-here",
+      "source": "docs/why-camayoc.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fwhy-camayoc.md",
+      "summary": "Start with the ownership boundary between ontology, ingress, storage and retrieval.",
+      "source_sha256": "d61c6b4ff673329a3786ae83b01888a378bad814667ee10d925bc348f944b831",
+      "properties": {
+        "startHereOrder": 1,
+        "glossaryTerm": "https://scbrown.github.io/quechua/ns#Decision"
+      }
+    },
+    {
+      "kind": "start-here",
+      "source": "docs/reference.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Freference.md",
+      "summary": "Read the script entry points and competency-query interface before invoking a producer.",
+      "source_sha256": "732bba5183dd842006b8ccfa8b444cf31a594b3765364ecb4c1f22c1f450c150",
+      "properties": {
+        "startHereOrder": 2
+      }
+    },
+    {
+      "kind": "start-here",
+      "source": "docs/design/certified-knowledge-packs.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fdesign%2Fcertified-knowledge-packs.md",
+      "summary": "Read source identity, certification and staged-import boundaries before distributing knowledge.",
+      "source_sha256": "dff74d27e659ff6645a515d6ee9a6173d262122c834aa1f3c4e48580b34ce18d",
+      "properties": {
+        "startHereOrder": 3
+      }
+    }
+  ]
+}

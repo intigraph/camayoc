@@ -117,7 +117,9 @@ def query_predicates(template: str) -> set[tuple[str, str]]:
     declarations would call an undefined term grounded.
     """
     pattern = "|".join(GROUNDED_PREFIXES)
-    return set(re.findall(rf"\b({pattern}):(\w+)", template))
+    # A QName cannot start inside another colon-delimited IRI token.
+    # In particular urn:camayoc:workitem-... does not reference camayoc:work.
+    return set(re.findall(rf"(?<![\w:])({pattern}):(\w+)", template))
 
 
 def load_queries() -> dict[str, dict]:
