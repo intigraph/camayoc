@@ -2,7 +2,7 @@
 
 > **Implementation status (2026-08-25):** ✅ **Built, question-first, and
 > now answering.**
-> [competency/workflow-and-archive.md](https://github.com/scbrown/camayoc/blob/main/competency/workflow-and-archive.md)
+> [competency/workflow-and-archive.md](https://github.com/intigraph/camayoc/blob/main/competency/workflow-and-archive.md)
 > landed before any term; the workflow slice
 > (`aegis:WorkflowDefinition/WorkflowStep/WorkflowRun/TransitionEvent` and
 > their properties) is minted in `ontology/core.ttl` with each term owed to a
