@@ -1,0 +1,26 @@
+Script started on 2026-10-20 10:16:22-04:00 [COMMAND="bash docs/demos/review-entity-iris/run.sh" <not executed on terminal>]
+Before: base135d92a, three elapsed entity ages in an isolated graph
+{
+  "python_version": "3.11.15",
+  "source_digest": "85cb267c4e8a0129bba586bde60db67842ddd227bd359c6ecaa64cb9018a6f43",
+  "due_to_owner": 0,
+  "expected_due": 3,
+  "matching_change_routed": false,
+  "legacy_positive_control": true,
+  "no_age_control": true,
+  "live_requests": 0
+}
+
+After: candidate, identical fixture and controls
+{
+  "python_version": "3.11.15",
+  "source_digest": "eb6c94883387b65b8c3009cb073402142924fc00fe198bb5c86610de18104e4d",
+  "due_to_owner": 3,
+  "expected_due": 3,
+  "matching_change_routed": true,
+  "legacy_positive_control": true,
+  "no_age_control": true,
+  "live_requests": 0
+}
+
+Script done on 2026-10-20 10:16:23-04:00 [COMMAND_EXIT_CODE="0"]
