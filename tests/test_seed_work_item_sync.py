@@ -24,16 +24,16 @@ class Tick(unittest.TestCase):
         if self.unavailable:raise TimeoutError('readback unavailable')
         query=body['query']
         if 'BIND(' in query:return {'rows':rows(),'truncated':False}
-        if 'SELECT ?t' in query:return {'rows':[{'t':'aegis:WorkItem'}],'truncated':False}
+        if query.startswith('ASK '):return {'result':True}
         return {'rows':[{'v':self.description}] if self.description else [],'truncated':False}
     def tick(self):
         return sync.tick(self.reader,self.j,self.post,changes=lambda **args:page() if args['since']<10 else page(records=[],next_tx=args['since'],watermark_tx=args['since']),plane='urn:private:knowledge',actor='fixture')
     def test_full_tick_five_calls_one_effect_and_ack(self):
-        # Full IRI control; CURIE expansion is namespace-specific.
+        # The control tests the full IRI without consuming compact SELECT terms.
         original=self.post
         def post(endpoint,body):
             value=original(endpoint,body)
-            if 'SELECT ?t' in body.get('query',''):value['rows']=[{'t':'http://aegis.gastown.local/ontology/WorkItem'}]
+            if body.get('query','').startswith('ASK '):value={'result':True}
             return value
         self.post=post
         result=self.tick()
@@ -48,7 +48,7 @@ class Tick(unittest.TestCase):
         original=self.post
         def post(endpoint,body):
             value=original(endpoint,body)
-            if 'SELECT ?t' in body.get('query',''):value['rows']=[{'t':'http://aegis.gastown.local/ontology/WorkItem'}]
+            if body.get('query','').startswith('ASK '):value={'result':True}
             return value
         self.post=post
         self.assertEqual(self.tick()['verified'],1);self.assertEqual(self.writes,1)
@@ -63,7 +63,7 @@ class Tick(unittest.TestCase):
         original=self.post
         def bad_control(endpoint,body):
             result=original(endpoint,body)
-            if 'SELECT ?t' in body.get('query',''):result['rows']=[{'t':'unknown:WorkItem'}]
+            if body.get('query','').startswith('ASK '):result={'result':False}
             return result
         self.post=bad_control
         result=self.tick();self.assertEqual(result['status'],'UNKNOWN')
@@ -101,7 +101,7 @@ class SerialTicks(unittest.TestCase):
         if 'BIND(' in query:
             found=rows(**{nw.SCHEMA+'identifier':item})
             return {'rows':[dict(row,s=nw.ITEM+item) for row in found],'truncated':False}
-        if 'SELECT ?t' in query:return {'rows':[{'t':'aegis:WorkItem'}],'truncated':False}
+        if query.startswith('ASK '):return {'result':True}
         if item in self.drop:raise TimeoutError('readback unavailable')
         value=self.descriptions.get(item)
         return {'rows':[{'v':value}] if value else [],'truncated':False}
@@ -188,3 +188,48 @@ class SlowReadStop(SerialTicks):
         result=self.tick()
         self.assertEqual((result['status'],result['verified']),('OK',2))
         self.assertEqual(self.backlog(),3)
+
+
+class ExactTypeControl(unittest.TestCase):
+    def envelope(self):
+        return {'request':{'graph':'urn:private:knowledge'},'description':'exact description'}
+
+    def test_false_missing_partial_and_nonboolean_controls_preserve_pending(self):
+        for control in ({'result':False}, {}, {'result':1}, {'result':'true'},
+                        {'result':True,'truncated':True}, {'rows':[{'t':'a:WorkItem'}]},
+                        {'rows':[{'t':'unknown:WorkItem'}]}, None):
+            with self.subTest(control=control):
+                calls=[]
+                def post(endpoint,body):
+                    calls.append((endpoint,body));return control
+                with self.assertRaises(sc.CustodyUnknown):
+                    sync.verify(post,self.envelope(),ID)
+                self.assertEqual(len(calls),1)
+                self.assertEqual(calls[0][0],'/query')
+
+    def test_exact_type_is_namespace_specific_with_actual_rdf(self):
+        from rdflib import Dataset, URIRef, RDF
+        for term,expected in ((f'<{sync.projection.A}WorkItem>',True),
+                              ('a:WorkItem',True),('aegis:WorkItem',True),
+                              ('other:WorkItem',False),('a:OtherClass',False),
+                              ('a:WorkItems',False),('<unknown:WorkItem>',False)):
+            with self.subTest(term=term):
+                data=Dataset();g=data.graph(URIRef('urn:private:knowledge'))
+                g.parse(data=(f'@prefix a: <{sync.projection.A}> . '
+                              f'@prefix aegis: <{sync.projection.A}> . '
+                              '@prefix other: <https://example.test/other/> . '
+                              f'<{sync.projection.A+ID}> a {term} .'),format='turtle')
+                calls=[]
+                def post(endpoint,body):
+                    self.assertEqual(endpoint,'/query');calls.append(body['query'])
+                    if body['query'].startswith('ASK '):
+                        return {'result':bool(data.query(body['query']).askAnswer)}
+                    return {'rows':[{'v':'exact description'}],'truncated':False}
+                try:
+                    if expected:
+                        self.assertTrue(sync.verify(post,self.envelope(),ID))
+                        self.assertEqual(len(calls),2)
+                    else:
+                        with self.assertRaises(sc.CustodyUnknown):sync.verify(post,self.envelope(),ID)
+                        self.assertEqual(len(calls),1)
+                finally:data.close()

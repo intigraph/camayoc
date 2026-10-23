@@ -14,11 +14,11 @@ import seed_work_items as native
 
 def verify(post,envelope,item):
     request=envelope['request'];graph=request['graph'];subject=projection.A+item
-    # Separate single-pattern control, avoiding the asserted-type/label join.
-    control=post('/query',{'query':f'SELECT ?t WHERE {{ GRAPH <{graph}> {{ <{subject}> a ?t }} }}'})
+    # Match the exact type on the server: SELECT bindings may compact its IRI
+    # using a deployment-selected prefix. No client alias is type authority.
+    control=post('/query',{'query':f'ASK {{ GRAPH <{graph}> {{ <{subject}> a <{projection.A}WorkItem> }} }}'})
     if (not isinstance(control,dict) or control.get('truncated') or
-        not isinstance(control.get('rows'),list) or
-        not any(row.get('t') in (projection.A+'WorkItem','aegis:WorkItem') for row in control['rows'])):
+        control.get('result') is not True):
         raise custody.CustodyUnknown('metadata WorkItem control unproved')
     found=post('/query',{'query':f'SELECT ?v WHERE {{ GRAPH <{graph}> {{ <{subject}> <{native.RDFS}comment> ?v }} }} LIMIT 129'})
     rows=found.get('rows') if isinstance(found,dict) else None
