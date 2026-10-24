@@ -147,7 +147,8 @@ def provenance_headers(client: str, env=None) -> dict[str, str]:
 
 def _post(path: str, body: dict, *, client: str, form: bool = False,
           response_limit: int | None = None) -> dict:
-    if response_limit is not None and (type(response_limit) is not int or not 1 <= response_limit <= 262144):
+    maximum_response = 8 * 1024 * 1024 if client == 'camayoc-cost-generation' else 262144
+    if response_limit is not None and (type(response_limit) is not int or not 1 <= response_limit <= maximum_response):
         raise PlaneError("Invalid explicit response budget")
     req = urllib.request.Request(
         f"{SERVER}{path}",

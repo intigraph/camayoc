@@ -171,8 +171,13 @@ def record_budget(history, receipt):
 
 
 def publish(result, actor, state_path, *, push_status=False, review_only=False,
-            scheduler_only=None):
+            scheduler_only=None, generation_policy=None, _lane_locked=False):
     """Every attempt leaves a receipt and status metrics, including failures."""
+    if not _lane_locked:
+        from usage_generation_step import locked
+        with locked(state_path):
+            return publish(result,actor,state_path,push_status=push_status,review_only=review_only,
+                           scheduler_only=scheduler_only,generation_policy=generation_policy,_lane_locked=True)
     receipt_path = state_path.with_suffix('.receipt.json')
     receipt = {'attempted_at': time.time(), 'status': 'UNKNOWN', 'requests': 0,
                'request_seconds': 0, 'items_per_snapshot': [], 'records_per_snapshot': [],
@@ -215,8 +220,8 @@ def publish(result, actor, state_path, *, push_status=False, review_only=False,
                 receipt[field] = previous.get(field, [])
             receipt['dimensions_source'] = 'previous_attempt'
             raise OperatorAction('BACKOFF: previous request budget cooldown has not elapsed')
-        answer = _publish(result, actor, state_path, receipt)
-        receipt['status'] = 'OK'
+        answer = _publish(result, actor, state_path, receipt, generation_policy=generation_policy, _lane_locked=_lane_locked)
+        receipt['status'] = 'UNKNOWN' if receipt.get('unknown_reason')=='staging' else 'OK'
         return answer
     except OperatorAction as exc:
         receipt.update(status='STALLED' if state_path.with_suffix('.pending.json').exists() else 'OPERATOR_ACTION',
@@ -289,8 +294,35 @@ def publish(result, actor, state_path, *, push_status=False, review_only=False,
                 raise RuntimeError('cost status metrics were not delivered: ' + why)
 
 
-def _publish(result, actor, state_path, receipt):
+def _publish(result, actor, state_path, receipt, *, generation_policy=None, shared_budget=False, _lane_locked=False):
     require_read_grant()
+    if generation_policy is not None:
+        from usage_generation_publisher import policy_check, tick
+        policy_check(generation_policy)
+        rows=result.get('records',[])
+        matches=all(r.get('harness')==generation_policy['harness'] and r.get('session')==generation_policy['session'] for r in rows)
+        items={r.get('bead') for r in rows if r.get('attribution')=='attributed'}
+        journal=state_path.with_suffix('.generations.json')
+        owned=False
+        if journal.exists():
+            from usage_generation_publisher import load_state
+            from usage_generation_codec import digest
+            state=load_state(journal)
+            owned=digest([generation_policy['producer'],generation_policy['harness'],generation_policy['session']]) in state['sessions']
+        if matches and (len(items)>MAX_WORK_ITEMS or owned):
+            return tick(result,actor,state_path,receipt,generation_policy,lane_locked=_lane_locked)
+        return _publish(result,actor,state_path,receipt,shared_budget=True,_lane_locked=_lane_locked)
+    generation_journal=state_path.with_suffix('.generations.json')
+    if generation_journal.exists():
+        from usage_generation_publisher import load_state
+        journal=load_state(generation_journal)
+        identities={(r.get('harness'),r.get('session')) for r in result.get('records',[])}
+        for entry in journal['sessions'].values():
+            owner=entry.get('progress',{}).get('plan',{}).get('manifest',{}) if entry.get('progress') else entry.get('selected',{})
+            if not isinstance(owner,dict) or not owner.get('harness') or not owner.get('session'):
+                raise ValueError('UNKNOWN: unreadable generation ownership; no legacy fallback')
+            if (owner['harness'],owner['session']) in identities:
+                raise ValueError('legacy whole-session publication frozen for generation-owned session')
     if state_path.with_suffix('.pending.json').exists():
         raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
@@ -382,7 +414,14 @@ def _publish(result, actor, state_path, receipt):
         marker = state_path.with_suffix('.pending.json')
         if marker.exists():
             raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
+        if shared_budget:
+            from usage_generation_budget import admit
+            ledger_path=state_path.with_suffix('.writes.json')
+            ledger=json.loads(ledger_path.read_text()) if ledger_path.exists() else []
+            next_ledger=admit('whole',len(json.dumps(body,sort_keys=True).encode()),len(records),3,time.time(),ledger)
         marker.write_text(json.dumps(body, sort_keys=True))
+        if shared_budget:
+            _atomic(ledger_path,json.dumps(next_ledger,sort_keys=True))
         response = post('/knot', body)
         if response.get('conforms') is False or not response.get('tx_id'):
             raise ValueError('graph refused cost snapshot')
@@ -410,6 +449,7 @@ def _publish(result, actor, state_path, receipt):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('method', type=Path, nargs='?')
+    ap.add_argument('--generation-policy',type=Path,help='Explicit reviewed A runtime enrollment; absent keeps C unchanged')
     ap.add_argument('--actor', required=True)
     ap.add_argument('--state', type=Path, required=True)
     mode = ap.add_mutually_exclusive_group()
@@ -435,7 +475,7 @@ def main():
         if method.get('system') != 'session_usage' or method.get('query') != 'work_cost':
             raise ValueError('expected session_usage/work_cost method')
         result = retrieve(method['params'])
-        answer = publish(result, args.actor, args.state, push_status=args.publish_status) if args.post else [b for b, _ in snapshots(result, args.actor)]
+        answer = publish(result, args.actor, args.state, push_status=args.publish_status, generation_policy=json.loads(args.generation_policy.read_text()) if args.generation_policy else None) if args.post else [b for b, _ in snapshots(result, args.actor)]
         print(json.dumps(answer, sort_keys=True))
         return 0
     except (OSError, ValueError, RuntimeError) as exc:
