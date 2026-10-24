@@ -55,7 +55,7 @@ jobs:
       - run: pip install rdflib
       - name: Chaski adapter tests on Python 3.10
         run: |
-          for t in test_instant_parsing test_review_due test_change_adapter test_directive_edges test_blocked_by test_seed_work_items test_seed_change_custody test_seed_metadata_projection test_seed_work_item_sync test_seed_work_item_backfill test_native_review_due test_native_review_changes; do
+          for t in test_instant_parsing test_review_due test_review_entity_iris test_change_adapter test_directive_edges test_blocked_by test_seed_work_items test_seed_change_custody test_seed_metadata_projection test_seed_work_item_sync test_seed_work_item_backfill test_native_review_due test_native_review_changes; do
             python3 -m unittest discover -s tests -p "$t.py" || exit 1
           done
 
@@ -101,6 +101,22 @@ jobs:
           # PATH whenever CI was set, and no job had ever put one there, so it
           # raised on every run of every job instead of validating anything.
           echo "QUIPU_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
+      # This job permits zero skips, so it must also provide the JSON-report CLI
+      # that test_stable_namespace_reports.py needs. Same pin as namespace-reports.
+      - name: Fetch quipu report CLI
+        env:
+          QUIPU_TAG: quipu-ai-v0.16.1
+          QUIPU_SHA256: dbddd7868a9743bcdea7e8e01fc90431473681c088905bd119cb084163cbe229
+        run: |
+          set -euo pipefail
+          tag="$QUIPU_TAG"
+          asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
+          mkdir -p report-cli
+          curl -fsSL --retry 3 -o "report-cli/$asset" \
+            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          echo "${QUIPU_SHA256}  report-cli/$asset" | sha256sum -c -
+          tar -xzf "report-cli/$asset" -C report-cli
+          echo "QUIPU_REPORT_BIN=$PWD/report-cli/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
       - name: Install just
         uses: ./.github/actions/install-just
       # Captured rather than merely printed. `unittest` exits 0 when every test
@@ -119,6 +135,40 @@ jobs:
       - name: Say whether integration actually ran
         if: always()
         run: python3 scripts/integration_verdict.py integration-suite.log
+
+  # Stage-two namespace renames change shape IRIs that readers see in validation
+  # reports (aegis-m5s.1.1). This job runs the old-vs-stable report comparison
+  # with a CLI that has `validate --format json` (0.16+). It is required, not
+  # continue-on-error: the binary is an exact pinned release, so a red X here
+  # means camayoc changed, not that a neighbour shipped.
+  namespace-reports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install rdflib==7.6.0
+      - name: Fetch quipu CLI
+        env:
+          QUIPU_TAG: quipu-ai-v0.16.1
+          QUIPU_SHA256: dbddd7868a9743bcdea7e8e01fc90431473681c088905bd119cb084163cbe229
+        run: |
+          set -euo pipefail
+          tag="$QUIPU_TAG"
+          asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSL --retry 3 -o "$asset" \
+            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          echo "${QUIPU_SHA256}  $asset" | sha256sum -c -
+          tar -xzf "$asset"
+          echo "QUIPU_REPORT_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
+      # unittest exits 0 when everything skips; require that both tests ran.
+      - name: Compare old and stable validation reports
+        run: |
+          set -o pipefail
+          python3 -m unittest discover -s tests -p test_stable_namespace_reports.py -v 2>&1 | tee reports.log
+          grep -q '^Ran 2 tests' reports.log
+          ! grep -q 'skipped' reports.log
 
   governance:
     runs-on: ubuntu-latest
