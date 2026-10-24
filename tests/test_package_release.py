@@ -132,8 +132,9 @@ class SourceRelease(unittest.TestCase):
             raw = archive.extractfile('camayoc-v0.1.0/'+proof['path']).read()
             self.assertEqual(hashlib.sha256(raw).hexdigest(), proof['sha256'])
             manifest = json.loads(raw)
-            self.assertEqual(manifest['pair_count'], 1254)
-            self.assertEqual(len(manifest['retained_legacy']), 39)
+            self.assertEqual(manifest['pair_count'], 1254 + 45)
+            self.assertEqual(len(manifest['retained_legacy']), 2)
+            self.assertEqual(manifest['unpublished_pairs'], 45)
             self.assertFalse(manifest['automatic_load'])
             base = 'camayoc-v0.1.0/namespaces/intigraph/bundle/'
             for row in [*manifest['files'], manifest['aliases']]:
