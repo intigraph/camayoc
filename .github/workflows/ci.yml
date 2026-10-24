@@ -101,6 +101,22 @@ jobs:
           # PATH whenever CI was set, and no job had ever put one there, so it
           # raised on every run of every job instead of validating anything.
           echo "QUIPU_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
+      # This job permits zero skips, so it must also provide the JSON-report CLI
+      # that test_stable_namespace_reports.py needs. Same pin as namespace-reports.
+      - name: Fetch quipu report CLI
+        env:
+          QUIPU_TAG: quipu-ai-v0.16.1
+          QUIPU_SHA256: dbddd7868a9743bcdea7e8e01fc90431473681c088905bd119cb084163cbe229
+        run: |
+          set -euo pipefail
+          tag="$QUIPU_TAG"
+          asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
+          mkdir -p report-cli
+          curl -fsSL --retry 3 -o "report-cli/$asset" \
+            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          echo "${QUIPU_SHA256}  report-cli/$asset" | sha256sum -c -
+          tar -xzf "report-cli/$asset" -C report-cli
+          echo "QUIPU_REPORT_BIN=$PWD/report-cli/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
       - name: Install just
         uses: ./.github/actions/install-just
       # Captured rather than merely printed. `unittest` exits 0 when every test
