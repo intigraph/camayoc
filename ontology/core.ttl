@@ -338,7 +338,7 @@ aegis:chose a rdf:Property ;
 
 aegis:over a rdf:Property ;
     rdfs:label "over" ;
-    rdfs:comment "The alternatives visible at the time. Absence means none were articulated — which is itself a fact worth knowing." ;
+    rdfs:comment "The alternatives visible when the decision was made. Absence means none were articulated — which is itself a fact worth knowing." ;
     rdfs:range xsd:string .
 
 aegis:rationale a rdf:Property ;

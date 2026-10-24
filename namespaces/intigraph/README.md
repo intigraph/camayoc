@@ -2,8 +2,22 @@
 
 `mapping.json` freezes the 1,254 measured old/new IRI pairs published through
 `https://w3id.org/intigraph/`. The document URLs and SHA-256 hashes identify the
-measured publication. The 39 remaining declarations stay in their legacy
-namespaces; this first stage assigns them no new owner or identifier.
+measured publication.
+
+`stage-two.json` holds 45 more reviewed pairs (aegis-m5s.1.1): 37 declarations
+that `mapping.json` retains as legacy, plus 8 legacy-namespace NodeShapes. Each
+pair keeps its local name in a Camayoc pack (core, delivery or code-entities).
+`closedAt` and `assignedTo` stay legacy permanently. They describe the
+deprecated work-item type, and the Seeds profile owns any replacement. The
+builder treats `sh:NodeShape` as a declaration, so an unmapped legacy shape
+refuses like an unmapped property or class.
+
+Stage-two pairs are marked `published: false`. Their namespaces already resolve
+through the registered w3id rule, but the published documents do not yet
+contain the 45 new terms. Publish those documents before any release or pin
+relies on the new IRIs. Shapes get `owl:sameAs` only. Old shape IRIs stay in the
+legacy files, and validation reports name the new IRIs only when the stable
+pack is loaded.
 
 Build additive Camayoc source candidates offline:
 

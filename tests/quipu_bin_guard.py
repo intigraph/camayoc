@@ -57,6 +57,9 @@ from pathlib import Path
 #: promise nor PATH produced one.
 QUIPU = os.environ.get("QUIPU_BIN") or shutil.which("quipu")
 QUIPU_SERVER = os.environ.get("QUIPU_SERVER_BIN") or shutil.which("quipu-server")
+#: A `quipu` CLI new enough for `validate --format json` (0.16+). No PATH
+#: fallback: an older CLI on PATH prints text, which would read as a broken test.
+QUIPU_REPORT = os.environ.get("QUIPU_REPORT_BIN")
 
 _WHERE = (
     "The {program} gates run in the `integration` job of "
@@ -66,7 +69,7 @@ _WHERE = (
 )
 
 
-def _guard(target, resolved, env_var, program):
+def _guard(target, resolved, env_var, program, where=_WHERE):
     """Gate a suite OR a single test method.
 
     Applied to a class it gates every test in it; applied to one method it
@@ -108,7 +111,7 @@ def _guard(target, resolved, env_var, program):
         promise_broken.__qualname__ = getattr(target, "__qualname__", name)
         promise_broken.__doc__ = target.__doc__
         return promise_broken
-    return unittest.skip(_WHERE.format(program=program, env_var=env_var))(target)
+    return unittest.skip(where.format(program=program, env_var=env_var))(target)
 
 
 def requires_quipu(target):
@@ -119,3 +122,11 @@ def requires_quipu(target):
 def requires_quipu_server(target):
     """Gate a suite or test on `quipu-server`, honouring QUIPU_SERVER_BIN."""
     return _guard(target, QUIPU_SERVER, "QUIPU_SERVER_BIN", "quipu-server")
+
+
+def requires_quipu_report(target):
+    """Gate on a JSON-reporting `quipu` CLI, honouring the QUIPU_REPORT_BIN promise."""
+    return _guard(target, QUIPU_REPORT, "QUIPU_REPORT_BIN", "quipu",
+                  where="The JSON report gates run in the `namespace-reports` job of "
+                        ".github/workflows/ci.yml, which exports {env_var}. To run them "
+                        "here, set {env_var} to a {program} 0.16 or newer.")

@@ -11,6 +11,13 @@ from rdflib.compare import isomorphic, to_canonical_graph
 from build_aegis_compatibility import canonical_bytes
 
 APPROVED_LEDGER_SHA256 = 'b8223fa1af79495547e5032c1e58edd3c46665dd920401cb81384f41597dc924'
+# Stage two disposes the 39 retained terms plus 8 NodeShapes the stage-one guard
+# could not see (aegis-m5s.1.1). Its pairs are accepted but not yet published.
+APPROVED_STAGE_TWO_SHA256 = '5a3007a3b28300d85decec78b8e3629c1f33d1b9ea07d97521bf48b3016a0d71'
+LEGACY_NAMESPACES = ('http://aegis.gastown.local/ontology/', 'https://camayoc.local/ontology/')
+# Every named declaration kind a stable file can carry, shapes included.
+DECLARATION_KINDS = (RDF.Property, RDFS.Class, OWL.Class, OWL.ObjectProperty,
+                     OWL.DatatypeProperty, SH.NodeShape)
 
 SOURCES = {
     'core': ('shapes/core.shapes.ttl',),
@@ -53,6 +60,54 @@ def mapping_ledger(path):
         if not set(row['roles']) <= {'class', 'property'}:
             raise ValueError('unrecognized semantic role')
     return ledger
+
+
+def stage_two_ledger(path, base):
+    """Accept exactly the reviewed stage-two dispositions on top of stage one."""
+    raw = Path(path).read_bytes()
+    if hashlib.sha256(raw).hexdigest() != APPROVED_STAGE_TWO_SHA256:
+        raise ValueError('stage-two mapping differs from the reviewed snapshot')
+    ledger = json.loads(raw)
+    if (ledger.get('format') != 'intigraph-namespace-map/stage-two-v1'
+            or ledger.get('base_mapping_sha256') != APPROVED_LEDGER_SHA256):
+        raise ValueError('stage two does not extend the frozen stage-one snapshot')
+    rows = ledger['pairs']
+    if ledger.get('pair_count') != 45 or len(rows) != 45:
+        raise ValueError('stage two requires exactly 45 reviewed pairs')
+    old = {row['old'] for row in rows}
+    new = {row['new'] for row in rows}
+    if len(old) != len(rows) or len(new) != len(rows):
+        raise ValueError('stage-two mapping is not one-to-one')
+    if old & {row['old'] for row in base['pairs']} or new & {row['new'] for row in base['pairs']}:
+        raise ValueError('stage two collides with a stage-one pair')
+    retained = set(ledger['retained_legacy'])
+    if len(retained) != 2 or old & retained:
+        raise ValueError('stage two keeps exactly two legacy identifiers')
+    # Every stage-one retained term gets exactly one disposition.
+    if set(base['retained_legacy']) != (old & set(base['retained_legacy'])) | retained:
+        raise ValueError('a stage-one retained term has no stage-two disposition')
+    for row in rows:
+        if not row['old'].startswith(LEGACY_NAMESPACES):
+            raise ValueError('stage two only migrates legacy declarations')
+        prefix, _, local = row['new'].partition('/ns#')
+        if (not prefix.startswith('https://w3id.org/intigraph/camayoc/')
+                or local != row['old'].rsplit('/', 1)[1]):
+            raise ValueError('stage two keeps each local name in a Camayoc pack')
+        if not set(row['roles']) <= {'class', 'property'}:
+            raise ValueError('unrecognized semantic role')
+    return ledger
+
+
+def combined_ledger(root, ledger_path=None, stage_two_path=None):
+    """Stage one plus stage two, with the unpublished stage-two pairs named."""
+    root = Path(root)
+    base = mapping_ledger(ledger_path or root / 'namespaces/intigraph/mapping.json')
+    stage_two = stage_two_ledger(stage_two_path or root / 'namespaces/intigraph/stage-two.json',
+                                 base)
+    moved = [row['old'] for row in stage_two['pairs']]
+    return {'pairs': base['pairs'] + stage_two['pairs'],
+            'retained_legacy': stage_two['retained_legacy'],
+            'stage_two': moved, 'unpublished': [] if stage_two['published'] else moved}
 
 
 def remap_graph(graph, mapping):
@@ -100,13 +155,14 @@ def alias_graph(ledger):
     return graph
 
 
-def stable_bundle(root, ledger_path=None):
+def stable_bundle(root, ledger_path=None, stage_two_path=None):
     root = Path(root)
     ledger_path = Path(ledger_path or root / 'namespaces/intigraph/mapping.json')
-    ledger = mapping_ledger(ledger_path)
+    stage_two_path = Path(stage_two_path or root / 'namespaces/intigraph/stage-two.json')
+    ledger = combined_ledger(root, ledger_path, stage_two_path)
     mapping = {row['old']: row['new'] for row in ledger['pairs']}
     inverse = {new: old for old, new in mapping.items()}
-    artifacts, records = {}, []
+    artifacts, records, subjects = {}, [], set()
     # Ontology facts and SHACL gates retain distinct loading roles.
     groups = {'camayoc/core/ontology.ttl': ('ontology/core.ttl',)}
     groups.update({f'camayoc/{pack}/ns.ttl': files for pack, files in SOURCES.items()})
@@ -120,12 +176,11 @@ def stable_bundle(root, ledger_path=None):
             data = (root / source).read_bytes()
             original += Graph().parse(data=data, format='turtle')
             inputs.append({'path': source, 'sha256': hashlib.sha256(data).hexdigest()})
-        declarations = {str(subject) for kind in (RDF.Property, RDFS.Class,
-                         OWL.Class, OWL.ObjectProperty, OWL.DatatypeProperty)
+        declarations = {str(subject) for kind in DECLARATION_KINDS
                         for subject in original.subjects(RDF.type, kind)}
-        unmapped = {term for term in declarations if term.startswith((
-                    'http://aegis.gastown.local/ontology/',
-                    'https://camayoc.local/ontology/')) and term not in mapping}
+        subjects |= declarations
+        unmapped = {term for term in declarations
+                    if term.startswith(LEGACY_NAMESPACES) and term not in mapping}
         if not unmapped <= set(ledger['retained_legacy']):
             raise ValueError('new unmapped declaration requires a separate disposition')
         migrated = remap_graph(original, mapping)
@@ -148,6 +203,9 @@ def stable_bundle(root, ledger_path=None):
                         'source_triples': len(original), 'stable_triples': len(migrated),
                         'retained_engine_annotations': sum(p in ENGINE_ANNOTATIONS for _, p, _ in original),
                         'inverse_isomorphic': True})
+    # A stage-two pair must name something these sources actually declare.
+    if not set(ledger['stage_two']) <= subjects:
+        raise ValueError('stage-two pair names no declared source term')
     artifacts['compatibility/aliases.ttl'] = canonical_bytes(alias_graph(ledger))
     for record in records:
         data = artifacts[record['path']]
@@ -155,7 +213,9 @@ def stable_bundle(root, ledger_path=None):
     manifest = {
         'format': 'intigraph-stable-source/v1', 'automatic_load': False,
         'mapping_sha256': hashlib.sha256(ledger_path.read_bytes()).hexdigest(),
+        'stage_two_sha256': hashlib.sha256(stage_two_path.read_bytes()).hexdigest(),
         'pair_count': len(mapping), 'retained_legacy': ledger['retained_legacy'],
+        'unpublished_pairs': len(ledger['unpublished']),
         'files': records,
         'aliases': {'path': 'compatibility/aliases.ttl',
                     'sha256': hashlib.sha256(artifacts['compatibility/aliases.ttl']).hexdigest()},
