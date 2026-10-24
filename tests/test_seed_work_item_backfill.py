@@ -48,7 +48,7 @@ class Backfill(unittest.TestCase):
             record=rows(**{nw.SCHEMA+'identifier':item,nw.SEEDS+'status':'closed' if item.endswith('0') else 'deferred',nw.QUECHUA+'blockedOn':nw.ITEM+'demo-blocker'})
             for r in record:r['s']=nw.ITEM+item
             return {'rows':record,'truncated':False}
-        if 'SELECT ?t' in q:return {'rows':[{'t':'http://aegis.gastown.local/ontology/WorkItem'}],'truncated':False}
+        if q.startswith('ASK '):return {'result':True}
         return {'rows':[{'v':self.descriptions[item]}] if item in self.descriptions else [],'truncated':False}
     def tick(self):return backfill.tick(self.reader,self.j,self.post,plane=PLANE,actor='fixture')
     def exact(self, item='demo-000', initialise=True):

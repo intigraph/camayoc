@@ -112,6 +112,35 @@ class SourceRelease(unittest.TestCase):
         repeated = PACK.package('HEAD', '0.1.0', self.root / 'repeated-compatibility-release')
         self.assertEqual(proof, repeated)
 
+    def test_stable_namespace_bundle_is_carried_and_ignores_checkout_dirt(self):
+        source = Path(__file__).resolve().parents[1]
+        for relative in ('ontology', 'shapes', 'namespaces/intigraph'):
+            shutil.copytree(source/relative, self.repo/relative)
+        (self.repo/'scripts').mkdir()
+        for file in ('build_stable_namespaces.py', 'build_aegis_compatibility.py'):
+            shutil.copy2(source/'scripts'/file, self.repo/'scripts'/file)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'namespace source fixture')
+        one = PACK.package('HEAD', '0.1.0', self.root/'namespace-one')
+        (self.repo/'namespaces/intigraph/mapping.json').write_text('dirty bytes')
+        two = PACK.package('HEAD', '0.1.0', self.root/'namespace-two')
+        self.assertEqual(one, two)
+        self.assertEqual((self.root/'namespace-one'/one['artifact']).read_bytes(),
+                         (self.root/'namespace-two'/two['artifact']).read_bytes())
+        with tarfile.open(self.root/'namespace-one'/one['artifact']) as archive:
+            proof = one['stable_namespaces']
+            raw = archive.extractfile('camayoc-v0.1.0/'+proof['path']).read()
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), proof['sha256'])
+            manifest = json.loads(raw)
+            self.assertEqual(manifest['pair_count'], 1254 + 45)
+            self.assertEqual(len(manifest['retained_legacy']), 2)
+            self.assertEqual(manifest['unpublished_pairs'], 45)
+            self.assertFalse(manifest['automatic_load'])
+            base = 'camayoc-v0.1.0/namespaces/intigraph/bundle/'
+            for row in [*manifest['files'], manifest['aliases']]:
+                content = archive.extractfile(base+row['path']).read()
+                self.assertEqual(hashlib.sha256(content).hexdigest(), row['sha256'])
+
     def test_same_revision_repeats_identical_bytes(self):
         one = PACK.package("HEAD", "0.1.0", self.root / "one")
         two = PACK.package("HEAD", "0.1.0", self.root / "two")

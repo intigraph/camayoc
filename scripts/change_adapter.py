@@ -61,7 +61,13 @@ def values(post, subject, prop, reverse=False):
 def targets(post, kind, changes, items, *, native_reader=None):
     def review_key(entity, graph=None):
         nonlocal native_reader
-        if kind != "review" or not isinstance(entity,str) or not entity.startswith(native.ITEM):
+        if kind != "review" or not isinstance(entity, str):
+            return local(entity)
+        if not entity.startswith(native.ITEM):
+            # Review ages apply to any entity, not just legacy WorkItems.
+            # Keep legacy keys stable and preserve other stored web IRIs.
+            if entity.startswith(("https://", "http://")) and not entity.startswith(bb.A):
+                return bb.item_iri(entity)
             return local(entity)
         if native_reader is None:
             native_reader=native.deployed_reader(post)
@@ -98,7 +104,7 @@ def targets(post, kind, changes, items, *, native_reader=None):
                 if prop == "verifies":
                     for field in ("value", "old_value"):
                         value = change.get(field)
-                        name = local(value.get("ref")) if isinstance(value, dict) else None
+                        name = review_key(value.get("ref")) if isinstance(value, dict) else None
                         if name:
                             out.add(name)
             else:
