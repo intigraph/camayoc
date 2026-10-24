@@ -168,6 +168,16 @@ class PublisherTests(unittest.TestCase):
         self.assertTrue(receipt['recovered_cursor']);self.assertEqual(receipt['requests'],0)
         self.assertEqual(receipt['request_seconds'],0);self.assertEqual(receipt['knot_seconds'],0)
 
+    def test_corrupt_artifact_and_forged_selected_state_refuse_without_requests(self):
+        rows=records();self.tick(rows);self.tick(rows)
+        path=self.state.with_suffix('.generations.json');original=path.read_text()
+        j=json.loads(original);entry=next(iter(j['sessions'].values()))
+        entry['progress']['plan']['manifest']['records']+=1
+        path.write_text(json.dumps(j));before=len(self.transport.calls)
+        with self.assertRaises(ValueError):self.tick(rows)
+        self.assertEqual(before,len(self.transport.calls))
+        path.write_text(original)
+
     def test_policy_and_pending_fences(self):
         self.policy['runtime_acceptance']=''
         with self.assertRaises(ValueError):self.tick(records())

@@ -30,9 +30,52 @@ def policy_check(policy):
 def load_state(path):
     if not path.exists():return {'version':1,'sessions':{},'profile':None}
     value=json.loads(path.read_text())
-    if not isinstance(value,dict) or set(value)!={'version','sessions','profile'} or value['version']!=1 or not isinstance(value['sessions'],dict):
+    if not isinstance(value,dict) or set(value)!={'version','sessions','profile'} or type(value['version']) is not int or value['version']!=1 or not isinstance(value['sessions'],dict):
         raise ValueError('UNKNOWN: invalid generation journal')
+    if value['profile'] is not None and (not isinstance(value['profile'],str) or not c.HEX.fullmatch(value['profile'])):
+        raise ValueError('UNKNOWN: invalid profile proof')
+    for key,entry in value['sessions'].items():
+        if not isinstance(entry,dict) or set(entry)!={'selected','progress','retained'} or not isinstance(entry['retained'],list) or len(entry['retained'])>1:
+            raise ValueError('UNKNOWN: invalid generation slots')
+        for selected in [entry['selected'],*entry['retained']]:
+            if selected is None:continue
+            required={'generation','source','horizon','bytes','producer','harness','session'}
+            if not isinstance(selected,dict) or set(selected)!=required:
+                raise ValueError('UNKNOWN: invalid sealed receipt')
+            c.iri(selected['generation']);c.iri(selected['producer']);c.text(selected['session']);c.horizon(selected['horizon'])
+            if (selected['harness'] not in ('claude','codex') or not isinstance(selected['source'],str)
+                    or not c.HEX.fullmatch(selected['source']) or c.count(selected['bytes'])>c.STAGED_BYTES
+                    or key!=c.digest([selected['producer'],selected['harness'],selected['session']])):
+                raise ValueError('UNKNOWN: sealed identity/bytes mismatch')
+        progress=entry['progress']
+        if progress is not None:
+            if not isinstance(progress,dict) or set(progress)!={'plan','plan_sha256','phase','part','receipts'}:
+                raise ValueError('UNKNOWN: invalid staging receipt')
+            actual=hashlib.sha256(json.dumps(progress['plan'],sort_keys=True).encode()).hexdigest()
+            if actual!=progress['plan_sha256'] or not isinstance(progress['receipts'],list):
+                raise ValueError('UNKNOWN: staging artifact hash differs')
+            planned=progress['plan']
+            if not isinstance(planned,dict) or not isinstance(planned.get('manifest'),dict):
+                raise ValueError('UNKNOWN: invalid generation artifact')
+            m=planned['manifest']
+            c.validate_manifest(c.canonical(m),producer=m.get('producer'),harness=m.get('harness'),session=m.get('session'),at=m.get('horizon'))
+            if (key!=c.digest([m['producer'],m['harness'],m['session']])
+                    or planned.get('generation')!=c.BASE+'generation/'+c.digest(m)
+                    or planned.get('control')!=c.BASE+'selector-graph/'+key
+                    or planned.get('selector')!=c.BASE+'selector/'+key
+                    or c.count(planned.get('bytes'))>c.STAGED_BYTES
+                    or len(planned.get('parts',[]))!=len(m['parts'])
+                    or progress['phase'] not in ('control','control-label','graph','graph-label','part','manifest','activate')
+                    or c.count(progress['part'])>len(m['parts'])
+                    or progress['phase']=='part' and progress['part']==len(m['parts'])):
+                raise ValueError('UNKNOWN: staging identity/phase mismatch')
     return value
+
+
+def unselected_bytes(state):
+    return sum((entry['progress']['plan']['bytes'] if entry.get('progress') else 0)
+               +sum(retained['bytes'] for retained in entry['retained'])
+               for entry in state['sessions'].values())
 
 
 def query_triples(graph,subjects):
@@ -97,9 +140,9 @@ def tick(result,actor,state_path,receipt,policy,*,lane_locked=False):
             planned=plan(result['records'],producer=policy['producer'],harness=policy['harness'],
                          session=policy['session'],at=horizon,actor=actor,
                          previous=selected['generation'] if selected else None)
-            total=sum(e['progress']['plan']['bytes'] for e in state['sessions'].values() if e.get('progress'))
+            total=unselected_bytes(state)
             if total+planned['bytes']>c.STAGED_BYTES:raise ValueError('aggregate staged bytes exceed64MiB')
-            progress={'plan':planned,'phase':'control','part':0,'receipts':[]}
+            progress={'plan':planned,'plan_sha256':hashlib.sha256(json.dumps(planned,sort_keys=True).encode()).hexdigest(),'phase':'control','part':0,'receipts':[]}
             entry['progress']=progress;state['sessions'][key]=entry;atomic(journal_path,state)
         planned=progress['plan'];phase=progress['phase'];index=progress['part']
         if phase in ('control','graph'):
@@ -133,6 +176,8 @@ def tick(result,actor,state_path,receipt,policy,*,lane_locked=False):
             body=planned['metadata'];kind='part';n=0;preflight=None
             verify=lambda call,_:verify_triples(call,planned['generation'],planned['metadata_triples'])
         elif phase=='activate':
+            after=unselected_bytes(state)-planned['bytes']+(entry['selected']['bytes'] if entry['selected'] else 0)
+            if after>c.STAGED_BYTES:raise ValueError('unselected retention would exceed64MiB')
             body=planned['activation'];kind='marker';n=0;preflight=None
             def verify(call,_):
                 checked=read_snapshot(call('/query',snapshot_query(planned['control'],planned['selector'])),
@@ -152,7 +197,7 @@ def tick(result,actor,state_path,receipt,policy,*,lane_locked=False):
             accepted=prior
         else:
             accepted=run_step(kind,body,state_path,now=now,post=post,verify=verify,
-                              preflight=preflight,records=n,lane_locked=lane_locked,staged_bytes=sum(e['progress']['plan']['bytes'] for e in state['sessions'].values() if e.get('progress')))
+                              preflight=preflight,records=n,lane_locked=lane_locked,staged_bytes=unselected_bytes(state))
         progress['receipts'].append({'phase':phase,'index':index,'sha256':body_hash,
                                      'bytes':byte_size(body),'accepted':accepted.get('accepted')})
         if phase=='control':progress['phase']='control-label'
