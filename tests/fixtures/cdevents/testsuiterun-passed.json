@@ -1,0 +1,32 @@
+{
+  "data": {
+    "context": {
+      "id": "example/example-svc#42/ci/9f1c2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6",
+      "source": "example-forge/changes",
+      "timestamp": "2026-10-14T16:40:05Z",
+      "type": "dev.cdevents.testsuiterun.finished.0.2.0",
+      "version": "0.4.1"
+    },
+    "customData": {
+      "changeId": "example/example-svc#42",
+      "changeRepository": "example/example-svc",
+      "commitSha": "9f1c2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6"
+    },
+    "subject": {
+      "content": {
+        "outcome": "pass",
+        "environment": {"id": "ci"}
+      },
+      "id": "example/example-svc#42@9f1c2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6",
+      "source": "example-forge/changes",
+      "type": "testSuiteRun"
+    }
+  },
+  "datacontenttype": "application/json",
+  "id": "example/example-svc#42/ci/9f1c2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6",
+  "source": "example-forge/changes",
+  "specversion": "1.0",
+  "subject": "example/example-svc#42",
+  "time": "2026-10-14T16:40:05Z",
+  "type": "dev.cdevents.testsuiterun.finished.0.2.0"
+}

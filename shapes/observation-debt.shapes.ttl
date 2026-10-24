@@ -1,0 +1,24 @@
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix quipu: <http://quipu.dev/ontology/> .
+
+# Write-validation debt for Observations (aegis-g51c C10; writer burn-down:
+# aegis-51t). The four minCount constraints below were moved out of
+# CamayocObservationShape (core.shapes.ttl), so that with validate_on_write ON a
+# missing value is EMITTED as a shacl.violation warning instead of refusing the
+# write. Every other Observation constraint still rejects in core.
+#
+# A file of its own, loaded as its own shape set: a quipu released before the
+# literal-aware splitter (scbrown/quipu#726) misroutes reject shapes that share
+# a file with an emit block, so core.shapes.ttl carries no emit block at all.
+# The severity is on each property shape: a result takes the severity of the
+# shape that produced it, and here that is the property shape.
+
+aegis:CamayocObservationProvenanceDebtShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:severity sh:Warning ;
+    sh:targetClass aegis:Observation ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:severity sh:Warning ] ;
+    sh:property [ sh:path aegis:about ; sh:minCount 1 ; sh:severity sh:Warning ] ;
+    sh:property [ sh:path aegis:observedAt ; sh:minCount 1 ; sh:severity sh:Warning ] ;
+    sh:property [ sh:path aegis:observedValue ; sh:minCount 1 ; sh:severity sh:Warning ] .

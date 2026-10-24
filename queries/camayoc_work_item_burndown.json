@@ -1,0 +1,26 @@
+{
+  "action": "load",
+  "name": "camayoc_work_item_burndown",
+  "description": "Event-derived active WorkItem balances and native created/closed transitions for ONE enrolled assignee/priority cohort. Reads only its explicit operational stream graph, never the tracker board. Opening balances are pinned enrollment, not invented history. Daily delta prefix sums produce balances. Latest checkpoint must be ready and fresh; missing or catching-up coverage is UNKNOWN. Same stored-query JSON layout as DORA.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX schema: <https://schema.org/> PREFIX seeds: <https://seeds.local/ontology/> SELECT ?metric ?status ?day ?value WHERE { { SELECT ?metric ?status ?day (SUM(?v) AS ?value) WHERE { GRAPH <{graph}> { ?o a aegis:Observation ; schema:additionalType ?kind ; aegis:observedAt ?at ; seeds:status ?status ; schema:value ?v . } BIND(STRAFTER(STR(?kind), \"urn:camayoc:work-item-burndown:\") AS ?metric) FILTER(?metric IN (\"opening\", \"delta\", \"created\", \"closed\") && STR(?at) < \"{end}\" && (?metric IN (\"opening\", \"delta\") || STR(?at) >= \"{start}\")) BIND(IF(?metric = \"opening\", STR(?at), IF(STR(?at) < \"{start}\", \"opening\", SUBSTR(STR(?at), 1, 10))) AS ?day) } GROUP BY ?metric ?status ?day } UNION { SELECT ?metric ?status (?at AS ?day) (?v AS ?value) WHERE { GRAPH <{graph}> { ?o a aegis:Observation ; schema:additionalType ?kind ; aegis:observedAt ?at ; seeds:status ?status ; schema:value ?v . } FILTER(?kind = <urn:camayoc:work-item-burndown:checkpoint>) BIND(\"checkpoint\" AS ?metric) } ORDER BY DESC(?at) LIMIT 1 } } ORDER BY ?metric ?status ?day",
+  "params": [
+    {
+      "name": "graph",
+      "type": "iri",
+      "required": true,
+      "description": "Exact enrolled WorkItem burn-down stream graph"
+    },
+    {
+      "name": "start",
+      "type": "text",
+      "required": true,
+      "description": "RFC3339 UTC start inclusive"
+    },
+    {
+      "name": "end",
+      "type": "text",
+      "required": true,
+      "description": "RFC3339 UTC end exclusive"
+    }
+  ]
+}

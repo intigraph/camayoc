@@ -72,3 +72,9 @@ examples-qpack *args:
 installer-check:
     sh -n install.sh
     python3 scripts/test-install-release.py
+
+# Copied pointer-only repository-pendant controls; no publication or live store.
+repository-pendant-tests:
+    python3 scripts/test-repository-knowledge.py
+    python3 scripts/test-repository-share-query.py
+    python3 scripts/test-repository-share-publication.py

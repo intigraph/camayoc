@@ -199,6 +199,13 @@ R=$(python3 -c 'import json,sys; print(json.dumps({"action":"load","name":"camay
     | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) \
   && say "shapes: loaded (camayoc-core)" || { say "shapes load FAILED: $R"; exit 1; }
 
+# Observation write-validation debt (aegis-g51c C10): its own set, so that a
+# quipu without the literal-aware splitter never sees an emit block in core.
+DEBT_SHAPES="$PLUGIN_ROOT/shapes/observation-debt.shapes.ttl"
+R=$(python3 -c 'import json,sys; print(json.dumps({"action":"load","name":"camayoc-observation-debt","turtle":open(sys.argv[1]).read()}))' "$DEBT_SHAPES" \
+    | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) \
+  && say "shapes: loaded (camayoc-observation-debt)" || { say "shapes load FAILED: $R"; exit 1; }
+
 for query in "$PLUGIN_ROOT"/queries/*.json; do
   [ -e "$query" ] || continue
   R=$(curl -sf -m 10 -X POST "$SERVER/queries" -H 'Content-Type: application/json' \

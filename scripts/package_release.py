@@ -64,6 +64,52 @@ def compatibility_source(source, prefix):
             return buffer.getvalue(), proof
 
 
+def stable_namespace_source(source, prefix):
+    """Carry additive namespace candidates compiled from the selected revision."""
+    marker = prefix + '/namespaces/intigraph/mapping.json'
+    with tarfile.open(fileobj=io.BytesIO(source)) as archive:
+        names = set(archive.getnames())
+        if marker not in names:
+            return source, None
+        import rdflib
+        if rdflib.__version__ != '7.6.0':
+            raise ValueError('namespace release compiler requires rdflib==7.6.0')
+        with tempfile.TemporaryDirectory(prefix='camayoc-release-namespaces-') as temporary:
+            root = Path(temporary)
+            for member in archive.getmembers():
+                relative = Path(member.name).relative_to(prefix)
+                selected = str(relative).startswith(('ontology/', 'shapes/', 'namespaces/intigraph/'))
+                selected |= str(relative) in ('scripts/build_stable_namespaces.py',
+                                              'scripts/build_aegis_compatibility.py')
+                if not selected or member.isdir():
+                    continue
+                if not member.isfile() or '..' in relative.parts:
+                    raise ValueError('namespace source must contain only regular files')
+                path = root/relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(archive.extractfile(member).read())
+            output = root/'built'
+            subprocess.run([sys.executable, str(root/'scripts/build_stable_namespaces.py'),
+                            '--output', str(output)], check=True, capture_output=True, timeout=60)
+            manifest = (output/'manifest.json').read_bytes()
+            proof = {'path': 'namespaces/intigraph/bundle/manifest.json',
+                     'sha256': hashlib.sha256(manifest).hexdigest(),
+                     'format': 'intigraph-stable-source/v1', 'automatic_load': False}
+            buffer = io.BytesIO(source)
+            with tarfile.open(fileobj=buffer, mode='a') as expanded:
+                for path in sorted(output.rglob('*')):
+                    if path.is_dir():
+                        continue
+                    name = prefix+'/namespaces/intigraph/bundle/'+path.relative_to(output).as_posix()
+                    if name in names or not path.is_file() or path.is_symlink():
+                        raise ValueError('namespace output collision or non-file')
+                    data = path.read_bytes()
+                    info = tarfile.TarInfo(name)
+                    info.size, info.mode, info.mtime = len(data), 0o644, 0
+                    expanded.addfile(info, io.BytesIO(data))
+            return buffer.getvalue(), proof
+
+
 def package(ref, version, output):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("release version must be stable major.minor.patch")
@@ -80,6 +126,7 @@ def package(ref, version, output):
     prefix = "camayoc-v" + version
     source = git("archive", "--format=tar", "--prefix=" + prefix + "/", revision)
     source, compatibility = compatibility_source(source, prefix)
+    source, stable_namespaces = stable_namespace_source(source, prefix)
     archive = output / (prefix + ".tar.gz")
     # gzip.compress delegates to zlib in Python 3.11/3.12, which supplies a
     # platform-specific OS byte. GzipFile writes the neutral envelope itself.
@@ -94,6 +141,8 @@ def package(ref, version, output):
                   "artifact": archive.name, "sha256": digest, "format": "git-archive-tar-gzip"}
     if compatibility is not None:
         provenance["compatibility"] = compatibility
+    if stable_namespaces is not None:
+        provenance['stable_namespaces'] = stable_namespaces
     (output / "source.json").write_text(json.dumps(provenance, sort_keys=True, indent=2) + "\n")
     return provenance
 

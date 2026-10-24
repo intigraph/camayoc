@@ -1,0 +1,32 @@
+# Replacement draft for rejected proposal38; not a loaded shape or installation input.
+@prefix a: <http://aegis.gastown.local/ontology/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+a:anchoredTo a owl:ObjectProperty ; owl:inverseOf a:anchors .
+a:anchors a owl:ObjectProperty .
+a:AnchorBinding a owl:Class .
+a:anchorBinding a owl:ObjectProperty .
+a:anchorSourceGraph a owl:ObjectProperty .
+a:anchorSourceEntity a owl:ObjectProperty .
+a:anchorTargetGraph a owl:ObjectProperty .
+a:anchorTargetEntity a owl:ObjectProperty .
+a:anchorRecipe a owl:DatatypeProperty ; rdfs:range xsd:string .
+a:anchorEpoch a owl:DatatypeProperty ; rdfs:range xsd:string .
+a:anchorVersion a owl:DatatypeProperty ; rdfs:range xsd:integer .
+a:anchorDirection a owl:DatatypeProperty ; rdfs:range xsd:string .
+
+a:AnchorBindingShape a sh:NodeShape ; sh:targetClass a:AnchorBinding ;
+    sh:nodeKind sh:IRI ;
+    sh:property [ sh:path a:anchorSourceGraph ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:anchorSourceEntity ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:anchorTargetGraph ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:anchorTargetEntity ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:evidenceHash ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:anchorRecipe ; sh:datatype xsd:string ; sh:minLength 1 ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:anchorEpoch ; sh:datatype xsd:string ; sh:minLength 1 ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:anchorVersion ; sh:datatype xsd:integer ; sh:minInclusive 0 ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:anchorDirection ; sh:in ( "file-to-entity" "entity-to-file" ) ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:owner ; sh:datatype xsd:string ; sh:minLength 1 ; sh:maxCount 1 ] .

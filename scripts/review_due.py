@@ -48,7 +48,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import planes  # noqa: E402
-from blocked_by import A, CLIENT, _local, pattern, select  # noqa: E402
+from blocked_by import A, CLIENT, _local, item_iri, pattern, select  # noqa: E402
 
 DUE, NOT_DUE, UNKNOWN = "DUE", "NOT_DUE", "UNKNOWN"
 # The SAME grammar as CamayocReviewAgeShape: at least one component, and a T
@@ -94,14 +94,14 @@ def parse_duration(raw: str) -> dt.timedelta | None:
 
 
 def _values(post, entity: str, prop: str) -> list[str]:
-    return [str(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{entity}>', prop, '?v')} }}")]
+    return [str(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{item_iri(entity)}>', prop, '?v')} }}")]
 
 
 def last_verified(post, entity: str) -> dt.datetime | None:
     """Latest verifiedAt over Verifications that verify this entity: two bound
     single-pattern steps, never a join."""
     latest = None
-    for row in select(post, f"SELECT ?ver WHERE {{ {pattern('?ver', 'verifies', f'<{A}{entity}>')} }}"):
+    for row in select(post, f"SELECT ?ver WHERE {{ {pattern('?ver', 'verifies', f'<{item_iri(entity)}>')} }}"):
         for raw in _values(post, _local(row["ver"]), "verifiedAt"):
             when = parse_instant(raw)
             if when and (latest is None or when > latest):
@@ -118,7 +118,7 @@ def latest_activity(post, entity: str) -> tuple[dt.datetime | None, str | None]:
     """observedAt and observedStatus of the entity's LATEST tracker Observation.
     Bound single-pattern reads per Observation, never a join (as last_verified)."""
     latest, status = None, None
-    for row in select(post, f"SELECT ?obs WHERE {{ {pattern(f'<{A}{entity}>', 'observes', '?obs')} }}"):
+    for row in select(post, f"SELECT ?obs WHERE {{ {pattern(f'<{item_iri(entity)}>', 'observes', '?obs')} }}"):
         obs = _local(row["obs"])
         for raw in _values(post, obs, "observedAt"):
             when = parse_instant(raw)
@@ -226,7 +226,7 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
     elif native_failed:
         owners=[]
     else:
-        owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{entity}>', 'ownedBy', '?v')} }}")]
+        owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{item_iri(entity)}>', 'ownedBy', '?v')} }}")]
     native_source=({'graph':native_record.graph,'action':native_record.action,'id':native_record.id,
                     'version':native_record.version,'modified':native_record.modified,
                     'status':native_record.status} if native_record is not None else None)
@@ -240,7 +240,7 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
     # aegis-2qo001): DETERMINISTIC from (entity, the due instant it crossed),
     # never minted at send time, so a re-emit after send-then-crash dedupes.
     # A re-verification moves a maxAge anchor, so a later lapse is a new id.
-    event = (json.dumps([A + entity, min(passed).isoformat()], separators=(",", ":"))
+    event = (json.dumps([item_iri(entity), min(passed).isoformat()], separators=(",", ":"))
              if verdict == DUE else None)
     return {"entity": entity, "verdict": verdict,
             **({"work_kind": work_kind} if work_kind else {}),
