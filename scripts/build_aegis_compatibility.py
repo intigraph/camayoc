@@ -7,6 +7,15 @@ from pathlib import Path
 from rdflib import Graph, RDF, SH, URIRef
 from rdflib.compare import isomorphic, to_canonical_graph
 
+ENGINE_SHAPE = "http://aegis.gastown.local/ontology/InternalIdentifierPatternShape"
+ENGINE_CLAIM = {
+    "repository": "https://github.com/scbrown/quipu",
+    "revision": "2733fefb4ea835b95dd16306e0e53018901dac3f",
+    "path": "src/share_scrub.rs",
+    "symbol": "outward_scrub_patterns",
+    "reads_class": "http://aegis.gastown.local/ontology/InternalIdentifierPattern",
+}
+
 
 def compatibility_bundle(root, source):
     """Validate all inputs before returning deterministic relative-path bytes."""
@@ -25,6 +34,13 @@ def compatibility_bundle(root, source):
         raise ValueError("shape assignment is duplicated or incomplete")
 
     retained = "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl"
+    engine = [row for row in rows if row["file"] == retained]
+    # A historical KEEP decision is not an engine dependency. Expanding this
+    # list requires a new source-backed placement decision, not a file move.
+    if (len(engine) != 1 or engine[0]["shape"] != ENGINE_SHAPE
+            or engine[0].get("engine_claim") != ENGINE_CLAIM
+            or engine[0]["source_targets"] != [ENGINE_CLAIM["reads_class"]]):
+        raise ValueError("engine placement requires the single reviewed code-backed claim")
     destinations = {
         "shapes/aegis/homelab-infra.shapes.ttl": "homelab-infra.compatibility.ttl",
         "shapes/aegis/personal-media.shapes.ttl": "personal-media.compatibility.ttl",
@@ -83,6 +99,7 @@ def compatibility_bundle(root, source):
                 "source_repository": placement["source_repository"],
                 "source_commit": placement["source_commit"], "source_sha256": digest,
                 "node_shapes": len(expected), "union_isomorphic": True,
+                "engine_claims": {ENGINE_SHAPE: dict(ENGINE_CLAIM)},
                 "files": records,
                 "limits": "Source equivalence only; no loaded-set, inference, alias-query or live-data acceptance."}
     artifacts["manifest.json"] = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()

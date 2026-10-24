@@ -30,6 +30,11 @@ class CompatibilityBundle(unittest.TestCase):
         self.assertGreater(manifest["node_shapes"], 100)  # populated coverage control
         self.assertFalse(manifest["automatic_load"])
         self.assertEqual(sum(r["role"] == "engine-retained-candidate" for r in manifest["files"]), 1)
+        engine = [r for r in manifest["files"] if r["role"] == "engine-retained-candidate"]
+        self.assertEqual(engine[0]["node_shapes"], 1)
+        self.assertEqual(sum(r["node_shapes"] for r in manifest["files"]
+                             if r["role"] == "domain-compatibility-candidate"), 119)
+        self.assertEqual(manifest["engine_claims"], {BUILDER.ENGINE_SHAPE: BUILDER.ENGINE_CLAIM})
         legacy = URIRef("http://aegis.gastown.local/ontology/WorkItem")
         self.assertGreater(len(list(union.subjects(SH.targetClass, legacy))), 0)
         # The public profile remains unchanged: compatibility is a separate artifact.
@@ -84,6 +89,26 @@ class CompatibilityBundle(unittest.TestCase):
                 else:
                     (root / "shapes/aegis/personal-media.shapes.ttl").unlink()
                 with self.assertRaises((ValueError, OSError)):
+                    BUILDER.compatibility_bundle(root, SOURCE)
+
+    def test_historical_keep_and_missing_code_claim_are_not_engine_authority(self):
+        for mutation in ("domain-as-engine", "missing-claim", "changed-reference"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                shutil.copytree(ROOT / "shapes/aegis", root / "shapes/aegis")
+                shutil.copytree(ROOT / "tests/fixtures/aegis-upstream", root / "tests/fixtures/aegis-upstream")
+                path = root / "shapes/aegis/placement.json"
+                placement = json.loads(path.read_text())
+                engine = next(r for r in placement["shapes"] if r["shape"] == BUILDER.ENGINE_SHAPE)
+                if mutation == "domain-as-engine":
+                    directive = next(r for r in placement["shapes"] if r["shape"].endswith("/DirectiveShape"))
+                    directive["file"] = engine["file"]
+                elif mutation == "missing-claim":
+                    engine.pop("engine_claim")
+                else:
+                    engine["engine_claim"]["path"] = "src/unrelated.rs"
+                path.write_text(json.dumps(placement))
+                with self.assertRaisesRegex(ValueError, "engine placement"):
                     BUILDER.compatibility_bundle(root, SOURCE)
 
 

@@ -397,3 +397,182 @@ aegis:KeeperRoleShape a sh:NodeShape ;
     sh:property [ sh:hasValue aegis:keeper ;
             sh:path aegis:hasRole ] .
 
+aegis:DirectiveShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:authority ],
+        [ sh:maxCount 1 ;
+            sh:or ( [ sh:datatype xsd:string ] [ sh:nodeKind sh:IRI ] ) ;
+            sh:path aegis:issuedBy ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Directive .
+
+aegis:DirectiveTraceabilityShape a sh:NodeShape ;
+    quipu:onViolation "emit" ;
+    sh:message "Untraced directive: it needs aegis:trackedBy a WorkItem and aegis:governedBy a Policy (aegis-q9m5mp)" ;
+    sh:or ( [ sh:class aegis:Policy ] [ sh:class aegis:AlertRule ] [ sh:property [ sh:class aegis:WorkItem ;
+                        sh:minCount 1 ;
+                        sh:path aegis:trackedBy ],
+                    [ sh:class aegis:Policy ;
+                        sh:minCount 1 ;
+                        sh:path aegis:governedBy ] ] ) ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:severity sh:Warning ;
+    sh:targetClass aegis:Directive .
+
+aegis:FailureModeShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:FailureMode .
+
+aegis:FailurePatternShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:FailurePattern .
+
+aegis:GitCommitShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:hash ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:repo ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:author ],
+        [ sh:datatype xsd:dateTime ;
+            sh:maxCount 1 ;
+            sh:path aegis:date ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:GitCommit .
+
+aegis:IncidentShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:severity ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Incident .
+
+aegis:MetricShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Metric .
+
+aegis:OperationalFactShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:OperationalFact .
+
+aegis:OperationalRuleShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:OperationalRule .
+
+aegis:OverseerShape a sh:NodeShape ;
+    sh:property [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:pronouns ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Overseer .
+
+aegis:ReactionFiringShape a sh:NodeShape ;
+    sh:property [ sh:class aegis:Reaction ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:firedBy ],
+        [ sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:nodeKind sh:IRI ;
+            sh:path aegis:focus ],
+        [ sh:datatype xsd:dateTime ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:startedAt ],
+        [ sh:datatype xsd:dateTime ;
+            sh:maxCount 1 ;
+            sh:path aegis:resolvedAt ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:eventId ] ;
+    sh:targetClass aegis:ReactionFiring .
+
+aegis:ReactionShape a sh:NodeShape ;
+    sh:property [ sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:datatype xsd:string ;
+            sh:in ( "event" "schedule" ) ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:triggerKind ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:eventTypes ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:schedule ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:condition ],
+        [ sh:datatype xsd:string ;
+            sh:in ( "info" "warning" "critical" "page" ) ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:severity ],
+        [ sh:datatype xsd:string ;
+            sh:in ( "alert" "page" "bead" "webhook" ) ;
+            sh:minCount 1 ;
+            sh:path aegis:action ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path aegis:owner ],
+        [ sh:datatype xsd:boolean ;
+            sh:maxCount 1 ;
+            sh:path aegis:enabled ],
+        [ sh:maxCount 1 ;
+            sh:path rdfs:comment ] ;
+    sh:targetClass aegis:Reaction .
+
+aegis:RequirementShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ] ;
+    sh:targetClass aegis:Requirement .
+
+aegis:TextRuleShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path aegis:regex ],
+        [ sh:minCount 1 ;
+            sh:path aegis:enforcementTier ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:mustMatch ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:mustNotMatch ],
+        [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:exemptPathRegex ],
+        [ sh:datatype xsd:string ;
+            sh:path aegis:exemptRepo ],
+        [ sh:datatype xsd:string ;
+            sh:maxCount 1 ;
+            sh:path aegis:exemptLineMarker ] ;
+    sh:targetClass aegis:TextRule .
+
+aegis:VerificationShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path rdfs:label ],
+        [ sh:in ( "works" "dead" "unknown" ) ;
+            sh:maxCount 1 ;
+            sh:path aegis:result ],
+        [ sh:maxCount 1 ;
+            sh:path aegis:verifiedAt ;
+            sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$" ] ;
+    sh:targetClass aegis:Verification .
+
