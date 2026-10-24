@@ -36,6 +36,7 @@ forge: never comment bodies or check logs.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 import re
@@ -223,12 +224,25 @@ def spool(ev: dict, directory: Path) -> Path | None:
     return path
 
 
+def instant(value: str) -> datetime:
+    """An RFC 3339 time with an explicit offset, as an aware UTC datetime."""
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not an RFC 3339 time: {value!r}") from None
+    if parsed.tzinfo is None:
+        raise argparse.ArgumentTypeError(f"time needs an explicit offset or Z: {value!r}")
+    return parsed.astimezone(timezone.utc)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", required=True, help="owner/name")
     ap.add_argument("--since", required=True, help="RFC 3339 UTC; pull requests updated at or after it")
     ap.add_argument("--spool", type=Path, required=True)
     ap.add_argument("--branch", default="main", help="base branch whose required checks define green")
+    ap.add_argument("--not-before", type=instant, help="RFC 3339 UTC; spool only steps at or after it (the boundary after a "
+                    "reviewed backfill, so no step is delivered twice)")
     args = ap.parse_args(argv)
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
         ap.error("--repo must be owner/name")
@@ -240,6 +254,11 @@ def main(argv: list[str] | None = None) -> int:
     for pr in pull_requests(args.repo, args.since):
         counts["prs"] += 1
         for ev in events_for(args.repo, pr, required):
+            # Compared as instants: "12:00:00Z" is before "12:00:00.500Z" even
+            # though it sorts after it as text.
+            if args.not_before and instant(ev["time"]) < args.not_before:
+                counts["before-boundary"] = counts.get("before-boundary", 0) + 1
+                continue
             counts["spooled" if spool(ev, args.spool) else "present"] += 1
     print("changes: " + " ".join(f"{k}={v}" for k, v in counts.items()) + f" required={len(required)}")
     return 0
