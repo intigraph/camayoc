@@ -172,8 +172,13 @@ def install():
                     actual = json.loads((source / '.claude-plugin/plugin.json').read_text())['version']
                     if actual != version:
                         raise ValueError('source package version mismatch')
-                    shutil.copytree(source, destination, symlinks=True)
-                    created = True
+                    # A failed copy must never leave an unmarked final release.
+                    # TemporaryDirectory removes partial copies before a retry.
+                    with tempfile.TemporaryDirectory(prefix='.candidate-', dir=releases) as candidate:
+                        staged = Path(candidate) / 'bundle'
+                        shutil.copytree(source, staged, symlinks=True)
+                        staged.rename(destination)
+                        created = True
                 else:
                     destination.mkdir()
                     created = True

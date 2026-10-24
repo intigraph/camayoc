@@ -125,6 +125,25 @@ class PackageInstall(unittest.TestCase):
         self.assertNotIn('Installed verified', result[1])
         self.assertEqual(target.read_text(), 'tampered installed bytes')
 
+    def test_partial_source_copy_failure_cleans_up_and_allows_retry(self):
+        if CONFIG['kind'] != 'source':
+            self.skipTest('source-copy failure applies to the source distribution')
+        destination = self.prefix / 'share' / CONFIG['repo'] / TAG
+        def partial_copy(source, target, **kwargs):
+            target.mkdir()
+            (target / 'partial').write_text('incomplete copy')
+            raise OSError('synthetic copy failure')
+        with patch('shutil.copytree', side_effect=partial_copy):
+            failed = self.run_installer()
+        self.assert_preserved(failed)
+        self.assertFalse(destination.exists(), 'partial final release survived failure')
+        releases = destination.parent
+        self.assertFalse((releases / '.install-lock').exists())
+        self.assertFalse(list(releases.glob('.candidate-*')))
+        retried = self.run_installer()
+        self.assertEqual(retried[0], 0, retried)
+        self.assertEqual(json.loads((destination / '.release.json').read_text())['tag'], TAG)
+
     def test_corrupt_checksum_preserves_previous(self):
         path = self.release / self.names[0]
         path.write_bytes(path.read_bytes() + b'corrupt')
