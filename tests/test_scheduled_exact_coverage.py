@@ -85,6 +85,32 @@ class ScheduledCoverage(unittest.TestCase):
         with self.assertRaises(subject.Stop):
             subject.load_plan(self.path, self.sha)
 
+    def test_regular_plan_passes_fifo_refuses_without_wait_for_loader_and_cleanup(self):
+        loader = [sys.executable, '-c',
+                  "import sys;sys.path.insert(0,sys.argv[1]);import scheduled_exact_coverage as s;"
+                  "s.load_plan(s.Path(sys.argv[2]),sys.argv[3])",
+                  str(SCRIPTS), str(self.path), self.sha]
+        filter_cmd = [sys.executable, str(SCRIPTS / 'scheduled_exact_coverage.py'),
+                      '--cleanup-filter', '--manifest', str(self.path),
+                      '--manifest-sha256', self.sha]
+        exact = subject.entry(self.path, self.sha, self.plan)
+        for command in (loader, filter_cmd):
+            self.save()
+            regular = subprocess.run(command, input=(exact + '\n').encode(),
+                                     capture_output=True, timeout=1.5)
+            self.assertEqual(regular.returncode, 0, regular.stderr)
+            self.path.unlink()
+            os.mkfifo(self.path, 0o600)
+            fifo = subprocess.run(command, input=(exact + '\n').encode(),
+                                  capture_output=True, timeout=1.5)
+            self.assertNotEqual(fifo.returncode, 0)
+            self.assertEqual(fifo.stdout, b'')
+            self.assertIn(b'private plan required', fifo.stderr)
+            self.assertFalse((self.work / 'attempt.json').exists())
+            self.assertFalse((self.work / 'stdout').exists())
+            self.path.unlink()
+        self.save()
+
     def test_wrong_source_no_fence_or_child(self):
         self.plan['source_sha256'][subject.FILES[0]] = '0' * 64
         with self.assertRaises(subject.Stop):
