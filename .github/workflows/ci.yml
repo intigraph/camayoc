@@ -169,6 +169,11 @@ jobs:
           python3 -m unittest discover -s tests -p test_stable_namespace_reports.py -v 2>&1 | tee reports.log
           grep -q '^Ran 2 tests' reports.log
           ! grep -q 'skipped' reports.log
+      - name: Verify graph-derived delivery catalog with the pinned CLI
+        run: |
+          export QUIPU_BIN="$QUIPU_REPORT_BIN"
+          python3 scripts/render-delivery-catalog.py --check
+          python3 -m unittest discover -s tests -p test_delivery_catalog.py -v
 
   governance:
     runs-on: ubuntu-latest

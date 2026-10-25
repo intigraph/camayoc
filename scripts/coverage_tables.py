@@ -522,6 +522,7 @@ COVERAGE_DD: dict[int, dict] = {
     5: {"query": None, "gap": "Needs the DeploymentEvent class; the closed outcome set makes CFR a count.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
     6: {"query": None, "gap": "No merge record is joined to an artifact yet: lead time needs change.merged (or work-item close) events carrying the same artifact or commit.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)", "CDEvents change.merged mapping and records"]},
     7: {"query": None, "gap": "Needs the DeploymentEvent class; then the next succeeded event after a rolledback/failed one or an Incident.", "needs": ["aegis:DeploymentEvent (Quipu proposal 31)"]},
+    8: {"query": None, "expressible": "Declared Tool records in catalog/delivery-emitters.json carry emitterTool, emitterStandard, emitterHow, emitterStatus and emitterDocs. The README renderer queries those exact catalog identities in a disposable local graph; this is source support, not runtime producer coverage."},
 }
 
 COVERAGE_WB: dict[int, dict] = {

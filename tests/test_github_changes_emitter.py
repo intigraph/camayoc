@@ -7,6 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -136,6 +137,91 @@ class RetriesOnOneCommit(unittest.TestCase):
             self.assertEqual(1, len(later))
             self.assertIn("fail", later[0])
             self.assertEqual(3, len(list((spool_dir / "delivered").glob("*_ci_*"))) + len(later))
+
+
+class Boundary(unittest.TestCase):
+    def test_not_before_drops_earlier_steps_only(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(emitter, "required_checks", return_value=REQUIRED), \
+                unittest.mock.patch.object(emitter, "pull_requests", return_value=[pr()]), \
+                unittest.mock.patch("sys.stdout"):
+            rc = emitter.main(["--repo", "example/example-svc", "--since", "2026-10-14T00:00:00Z",
+                               "--spool", tmp, "--not-before", "2026-10-14T11:00:00Z"])
+            names = sorted(p.name for p in Path(tmp).glob("*.json"))
+        self.assertEqual(0, rc)
+        # created (10:00) and CI (10:30) predate the boundary; review (12:00) and merge (18:00) do not.
+        self.assertEqual(2, len(names))
+        self.assertTrue(any("_merged" in n for n in names) and any("_review_" in n for n in names))
+
+
+class BoundaryParsing(unittest.TestCase):
+    def run_main(self, not_before):
+        with tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(emitter, "required_checks", return_value=REQUIRED), \
+                unittest.mock.patch.object(emitter, "pull_requests", return_value=[pr()]) as fetch, \
+                unittest.mock.patch("sys.stdout"), unittest.mock.patch("sys.stderr"):
+            try:
+                rc = emitter.main(["--repo", "example/example-svc", "--since", "2026-10-14T00:00:00Z",
+                                   "--spool", tmp, "--not-before", not_before])
+            except SystemExit as exit_:
+                rc = exit_.code
+            return rc, sorted(p.name for p in Path(tmp).glob("*.json")), fetch.called
+
+    def test_fractional_boundary_is_compared_as_an_instant(self):
+        # review at 12:00:00Z is BEFORE 12:00:00.500Z, though it sorts after it as text.
+        rc, names, _ = self.run_main("2026-10-14T12:00:00.500Z")
+        self.assertEqual(0, rc)
+        self.assertEqual(1, len(names))
+        self.assertTrue(names[0].endswith("_merged.json"))
+
+    def test_the_exact_instant_is_included(self):
+        rc, names, _ = self.run_main("2026-10-14T12:00:00Z")
+        self.assertEqual((0, 2), (rc, len(names)))
+
+    def test_invalid_boundary_is_refused_before_any_forge_call(self):
+        for bad in ("yesterday", "2026-10-14T12:00:00"):
+            with self.subTest(bad):
+                rc, names, fetched = self.run_main(bad)
+                self.assertEqual(2, rc)
+                self.assertEqual([], names)
+                self.assertFalse(fetched)
+
+
+def review_status(state, description, created="2026-10-14T23:59:00Z"):
+    return {"__typename": "StatusContext", "context": "review/approved", "state": state,
+            "createdAt": created, "description": description}
+
+
+class NativeReviewStatus(unittest.TestCase):
+    """aegis-6ye: the native receipt's reviewed_at, never the status publication time."""
+
+    GOOD = "reviewer example-reviewer receipt r-0123456789abcdef reviewed_at 2026-10-14T11:15:30.123456789Z"
+
+    def nodes(self, *extra):
+        return [run("Build", "SUCCESS", "2026-10-14T10:20:00Z"), run("Test", "SUCCESS", "2026-10-14T10:30:00Z"), *extra]
+
+    def test_a_verified_approve_is_a_review_at_reviewed_at(self):
+        events = emitter.events_for("example/example-svc", with_ci(self.nodes(review_status("SUCCESS", self.GOOD))), REQUIRED)
+        native = [e for e in events if "/review/native-" in e["id"]]
+        self.assertEqual(1, len(native))
+        self.assertEqual("2026-10-14T11:15:30.123456789Z", native[0]["time"])   # not createdAt, precision kept
+        props = ingest.episode_for(native[0], actor="t")["nodes"][0]["properties"]
+        self.assertEqual(("reviewed", "approved", HEAD), (props["changeAction"], props["reviewState"], props["commitSha"]))
+
+    def test_revocation_legacy_and_offset_times_record_nothing(self):
+        for name, ctx in (("revoked", review_status("FAILURE", self.GOOD)),
+                          ("legacy", review_status("SUCCESS", "reviewer example-reviewer receipt r-0123")),
+                          ("offset", review_status("SUCCESS", "reviewer example-reviewer receipt r-1 reviewed_at 2026-10-14T11:15:30+02:00")),
+                          ("garbage", review_status("SUCCESS", "reviewer example-reviewer receipt r-1 reviewed_at yesterday"))):
+            with self.subTest(name):
+                events = emitter.events_for("example/example-svc", with_ci(self.nodes(ctx)), REQUIRED)
+                self.assertEqual([], [e for e in events if "/review/native-" in e["id"]])
+
+    def test_a_required_review_status_never_delays_green(self):
+        required = REQUIRED + ["review/approved"]
+        self.assertEqual(("pass", "2026-10-14T10:30:00Z"), emitter.ci_result(self.nodes(), required))
+        pending_review = self.nodes(review_status("PENDING", "", created="2026-10-14T12:00:00Z"))
+        self.assertEqual(("pass", "2026-10-14T10:30:00Z"), emitter.ci_result(pending_review, required))
 
 
 class ReviewVerdicts(unittest.TestCase):
