@@ -34,3 +34,13 @@ existing service entity (`aegis:deployedService`), not a new kind.
 7. Time to restore: after a `failed` or `rolledback` deployment, or an
    `aegis:Incident`, how long until the next `succeeded` deployment of the
    same service?
+
+## Supported emitters
+
+8. Which source adapters support delivery events, which standard do they use,
+   how are they invoked, and where are their documented contracts? The public
+   catalog is `catalog/delivery-emitters.json`: typed `Tool` records with
+   `emitterCatalog`, `emitterOrder`, `emitterTool`, `emitterStandard`,
+   `emitterHow`, `emitterStatus` and `emitterDocs`. The README renderer queries
+   the exact catalog identities through Quipu; source support does not prove
+   an installed or armed producer, or coverage of a deployment window.
