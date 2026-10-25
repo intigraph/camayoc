@@ -114,12 +114,12 @@ def checked_output(argv, maximum=MAX_RECEIPT):
     return result.stdout
 
 
-def proc_identity(pid):
-    root = Path('/proc') / str(pid)
+def proc_identity(pid, *, proc_root=Path('/proc')):
+    root = proc_root / str(pid)
     before = (root / 'stat').read_text()
     fields = before[before.rfind(')') + 2:].split()
     result = {'pid': pid, 'ppid': int(fields[1]), 'start_ticks': int(fields[19]),
-              'uid': root.stat().st_uid, 'exe': os.readlink(root / 'exe')}
+              'uid': root.stat().st_uid, 'comm': (root / 'comm').read_text().rstrip('\n')}
     if (root / 'stat').read_text().split(') ', 1)[1].split()[19] != str(result['start_ticks']):
         raise Stop('scheduler process changed')
     return result
@@ -130,7 +130,7 @@ def verify_scheduler(exact, current, ancestry, records, now):
     if current.splitlines().count(exact) != 1:
         raise Stop('exact scheduled entry absent or duplicated')
     # This route supports Debian cron only; unsupported schedulers remain UNKNOWN.
-    cron = {p['pid']: p for p in ancestry if p['uid'] == 0 and p['exe'] == '/usr/sbin/cron'}
+    cron = {p['pid']: p for p in ancestry if p['uid'] == 0 and p['comm'] == 'cron'}
     if not cron:
         raise Stop('no root cron ancestor')
     command = exact.split(' ', 5)[5]

@@ -91,13 +91,17 @@ function to compose it; do not hand-requote arguments. Only the normal neutral
 cron editor may introduce it after separate approval and a fresh locked preimage.
 
 Admission requires the current crontab to contain that exact entry once. A live
-root-owned `/usr/sbin/cron` ancestor and one matching root cron-service journal
+root-owned `cron` command-name ancestor and one matching root cron-service journal
 CMD event in the preceding minute establish the independent start receipt. The
-trusted journal cursor/PID/start ticks and exact-entry hash are retained before
+trusted journal `/usr/sbin/cron` executable identity, cursor/PID/start ticks and
+exact-entry hash are retained before
 the child. An environment variable or caller run-id cannot substitute. This
 route intentionally supports Debian cron only: absent journal access, another
 scheduler, a changed parent or incomplete attribution stops before the attempt.
-It never falls back to a self-declared scheduled identity.
+It never falls back to a self-declared scheduled identity. Root-process executable
+symlinks are not read: Linux gates those through ptrace permissions. Root UID
+and command-name ancestry are paired with the trusted journal executable, not
+replaced by a user-controlled command name alone.
 
 The coordinator durably consumes the sealed invocation before admission, so a
 busy or UNKNOWN admission cannot turn into a later cron retry. No child runs

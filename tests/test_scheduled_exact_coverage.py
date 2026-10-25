@@ -151,6 +151,21 @@ class ScheduledCoverage(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             self.run_once()
 
+    def test_proc_ancestry_does_not_require_ptrace_gated_root_exe(self):
+        proc = self.root / 'proc'
+        process = proc / '40'
+        process.mkdir(parents=True)
+        fields = ['0'] * 20
+        fields[0], fields[1], fields[19] = 'S', '1', '45'
+        (process / 'stat').write_text('40 (cron) ' + ' '.join(fields))
+        (process / 'comm').write_text('cron\n')
+        with mock.patch.object(subject.os, 'readlink', side_effect=PermissionError) as denied:
+            value = subject.proc_identity(40, proc_root=proc)
+        denied.assert_not_called()
+        self.assertEqual(value['comm'], 'cron')
+        self.assertEqual(value['start_ticks'], 45)
+        self.assertEqual(value['ppid'], 1)
+
     def test_scheduler_boundary_requires_exact_root_start_and_live_ancestry(self):
         exact = subject.entry(self.path, self.sha, self.plan)
         import pwd
@@ -158,7 +173,7 @@ class ScheduledCoverage(unittest.TestCase):
         record = {'_UID': '0', '_EXE': '/usr/sbin/cron', '_SYSTEMD_UNIT': 'cron.service',
                   '_PID': '40', '__CURSOR': 'independent', '__REALTIME_TIMESTAMP': '1000000000',
                   'MESSAGE': '(' + user + ') CMD (' + exact.split(' ', 5)[5] + ')'}
-        ancestors = [{'pid': 40, 'uid': 0, 'exe': '/usr/sbin/cron', 'start_ticks': 45}]
+        ancestors = [{'pid': 40, 'uid': 0, 'comm': 'cron', 'start_ticks': 45}]
         self.assertEqual(subject.verify_scheduler(exact, exact + '\n', ancestors, [record], 1001)['pid'], 40)
         for change in ({'_UID': '100001'}, {'_EXE': '/tmp/cron'}, {'_PID': '41'},
                        {'_SYSTEMD_UNIT': 'user.service'}, {'MESSAGE': 'caller-run-id'},
@@ -170,6 +185,10 @@ class ScheduledCoverage(unittest.TestCase):
                 subject.verify_scheduler(exact, current, ancestors, [record], 1001)
         with self.assertRaises(subject.Stop):
             subject.verify_scheduler(exact, exact, [], [record], 1001)
+        for fake in ([dict(ancestors[0], uid=100001)],
+                     [dict(ancestors[0], comm='shell')]):
+            with self.assertRaises(subject.Stop):
+                subject.verify_scheduler(exact, exact, fake, [record], 1001)
 
     def test_real_child_receipt_boundary_rejects_errors_and_caps(self):
         good = {'status': 'COVERED', 'writes': 0, 'requests': 15, 'seconds': 1.0,
