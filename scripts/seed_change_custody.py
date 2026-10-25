@@ -27,7 +27,7 @@ def candidates(page,board,since):
     if not isinstance(page,dict) or len(json.dumps(page).encode())>MAX_BYTES:
         raise CustodyUnknown('feed page exceeds byte budget or is malformed')
     records=page.get('records');end=integer(page.get('next_tx'));watermark=integer(page.get('watermark_tx'))
-    if page.get('capture')!='new_values' or page.get('truncated') or not isinstance(records,list) or len(records)>MAX_RECORDS:
+    if page.get('capture') not in ('new_values','old_and_new_values') or page.get('truncated') or not isinstance(records,list) or len(records)>MAX_RECORDS:
         raise CustodyUnknown('feed page is partial or outside bounds')
     if end<since or watermark<end:raise CustodyUnknown('feed cursor regressed')
     if not records:

@@ -541,6 +541,10 @@ def native_main(args):
             last_success=started
         save(args.state.with_suffix('.receipt.json'),
              {'attempted_at':started,'last_success_at':last_success,**receipt})
+    return publish_native_receipt(args,receipt,started,last_success,graph)
+
+
+def publish_native_receipt(args,receipt,started,last_success,graph):
     print(json.dumps(receipt,sort_keys=True))
     code=0 if receipt['status']=='OK' else 2
     if args.publish_status:
@@ -579,7 +583,16 @@ def main():
     parser.add_argument('--actor', required=True)
     parser.add_argument('--source', required=True, help='stable authoritative tracker provenance URI')
     parser.add_argument('--publish-status', action='store_true')
+    parser.add_argument('--native-stream', action='store_true', help='hold one committed change subscription; existing custody only')
+    parser.add_argument('--stream-identity', type=Path, help='protected reviewed store_id/log_epoch JSON')
     args = parser.parse_args()
+    if args.native_stream:
+        if not args.native_authority_stdin or args.initial_tx is not None or args.stream_identity is None:
+            parser.error('--native-stream needs native authority, explicit identity and existing custody; no initial cursor')
+        import seed_work_item_stream
+        return seed_work_item_stream.run(args)
+    if args.stream_identity is not None:
+        parser.error('--stream-identity requires --native-stream')
     if args.native_authority_stdin:
         return native_main(args)
     if args.initial_tx is not None:

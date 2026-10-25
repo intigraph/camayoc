@@ -107,7 +107,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
         pending=journal.next()
         feed_error=None
         backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
-        if backlog < custody.MAX_PENDING:
+        if backlog < custody.MAX_PENDING and changes is not None:
             requests+=1
             try:
                 page=timed(changes,since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
@@ -117,7 +117,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
                 if pending is None:raise
                 feed_error=type(exc).__name__
             pending=journal.next()
-        else:
+        elif backlog >= custody.MAX_PENDING:
             feed_error='PendingCapacityReached'
         receipt['status']='OK'
         seen=set()
