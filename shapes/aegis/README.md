@@ -16,8 +16,15 @@ preserves the exact original bytes for a staged
 load-before-remove transition. It is not a new canonical work-item profile.
 Reversing only declared public-target substitutions and recombining the split
 graphs, including the upstream KEEP-only test fixture, is RDF-isomorphic to that original.
-KEEP shapes remain upstream in Quipu or Quechua governance; the fixture grants
-Camayoc no ownership or loading authority for them. This is source equivalence, not a
+Only `InternalIdentifierPatternShape` remains in that fixture for Quipu's
+egress gate. Its placement record names `outward_scrub_patterns` in
+`src/share_scrub.rs` at the exact reviewed Quipu revision; the compiler carries
+that reference in the compatibility manifest. A historical KEEP label is not
+an engine claim. Directive, verification, operational and incident constraints
+belong to the software-factory pack, including both Directive shapes. Missing
+or changed engine references and a domain row placed back in the engine fixture
+refuse compilation. The fixture grants Camayoc no engine ownership or loading
+authority. This is source equivalence, not a
 claim that the new public targets already validate the production graph.
 
 Work items use **Seeds**, whose authoritative source is referenced by exact
