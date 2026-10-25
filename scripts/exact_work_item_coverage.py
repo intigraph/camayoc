@@ -89,6 +89,13 @@ def receipt(post, items, board_graph, control, *, clock=time.monotonic):
         # Validate IDs and the graph using the canonical native reader rules.
         subjects = {native.item_iri(i) for i in items}
         subjects |= {legacy.BASE_NS + i for i in items}
+        # /query renders references as strings, compacted through the loaded
+        # shapes' prefix table. The observed `a:` spelling names BASE_NS.
+        # Decode only the exact requested subjects, never an arbitrary prefix
+        # or suffix. `w` is constrained by VALUES and occurs as a triple subject;
+        # identifier literals in `id` must remain untouched.
+        subject_forms = {subject: subject for subject in subjects}
+        subject_forms.update({'a:' + i: legacy.BASE_NS + i for i in items})
         board = native.Board(board_graph, items[0].split('-', 1)[0])
         for item in items:
             board.subject(item)
@@ -125,17 +132,20 @@ def receipt(post, items, board_graph, control, *, clock=time.monotonic):
                 raise Unknown('malformed, truncated or overfull result')
             rows = result['rows']
             identifier = '?id' in base
+            canonical_rows = []
             for row in rows:
                 if not isinstance(row, dict) or set(row) != ({'w', 'id'} if identifier else {'w'}):
                     raise Unknown('unexpected result columns')
-                if row['w'] not in subjects:
+                if not isinstance(row['w'], str) or row['w'] not in subject_forms:
                     raise Unknown('out-of-scope subject')
+                row = dict(row, w=subject_forms[row['w']])
                 if identifier and (not isinstance(row['id'], str) or row['id'] not in items):
                     raise Unknown('malformed or conflicting identifier')
                 if identifier and row['w'] not in (native.item_iri(row['id']), legacy.BASE_NS + row['id']):
                     raise Unknown('identifier does not own its subject')
+                canonical_rows.append(row)
             entry['rows'] = len(rows)
-            return result
+            return dict(result, rows=canonical_rows)
 
         covered = legacy.covered(bounded, (board_graph,))
         if len(calls) != MAX_REQUESTS or control not in covered:

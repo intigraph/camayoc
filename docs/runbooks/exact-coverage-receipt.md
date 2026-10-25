@@ -30,6 +30,16 @@ full-board cache. This proves coverage only for the fixed subject forms, not
 global identifier uniqueness or absence at arbitrary aliases. `NOT_COVERED` is
 not permission to mint or re-post an item.
 
+The query service may serialize reference subjects using its loaded `a:`
+namespace binding. The adapter accepts full canonical subjects and the exact
+`a:<requested-ID>` forms for the legacy namespace, then supplies full subjects
+to the existing coverage helper. It does not expand arbitrary prefixes, match
+suffixes, decode escaped lookalikes or promote identifier literals into IRIs.
+Only `w`, constrained by the query's IRI `VALUES` and triple-subject position,
+is decoded; foreign subjects and identifier-owner conflicts remain UNKNOWN.
+An archived triple response is evidence of serialization, not a substitute for
+the coverage query's exact result columns.
+
 Each response is limited to 256 KiB and each whole request to six seconds; the
 invocation has a seventy-second read budget. The standalone Unix transport uses
 a request timer as well as a socket timeout, so a trickling response cannot renew
