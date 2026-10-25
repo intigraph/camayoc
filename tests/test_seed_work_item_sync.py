@@ -190,6 +190,59 @@ class SlowReadStop(SerialTicks):
         self.assertEqual(self.backlog(),3)
 
 
+class PlaneError(RuntimeError):
+    """Stands in for planes.PlaneError, matched by class name as in production."""
+
+
+class DiagnosticReceipt(SerialTicks):
+    """A failed tick says why, without payload or auth (aegis-wu1s9ti4d)."""
+    def setUp(self):
+        super().setUp();self.partial=set();self.plane_error=None
+    def post(self,endpoint,body):
+        if endpoint=='/query' and not body['query'].startswith('ASK ') and 'BIND(' not in body['query']:
+            item=self.item_of(body['query'])
+            if self.plane_error and item==self.plane_error:
+                raise PlaneError("/query failed: HTTP 408 b'secret-bearer-xyz body'")
+            if item in self.partial:return {'rows':[],'truncated':True}
+        return super().post(endpoint,body)
+
+    def test_a_custody_doubt_names_its_reason_and_the_readback_it_rests_on(self):
+        self.partial.add(self.j.next()[0])
+        result=self.tick()
+        self.assertEqual((result['status'],result['error'],result['reason']),('UNKNOWN','CustodyUnknown','metadata readback partial'))
+        self.assertEqual(result['last_request']['endpoint'],'/query')
+        self.assertIsInstance(result['last_request']['seconds'],float)
+        self.assertIn('slowest_read',result)
+
+    def test_a_plane_error_is_reduced_to_a_fixed_class_and_never_logs_its_body(self):
+        self.plane_error=self.j.next()[0]
+        result=self.tick()
+        self.assertEqual((result['status'],result['error'],result['reason']),('UNKNOWN','PlaneError','HTTP 408'))
+        self.assertNotIn('secret-bearer-xyz',json.dumps(result))
+
+    def test_any_other_error_keeps_only_its_type(self):
+        self.drop.add(self.j.next()[0])
+        result=self.tick()
+        self.assertEqual((result['status'],result['error']),('UNKNOWN','TimeoutError'))
+        self.assertNotIn('reason',result)
+        self.assertNotIn('readback unavailable',json.dumps(result))
+        self.assertIn('last_request',result)
+
+    def test_a_clean_tick_records_its_slowest_read_and_no_failure_fields(self):
+        result=self.tick()
+        self.assertEqual(result['status'],'OK')
+        self.assertIsInstance(result['slowest_read'],float)
+        self.assertNotIn('reason',result);self.assertNotIn('last_request',result)
+
+    def test_plane_error_classes_are_bounded(self):
+        for text,expected in (("x unreachable: timed out — this is not evidence",'unreachable'),
+                              ('Response exceeds explicit byte budget','response budget'),
+                              ('Unreadable or invalid bearer credential; help','auth refused'),
+                              ('something new','unclassified')):
+            self.assertEqual(sync.failure_reason(PlaneError(text)),expected)
+        self.assertIsNone(sync.failure_reason(ValueError('payload text')))
+
+
 class ExactTypeControl(unittest.TestCase):
     def envelope(self):
         return {'request':{'graph':'urn:private:knowledge'},'description':'exact description'}
