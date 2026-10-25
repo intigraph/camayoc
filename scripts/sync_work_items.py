@@ -585,7 +585,17 @@ def main():
     parser.add_argument('--publish-status', action='store_true')
     parser.add_argument('--native-stream', action='store_true', help='hold one committed change subscription; existing custody only')
     parser.add_argument('--stream-identity', type=Path, help='protected reviewed store_id/log_epoch JSON')
+    parser.add_argument('--bind-stream-source', action='store_true', help='explicit reviewed source binding; no cursor change')
+    parser.add_argument('--expected-stream-cursor', type=int, help='exact current cursor for the reviewed source transition')
     args = parser.parse_args()
+    if args.bind_stream_source:
+        if (not args.native_authority_stdin or args.native_stream or args.initial_tx is not None
+                or args.stream_identity is None or args.expected_stream_cursor is None):
+            parser.error('source binding needs native authority, identity, exact cursor and no bootstrap/stream mode')
+        import seed_work_item_stream
+        return seed_work_item_stream.bind(args)
+    if args.expected_stream_cursor is not None:
+        parser.error('--expected-stream-cursor requires --bind-stream-source')
     if args.native_stream:
         if not args.native_authority_stdin or args.initial_tx is not None or args.stream_identity is None:
             parser.error('--native-stream needs native authority, explicit identity and existing custody; no initial cursor')

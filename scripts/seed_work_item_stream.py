@@ -18,7 +18,7 @@ import seed_work_items as native
 import sync_work_items as driver
 
 
-def run(args):
+def inputs(args):
     if getattr(args, 'initial_tx', None) is not None:
         raise custody.CustodyUnknown('stream cannot initialize or reset custody')
     if not args.state.is_file() or args.state.suffix != '.sqlite3':
@@ -31,12 +31,30 @@ def run(args):
         raw = file.read(4097)
     if len(raw) > 4096:
         raise custody.CustodyUnknown('stream identity exceeds budget')
-    identity = json.loads(raw)
+    return reader, json.loads(raw)
+
+
+def bind(args):
+    reader, identity = inputs(args)
+    with args.state.with_suffix('.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        journal = custody.Journal(args.state, reader.board, server=planes.SERVER)
+        try:
+            journal.bind_stream_source(identity, args.expected_stream_cursor)
+            print(json.dumps({'status': 'BOUND', 'cursor': journal.cursor}))
+        finally:
+            journal.db.close()
+    return 0
+
+
+def run(args):
+    reader, identity = inputs(args)
     with args.state.with_suffix('.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         journal = custody.Journal(args.state, reader.board, server=planes.SERVER)
         stream = None
         try:
+            journal.verify_stream_source(identity)
             last_success, previous_attempt = None, 0
             receipt_path = args.state.with_suffix('.receipt.json')
             if receipt_path.exists():

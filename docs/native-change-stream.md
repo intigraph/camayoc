@@ -10,7 +10,14 @@ capture, foreign graph, malformed or oversized transaction. There is no tail
 reset, automatic enrollment or polling fallback.
 
 The protected identity file contains exactly `store_id` and `log_epoch`, each
-an independently verified nonempty string. Transport connection alone never
+an independently verified nonempty string. Before switching, the separately
+reviewed `--bind-stream-source --expected-stream-cursor N` transition binds those
+values to the existing journal under its producer lock. It requires the exact
+current cursor and never changes pending effects or the cursor. An existing
+binding cannot be replaced. Normal stream startup refuses missing or changed
+bindings before opening a connection; a modified identity file cannot silently
+adopt prior custody into another epoch. This source does not execute that
+transition in production. Transport connection alone never
 proves current data: the source remains UNKNOWN until a complete transaction
 confirms that identity. A changed epoch stops admission; it is not adopted.
 

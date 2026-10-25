@@ -21,6 +21,7 @@ class PersistentDriver(Tick):
         self.j = custody.Journal(self.path, self.reader.board,
                                 server='https://peer-one.example.test', initial_tx=9)
         self.j.retain(page())
+        self.j.bind_stream_source({'store_id': 'fixture', 'log_epoch': 'one'}, self.j.cursor)
         self.identity = Path(self.tmp.name) / 'identity.json'
         self.identity.write_text(json.dumps({'store_id': 'fixture', 'log_epoch': 'one'}))
 
@@ -84,3 +85,43 @@ class PersistentDriver(Tick):
         with self.assertRaises(custody.CustodyUnknown):
             driver.run(SimpleNamespace(state=missing, initial_tx=None))
         self.assertFalse(missing.exists())
+
+    def test_missing_source_binding_refuses_before_opening_transport(self):
+        self.j.db.execute('DROP TABLE stream_source')
+        with self.assertRaises(custody.CustodyUnknown):
+            self.run_driver(True)
+        self.assertEqual(self.writes, 0)
+        self.assertEqual(self.j.cursor, 10)
+
+    def test_source_binding_cannot_be_replaced_or_created_at_a_stale_cursor(self):
+        changed = {'store_id': 'replacement', 'log_epoch': 'new'}
+        before = self.j.db.execute('SELECT * FROM pending').fetchall()
+        with self.assertRaises(custody.CustodyUnknown):
+            self.j.bind_stream_source(changed, self.j.cursor)
+        with self.assertRaises(custody.CustodyUnknown):
+            self.j.bind_stream_source({'store_id': 'fixture', 'log_epoch': 'one'}, 9)
+        self.j.verify_stream_source({'store_id': 'fixture', 'log_epoch': 'one'})
+        self.assertEqual(self.j.db.execute('SELECT * FROM pending').fetchall(), before)
+        self.assertEqual(self.j.cursor, 10)
+
+    def test_explicit_transition_cli_binds_once_without_touching_pending_or_cursor(self):
+        self.j.db.execute('DROP TABLE stream_source')
+        before = self.j.db.execute('SELECT * FROM pending').fetchall()
+        argv = ['sync_work_items.py', '--native-authority-stdin', '--state', str(self.path),
+                '--actor', 'fixture', '--source', 'urn:fixture', '--bind-stream-source',
+                '--stream-identity', str(self.identity), '--expected-stream-cursor', '10']
+        with (patch.object(driver.sys, 'argv', argv),
+              patch.object(driver.sys, 'stdin', SimpleNamespace(buffer=io.BytesIO(b'{}'))),
+              patch.object(driver.native, 'from_authority', return_value=self.reader),
+              patch.object(driver.planes, 'SERVER', 'https://peer-one.example.test')):
+            self.assertEqual(driver.driver.main(), 0)
+        self.j.verify_stream_source({'store_id': 'fixture', 'log_epoch': 'one'})
+        self.assertEqual(self.j.cursor, 10)
+        self.assertEqual(self.j.db.execute('SELECT * FROM pending').fetchall(), before)
+
+    def test_changed_identity_file_cannot_adopt_prior_custody(self):
+        self.identity.write_text(json.dumps({'store_id': 'replacement', 'log_epoch': 'new'}))
+        with self.assertRaises(custody.CustodyUnknown):
+            self.run_driver(True)
+        self.assertEqual(self.writes, 0)
+        self.assertEqual(self.j.cursor, 10)
