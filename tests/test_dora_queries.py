@@ -9,6 +9,7 @@ deployment earlier than the merge never delivers it.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -27,7 +28,14 @@ assert spec.loader
 spec.loader.exec_module(ingest)
 
 REPO = "example/example-svc"
-WINDOW = {"repository": REPO, "start": "2026-10-14T00:00:00Z", "end": "2026-10-15T00:00:00Z"}
+STAGING = "urn:quipu:import:staging:example"
+NO_DATA = "urn:quipu:import:staging:none"
+WINDOW = {"repository": REPO, "start": "2026-10-14T00:00:00Z", "end": "2026-10-15T00:00:00Z",
+          "changeNow": "https://camayoc.local/window/change/2026-10",
+          "changePrev": "https://camayoc.local/window/change/2026-09",
+          "deployNow": "https://camayoc.local/window/deployment/2026-10",
+          "deployPrev": "https://camayoc.local/window/deployment/2026-09",
+          "staging1": STAGING, **{f"staging{i}": NO_DATA for i in range(2, 17)}}
 
 
 def sha(n: int) -> str:
@@ -79,7 +87,18 @@ EVENTS = [
     change(2, "reviewed", "2026-10-14T13:30:00Z", reviewState="approved"),
     # A deployment BEFORE the merge that (wrongly) lists the merge commit.
     deployed("2026-10-14T11:00:00Z", [sha(2)]),
+    # 4: delivered by a window-graph deployment whose includesCommit list sits only
+    # in the staged backfill graph (a correction to an existing record).
+    change(4, "created", "2026-10-14T09:00:00Z"),
+    change(4, "merged", "2026-10-14T09:30:00Z", commitSha=sha(4)),
+    deployed("2026-10-14T09:40:00Z", [sha(40)]),
 ]
+# 3 lives only in the staged graph and counts; 5 lives only in an unrelated named
+# graph and must not.
+ELSEWHERE = [(STAGING, change(3, "created", "2026-10-14T08:00:00Z")),
+             (STAGING, change(3, "merged", "2026-10-14T08:30:00Z", commitSha=sha(3))),
+             ("urn:example:unrelated", change(5, "created", "2026-10-14T08:00:00Z")),
+             ("urn:example:unrelated", change(5, "merged", "2026-10-14T08:30:00Z", commitSha=sha(5)))]
 
 
 @requires_quipu
@@ -88,11 +107,25 @@ class DoraQueries(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.db = str(Path(cls.tmp.name) / "dora.db")
-        for n, event in enumerate(EVENTS):
+        bodies = [ingest.episode_for(event, actor="tester") for event in EVENTS]
+        for graph, event in ELSEWHERE:
+            bodies.append(dict(ingest.episode_for(event, actor="tester"), graph=graph))
+        for n, body in enumerate(bodies):
             path = Path(cls.tmp.name) / f"{n:02d}.json"
-            path.write_text(json.dumps(ingest.episode_for(event, actor="tester")))
+            path.write_text(json.dumps(body))
             subprocess.run([str(QUIPU), "episode", str(path), "--db", cls.db],
                            check=True, capture_output=True, text=True)
+        # The staged correction: includesCommit for #4's merge on the window-graph
+        # deployment, loaded into the staging graph only.
+        node = ingest.episode_for(EVENTS[-1], actor="tester")["nodes"][0]["name"]
+        nt = (f"<http://aegis.gastown.local/ontology/{node}> "
+              f"<http://aegis.gastown.local/ontology/includesCommit> \"{sha(4)}\" .\n").encode()
+        ntfile = Path(cls.tmp.name) / "staged.nt"
+        ntfile.write_bytes(nt)
+        subprocess.run([str(QUIPU), "ingest", str(ntfile), "--graph", STAGING, "--timestamp",
+                        "2026-10-14T23:00:00Z", "--declare-count", "1", "--declare-sha256",
+                        hashlib.sha256(nt).hexdigest(), "--format", "nt", "--db", cls.db],
+                       check=True, capture_output=True, text=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -124,6 +157,27 @@ class DoraQueries(unittest.TestCase):
         self.assertEqual("2026-10-14T12:30:00Z", deployed_rows[f"{REPO}#1"][1])
         # Negative: the only deployment listing #2's merge commit predates the merge.
         self.assertEqual("none", deployed_rows[f"{REPO}#2"][1])
+
+
+    def test_graph_scope_is_windows_plus_the_named_staging_graph(self):
+        steps = self.rows("camayoc_dora_change_steps")
+        self.assertIn(f"{REPO}#3", steps)          # staged backfill counts
+        self.assertNotIn(f"{REPO}#5", steps)       # any other named graph does not
+        self.assertNotIn(f"{REPO}#5", self.rows("camayoc_dora_change_deployed"))
+
+    def test_a_staged_include_delivers_a_window_deployment(self):
+        self.assertEqual("2026-10-14T09:40:00Z", self.rows("camayoc_dora_change_deployed")[f"{REPO}#4"][1])
+
+    def test_without_staging_the_staged_rows_vanish(self):
+        global WINDOW
+        saved = WINDOW
+        WINDOW = dict(saved, staging1=NO_DATA)
+        try:
+            steps = self.rows("camayoc_dora_change_steps")
+            self.assertNotIn(f"{REPO}#3", steps)
+            self.assertEqual("none", self.rows("camayoc_dora_change_deployed")[f"{REPO}#4"][1])
+        finally:
+            WINDOW = saved
 
 
 if __name__ == "__main__":

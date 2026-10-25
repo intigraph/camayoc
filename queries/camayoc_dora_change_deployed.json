@@ -1,14 +1,14 @@
 {
   "action": "load",
   "name": "camayoc_dora_change_deployed",
-  "description": "DORA lead time last step (aegis-rb3): for each change merged in the window, the first SUCCEEDED deployment whose aegis:includesCommit names the change's merge commit. A change with deployedAt \"none\" is merged but not yet delivered; it is never credited to a deployment by time alone. A deployment earlier than the merge never delivers it, whatever it lists.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change ?mergedAt (MIN(COALESCE(STR(?deployedAt0), \"none\")) AS ?deployedAt) WHERE { GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:commitSha ?sha ; aegis:occurredAt ?mergedAt . } FILTER(STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") OPTIONAL { GRAPH ?gd { ?d a aegis:DeploymentEvent ; aegis:deploymentOutcome \"succeeded\" ; aegis:includesCommit ?sha ; aegis:occurredAt ?deployedAt0 . } FILTER(STR(?deployedAt0) >= STR(?mergedAt)) } } GROUP BY ?change ?mergedAt ORDER BY ?mergedAt",
+  "description": "DORA lead time last step (aegis-rb3): for each change merged in the window, the first SUCCEEDED deployment whose aegis:includesCommit names the change's merge commit. A change with deployedAt \"none\" is merged but not yet delivered; it is never credited to a deployment by time alone. A deployment earlier than the merge never delivers it, whatever it lists. Graphs are bound up front with VALUES (no per-graph string filter): the current and previous monthly window graphs, plus up to 16 exact staged-backfill graphs. An event older than the previous month is not read; its step reads as none/absent. includesCommit may come from a staged graph (corrections to existing deployments); the deployment itself must be in a deployment window graph.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change ?mergedAt (MIN(COALESCE(STR(?deployedAt0), \"none\")) AS ?deployedAt) WHERE { VALUES ?gm { <{changeNow}> <{changePrev}> <{staging1}> <{staging2}> <{staging3}> <{staging4}> <{staging5}> <{staging6}> <{staging7}> <{staging8}> <{staging9}> <{staging10}> <{staging11}> <{staging12}> <{staging13}> <{staging14}> <{staging15}> <{staging16}> } GRAPH ?gm { ?m a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"merged\" ; aegis:commitSha ?sha ; aegis:occurredAt ?mergedAt . } FILTER(STR(?mergedAt) >= \"{start}\" && STR(?mergedAt) < \"{end}\") OPTIONAL { VALUES ?gi { <{deployNow}> <{deployPrev}> <{staging1}> <{staging2}> <{staging3}> <{staging4}> <{staging5}> <{staging6}> <{staging7}> <{staging8}> <{staging9}> <{staging10}> <{staging11}> <{staging12}> <{staging13}> <{staging14}> <{staging15}> <{staging16}> } GRAPH ?gi { ?d aegis:includesCommit ?sha } VALUES ?gd { <{deployNow}> <{deployPrev}> } GRAPH ?gd { ?d a aegis:DeploymentEvent ; aegis:deploymentOutcome \"succeeded\" ; aegis:occurredAt ?deployedAt0 . } FILTER(STR(?deployedAt0) >= STR(?mergedAt)) } } GROUP BY ?change ?mergedAt ORDER BY ?mergedAt",
   "params": [
     {
       "name": "repository",
       "type": "text",
       "required": true,
-      "description": "change repository as owner/repo, e.g. scbrown/quipu"
+      "description": "change repository as owner/repo"
     },
     {
       "name": "start",
@@ -21,6 +21,126 @@
       "type": "text",
       "required": true,
       "description": "window end, RFC 3339 UTC (exclusive)"
+    },
+    {
+      "name": "changeNow",
+      "type": "iri",
+      "required": true,
+      "description": "change window graph for the window's end month, e.g. https://camayoc.local/window/change/2026-10"
+    },
+    {
+      "name": "changePrev",
+      "type": "iri",
+      "required": true,
+      "description": "change window graph for the month before changeNow"
+    },
+    {
+      "name": "deployNow",
+      "type": "iri",
+      "required": true,
+      "description": "deployment window graph for the window's end month, e.g. https://camayoc.local/window/deployment/2026-10"
+    },
+    {
+      "name": "deployPrev",
+      "type": "iri",
+      "required": true,
+      "description": "deployment window graph for the month before deployNow"
+    },
+    {
+      "name": "staging1",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging2",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging3",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging4",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging5",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging6",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging7",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging8",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging9",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging10",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging11",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging12",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging13",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging14",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging15",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging16",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
     }
   ]
 }
