@@ -70,6 +70,67 @@ class Coverage(unittest.TestCase):
         target.add((URIRef('https://example.invalid/other'), URIRef('https://schema.org/identifier'), Literal(IDS[1])))
         self.assertEqual(self.run_store(store)['status'], 'NOT_COVERED')
 
+    def test_server_compacted_query_subjects_match_full_iris_both_outcomes(self):
+        for second in (True, False):
+            store = Store(second)
+            full = self.run_store(store)
+            seen = []
+            def compacted(route, body):
+                result = store.post(route, body)
+                for row in result['rows']:
+                    if row['w'].startswith(legacy.BASE_NS):
+                        row['w'] = 'a:' + row['w'][len(legacy.BASE_NS):]
+                        seen.append(row['w'])
+                return result
+            actual = coverage.receipt(compacted, IDS, BOARD, IDS[0])
+            self.assertTrue(seen)  # Actual SPARQL results exercise the decoder.
+            for key in ('status', 'covered', 'missing', 'requests', 'writes'):
+                self.assertEqual(actual[key], full[key])
+
+    def test_only_exact_canonical_subject_forms_decode(self):
+        foreign = ['a:other', 'other:' + IDS[0], 'aegis:' + IDS[0],
+                   'a:' + IDS[0] + '-suffix', 'a:../' + IDS[0],
+                   'a:%64emo-canary', 'a:demo-canary\n', '_:' + IDS[0],
+                   'https://foreign.invalid/' + IDS[0],
+                   {'value': 'a:' + IDS[0]}, {'iri': 'a:' + IDS[0]}, None, 1]
+        for subject in foreign:
+            with self.subTest(subject=subject):
+                store = Store()
+                def substituted(route, body):
+                    result = store.post(route, body)
+                    for row in result['rows']:
+                        if row['w'] == legacy.BASE_NS + IDS[0]:
+                            row['w'] = subject
+                    return result
+                result = coverage.receipt(substituted, IDS, BOARD, IDS[0])
+                self.assertEqual(result['status'], 'UNKNOWN')
+                self.assertNotIn('covered', result)
+        for identifier in ('a:' + IDS[0], legacy.BASE_NS + IDS[0],
+                           {'value': IDS[0]}, IDS[1]):
+            with self.subTest(identifier=identifier):
+                def conflict(route, body):
+                    if '?id' in body['query']:
+                        return {'rows': [{'w': 'a:' + IDS[0], 'id': identifier}],
+                                'truncated': False}
+                    return Store().post(route, body)
+                result = coverage.receipt(conflict, IDS, BOARD, IDS[0])
+                self.assertEqual(result['status'], 'UNKNOWN')
+
+    def test_retained_triple_response_is_not_a_coverage_query_fixture(self):
+        # A retained ?w/?p/?v response proves the wire spelling, but cannot be
+        # replayed as a response to SELECT ?w or SELECT ?w ?id.
+        retained = {'rows': [{'w': 'a:' + IDS[0], 'p': 'rdf:type',
+                             'v': 'a:WorkItem'}], 'truncated': False}
+        result = coverage.receipt(lambda *_: retained, IDS, BOARD, IDS[0])
+        self.assertEqual(result['status'], 'UNKNOWN')
+        # Minimal projection isolates subject decoding; actual query/result
+        # semantics are covered by the RDF-backed parity test above.
+        for truncated in (True, False):
+            result = coverage.receipt(lambda *_: {'rows': [{'w': 'a:' + IDS[0]}],
+                'truncated': truncated, 'error': 'refused'}, IDS, BOARD, IDS[0])
+            self.assertEqual(result['status'], 'UNKNOWN')
+        self.assertEqual(retained['rows'][0]['w'], 'a:' + IDS[0])
+
     def test_identifier_owner_conflict_is_unknown(self):
         store = Store()
         def conflict(route, body):
