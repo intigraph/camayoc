@@ -75,6 +75,7 @@ class Transport:
             signal.signal(signal.SIGALRM, previous)
         if len(raw) > MAX_BYTES or self.clock() > self.end:
             raise Unknown('response byte or time budget exceeded')
+        self.last_response_bytes = len(raw)
         return json.loads(raw)
 
 
@@ -113,6 +114,7 @@ def receipt(post, items, board_graph, control, *, clock=time.monotonic):
             calls.append(entry)
             at = clock()
             result = post(route, dict(body, query=scoped))
+            entry['response_bytes'] = getattr(post, 'last_response_bytes', None)
             elapsed = clock() - at
             entry['seconds'] = elapsed
             if elapsed > 6 or clock() - start > DEADLINE:
@@ -174,6 +176,7 @@ def main(argv=None):
                       source_sha256=hashes)
     except Exception as error:
         result = {'status': 'UNKNOWN', 'error': type(error).__name__, 'requests': 0, 'writes': 0}
+    result['server'] = planes.SERVER
     print(json.dumps(result, sort_keys=True))
     return {'COVERED': 0, 'NOT_COVERED': 1}.get(result['status'], 2)
 
