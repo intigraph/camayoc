@@ -25,7 +25,7 @@ import exact_work_item_coverage as adapter
 
 FILES = ('scheduled_exact_coverage.py', 'exact_work_item_coverage.py',
          'backfill_work_items.py', 'planes.py', 'quipu_auth.py', 'seed_work_items.py')
-PLAN_KEYS = {'format', 'items', 'control', 'board_graph', 'server', 'source_sha256', 'tag'}
+PLAN_KEYS = {'format', 'items', 'control', 'board_graph', 'server', 'source_sha256', 'tag', 'valid_from', 'valid_until'}
 MAX_RECEIPT = 1024 * 1024
 
 
@@ -91,8 +91,9 @@ def load_plan(path, expected):
     if len(raw) > 16384 or digest(raw) != expected:
         raise Stop('plan digest differs')
     plan = json.loads(raw)
-    if not isinstance(plan, dict) or set(plan) != PLAN_KEYS or plan['format'] != 'camayoc-scheduled-coverage-v1':
+    if not isinstance(plan, dict) or set(plan) != PLAN_KEYS or plan['format'] != 'camayoc-scheduled-coverage-v2':
         raise Stop('invalid plan')
+    adapter.UTCWindow(plan['valid_from'], plan['valid_until'])
     origin = urllib.parse.urlsplit(plan['server'])
     if (origin.scheme not in ('http', 'https') or not origin.hostname or origin.username or
             origin.password or origin.query or origin.fragment or origin.path):
@@ -143,9 +144,12 @@ def source_receipt(plan):
     return actual
 
 
-def checked_output(argv, maximum=MAX_RECEIPT):
+def checked_output(argv, maximum=MAX_RECEIPT, *, validity=None):
     # Local metadata readers only. Never include their raw errors in a receipt.
-    result = subprocess.run(argv, capture_output=True, timeout=5, check=False)
+    timeout = 5 if validity is None else min(5, validity.remaining())
+    result = subprocess.run(argv, capture_output=True, timeout=timeout, check=False)
+    if validity is not None:
+        validity.remaining()
     if result.returncode or len(result.stdout) > maximum:
         raise Stop('local scheduler evidence unavailable')
     return result.stdout
@@ -252,21 +256,30 @@ def _verify_scheduler(exact, current, ancestry, records, now, diagnostic):
     return found[0]
 
 
-def scheduler_receipt(exact):
+def scheduler_receipt(exact, *, validity=None):
     try:
-        current = checked_output(['/usr/bin/crontab', '-l']).decode()
+        if validity is not None:
+            validity.remaining()
+        current = checked_output(['/usr/bin/crontab', '-l'], validity=validity).decode()
         ancestry = []
         pid = os.getppid()
         for _ in range(12):
             if pid <= 1:
                 break
+            if validity is not None:
+                validity.remaining()
             identity = proc_identity(pid)
             ancestry.append(identity)
             pid = identity['ppid']
+        if validity is not None:
+            validity.remaining()
         raw = checked_output(['/usr/bin/journalctl', '--unit=cron.service', '--since=-1min',
-                              '--output=json', '--no-pager', '--quiet'])
+                              '--output=json', '--no-pager', '--quiet'], validity=validity)
         records = [json.loads(line) for line in raw.splitlines()]
-        return verify_scheduler(exact, current, ancestry, records, time.time())
+        now = time.time() if validity is None else validity.clock()
+        if validity is not None:
+            validity.remaining(now)
+        return verify_scheduler(exact, current, ancestry, records, now)
     except Stop as error:
         if error.scheduler_diagnostics is None:
             error.scheduler_diagnostics = scheduler_diagnostics()
@@ -300,10 +313,12 @@ def lock_holders(info):
 
 
 @contextlib.contextmanager
-def locked(paths):
+def locked(paths, *, validity=None):
     with contextlib.ExitStack() as stack:
         descriptors = []
         for path in paths:
+            if validity is not None:
+                validity.remaining()
             fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
             stream = stack.enter_context(os.fdopen(fd, 'r+'))
             info = os.fstat(fd)
@@ -313,6 +328,8 @@ def locked(paths):
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 # Do not copy potentially secret-bearing holder argv into output.
+                if validity is not None:
+                    validity.remaining()
                 raise Stop('lock busy; no child; holders=' + json.dumps(lock_holders(info), sort_keys=True))
             after = path.lstat()
             if (after.st_dev, after.st_ino) != (info.st_dev, info.st_ino):
@@ -334,17 +351,21 @@ def persist_new(path, value):
         os.close(fd)
 
 
-def child_receipt(plan, work, run_id, *, lock_fds=()):
+def child_receipt(plan, work, run_id, *, lock_fds=(), validity=None):
     argv = [sys.executable, str(Path(__file__).resolve().parent / 'exact_work_item_coverage.py'),
             '--enable', '--item', plan['items'][0], '--item', plan['items'][1],
-            '--control', plan['control'], '--board-graph', plan['board_graph'], '--run-id', run_id]
+            '--control', plan['control'], '--board-graph', plan['board_graph'], '--run-id', run_id,
+            '--valid-from', plan['valid_from'], '--valid-until', plan['valid_until']]
     # Bounded reader source is pinned before spawn. Keep all raw child output in
     # private files, never in the scheduler log. Timeout consumes the attempt.
     with os.fdopen(os.open(work / 'stdout', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600), 'wb') as out, \
             os.fdopen(os.open(work / 'stderr', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600), 'wb') as err:
-        result = subprocess.run(argv, stdout=out, stderr=err, timeout=73,
+        remaining = 73 if validity is None else min(73, validity.remaining())
+        result = subprocess.run(argv, stdout=out, stderr=err, timeout=remaining,
                                 env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', QUIPU_SERVER=plan['server']),
                                 pass_fds=lock_fds)
+    if validity is not None:
+        validity.remaining()
     with (work / 'stdout').open('rb') as stream:
         raw = stream.read(MAX_RECEIPT + 1)
     if len(raw) > MAX_RECEIPT:
@@ -375,27 +396,40 @@ def child_receipt(plan, work, run_id, *, lock_fds=()):
     return receipt
 
 
-def execute(plan, path, sha, *, scheduler=scheduler_receipt, child=child_receipt):
+def execute(plan, path, sha, *, scheduler=scheduler_receipt, child=child_receipt, clock=None):
+    clock = clock or time.time
     work = path.parent
     if load_plan(path, sha) != plan:
         raise Stop('plan changed during admission')
     # Claim the scheduled invocation before admission too: a busy lock or
     # UNKNOWN scheduler/source must not become a retry on the next cron tick.
     # No child is possible until the independent evidence and both locks pass.
+    try:
+        claim_at = clock()
+        if type(claim_at) not in (int, float) or not adapter.math.isfinite(claim_at):
+            claim_at = None
+    except Exception:
+        claim_at = None
     persist_new(work / 'attempt.json', {'state': 'consumed-before-child',
-                                      'plan_sha256': sha, 'at': time.time()})
+                                      'plan_sha256': sha, 'at': claim_at})
     locks = (Path.home() / '.local/state/camayoc-producer/run.lock',
              Path.home() / '.local/state/camayoc-workitems/seeds-state.lock')
     try:
-        schedule = scheduler(entry(path, sha, plan))
-        with locked(locks) as descriptors:
+        validity = adapter.UTCWindow(plan['valid_from'], plan['valid_until'], clock=clock)
+        validity.remaining(claim_at)
+        schedule = scheduler(entry(path, sha, plan), validity=validity)
+        validity.remaining()
+        with locked(locks, validity=validity) as descriptors:
             if (Path.home() / '.aegis-hold').exists() or (Path.home() / '.aegis-hold').is_symlink():
                 raise Stop('operator hold present')
             hashes = source_receipt(plan)
+            validity.remaining()
             persist_new(work / 'admission.json', {'source_sha256': hashes, 'scheduler': schedule,
                                                  'plan_sha256': sha, 'server': plan['server']})
+            validity.remaining()
             result = child(plan, work, digest(json.dumps(schedule, sort_keys=True).encode())[:32],
-                           lock_fds=descriptors)
+                           lock_fds=descriptors, validity=validity)
+            validity.remaining()
             if (source_receipt(plan) != hashes or (Path.home() / '.aegis-hold').exists() or
                     (Path.home() / '.aegis-hold').is_symlink()):
                 raise Stop('source or hold changed during child')

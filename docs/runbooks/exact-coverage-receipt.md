@@ -2,16 +2,18 @@
 
 `scripts/exact_work_item_coverage.py` is a read-only, default-OFF adapter for a
 separately authorized coverage proof. It installs no schedule and never invokes
-the legacy tracker, writes a snapshot, resets custody or updates the global
+the legacy tracker, writes graph metadata, resets custody or updates the global
 coverage cache. Source approval does not authorize a scheduled activation.
 
 Supply exactly two distinct item IDs, one positive control among them, one
-explicit board graph and a bounded caller run identity:
+explicit board graph, a bounded caller run identity and separately admitted UTC
+validity bounds (the variables below have no default):
 
 ```sh
 python3 scripts/exact_work_item_coverage.py --enable \
   --item demo-canary --item demo-witness --control demo-canary \
-  --board-graph https://example.invalid/board --run-id example-proof
+  --board-graph https://example.invalid/board --run-id example-proof \
+  --valid-from "$VALID_FROM_UTC" --valid-until "$VALID_UNTIL_UTC"
 ```
 
 The run identity is **caller-declared**, not an attestation that a scheduler ran
@@ -75,7 +77,8 @@ An activation packet must supply a private directory and owner-only JSON plan,
 sealed by its SHA256. The exact two approved target IDs are sealed in that plan;
 there are no command-line target overrides. The schema is:
 
-- `format`: `camayoc-scheduled-coverage-v1`;
+- `format`: `camayoc-scheduled-coverage-v2`;
+- `valid_from`, `valid_until`: exact `YYYY-MM-DDTHH:MM:SSZ`, ordered start/end;
 - `items`: exactly two distinct native IDs, positive control first;
 - `control`: exactly the first ID;
 - `board_graph`: the approved explicit board graph;
@@ -107,7 +110,7 @@ trusted journal `/usr/sbin/cron` executable identity, cursor/PID/start ticks and
 exact-entry hash are retained before
 the child. An environment variable or caller run-id cannot substitute. This
 route intentionally supports Debian cron only: absent journal access, another
-scheduler, a changed parent or incomplete attribution stops before the attempt.
+scheduler, a changed parent or incomplete attribution stops before the child.
 It never falls back to a self-declared scheduled identity. Root-process executable
 symlinks are not read: Linux gates those through ptrace permissions. Root UID
 and command-name ancestry are paired with the trusted journal executable, not
@@ -160,3 +163,43 @@ No command, arguments, journal message, cursor, PID or raw input is copied into
 these diagnostics. The existing acceptance predicates, exact-one-match rule,
 consumed attempt and no-child/no-retry behavior remain unchanged. A diagnostic
 source update does not authorize installation or a new scheduled attempt.
+
+## Finite UTC validity and private snapshots
+
+New sealed plans use v2; missing, malformed or v1 plans refuse without upgrade.
+A valid schema with an expired or not-yet-valid window still durably consumes
+its exclusive attempt before admission. UTC bounds form a half-open interval:
+start is valid, end is expired. The same local wall-clock source is checked
+before each scheduler collector, before the child and before every HTTP read;
+backward clock movement within an invocation refuses. No external clock or
+scheduler identity is inferred from validity. Reader, whole-request and child
+timeouts are clipped to remaining validity; late outcomes cannot become success.
+The hourly entry therefore cannot do useful work after expiry even if cleanup
+failed. Cleanup remains mandatory; expiry never resets a consumed attempt.
+
+The same reader module offers a separately enabled private snapshot mode:
+
+```sh
+python3 scripts/exact_work_item_coverage.py --enable \
+  --snapshot-phase before --snapshot-root "$FRESH_PRIVATE_ROOT" \
+  --manifest "$SEALED_PLAN" --manifest-sha256 "$PLAN_SHA256"
+```
+
+This is an interface example, not permission to execute. The plan supplies the
+same two IDs, positive control, board graph, source hashes and UTC window. The
+six pinned modules include the snapshot implementation. BEFORE exclusively
+creates a new owner-private root; any collision refuses. AFTER reuses only its
+scope/inode-bound successful BEFORE and exclusively claims its own phase. No
+symlink component is followed; files are exclusive, owner-only evidence. Failed
+or partial phases cannot retry, overwrite another root or touch old custody.
+
+The payloads preserve the exact two-subject board/records queries, `LIMIT 257`,
+strict IRI normalization, identity/provenance controls and full-row equality.
+Descriptions, versions, times and every other row value remain in comparisons.
+Each phase has at most two attempts, each six seconds and 256 KiB; both phases
+share a 24-second ceiling. Attempt records precede HTTP, and bounded raw response,
+status and validation predicates persist before assertions. Exceptions retain
+types, never credential-bearing messages. Combined with the unchanged coverage
+ceiling, a separately admitted envelope permits at most 19 data attempts and
+94 seconds of aggregate data-read budget. Default OFF still performs no reads.
+An inert proposal, source approval or snapshot PASS is never scheduled acceptance.
