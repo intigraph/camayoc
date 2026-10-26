@@ -148,3 +148,15 @@ restore an old full crontab, delete attempt evidence or reset custody. Preserve
 the editor snapshot/readback and independently verify default OFF, no remaining
 entry, unchanged native records and the affirmative natural-run receipt before
 reporting runtime acceptance. Source tests use private fixtures only.
+
+### Private scheduler diagnostics
+
+Scheduler admission failures retain bounded counts and enumerated first-rejecting
+stages in the existing private `result.json`. `NO_MATCH` and `AMBIGUOUS` distinguish
+zero and multiple accepted candidates; missing or unreadable evidence remains
+`INPUT_UNREADABLE`, with unavailable counts represented by null, not zero.
+Counts saturate at 65535 and are diagnostic only, never scheduler identity proof.
+No command, arguments, journal message, cursor, PID or raw input is copied into
+these diagnostics. The existing acceptance predicates, exact-one-match rule,
+consumed attempt and no-child/no-retry behavior remain unchanged. A diagnostic
+source update does not authorize installation or a new scheduled attempt.

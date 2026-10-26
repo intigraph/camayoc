@@ -216,6 +216,104 @@ class ScheduledCoverage(unittest.TestCase):
             with self.assertRaises(subject.Stop):
                 subject.verify_scheduler(exact, exact, fake, [record], 1001)
 
+    def scheduler_fixture(self):
+        exact = subject.entry(self.path, self.sha, self.plan)
+        import pwd
+        user = pwd.getpwuid(os.getuid()).pw_name
+        record = {'_UID': '0', '_EXE': '/usr/sbin/cron', '_SYSTEMD_UNIT': 'cron.service',
+                  '_PID': '40', '__CURSOR': 'PRIVATE-CURSOR', '__REALTIME_TIMESTAMP': '1000000000',
+                  'MESSAGE': '(' + user + ') CMD (' + exact.split(' ', 5)[5] + ')'}
+        return exact, [{'pid': 40, 'uid': 0, 'comm': 'cron', 'start_ticks': 45}], record
+
+    def test_scheduler_diagnostics_distinguish_empty_ambiguous_and_each_filter(self):
+        exact, ancestors, record = self.scheduler_fixture()
+        variants = [([], 'NO_MATCH', None), ([record, record], 'AMBIGUOUS', None)]
+        for key, value, stage, kind in (
+                ('_UID', '1000', 'uid', 'NO_MATCH'),
+                ('_EXE', '/private/secret', 'executable', 'NO_MATCH'),
+                ('_SYSTEMD_UNIT', 'private.service', 'unit', 'NO_MATCH'),
+                ('MESSAGE', 'PRIVATE-MESSAGE', 'message', 'NO_MATCH'),
+                ('_PID', '41', 'pid', 'NO_MATCH'),
+                ('_PID', 'invalid', 'record_fields', 'INPUT_UNREADABLE'),
+                ('__CURSOR', '', 'cursor', 'INPUT_UNREADABLE'),
+                ('_UID', None, 'uid', 'INPUT_UNREADABLE'),
+                ('__REALTIME_TIMESTAMP', '0', 'timestamp', 'NO_MATCH'),
+                ('__REALTIME_TIMESTAMP', '1002000000', 'timestamp', 'NO_MATCH'),
+                ('__REALTIME_TIMESTAMP', 'invalid', 'record_fields', 'INPUT_UNREADABLE')):
+            variants.append(([dict(record, **{key: value})], kind, stage))
+        variants.append(([{k: v for k, v in record.items() if k != '_UID'}],
+                         'INPUT_UNREADABLE', 'uid'))
+        with mock.patch.object(subject.subprocess, 'run', side_effect=AssertionError('live collector')), \
+                mock.patch.object(subject, 'proc_identity', side_effect=AssertionError('live proc')):
+            for records, kind, stage in variants:
+                with self.subTest(kind=kind, stage=stage):
+                    with self.assertRaises(subject.Stop) as caught:
+                        subject.verify_scheduler(exact, exact, ancestors, records, 1001)
+                    diagnostic = caught.exception.scheduler_diagnostics
+                    self.assertEqual(diagnostic['reason_kind'], kind)
+                    self.assertEqual(diagnostic['record_count'], len(records))
+                    self.assertEqual(diagnostic['root_cron_ancestor_count'], 1)
+                    self.assertEqual(diagnostic['accepted_candidate_count'],
+                                     None if kind == 'INPUT_UNREADABLE' else 2 if kind == 'AMBIGUOUS' else 0)
+                    if stage:
+                        self.assertEqual(diagnostic['failed_stage_counts'][stage], 1)
+                    raw = json.dumps(diagnostic)
+                    for secret in ('PRIVATE', exact, 'journal_cursor', '/private/secret', 'private.service'):
+                        self.assertNotIn(secret, raw)
+            self.assertEqual(subject.verify_scheduler(exact, exact, ancestors, [record], 1001)['pid'], 40)
+            self.assertEqual(subject.verify_scheduler(exact, exact, ancestors,
+                             [dict(record, _PID='41'), record], 1001)['pid'], 40)
+
+    def test_scheduler_invalid_inputs_are_unknown_not_observed_empty(self):
+        exact, ancestors, record = self.scheduler_fixture()
+        for ancestry, records in ((None, [record]), (ancestors, None), (ancestors, [None])):
+            with self.subTest(ancestry=ancestry, records=records):
+                with self.assertRaises(subject.Stop) as caught:
+                    subject.verify_scheduler(exact, exact, ancestry, records, 1001)
+                diagnostic = caught.exception.scheduler_diagnostics
+                self.assertEqual(diagnostic['reason_kind'], 'INPUT_UNREADABLE')
+                self.assertIsNone(diagnostic['accepted_candidate_count'])
+        with mock.patch.object(subject, 'checked_output', side_effect=PermissionError('PRIVATE')) as reader:
+            with self.assertRaises(subject.Stop) as caught:
+                subject.scheduler_receipt(exact)
+            reader.assert_called_once()
+            self.assertEqual(caught.exception.scheduler_diagnostics, subject.scheduler_diagnostics())
+            self.assertNotIn('PRIVATE', str(caught.exception))
+
+    def test_private_scheduler_diagnostics_survive_stop_before_child_without_retry(self):
+        exact, ancestors, record = self.scheduler_fixture()
+        def scheduler(_):
+            self.assertTrue((self.work / 'attempt.json').exists())
+            return subject.verify_scheduler(exact, exact, ancestors, [dict(record, MESSAGE='PRIVATE')], 1001)
+        with mock.patch.object(subject.subprocess, 'run', side_effect=AssertionError('live collector')), \
+                mock.patch.object(subject, 'proc_identity', side_effect=AssertionError('live proc')):
+            result = self.run_once(scheduler=scheduler)
+        self.assertEqual(result['status'], 'UNKNOWN')
+        self.assertTrue(result['attempt_consumed'])
+        self.assertEqual(result['scheduler_diagnostics']['failed_stage_counts']['message'], 1)
+        self.assertEqual(result, json.loads((self.work / 'result.json').read_text()))
+        self.assertEqual((self.work / 'result.json').stat().st_mode & 0o777, 0o600)
+        self.assertEqual((self.work / 'result.json').stat().st_uid, os.getuid())
+        self.assertFalse((self.work / 'admission.json').exists())
+        self.child.assert_not_called()
+        self.assertNotIn('PRIVATE', json.dumps(result))
+        with self.assertRaises(FileExistsError):
+            self.run_once(scheduler=scheduler)
+
+    def test_scheduler_diagnostic_output_is_fixed_and_bounded(self):
+        value = subject.scheduler_diagnostics()
+        for change in ({'reason_kind': 'PRIVATE'}, {'record_count': -1},
+                       {'record_count': True}, {'record_count': 65536},
+                       {'extra': 'PRIVATE'}, {'failed_stage_counts': {'PRIVATE': 1}}):
+            result = subject.safe_scheduler_diagnostics(dict(value, **change))
+            self.assertEqual(result, subject.scheduler_diagnostics())
+            self.assertNotIn('PRIVATE', json.dumps(result))
+        self.scheduler.side_effect = subject.Stop('no receipt', scheduler_diagnostics={'raw': 'PRIVATE'})
+        result = self.run_once()
+        self.assertEqual(result['scheduler_diagnostics'], subject.scheduler_diagnostics())
+        self.assertNotIn('PRIVATE', json.dumps(result))
+        self.child.assert_not_called()
+
     def test_real_child_receipt_boundary_rejects_errors_and_caps(self):
         good = {'status': 'COVERED', 'writes': 0, 'requests': 15, 'seconds': 1.0,
                 'server': self.plan['server'],
