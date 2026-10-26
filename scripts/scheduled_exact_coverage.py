@@ -32,6 +32,43 @@ MAX_RECEIPT = 1024 * 1024
 class Stop(ValueError):
     """Admission or outcome is unknown; do not retry automatically."""
 
+    def __init__(self, message, *, scheduler_diagnostics=None):
+        super().__init__(message)
+        self.scheduler_diagnostics = scheduler_diagnostics
+
+
+DIAGNOSTIC_LIMIT = 65535
+SCHEDULER_STAGES = ('entry', 'ancestry', 'uid', 'executable', 'unit', 'message',
+                    'record_fields', 'pid', 'cursor', 'timestamp')
+
+
+def scheduler_diagnostics():
+    # None means unavailable, never an observed empty input. Fixed, bounded
+    # fields only: no command, cursor, message, PID or other source text.
+    return {'reason_kind': 'INPUT_UNREADABLE', 'entry_count': None,
+            'root_cron_ancestor_count': None, 'record_count': None,
+            'accepted_candidate_count': None,
+            'failed_stage_counts': {key: 0 for key in SCHEDULER_STAGES}}
+
+
+def safe_scheduler_diagnostics(value):
+    """Only this fixed private diagnostic schema may cross Stop -> result."""
+    empty = scheduler_diagnostics()
+    if not isinstance(value, dict) or set(value) != set(empty):
+        return empty
+    if value['reason_kind'] not in ('NO_MATCH', 'AMBIGUOUS', 'INPUT_UNREADABLE'):
+        return empty
+    for key in ('entry_count', 'root_cron_ancestor_count', 'record_count',
+                'accepted_candidate_count'):
+        count = value[key]
+        if count is not None and (type(count) is not int or not 0 <= count <= DIAGNOSTIC_LIMIT):
+            return empty
+    stages = value['failed_stage_counts']
+    if (not isinstance(stages, dict) or set(stages) != set(SCHEDULER_STAGES) or
+            any(type(n) is not int or not 0 <= n <= DIAGNOSTIC_LIMIT for n in stages.values())):
+        return empty
+    return dict(value, failed_stage_counts=dict(stages))
+
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -127,48 +164,116 @@ def proc_identity(pid, *, proc_root=Path('/proc')):
 
 def verify_scheduler(exact, current, ancestry, records, now):
     """Independent root cron start + live ancestry, not an environment run-id."""
+    diagnostic = scheduler_diagnostics()
+    try:
+        return _verify_scheduler(exact, current, ancestry, records, now, diagnostic)
+    except Stop as error:
+        error.scheduler_diagnostics = safe_scheduler_diagnostics(diagnostic)
+        raise
+    except Exception:
+        # Invalid/missing input remains UNKNOWN. Do not retain exception text.
+        diagnostic['reason_kind'] = 'INPUT_UNREADABLE'
+        raise Stop('local scheduler evidence unavailable',
+                   scheduler_diagnostics=safe_scheduler_diagnostics(diagnostic)) from None
+
+
+def _verify_scheduler(exact, current, ancestry, records, now, diagnostic):
+    def count(value):
+        return min(value, DIAGNOSTIC_LIMIT)
+
+    def failed(stage):
+        counts = diagnostic['failed_stage_counts']
+        counts[stage] = count(counts[stage] + 1)
+
+    diagnostic['entry_count'] = count(current.splitlines().count(exact))
     if current.splitlines().count(exact) != 1:
+        diagnostic['reason_kind'] = 'NO_MATCH' if diagnostic['entry_count'] == 0 else 'AMBIGUOUS'
+        failed('entry')
         raise Stop('exact scheduled entry absent or duplicated')
     # This route supports Debian cron only; unsupported schedulers remain UNKNOWN.
     cron = {p['pid']: p for p in ancestry if p['uid'] == 0 and p['comm'] == 'cron'}
+    diagnostic['root_cron_ancestor_count'] = count(len(cron))
     if not cron:
+        diagnostic['reason_kind'] = 'NO_MATCH'
+        failed('ancestry')
         raise Stop('no root cron ancestor')
     command = exact.split(' ', 5)[5]
     user = __import__('pwd').getpwuid(os.getuid()).pw_name
     message = '(' + user + ') CMD (' + command + ')'
+    diagnostic['record_count'] = count(len(records))
     found = []
+    unreadable = False
     for record in records:
-        if (record.get('_UID') != '0' or record.get('_EXE') != '/usr/sbin/cron' or
-                record.get('_SYSTEMD_UNIT') != 'cron.service' or record.get('MESSAGE') != message):
+        if not isinstance(record, dict):
+            # The previous decoder would raise here, never admit a child.
+            raise TypeError('invalid record')
+        if any(key not in record for key in ('_UID', '_EXE', '_SYSTEMD_UNIT', 'MESSAGE',
+                                             '_PID', '__REALTIME_TIMESTAMP', '__CURSOR')):
+            unreadable = True
+        if (any(not isinstance(record.get(key), str) for key in
+                ('_UID', '_EXE', '_SYSTEMD_UNIT', 'MESSAGE', '__CURSOR')) or
+                not record.get('__CURSOR')):
+            unreadable = True
+        # Same ordered predicates/short circuit as before; counts name the
+        # first rejecting stage, not an independent scheduler identity proof.
+        rejected = False
+        for key, expected, stage in (('_UID', '0', 'uid'),
+                                      ('_EXE', '/usr/sbin/cron', 'executable'),
+                                      ('_SYSTEMD_UNIT', 'cron.service', 'unit'),
+                                      ('MESSAGE', message, 'message')):
+            if record.get(key) != expected:
+                failed(stage)
+                rejected = True
+                break
+        if rejected:
             continue
         try:
             pid = int(record['_PID'])
             at = int(record['__REALTIME_TIMESTAMP']) / 1000000
             cursor = record['__CURSOR']
         except (KeyError, TypeError, ValueError):
+            unreadable = True
+            failed('record_fields')
             continue
         if pid in cron and isinstance(cursor, str) and cursor and 0 <= now - at <= 60:
             found.append({'journal_cursor': cursor, 'pid': pid, 'at': at,
                           'start_ticks': cron[pid]['start_ticks'], 'entry_sha256': digest(exact.encode())})
+        elif pid not in cron:
+            failed('pid')
+        elif not isinstance(cursor, str) or not cursor:
+            failed('cursor')
+        else:
+            failed('timestamp')
+    diagnostic['accepted_candidate_count'] = None if unreadable else count(len(found))
     if len(found) != 1:
+        diagnostic['reason_kind'] = ('INPUT_UNREADABLE' if unreadable else
+                                     'NO_MATCH' if not found else 'AMBIGUOUS')
         raise Stop('one independent root cron start receipt required')
     return found[0]
 
 
 def scheduler_receipt(exact):
-    current = checked_output(['/usr/bin/crontab', '-l']).decode()
-    ancestry = []
-    pid = os.getppid()
-    for _ in range(12):
-        if pid <= 1:
-            break
-        identity = proc_identity(pid)
-        ancestry.append(identity)
-        pid = identity['ppid']
-    raw = checked_output(['/usr/bin/journalctl', '--unit=cron.service', '--since=-1min',
-                          '--output=json', '--no-pager', '--quiet'])
-    records = [json.loads(line) for line in raw.splitlines()]
-    return verify_scheduler(exact, current, ancestry, records, time.time())
+    try:
+        current = checked_output(['/usr/bin/crontab', '-l']).decode()
+        ancestry = []
+        pid = os.getppid()
+        for _ in range(12):
+            if pid <= 1:
+                break
+            identity = proc_identity(pid)
+            ancestry.append(identity)
+            pid = identity['ppid']
+        raw = checked_output(['/usr/bin/journalctl', '--unit=cron.service', '--since=-1min',
+                              '--output=json', '--no-pager', '--quiet'])
+        records = [json.loads(line) for line in raw.splitlines()]
+        return verify_scheduler(exact, current, ancestry, records, time.time())
+    except Stop as error:
+        if error.scheduler_diagnostics is None:
+            error.scheduler_diagnostics = scheduler_diagnostics()
+        raise
+    except Exception:
+        raise Stop('local scheduler evidence unavailable',
+                   scheduler_diagnostics=scheduler_diagnostics()) from None
 
 
 def lock_holders(info):
@@ -298,6 +403,8 @@ def execute(plan, path, sha, *, scheduler=scheduler_receipt, child=child_receipt
         result = {'status': 'UNKNOWN', 'error': type(error).__name__, 'writes': 0,
                   'reason': str(error) if isinstance(error, Stop) else 'outcome unavailable',
                   'attempt_consumed': True}
+        if isinstance(error, Stop) and error.scheduler_diagnostics is not None:
+            result['scheduler_diagnostics'] = safe_scheduler_diagnostics(error.scheduler_diagnostics)
     persist_new(work / 'result.json', result)
     return result
 
