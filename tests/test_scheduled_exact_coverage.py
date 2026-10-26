@@ -34,7 +34,10 @@ class ScheduledCoverage(unittest.TestCase):
             path.touch(mode=0o600)
         self.home_patch = mock.patch.dict(os.environ, HOME=str(self.home))
         self.home_patch.start()
-        self.plan = {'format': 'camayoc-scheduled-coverage-v1',
+        self.now = 1700000000
+        self.plan = {'format': 'camayoc-scheduled-coverage-v2',
+                     'valid_from': '2023-11-14T22:12:20Z',
+                     'valid_until': '2023-11-14T22:18:20Z',
                      'items': ['demo-canary', 'demo-witness'], 'control': 'demo-canary',
                      'board_graph': 'https://example.invalid/board', 'server': 'https://store.example.invalid',
                      'tag': 'one-proof',
@@ -57,7 +60,8 @@ class ScheduledCoverage(unittest.TestCase):
     def run_once(self, **kwargs):
         return subject.execute(self.plan, self.path, self.sha,
                                scheduler=kwargs.get('scheduler', self.scheduler),
-                               child=kwargs.get('child', self.child))
+                               child=kwargs.get('child', self.child),
+                               clock=kwargs.get('clock', lambda: self.now))
 
     def test_default_off_does_not_touch_plan_locks_source_scheduler_or_child(self):
         with mock.patch.object(subject, 'load_plan', side_effect=AssertionError), \
@@ -282,7 +286,7 @@ class ScheduledCoverage(unittest.TestCase):
 
     def test_private_scheduler_diagnostics_survive_stop_before_child_without_retry(self):
         exact, ancestors, record = self.scheduler_fixture()
-        def scheduler(_):
+        def scheduler(_, **kwargs):
             self.assertTrue((self.work / 'attempt.json').exists())
             return subject.verify_scheduler(exact, exact, ancestors, [dict(record, MESSAGE='PRIVATE')], 1001)
         with mock.patch.object(subject.subprocess, 'run', side_effect=AssertionError('live collector')), \

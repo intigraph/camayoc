@@ -230,11 +230,13 @@ class Coverage(unittest.TestCase):
     def test_cli_exit_codes_and_run_identity_are_not_schedule_attestation(self):
         for second, status, code in ((True, 'COVERED', 0), (False, 'NOT_COVERED', 1)):
             with self.subTest(status=status), patch.object(coverage, 'Transport', return_value=Store(second).post), \
-                    patch.object(coverage.quipu_auth, 'token', return_value='synthetic'):
+                    patch.object(coverage.quipu_auth, 'token', return_value='synthetic'), \
+                    patch.object(coverage.time, 'time', return_value=1700000000):
                 output = io.StringIO()
                 with contextlib.redirect_stdout(output):
                     actual = coverage.main(['--enable', '--item', IDS[0], '--item', IDS[1],
-                        '--control', IDS[0], '--board-graph', BOARD, '--run-id', 'private-test'])
+                        '--control', IDS[0], '--board-graph', BOARD, '--run-id', 'private-test',
+                        '--valid-from', '2023-11-14T22:12:20Z', '--valid-until', '2023-11-14T22:18:20Z'])
                 result = json.loads(output.getvalue())
                 self.assertEqual((actual, result['status']), (code, status))
                 self.assertEqual(result['invocation'], 'caller-declared')
