@@ -433,6 +433,7 @@ def execute(plan, path, sha, *, scheduler=scheduler_receipt, child=child_receipt
             if (source_receipt(plan) != hashes or (Path.home() / '.aegis-hold').exists() or
                     (Path.home() / '.aegis-hold').is_symlink()):
                 raise Stop('source or hold changed during child')
+            validity.remaining()
     except Exception as error:
         result = {'status': 'UNKNOWN', 'error': type(error).__name__, 'writes': 0,
                   'reason': str(error) if isinstance(error, Stop) else 'outcome unavailable',

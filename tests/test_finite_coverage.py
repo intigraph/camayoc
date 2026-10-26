@@ -185,6 +185,40 @@ class FiniteCoverage(unittest.TestCase):
             self.assertEqual(result['status'], 'UNKNOWN')
             child.assert_not_called()
 
+    def test_final_real_source_verification_cannot_settle_a_late_child_success(self):
+        real_source = scheduled.source_receipt
+        for boundary in ('in-window', 'expired', 'backward'):
+            self.now = 1700000000
+            path, sha = self.save_plan('settlement-'+boundary)
+            checks = []
+            def verify(plan):
+                hashes = real_source(plan)
+                checks.append(hashes)
+                if len(checks) == 2:
+                    if boundary == 'expired':
+                        self.now = self.end
+                    elif boundary == 'backward':
+                        self.now -= 1
+                return hashes
+            scheduler = mock.Mock(return_value={'pid': 40, 'journal_cursor': 'synthetic'})
+            child = mock.Mock(return_value={'status': 'COVERED', 'writes': 0})
+            with self.subTest(boundary=boundary), mock.patch.object(scheduled, 'source_receipt', side_effect=verify):
+                result = scheduled.execute(self.plan, path, sha, scheduler=scheduler, child=child,
+                                           clock=lambda: self.now)
+                self.assertEqual(len(checks), 2)
+                self.assertEqual(checks[0], self.plan['source_sha256'])
+                self.assertEqual(checks[1], checks[0])
+                self.assertEqual(result['status'], 'COVERED' if boundary == 'in-window' else 'UNKNOWN')
+                self.assertEqual(json.loads((path.parent/'result.json').read_text()), result)
+                self.assertTrue((path.parent/'attempt.json').is_file())
+                if boundary != 'in-window':
+                    self.assertTrue(result['attempt_consumed'])
+                scheduler.assert_called_once(); child.assert_called_once()
+                with self.assertRaises(FileExistsError):
+                    scheduled.execute(self.plan, path, sha, scheduler=scheduler, child=child,
+                                      clock=lambda: 1700000000)
+                scheduler.assert_called_once(); child.assert_called_once()
+
     def test_child_transport_and_cli_refuse_expiry_before_any_http_or_credential(self):
         window = self.window()
         reader = coverage.Transport('https://store.example.invalid', 'synthetic', validity=window)
