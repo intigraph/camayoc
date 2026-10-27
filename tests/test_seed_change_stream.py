@@ -283,3 +283,49 @@ class FullCustodyBackpressure(Tick):
         self.assertFalse(sub.paused)
         self.assertEqual((sub.cursor, self.j.cursor), (9, 9))
         self.assertEqual(self.pending_ids(), [])
+
+    def test_oversize_transaction_refuses_at_once_even_with_drainable_custody(self):
+        # aegis-o113: with drainable items pending, an oversize transaction
+        # used to pause until custody was empty and only then refuse.
+        self.j.retain(page())
+        before = self.pending_ids()
+        sub = self.subscription()
+        body = wide_transaction(11, [subject(n) for n in range(custody.MAX_PENDING + 1)])
+        done = self.offer(sub, 11, body)
+        with patch.object(self.j, 'retain', side_effect=AssertionError('wrote')):
+            with self.assertRaises(custody.CustodyFull) as refused:
+                sub.retain_one(self.j, timeout=0)
+        self.assertEqual(str(refused.exception), 'pending custody is full; keep prior cursor')
+        self.assertTrue(done.is_set())
+        self.assertFalse(sub.paused)
+        self.assertEqual(sub.paused_seconds, 0)
+        self.assertEqual((sub.cursor, self.j.cursor), (10, 10))
+        self.assertEqual(self.pending_ids(), before)
+
+    def test_transaction_exactly_at_custody_size_is_admitted(self):
+        sub = self.subscription()
+        body = wide_transaction(10, [subject(n) for n in range(custody.MAX_PENDING)])
+        done = self.offer(sub, 10, body)
+        self.assertTrue(sub.retain_one(self.j, timeout=0))
+        self.assertTrue(done.is_set())
+        self.assertEqual(self.j.cursor, 10)
+        self.assertEqual(len(self.pending_ids()), custody.MAX_PENDING)
+
+    def test_paused_seconds_counts_from_first_hold_and_resets_on_resume(self):
+        self.j.retain(page())
+        fill_to_capacity(self.j)
+        sub = self.subscription()
+        self.offer(sub, 11, wide_transaction(11, [subject('-next')]))
+        clock = [100.0]
+        with (patch.object(stream.time, 'monotonic', side_effect=lambda: clock[0]),
+              patch.object(stream.time, 'sleep', lambda seconds: None)):
+            self.assertEqual(sub.paused_seconds, 0)
+            self.assertFalse(sub.retain_one(self.j, timeout=0))
+            clock[0] = 130.0
+            self.assertFalse(sub.retain_one(self.j, timeout=0))  # Re-hold keeps the start.
+            self.assertEqual(sub.paused_seconds, 30.0)
+            self.j.db.execute("DELETE FROM pending WHERE id='demo-fill0'")
+            self.j.db.commit()
+            self.assertTrue(sub.retain_one(self.j, timeout=0))
+            self.assertFalse(sub.paused)
+            self.assertEqual(sub.paused_seconds, 0)

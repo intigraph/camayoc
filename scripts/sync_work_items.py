@@ -560,6 +560,13 @@ def publish_native_receipt(args,receipt,started,last_success,graph):
             samples.append(('camayoc_workitem_ingress_last_success_timestamp_seconds',{},last_success))
         if type(receipt.get('cursor')) is int:
             samples.append(('camayoc_workitem_ingress_cursor',{},receipt['cursor']))
+        # Stream mode only: a held transaction is otherwise visible just as a
+        # backlog stuck near MAX_PENDING. Absent for the scheduled native tick.
+        if 'stream_admission_paused' in receipt:
+            samples.append(('camayoc_workitem_ingress_stream_admission_paused',{},
+                            receipt['stream_admission_paused']))
+            samples.append(('camayoc_workitem_ingress_stream_admission_paused_seconds',{},
+                            receipt.get('stream_admission_paused_seconds',0)))
         # Coverage is disclosed, not implied: the feed reads ONE board graph (main);
         # ephemeral and pre-cutover history are not covered (wu ruling 2).
         if graph:

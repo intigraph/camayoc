@@ -37,6 +37,7 @@ class PersistentDriver(Tick):
             source_verified = verified
             errors = 0
             paused = False
+            paused_seconds = 0
             closed = False
             turns = 0
             def __init__(self, *args):
@@ -219,3 +220,30 @@ class FullCustodyDriver(PersistentDriver):
         self.assertEqual(self.ids().count('demo-fill-next'), 1)
         self.assertNotIn('demo-one', self.ids())
         self.assertEqual(self.writes, 1)
+
+    def test_paused_metric_is_one_while_held_and_zero_after_resume(self):
+        # aegis-o113: the pause is exported, not only implied by the backlog.
+        fill_to_capacity(self.j)
+        sub, receipts = self.run_real([1000, 1001, 1061])
+        self.assertEqual([r['stream_admission_paused'] for r in receipts], [1, 0], receipts)
+        self.assertGreaterEqual(receipts[0]['stream_admission_paused_seconds'], 0)
+        self.assertEqual(receipts[1]['stream_admission_paused_seconds'], 0)
+        exported = []
+        for receipt in receipts:
+            args = SimpleNamespace(publish_status=True, actor='fixture')
+            with (patch.object(driver.driver.camayoc_metrics, 'push', return_value=(True, '')) as push,
+                  patch('builtins.print')):
+                driver.driver.publish_native_receipt(args, receipt, 1000, None, 'urn:board')
+            exported.append(push.call_args.args[1])
+        self.assertIn('camayoc_workitem_ingress_stream_admission_paused 1\n', exported[0])
+        self.assertIn('camayoc_workitem_ingress_stream_admission_paused 0\n', exported[1])
+        self.assertIn('camayoc_workitem_ingress_stream_admission_paused_seconds 0\n', exported[1])
+
+    def test_scheduled_native_receipt_exports_no_stream_metric(self):
+        # No behavior change without --native-stream.
+        args = SimpleNamespace(publish_status=True, actor='fixture')
+        receipt = {'status': 'OK', 'requests': 0, 'writes': 0, 'verified': 0, 'backlog': 0}
+        with (patch.object(driver.driver.camayoc_metrics, 'push', return_value=(True, '')) as push,
+              patch('builtins.print')):
+            self.assertEqual(driver.driver.publish_native_receipt(args, receipt, 1000, None, 'urn:board'), 0)
+        self.assertNotIn('stream_admission_paused', push.call_args.args[1])
