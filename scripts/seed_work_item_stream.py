@@ -92,7 +92,8 @@ def run(args):
                                'backlog': journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]}
                 receipt.update(stream_connected=int(stream.connected), stream_errors=stream.errors,
                                stream_source_verified=int(stream.source_verified),
-                               stream_admission_paused=int(stream.paused))
+                               stream_admission_paused=int(stream.paused),
+                               stream_admission_paused_seconds=round(stream.paused_seconds, 3))
                 if not stream.connected or not stream.source_verified:
                     receipt.update(status='UNKNOWN', feed_error='StreamUnverified')
                 if receipt['status'] == 'OK':

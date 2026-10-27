@@ -102,10 +102,18 @@ class Subscription:
     # the reader stays blocked on its acknowledgement, so no later transaction
     # is read (backpressure) and this one is neither dropped nor reordered.
     held = None
+    held_since = None  # time.monotonic() when the current hold began.
 
     @property
     def paused(self):
         return self.held is not None
+
+    @property
+    def paused_seconds(self):
+        """How long admission has been paused; 0 while it is not."""
+        if self.held is None or self.held_since is None:
+            return 0
+        return max(0, time.monotonic() - self.held_since)
 
     def retain_one(self, journal, timeout=1):
         if self.held is not None:
@@ -119,6 +127,12 @@ class Subscription:
         try:
             if journal.cursor != self.cursor:
                 raise custody.CustodyUnknown('concurrent candidate cursor changed')
+            # A transaction with more distinct items than all of custody can
+            # never fit, however much drains: refuse it now, before any write,
+            # rather than pausing until custody is empty and refusing then.
+            _, items = custody.candidates(page, journal.board, journal.cursor)
+            if len(items) > custody.MAX_PENDING:
+                raise custody.CustodyFull('pending custody is full; keep prior cursor')
             try:
                 journal.retain(page)
             except custody.CustodyFull:
@@ -126,6 +140,8 @@ class Subscription:
                 # a transaction larger than all of custody stays a refusal.
                 if journal.next() is None:
                     raise
+                if self.held is None:
+                    self.held_since = time.monotonic()
                 self.held, release = (stream_id, page, done), False
                 time.sleep(timeout)  # Same pacing as an idle queue wait.
                 return False
@@ -135,7 +151,7 @@ class Subscription:
             return True
         finally:
             if release:
-                self.held = None
+                self.held = self.held_since = None
                 done.set()
 
     def close(self):
