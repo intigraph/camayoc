@@ -3,6 +3,7 @@ import json
 from urllib.parse import quote
 
 import usage_generation_codec as c
+from usage_generation_terms import MAX_ROWS
 
 RDF='http://www.w3.org/1999/02/22-rdf-syntax-ns#'
 RDFS='http://www.w3.org/2000/01/rdf-schema#'
@@ -72,6 +73,18 @@ def knot(graph,snapshot,triples,actor):
 def byte_size(body): return len(json.dumps(body,sort_keys=True).encode())
 
 
+def readback_rows(generation,chunks,envelope,marker):
+    """Distinct rows the activation snapshot query returns for this plan.
+
+    The query answers every control-graph triple (the marker, replaced in
+    place) plus every generation-graph triple; a graph is a set, so triples
+    repeated across records (session and WorkItem stubs) count once.
+    """
+    staged={t for chunk in chunks for row in chunk for t in record_triples(row)}
+    staged.update(envelope)
+    return len(staged)+len(set(marker))
+
+
 def plan(records,*,producer,harness,session,at,actor,previous=None):
     rows=c.prepare_rows(records);c.iri(producer);c.text(session);c.horizon(at)
     from work_cost import epoch
@@ -120,7 +133,15 @@ def plan(records,*,producer,harness,session,at,actor,previous=None):
         raise ValueError('manifest/marker body budget')
     total=sum(byte_size(b) for b in parts)+byte_size(metadata)
     if total>c.STAGED_BYTES:raise ValueError('generation staged-byte budget')
+    # Activation is proved by ONE snapshot read-back that refuses MAX_ROWS or
+    # more rows. A generation whose read-back cannot fit would stage, send its
+    # marker and then fail verification with a pending write left behind,
+    # stalling every cost writer. Refuse it here, before anything is written.
+    rows_needed=readback_rows(generation,chunks,envelope,marker)
+    if rows_needed>=MAX_ROWS:
+        raise ValueError('REFUSED: generation read-back needs %d rows; the single activation '
+                         'read-back is capped below %d. Nothing was written.'%(rows_needed,MAX_ROWS))
     return {'manifest':manifest,'generation':generation,'control':control,'selector':selector,
             'parts':parts,'metadata':metadata,'activation':activation,'rows':rows,'bytes':total,
             'part_triples':[[t for row in chunk for t in record_triples(row)] for chunk in chunks],
-            'metadata_triples':envelope,'activation_triples':marker}
+            'metadata_triples':envelope,'activation_triples':marker,'readback_rows':rows_needed}

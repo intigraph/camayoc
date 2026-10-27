@@ -175,9 +175,23 @@ def publish(result, actor, state_path, *, push_status=False, review_only=False,
     """Every attempt leaves a receipt and status metrics, including failures."""
     if not _lane_locked:
         from usage_generation_step import locked
-        with locked(state_path):
+        lane = locked(state_path)
+        try:
+            lane.__enter__()
+        except ValueError as exc:
+            # Another run holds the lane. Leave a receipt for this attempt too,
+            # without touching the budget history the holder owns; the holder's
+            # own receipt replaces this one when it finishes.
+            now = time.time()
+            _atomic(state_path.with_suffix('.receipt.json'), json.dumps(
+                {'attempted_at': now, 'finished_at': now, 'status': 'OPERATOR_ACTION',
+                 'reason': 'busy', 'detail': str(exc), 'requests': 0}, sort_keys=True))
+            raise
+        try:
             return publish(result,actor,state_path,push_status=push_status,review_only=review_only,
                            scheduler_only=scheduler_only,generation_policy=generation_policy,_lane_locked=True)
+        finally:
+            lane.__exit__(None, None, None)
     receipt_path = state_path.with_suffix('.receipt.json')
     receipt = {'attempted_at': time.time(), 'status': 'UNKNOWN', 'requests': 0,
                'request_seconds': 0, 'items_per_snapshot': [], 'records_per_snapshot': [],

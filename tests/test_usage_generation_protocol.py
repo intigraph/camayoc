@@ -12,6 +12,7 @@ from test_usage_generation_codec import CodecTests
 import usage_generation_codec as c
 import usage_generation_wire as w
 from usage_generation_reader import read_snapshot
+from usage_generation_terms import MAX_ROWS
 import publish_work_cost as publisher
 
 
@@ -74,6 +75,18 @@ class ProtocolTests(unittest.TestCase):
         with self.assertRaises(ValueError):planned([CodecTests.record()|{'model':'x'*65536}])
         with self.assertRaises(ValueError):planned([CodecTests.record()|{'at':'2026-10-25T00:00:00Z'}])
         empty=planned([]);self.assertEqual(self.read(all_response(empty))['rows'],[])
+
+    def test_readback_row_bound_is_checked_at_plan_time(self):
+        # 525 attributed records need 9999 read-back rows: the largest plan the
+        # single activation read-back can prove. It plans and reads COMPLETE.
+        fits=planned(records(525));answer=all_response(fits)
+        self.assertEqual(fits['readback_rows'],answer['count'])
+        self.assertLess(fits['readback_rows'],MAX_ROWS)
+        self.assertEqual(self.read(answer)['status'],'COMPLETE')
+        # One more record crosses the row cap while staying far under 64 MiB.
+        with self.assertRaisesRegex(ValueError,'REFUSED: generation read-back needs 10018 rows'):
+            planned(records(526))
+        self.assertLess(fits['bytes'],c.STAGED_BYTES//64)
 
     def test_reassignment_changes_generation_not_request_identity(self):
         old=records();new=copy.deepcopy(old);new[0]['bead']='p-other'
@@ -177,6 +190,37 @@ class PublisherTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.tick(rows)
         self.assertEqual(before,len(self.transport.calls))
         path.write_text(original)
+
+    def test_readback_overflow_refused_before_any_write(self):
+        big=records(526)
+        self.tick(big)  # profile proof: a read, no cost write
+        self.assertEqual([e for e,_ in self.transport.calls],['/shapes'])
+        with self.assertRaisesRegex(ValueError,'REFUSED: generation read-back'):self.tick(big)
+        self.assertEqual([e for e,_ in self.transport.calls],['/shapes'])
+        self.assertFalse(self.state.with_suffix('.pending.json').exists())
+        self.assertFalse(self.state.with_suffix('.writes.json').exists())
+        journal=json.loads(self.state.with_suffix('.generations.json').read_text())
+        self.assertEqual(journal['sessions'],{})
+        receipt=json.loads(self.state.with_suffix('.receipt.json').read_text())
+        self.assertEqual(receipt['status'],'UNKNOWN');self.assertIn('REFUSED',receipt['detail'])
+        # The lane is not jammed: a session under the bound still stages,
+        # activates and verifies on the following ticks.
+        rows=records()
+        for _ in range(7):self.tick(rows)
+        entry=next(iter(json.loads(self.state.with_suffix('.generations.json').read_text())['sessions'].values()))
+        self.assertIsNone(entry['progress']);self.assertIsNotNone(entry['selected'])
+        receipt=json.loads(self.state.with_suffix('.receipt.json').read_text())
+        self.assertEqual((receipt['status'],receipt['readback']),('OK','exact-generation'))
+
+    def test_busy_lane_attempt_still_leaves_a_receipt(self):
+        from usage_generation_step import locked
+        with locked(self.state):
+            with self.assertRaisesRegex(ValueError,'lane busy'):
+                publisher.publish({'errors':[],'records':records()},'fixture',self.state)
+        receipt=json.loads(self.state.with_suffix('.receipt.json').read_text())
+        self.assertEqual((receipt['status'],receipt['reason']),('OPERATOR_ACTION','busy'))
+        self.assertEqual(self.transport.calls,[])
+        self.assertFalse(self.state.with_suffix('.budget.json').exists())
 
     def test_policy_and_pending_fences(self):
         self.policy['runtime_acceptance']=''
