@@ -146,7 +146,7 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                        <a href="https://github.com/intigraph/camayoc" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
 
@@ -250,7 +250,7 @@ facts but the discipline that produced them.</p>
 <p>The README's first success, with what each step does and what to do when it
 does not go to plan.</p>
 <h2 id="bootstrap-from-a-shell"><a class="header" href="#bootstrap-from-a-shell">Bootstrap from a shell</a></h2>
-<pre><code class="language-bash">git clone -q --depth 1 https://github.com/scbrown/camayoc
+<pre><code class="language-bash">git clone -q --depth 1 https://github.com/intigraph/camayoc
 QUIPU_SERVER=http://127.0.0.1:3030 bash camayoc/scripts/bootstrap.sh &gt; bootstrap.log 2&gt;&amp;1
 grep -E '^(ontology|shapes|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
 </code></pre>
@@ -283,7 +283,7 @@ one is reported loudly, never ingested into.</li>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="using-it-with-agents"><a class="header" href="#using-it-with-agents">Using it with agents</a></h1>
 <h2 id="the-claude-code-plugin"><a class="header" href="#the-claude-code-plugin">The Claude Code plugin</a></h2>
 <p>Camayoc ships as a <strong>Claude Code plugin</strong>. In Claude Code:</p>
-<pre><code class="language-text">/plugin marketplace add scbrown/camayoc
+<pre><code class="language-text">/plugin marketplace add intigraph/camayoc
 /plugin install camayoc@camayoc
 </code></pre>
 <p>That gets you, immediately:</p>
@@ -337,7 +337,7 @@ modules, symbols, documents and sections that decisions anchor to — because
 "what did we decide about X" needs X to exist before it can be answered.</p>
 <h2 id="how-you-use-it-the-skill-is-the-interface"><a class="header" href="#how-you-use-it-the-skill-is-the-interface">How you use it: the skill is the interface</a></h2>
 <p>Camayoc's primary consumer is an agent in a session, so camayoc <strong>ships a
-skill</strong> (<a href="https://github.com/scbrown/camayoc/blob/main/skills/camayoc/SKILL.md">skills/camayoc/SKILL.md</a>) that teaches any
+skill</strong> (<a href="https://github.com/intigraph/camayoc/blob/main/skills/camayoc/SKILL.md">skills/camayoc/SKILL.md</a>) that teaches any
 agent the four moves: <strong>bootstrap</strong> a bare store (load ontology + shapes,
 <em>prove</em> the SHACL gate is live), <strong>query first</strong> (ask the competency
 questions before re-deciding anything), <strong>record at the moment</strong> (decisions
@@ -368,9 +368,9 @@ Each takes <code>--help</code>.</p>
 </tbody></table>
 </div>
 <p>The competency questions themselves live in
-<a href="https://github.com/scbrown/camayoc/tree/main/competency"><code>competency/</code></a>; the
+<a href="https://github.com/intigraph/camayoc/tree/main/competency"><code>competency/</code></a>; the
 stored queries that answer them live in
-<a href="https://github.com/scbrown/camayoc/tree/main/queries"><code>queries/</code></a>.</p>
+<a href="https://github.com/intigraph/camayoc/tree/main/queries"><code>queries/</code></a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="governance-resources"><a class="header" href="#governance-resources">Governance resources</a></h1>
 <p>Camayoc provides an explicit offline stage for the governance catalogue and
 combined SHACL profile. It writes a new owned scratch database only after native
@@ -484,7 +484,7 @@ bind independently to the manifest content hash.
 maintained as the test harness for every ontology change. Six slices now:
 task lifecycle, metrics, verification-and-liveness (with its §D cost
 accounting), golden paths, document structure and chunks, and
-workflow-and-archive. <a href="https://github.com/scbrown/camayoc/blob/main/competency/">competency/</a></li>
+workflow-and-archive. <a href="https://github.com/intigraph/camayoc/blob/main/competency/">competency/</a></li>
 </ol>
 <h3 id="metrics-and-nonfunctional-requirements"><a class="header" href="#metrics-and-nonfunctional-requirements">Metrics and nonfunctional requirements</a></h3>
 <p>Camayoc catalogues metric definitions and executable retrieval methods; it does
@@ -569,7 +569,7 @@ bitemporal close, never a delete), record the move — with
 <li><strong>The workflow slice</strong> — <code>WorkflowDefinition</code>, <code>WorkflowStep</code>,
 <code>WorkflowRun</code>, and append-only <code>TransitionEvent</code>s; <code>currentState</code> is
 re-asserted per transition, never mutated. Every term is owed to a question
-in <a href="https://github.com/scbrown/camayoc/blob/main/competency/workflow-and-archive.md">competency/workflow-and-archive.md</a>.
+in <a href="https://github.com/intigraph/camayoc/blob/main/competency/workflow-and-archive.md">competency/workflow-and-archive.md</a>.
 <a href="design/workflow-and-archive.html">docs/design/workflow-and-archive.md</a></li>
 <li><strong>Golden paths</strong> — verified trajectories, blessed and enforced:
 <code>Trajectory</code>, <code>GoldenPath</code>, <code>PathOmission</code>, <code>PathPromotion</code>, with SHACL
@@ -577,7 +577,7 @@ refusals where absence would make the node a lie (a <code>GoldenPath</code> with
 its exemplar trajectory is refused) and a gate-probe arm proving each
 refusal. <a href="design/golden-paths.html">docs/design/golden-paths.md</a></li>
 <li><strong>Stored queries, honest coverage</strong> — every named query in
-<a href="https://github.com/scbrown/camayoc/blob/main/queries/">queries/</a> is tested against a seeded fixture with a positive
+<a href="https://github.com/intigraph/camayoc/blob/main/queries/">queries/</a> is tested against a seeded fixture with a positive
 <em>and</em> a control-negative arm. <code>just query-coverage</code> is the living figure:
 <strong>40 of 91 stored across six slices</strong>, plus 22 questions that are
 expressible with today's vocabulary and simply unwritten, and 29 that are
@@ -1280,7 +1280,7 @@ specified. One deliberate departure from §1's letter, recorded in
 configured base namespace (<code>aegis:</code> by default) so that quipu <code>/episode</code>
 writes and the declarations agree out of the box — the namespace is still a
 parameter, set in that file's prefix, never a hardcoded hostname. Every
-term remains owed to a question in <a href="https://github.com/scbrown/camayoc/tree/main/competency">competency/</a>, now
+term remains owed to a question in <a href="https://github.com/intigraph/camayoc/tree/main/competency">competency/</a>, now
 six suites (workflow-and-archive joined on 2026-08-24; <code>just competency-list</code>
 is the living count and watermark); per-question coverage is measured by
 <code>just query-coverage</code> rather than asserted here.</p>
@@ -1312,7 +1312,7 @@ already records: a namespace is a parameter, and a literal hostname in a
 public repo is two faults with one cause).</p>
 <h2 id="2-the-upper-terms-candidate-set--the-slice-decides"><a class="header" href="#2-the-upper-terms-candidate-set--the-slice-decides">2. The upper terms (candidate set — the slice decides)</a></h2>
 <p>Small and brutally curated. Current candidates, each owed to a competency
-question in <a href="https://github.com/scbrown/camayoc/tree/main/competency">competency/</a>:</p>
+question in <a href="https://github.com/intigraph/camayoc/tree/main/competency">competency/</a>:</p>
 <ul>
 <li><strong><code>camayoc:WorkItem</code></strong> — a unit of intended work (a shantytown task, a bead,
 an issue). Deliberately tracker-agnostic: shantytown's adapter stance is
@@ -1564,12 +1564,12 @@ told how to use it.</li>
 </ul>
 <h2 id="5-related-2"><a class="header" href="#5-related-2">5. Related</a></h2>
 <ul>
-<li><a href="https://github.com/scbrown/camayoc/blob/main/skills/camayoc/SKILL.md"><code>skills/camayoc/SKILL.md</code></a> — the artifact.</li>
+<li><a href="https://github.com/intigraph/camayoc/blob/main/skills/camayoc/SKILL.md"><code>skills/camayoc/SKILL.md</code></a> — the artifact.</li>
 <li><a href="design/ingress.html">ingress.md</a> — the discipline the skill teaches; the shapes
 that enforce it.</li>
 <li><a href="design/task-lifecycle-slice.html">task-lifecycle-slice.md</a> — the first slice,
 re-centered on the skill.</li>
-<li><a href="https://github.com/scbrown/camayoc/blob/main/competency/crew-task-lifecycle.md">competency/crew-task-lifecycle.md</a>
+<li><a href="https://github.com/intigraph/camayoc/blob/main/competency/crew-task-lifecycle.md">competency/crew-task-lifecycle.md</a>
 — the questions the skill tells an agent to ask.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-first-slice--task-lifecycle--decisions"><a class="header" href="#design-first-slice--task-lifecycle--decisions">Design: First Slice — task lifecycle + decisions</a></h1>
@@ -1632,7 +1632,7 @@ session adapter writing decisions into <code>crew:inferred</code> until a human 
 convention promotes them. Start with (a) — declared/observed beats inferred.</p>
 <h2 id="3-competency-questions--acceptance-tests"><a class="header" href="#3-competency-questions--acceptance-tests">3. Competency questions = acceptance tests</a></h2>
 <p>The slice's question set lives in
-<a href="https://github.com/scbrown/camayoc/blob/main/competency/crew-task-lifecycle.md">competency/crew-task-lifecycle.md</a>
+<a href="https://github.com/intigraph/camayoc/blob/main/competency/crew-task-lifecycle.md">competency/crew-task-lifecycle.md</a>
 and doubles as the test suite: the slice is <strong>done</strong> when each question runs
 as a named stored query through the implemented <code>/ask</code> API against a graph
 built from <em>real</em>
@@ -1677,7 +1677,7 @@ coordination stays in st where it belongs.</li>
 <blockquote>
 <p><strong>Implementation status (2026-08-25):</strong> ✅ <strong>Built, question-first, and
 now answering.</strong>
-<a href="https://github.com/scbrown/camayoc/blob/main/competency/workflow-and-archive.md">competency/workflow-and-archive.md</a>
+<a href="https://github.com/intigraph/camayoc/blob/main/competency/workflow-and-archive.md">competency/workflow-and-archive.md</a>
 landed before any term; the workflow slice
 (<code>aegis:WorkflowDefinition/WorkflowStep/WorkflowRun/TransitionEvent</code> and
 their properties) is minted in <code>ontology/core.ttl</code> with each term owed to a
@@ -1762,7 +1762,7 @@ relocation, never write-time filtering.</li>
 <p><strong>Implementation status (2026-08-22, camayoc-gp1 + gp2):</strong> 🟡 <strong>Camayoc's
 slice is done to its deferral line: terms minted, gates armed, queries
 stored at 12/16.</strong> The competency suite
-(<a href="https://github.com/scbrown/camayoc/blob/main/competency/golden-paths.md">competency/golden-paths.md</a>) is written;
+(<a href="https://github.com/intigraph/camayoc/blob/main/competency/golden-paths.md">competency/golden-paths.md</a>) is written;
 the slice decided (see the §3 note) and the vocabulary is minted in
 <code>ontology/core.ttl</code> with shapes in <code>shapes/core.shapes.ttl</code> and three
 refusal arms in <code>scripts/gate_probe.sh</code> (proven able to fail by
@@ -3482,7 +3482,7 @@ questions were missing from it, and four of the suite's six SLICES — 56
 questions — until 2026-08-25, when it stopped being a lesson anyone restates
 and became a test.)</p>
 </blockquote>
-<p>Source of record: <a href="https://github.com/scbrown/camayoc/blob/main/competency/verification-and-liveness.md"><code>../../competency/verification-and-liveness.md</code></a>,
+<p>Source of record: <a href="https://github.com/intigraph/camayoc/blob/main/competency/verification-and-liveness.md"><code>../../competency/verification-and-liveness.md</code></a>,
 written during and immediately after the night of <strong>2026-08-06/07</strong> on a live
 crew. This document turns that prose into a labelled corpus with the taxonomy
 as categories, per <code>camayoc-101</code>.</p>
@@ -3741,11 +3741,11 @@ is still the <em>problem statement</em>, with the evaluation to follow.</li>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="docs-map"><a class="header" href="#docs-map">Docs map</a></h1>
 <p>Every document in this repository that is not a page of this book.</p>
 <div class="table-wrapper"><table><thead><tr><th>document</th><th>what it is</th></tr></thead><tbody>
-<tr><td><a href="https://github.com/scbrown/camayoc/blob/main/skills/camayoc/SKILL.md"><code>skills/camayoc/SKILL.md</code></a></td><td>the skill agents load: the four moves (bootstrap, query first, record at the moment, tag honestly)</td></tr>
-<tr><td><a href="https://github.com/scbrown/camayoc/blob/main/commands/bootstrap.md"><code>commands/bootstrap.md</code></a></td><td>the <code>/camayoc:bootstrap</code> slash command</td></tr>
-<tr><td><a href="https://github.com/scbrown/camayoc/tree/main/competency"><code>competency/*.md</code></a></td><td>the competency questions the graph must answer, one file per slice</td></tr>
-<tr><td><a href="https://github.com/scbrown/camayoc/blob/main/AGENTS.md"><code>AGENTS.md</code></a>, <a href="https://github.com/scbrown/camayoc/blob/main/CLAUDE.md"><code>CLAUDE.md</code></a></td><td>instructions for agents working on this repository</td></tr>
-<tr><td><a href="https://github.com/scbrown/camayoc/blob/main/.beads/README.md"><code>.beads/README.md</code></a></td><td>the repository's own issue tracker</td></tr>
+<tr><td><a href="https://github.com/intigraph/camayoc/blob/main/skills/camayoc/SKILL.md"><code>skills/camayoc/SKILL.md</code></a></td><td>the skill agents load: the four moves (bootstrap, query first, record at the moment, tag honestly)</td></tr>
+<tr><td><a href="https://github.com/intigraph/camayoc/blob/main/commands/bootstrap.md"><code>commands/bootstrap.md</code></a></td><td>the <code>/camayoc:bootstrap</code> slash command</td></tr>
+<tr><td><a href="https://github.com/intigraph/camayoc/tree/main/competency"><code>competency/*.md</code></a></td><td>the competency questions the graph must answer, one file per slice</td></tr>
+<tr><td><a href="https://github.com/intigraph/camayoc/blob/main/AGENTS.md"><code>AGENTS.md</code></a>, <a href="https://github.com/intigraph/camayoc/blob/main/CLAUDE.md"><code>CLAUDE.md</code></a></td><td>instructions for agents working on this repository</td></tr>
+<tr><td><a href="https://github.com/intigraph/camayoc/blob/main/.beads/README.md"><code>.beads/README.md</code></a></td><td>the repository's own issue tracker</td></tr>
 </tbody></table>
 </div>
 <p>Design notes record how a feature was decided and may describe an earlier

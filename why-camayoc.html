@@ -145,7 +145,7 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                        <a href="https://github.com/intigraph/camayoc" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
 
@@ -231,7 +231,7 @@ bind independently to the manifest content hash.
 maintained as the test harness for every ontology change. Six slices now:
 task lifecycle, metrics, verification-and-liveness (with its §D cost
 accounting), golden paths, document structure and chunks, and
-workflow-and-archive. <a href="https://github.com/scbrown/camayoc/blob/main/competency/">competency/</a></li>
+workflow-and-archive. <a href="https://github.com/intigraph/camayoc/blob/main/competency/">competency/</a></li>
 </ol>
 <h3 id="metrics-and-nonfunctional-requirements"><a class="header" href="#metrics-and-nonfunctional-requirements">Metrics and nonfunctional requirements</a></h3>
 <p>Camayoc catalogues metric definitions and executable retrieval methods; it does
@@ -316,7 +316,7 @@ bitemporal close, never a delete), record the move — with
 <li><strong>The workflow slice</strong> — <code>WorkflowDefinition</code>, <code>WorkflowStep</code>,
 <code>WorkflowRun</code>, and append-only <code>TransitionEvent</code>s; <code>currentState</code> is
 re-asserted per transition, never mutated. Every term is owed to a question
-in <a href="https://github.com/scbrown/camayoc/blob/main/competency/workflow-and-archive.md">competency/workflow-and-archive.md</a>.
+in <a href="https://github.com/intigraph/camayoc/blob/main/competency/workflow-and-archive.md">competency/workflow-and-archive.md</a>.
 <a href="design/workflow-and-archive.html">docs/design/workflow-and-archive.md</a></li>
 <li><strong>Golden paths</strong> — verified trajectories, blessed and enforced:
 <code>Trajectory</code>, <code>GoldenPath</code>, <code>PathOmission</code>, <code>PathPromotion</code>, with SHACL
@@ -324,7 +324,7 @@ refusals where absence would make the node a lie (a <code>GoldenPath</code> with
 its exemplar trajectory is refused) and a gate-probe arm proving each
 refusal. <a href="design/golden-paths.html">docs/design/golden-paths.md</a></li>
 <li><strong>Stored queries, honest coverage</strong> — every named query in
-<a href="https://github.com/scbrown/camayoc/blob/main/queries/">queries/</a> is tested against a seeded fixture with a positive
+<a href="https://github.com/intigraph/camayoc/blob/main/queries/">queries/</a> is tested against a seeded fixture with a positive
 <em>and</em> a control-negative arm. <code>just query-coverage</code> is the living figure:
 <strong>40 of 91 stored across six slices</strong>, plus 22 questions that are
 expressible with today's vocabulary and simply unwritten, and 29 that are
