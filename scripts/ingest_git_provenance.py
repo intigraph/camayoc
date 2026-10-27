@@ -171,6 +171,10 @@ def emit(repo_name: str, sha: str, items: list[str], paths: list[str], out: list
     out.append(f"<{commit_iri}> a <{ONTOLOGY}GitCommit> ;")
     out.append(f'    rdfs:label {json.dumps(f"{repo_name}@{sha[:12]}")} ;')
     out.append(f'    <{ONTOLOGY}sourceKind> "observed" ;')
+    # Shared Commit constraints use these names; take both values from the
+    # same git record, not the display label or an inferred repository.
+    out.append(f'    <{ONTOLOGY}sha> {json.dumps(sha)} ;')
+    out.append(f'    <{ONTOLOGY}in_repo> {json.dumps(repo_name)} ;')
     for item in items:
         out.append(f'    <{ONTOLOGY}implements> <{work_item_iri(item)}> ;')
     for i, path in enumerate(paths):

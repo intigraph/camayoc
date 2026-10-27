@@ -236,6 +236,8 @@ Work-item targets use the bare tracker ID in the ontology namespace, matching
 WorkItem: its type, label, identifier and trust facts belong to tracker records
 and are not copied here. Readers join the records and provenance graphs.
 Code modules and commits retain their code namespace.
+Each commit also carries `sha` and `in_repo`, taken from that git record and
+repository name, so the shared Commit metadata constraint can judge it.
 Older output used `code/bead/<id>` for work items; those historical aliases need
 explicit reconciliation, not a second mint or deletion of their provenance.
 
