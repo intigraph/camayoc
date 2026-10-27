@@ -18,7 +18,7 @@ was read back out of them.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/scbrown/camayoc/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/intigraph/camayoc/main/install.sh | sh
 ```
 
 Python 3.9+, curl, and a Linux or macOS shell. Downloads and verifies the latest source package into `~/.local/share/camayoc/TAG`.
@@ -33,7 +33,7 @@ Pinned releases, alternatives, configuration and removal are in the
 From an empty directory, bootstrap a governed memory and watch it prove its gate:
 
 ```bash
-git clone -q --depth 1 https://github.com/scbrown/camayoc
+git clone -q --depth 1 https://github.com/intigraph/camayoc
 QUIPU_SERVER=http://127.0.0.1:3030 bash camayoc/scripts/bootstrap.sh > bootstrap.log 2>&1
 grep -E '^(ontology|shapes|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
 ```
@@ -96,7 +96,7 @@ when.
 |---|---|
 | [tambo](https://github.com/intigraph/tambo) | 🧰 Agent Platform Toolkit - installs and configures the quipu stack |
 | [quipu](https://github.com/scbrown/quipu) | stores shared facts with provenance and history; can check writes against your rules |
-| [camayoc](https://github.com/scbrown/camayoc) | prepares knowledge and vocabulary for Quipu, with checks before it is admitted |
+| [camayoc](https://github.com/intigraph/camayoc) | prepares knowledge and vocabulary for Quipu, with checks before it is admitted |
 | [quechua](https://github.com/scbrown/quechua) | shared vocabulary and shapes for interoperable knowledge |
 | [chaski](https://github.com/scbrown/chaski) | reacts to graph changes and delivers governed notifications |
 | [bobbin](https://github.com/scbrown/bobbin) | indexes your codebase and injects context from that index and Quipu knowledge |

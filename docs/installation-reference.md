@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/scbrown/camayoc/main/assets/logo.svg" width="200" alt="Camayoc logo — loose gray strands enter from the left, the keeper's yupana counting board hangs from the main cord at center, and ordered, colored, knotted quipu pendants emerge on the right"/>
+  <img src="https://raw.githubusercontent.com/intigraph/camayoc/main/assets/logo.svg" width="200" alt="Camayoc logo — loose gray strands enter from the left, the keeper's yupana counting board hangs from the main cord at center, and ordered, colored, knotted quipu pendants emerge on the right"/>
 </p>
 
 <h1 align="center">camayoc</h1>
@@ -9,12 +9,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/scbrown/camayoc/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"/></a>
-  <a href="https://github.com/scbrown/camayoc/actions/workflows/ci.yml"><img src="https://github.com/scbrown/camayoc/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  <a href="https://github.com/intigraph/camayoc/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"/></a>
+  <a href="https://github.com/intigraph/camayoc/actions/workflows/ci.yml"><img src="https://github.com/intigraph/camayoc/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <a href="https://github.com/scbrown/caboodle"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the caboodle stack"/></a>
 </p>
 
-[Watch the 90-second native bootstrap recording](https://github.com/scbrown/camayoc/blob/main/docs/demos/bootstrap-v0.1.2/README.md).
+[Watch the 90-second native bootstrap recording](https://github.com/intigraph/camayoc/blob/main/docs/demos/bootstrap-v0.1.2/README.md).
 
 **Camayoc gives AI coding agents a governed memory: a starter vocabulary for
 work, decisions and outcomes, loaded into a [quipu](https://github.com/scbrown/quipu)
@@ -38,21 +38,21 @@ was read back out of them.
   fails loudly if the store accepts one.
 
 The long form (its place in the stack, what runs today, what it deliberately is
-not): [Why camayoc](https://scbrown.github.io/camayoc/why-camayoc.html).
+not): [Why camayoc](https://intigraph.github.io/camayoc/why-camayoc.html).
 
 ## Install
 
 As a Claude Code plugin, in Claude Code:
 
 ```text
-/plugin marketplace add scbrown/camayoc
+/plugin marketplace add intigraph/camayoc
 /plugin install camayoc@camayoc
 ```
 
 From a shell, for any other agent or for scripts:
 
 ```bash
-git clone --depth 1 https://github.com/scbrown/camayoc
+git clone --depth 1 https://github.com/intigraph/camayoc
 ```
 
 There is nothing else to install first: bootstrap brings its own quipu.
@@ -62,7 +62,7 @@ There is nothing else to install first: bootstrap brings its own quipu.
 From an empty directory, bootstrap a governed memory and watch it prove its gate:
 
 ```bash
-git clone -q --depth 1 https://github.com/scbrown/camayoc
+git clone -q --depth 1 https://github.com/intigraph/camayoc
 QUIPU_SERVER=http://127.0.0.1:3030 bash camayoc/scripts/bootstrap.sh > bootstrap.log 2>&1
 grep -E '^(ontology|shapes|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
 ```
@@ -86,12 +86,12 @@ guarantee everything else rests on. Stop the server with
 |---|---|
 | check whether a question is covered by the competency suite | `python3 camayoc/scripts/competency.py "<question>"` |
 | map a question to a stored query with Jev (needs a TypeSafe key) | `python3 camayoc/scripts/competency.py --map "<question>"` |
-| preview an advisory ordered-rubric benchmark without a key | `just jev-bench bench/ordinal/na-htm.jsonl --slot ordinal` ([pilot and replay](https://github.com/scbrown/camayoc/blob/main/bench/ordinal/README.md)) |
+| preview an advisory ordered-rubric benchmark without a key | `just jev-bench bench/ordinal/na-htm.jsonl --slot ordinal` ([pilot and replay](https://github.com/intigraph/camayoc/blob/main/bench/ordinal/README.md)) |
 | see which competency questions have a stored query | `python3 camayoc/scripts/query_coverage.py` |
 | check a proposal against decisions already made | `python3 camayoc/scripts/settled_decisions.py "<proposal>" --declared <file>` |
 | see the quarantine planes and their labels | `python3 camayoc/scripts/planes.py status` |
 
-Every script: [Reference](https://scbrown.github.io/camayoc/reference.html).
+Every script: [Reference](https://intigraph.github.io/camayoc/reference.html).
 
 ## Wire it into your agent
 
@@ -107,12 +107,12 @@ From then on every session opens with a memory status line (`ACTIVE`,
 agent to query first, record at the moment, and tag honestly. Without the
 plugin, `bash camayoc/scripts/bootstrap.sh --with-claude-hooks` adds the same
 status hook to `.claude/settings.json`. The plugin also declares a `jev` MCP
-server for typed decisions. Details: [Using it with agents](https://scbrown.github.io/camayoc/agents.html).
+server for typed decisions. Details: [Using it with agents](https://intigraph.github.io/camayoc/agents.html).
 
 ### Typed decisions with jev-mcp
 
 The plugin registers the stdio server in
-[scripts/jev_mcp.py](https://github.com/scbrown/camayoc/blob/main/scripts/jev_mcp.py). It exposes these tools:
+[scripts/jev_mcp.py](https://github.com/intigraph/camayoc/blob/main/scripts/jev_mcp.py). It exposes these tools:
 
 | Tool | Input and result |
 | --- | --- |
@@ -137,7 +137,7 @@ For an agent that reads `.mcp.json`, register the server directly:
 
 Live calls use `TYPESAFE_API_KEY`, then the file named by
 `TYPESAFE_API_KEY_FILE`, then the default in
-[`jev.resolve_key`](https://github.com/scbrown/camayoc/blob/main/scripts/jev.py). Keep a key file private (`0600`);
+[`jev.resolve_key`](https://github.com/intigraph/camayoc/blob/main/scripts/jev.py). Keep a key file private (`0600`);
 do not put a key in the registration file. Dry runs need no key. A missing
 or malformed key produces a readable tool error, with no lexical fallback.
 
@@ -157,9 +157,9 @@ happened, including failures that a surrounding job reports as green.
 
 | Tool | How | Standard |
 | --- | --- | --- |
-| GitHub or Forgejo Actions | [reusable Action](https://github.com/scbrown/camayoc/blob/main/actions/deployment-event/README.md) | CDEvents `pipelineRun.finished` |
-| Ansible | [callback plugin](https://github.com/scbrown/camayoc/blob/main/emitters/ansible/README.md) | CDEvents `pipelineRun.finished`, one per host |
-| Terraform | [`apply -json` wrapper](https://github.com/scbrown/camayoc/blob/main/emitters/terraform/README.md) | CDEvents `pipelineRun.finished` |
+| GitHub or Forgejo Actions | [reusable Action](https://github.com/intigraph/camayoc/blob/main/actions/deployment-event/README.md) | CDEvents `pipelineRun.finished` |
+| Ansible | [callback plugin](https://github.com/intigraph/camayoc/blob/main/emitters/ansible/README.md) | CDEvents `pipelineRun.finished`, one per host |
+| Terraform | [`apply -json` wrapper](https://github.com/intigraph/camayoc/blob/main/emitters/terraform/README.md) | CDEvents `pipelineRun.finished` |
 
 ## Before you start
 
@@ -169,13 +169,13 @@ your `PATH`. The scripts need `bash`, `curl` and `python3`.
 
 **Exit codes.** Bootstrap exits 1 if nothing could be installed, 2 if the store
 accepted a record it must refuse, and 3 if no verdict could be reached. See
-[Getting started](https://scbrown.github.io/camayoc/getting-started.html#when-something-fails).
+[Getting started](https://intigraph.github.io/camayoc/getting-started.html#when-something-fails).
 
 ## What's next
 
-- [The camayoc book](https://scbrown.github.io/camayoc/): getting started, agents, reference and the design notes, in reading order
-- [Docs map](https://scbrown.github.io/camayoc/docs-map.html): every document in this repository, routed
-- [Ingress](https://scbrown.github.io/camayoc/design/ingress.html): how knowledge earns its way into the graph
+- [The camayoc book](https://intigraph.github.io/camayoc/): getting started, agents, reference and the design notes, in reading order
+- [Docs map](https://intigraph.github.io/camayoc/docs-map.html): every document in this repository, routed
+- [Ingress](https://intigraph.github.io/camayoc/design/ingress.html): how knowledge earns its way into the graph
 
 ## 🧺 The stack
 
@@ -190,7 +190,7 @@ just check   # the local quality gate
 
 ## 📜 License
 
-[Apache-2.0](https://github.com/scbrown/camayoc/blob/main/LICENSE)
+[Apache-2.0](https://github.com/intigraph/camayoc/blob/main/LICENSE)
 
 ### Incremental verdict adapters
 

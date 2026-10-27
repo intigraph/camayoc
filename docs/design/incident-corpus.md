@@ -45,7 +45,7 @@
 > questions — until 2026-08-25, when it stopped being a lesson anyone restates
 > and became a test.)
 
-Source of record: [`../../competency/verification-and-liveness.md`](https://github.com/scbrown/camayoc/blob/main/competency/verification-and-liveness.md),
+Source of record: [`../../competency/verification-and-liveness.md`](https://github.com/intigraph/camayoc/blob/main/competency/verification-and-liveness.md),
 written during and immediately after the night of **2026-08-06/07** on a live
 crew. This document turns that prose into a labelled corpus with the taxonomy
 as categories, per `camayoc-101`.

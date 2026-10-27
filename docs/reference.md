@@ -17,6 +17,6 @@ Each takes `--help`.
 | `just check` / `just test` | the local quality gate and the test suite |
 
 The competency questions themselves live in
-[`competency/`](https://github.com/scbrown/camayoc/tree/main/competency); the
+[`competency/`](https://github.com/intigraph/camayoc/tree/main/competency); the
 stored queries that answer them live in
-[`queries/`](https://github.com/scbrown/camayoc/tree/main/queries).
+[`queries/`](https://github.com/intigraph/camayoc/tree/main/queries).
