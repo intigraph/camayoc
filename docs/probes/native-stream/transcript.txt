@@ -1,0 +1,2 @@
+before: {"cursor": 10, "feed_polls": 1, "requests": 5, "status": "OK", "verified": 1, "writes": 1}
+after: {"cursor": 10, "feed_polls": 0, "requests": 4, "status": "OK", "verified": 1, "writes": 1}

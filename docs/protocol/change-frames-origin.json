@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/intigraph/chaski",
+  "commit": "6294292e07cac5431d80b80721eed9980edaaaa4",
+  "path": "change_frames.py",
+  "sha256": "e964dfa12a258eadc699757c0d2a07082fc4cc290f2e4d95c1029410eadf05e3",
+  "policy": "Exact canonical bytes; changes return to the origin and refresh this receipt."
+}

@@ -18,6 +18,13 @@ MAX_PENDING=256
 
 class CustodyUnknown(ValueError):pass
 
+class CustodyFull(CustodyUnknown):
+    """Admitting this transaction would exceed MAX_PENDING; nothing was retained.
+
+    Backpressure, not a fault: the caller keeps the transaction, drains the
+    existing pending set and offers the same transaction again.
+    """
+
 def integer(value):
     if type(value) is not int or value<0:raise CustodyUnknown('invalid transaction boundary')
     return value
@@ -27,7 +34,7 @@ def candidates(page,board,since):
     if not isinstance(page,dict) or len(json.dumps(page).encode())>MAX_BYTES:
         raise CustodyUnknown('feed page exceeds byte budget or is malformed')
     records=page.get('records');end=integer(page.get('next_tx'));watermark=integer(page.get('watermark_tx'))
-    if page.get('capture')!='new_values' or page.get('truncated') or not isinstance(records,list) or len(records)>MAX_RECORDS:
+    if page.get('capture') not in ('new_values','old_and_new_values') or page.get('truncated') or not isinstance(records,list) or len(records)>MAX_RECORDS:
         raise CustodyUnknown('feed page is partial or outside bounds')
     if end<since or watermark<end:raise CustodyUnknown('feed cursor regressed')
     if not records:
@@ -104,6 +111,38 @@ class Journal:
     @property
     def cursor(self):return self.db.execute('SELECT cursor FROM authority').fetchone()[0]
 
+    def verify_stream_source(self,identity):
+        if (not isinstance(identity,dict) or set(identity)!={'store_id','log_epoch'}
+                or any(not isinstance(v,str) or not v for v in identity.values())):
+            raise CustodyUnknown('explicit stream identity unproved')
+        exists=self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stream_source'").fetchone()
+        if not exists:raise CustodyUnknown('stream source is unbound; explicit reviewed transition required')
+        rows=self.db.execute('SELECT store_id,log_epoch FROM stream_source').fetchall()
+        if rows!=[(identity['store_id'],identity['log_epoch'])]:
+            raise CustodyUnknown('stream source changed; no adoption or reset')
+
+    def bind_stream_source(self,identity,expected_cursor):
+        """Explicit transition only; caller holds the existing producer lock.
+
+        An absent record can be bound at one exact current cursor. Neither an
+        existing binding nor any pending/cursor/effect record may be replaced.
+        """
+        if (not isinstance(identity,dict) or set(identity)!={'store_id','log_epoch'}
+                or any(not isinstance(v,str) or not v for v in identity.values())):
+            raise CustodyUnknown('explicit stream identity unproved')
+        integer(expected_cursor)
+        self.db.execute('BEGIN IMMEDIATE')
+        try:
+            if self.cursor!=expected_cursor:raise CustodyUnknown('transition cursor changed')
+            exists=self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stream_source'").fetchone()
+            if exists:
+                self.verify_stream_source(identity)
+            else:
+                self.db.execute('CREATE TABLE stream_source(store_id TEXT NOT NULL,log_epoch TEXT NOT NULL)')
+                self.db.execute('INSERT INTO stream_source VALUES(?,?)',(identity['store_id'],identity['log_epoch']))
+            self.db.execute('COMMIT')
+        except Exception:self.db.execute('ROLLBACK');raise
+
     def retain(self,page):
         self.db.execute('BEGIN IMMEDIATE')
         try:
@@ -111,7 +150,7 @@ class Journal:
             for item,tx in items.items():
                 self.db.execute('INSERT INTO pending(id,tx) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET tx=MAX(tx,excluded.tx)',(item,tx))
             if self.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]>MAX_PENDING:
-                raise CustodyUnknown('pending custody is full; keep prior cursor')
+                raise CustodyFull('pending custody is full; keep prior cursor')
             self.db.execute('UPDATE authority SET cursor=?',(end,))
             self.db.execute('COMMIT')
         except Exception:self.db.execute('ROLLBACK');raise
