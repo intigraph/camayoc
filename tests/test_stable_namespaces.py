@@ -83,16 +83,21 @@ class StableNamespaces(unittest.TestCase):
         old = URIRef('http://quipu.dev/ontology/onViolation')
         new = URIRef(self.mapping[str(old)])
         found = 0
+        annotated_sources = set()
         for record in json.loads(self.artifacts['manifest.json'])['files']:
             actual = Graph().parse(data=self.artifacts[record['path']], format='turtle')
             for source in record['sources']:
                 file = source['path']
                 for shape, _, value in Graph().parse(ROOT/file).triples((None, old, None)):
+                    annotated_sources.add(str(shape))
                     shape = URIRef(self.mapping.get(str(shape), str(shape)))
                     self.assertIn((shape, old, value), actual)
                     self.assertIn((shape, new, value), actual)
                     found += 1
-        self.assertEqual(found, 21)
+        # DirectiveTraceability is now a domain shape too; its engine emission
+        # annotation must survive alongside the original 21 domain annotations.
+        self.assertIn('http://aegis.gastown.local/ontology/DirectiveTraceabilityShape', annotated_sources)
+        self.assertEqual(found, 22)
 
     def test_exact_iri_mapping_never_rewrites_literals_or_prefix_neighbors(self):
         a, b = URIRef('https://example.org/old#p'), URIRef('https://example.org/new#p')

@@ -527,11 +527,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "Directive appears only in a refusal message; its constraints remain loaded from Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/DirectiveShape",
       "shared_constraint": false,
       "source_targets": [
@@ -542,11 +543,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "Directive appears only in a refusal message; its constraints remain loaded from Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/DirectiveTraceabilityShape",
       "shared_constraint": false,
       "source_targets": [
@@ -599,11 +601,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/FailureModeShape",
       "shared_constraint": false,
       "source_targets": [
@@ -614,11 +617,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/FailurePatternShape",
       "shared_constraint": false,
       "source_targets": [
@@ -687,11 +691,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "A source documentation mention is not an engine dependency.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/GitCommitShape",
       "shared_constraint": false,
       "source_targets": [
@@ -756,11 +761,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/IncidentShape",
       "shared_constraint": false,
       "source_targets": [
@@ -771,11 +777,18 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
+      "destination_owner": "Quipu engine",
+      "engine_claim": {
+        "path": "src/share_scrub.rs",
+        "reads_class": "http://aegis.gastown.local/ontology/InternalIdentifierPattern",
+        "repository": "https://github.com/scbrown/quipu",
+        "revision": "2733fefb4ea835b95dd16306e0e53018901dac3f",
+        "symbol": "outward_scrub_patterns"
+      },
       "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
       "fixture_only": true,
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "ENGINE_CODE_REFERENCE",
       "shape": "http://aegis.gastown.local/ontology/InternalIdentifierPatternShape",
       "shared_constraint": false,
       "source_targets": [
@@ -924,11 +937,12 @@
       "trim_decisions": []
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/MetricShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1033,11 +1047,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/OperationalFactShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1048,11 +1063,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "A source documentation mention is not an engine dependency.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/OperationalRuleShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1063,11 +1079,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/OverseerShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1176,11 +1193,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/ReactionFiringShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1191,11 +1209,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/ReactionShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1230,11 +1249,12 @@
       "trim_decisions": []
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/RequirementShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1473,11 +1493,12 @@
       ]
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "No Quipu engine dependency; domain ownership defaults to Camayoc.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/TextRuleShape",
       "shared_constraint": false,
       "source_targets": [
@@ -1570,11 +1591,12 @@
       "trim_decisions": []
     },
     {
-      "destination_owner": "existing Quechua governance or Quipu engine; upstream retained pending exact claim review",
-      "file": "tests/fixtures/aegis-upstream/kept-governance-compatibility.shapes.ttl",
-      "fixture_only": true,
+      "destination_owner": "Camayoc",
+      "file": "shapes/aegis/software-factory.shapes.ttl",
+      "fixture_only": false,
+      "placement_reason": "Attestation help text is not a dependency on the shape.",
       "public_target_substitutions": {},
-      "routing_status": "SOURCE_REVIEW_REQUIRED",
+      "routing_status": "DOMAIN_PLACEMENT",
       "shape": "http://aegis.gastown.local/ontology/VerificationShape",
       "shared_constraint": false,
       "source_targets": [
