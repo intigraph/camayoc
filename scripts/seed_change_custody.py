@@ -18,6 +18,13 @@ MAX_PENDING=256
 
 class CustodyUnknown(ValueError):pass
 
+class CustodyFull(CustodyUnknown):
+    """Admitting this transaction would exceed MAX_PENDING; nothing was retained.
+
+    Backpressure, not a fault: the caller keeps the transaction, drains the
+    existing pending set and offers the same transaction again.
+    """
+
 def integer(value):
     if type(value) is not int or value<0:raise CustodyUnknown('invalid transaction boundary')
     return value
@@ -143,7 +150,7 @@ class Journal:
             for item,tx in items.items():
                 self.db.execute('INSERT INTO pending(id,tx) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET tx=MAX(tx,excluded.tx)',(item,tx))
             if self.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]>MAX_PENDING:
-                raise CustodyUnknown('pending custody is full; keep prior cursor')
+                raise CustodyFull('pending custody is full; keep prior cursor')
             self.db.execute('UPDATE authority SET cursor=?',(end,))
             self.db.execute('COMMIT')
         except Exception:self.db.execute('ROLLBACK');raise

@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import queue
 import threading
+import time
 import urllib.parse
 import urllib.request
 
@@ -97,21 +98,45 @@ class Subscription:
                     return
                 backoff = min(60, backoff * 2)
 
+    # A complete transaction that did not fit pending custody. While it is held
+    # the reader stays blocked on its acknowledgement, so no later transaction
+    # is read (backpressure) and this one is neither dropped nor reordered.
+    held = None
+
+    @property
+    def paused(self):
+        return self.held is not None
+
     def retain_one(self, journal, timeout=1):
-        try:
-            stream_id, page, done = self.pending.get(timeout=timeout)
-        except queue.Empty:
-            return False
+        if self.held is not None:
+            stream_id, page, done = self.held
+        else:
+            try:
+                stream_id, page, done = self.pending.get(timeout=timeout)
+            except queue.Empty:
+                return False
+        release = True
         try:
             if journal.cursor != self.cursor:
                 raise custody.CustodyUnknown('concurrent candidate cursor changed')
-            journal.retain(page)
+            try:
+                journal.retain(page)
+            except custody.CustodyFull:
+                # Pause admission only while effect ticks can drain something;
+                # a transaction larger than all of custody stays a refusal.
+                if journal.next() is None:
+                    raise
+                self.held, release = (stream_id, page, done), False
+                time.sleep(timeout)  # Same pacing as an idle queue wait.
+                return False
             if journal.cursor != stream_id:
                 raise custody.CustodyUnknown('candidate transaction not retained')
             self.cursor = stream_id  # Only after atomic candidate+cursor commit.
             return True
         finally:
-            done.set()
+            if release:
+                self.held = None
+                done.set()
 
     def close(self):
         self.stop.set()

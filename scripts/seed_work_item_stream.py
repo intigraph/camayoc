@@ -76,7 +76,9 @@ def run(args):
                 return planes._post(endpoint, body, client='camayoc-ingress')
             while True:
                 # Commit candidates without waiting for the next effect tick.
-                # Backpressure remains one complete transaction and MAX_PENDING.
+                # Backpressure remains one complete transaction and MAX_PENDING:
+                # at full custody the transaction is held (intake paused, prior
+                # cursor kept) and the loop still reaches the drain tick below.
                 stream.retain_one(journal)
                 now = time.time()
                 if now < previous_attempt + driver.INTERVAL:
@@ -89,7 +91,8 @@ def run(args):
                                'cursor': journal.cursor,
                                'backlog': journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]}
                 receipt.update(stream_connected=int(stream.connected), stream_errors=stream.errors,
-                               stream_source_verified=int(stream.source_verified))
+                               stream_source_verified=int(stream.source_verified),
+                               stream_admission_paused=int(stream.paused))
                 if not stream.connected or not stream.source_verified:
                     receipt.update(status='UNKNOWN', feed_error='StreamUnverified')
                 if receipt['status'] == 'OK':

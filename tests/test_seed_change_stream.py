@@ -17,6 +17,8 @@ import seed_change_stream as stream
 import seed_work_item_sync as sync
 from test_seed_change_custody import page
 from test_seed_work_item_sync import Tick
+from test_seed_work_items import GRAPH
+import seed_work_items as nw
 
 IDENTITY = {'store_id': 'fixture-store', 'log_epoch': 'fixture-epoch'}
 
@@ -176,3 +178,108 @@ class WireAdmission(unittest.TestCase):
     @staticmethod
     def _subject(item):
         return 'https://seeds.local/item/' + item
+
+
+def subject(n):
+    return nw.ITEM + f'demo-fill{n}'
+
+
+def wide_transaction(tx, subjects):
+    records = [{'graph': GRAPH, 'tx': tx, 'sequence': i + 1, 'entity': s,
+                'attribute': nw.SCHEMA + 'name', 'op': 'assert'}
+               for i, s in enumerate(subjects)]
+    return {'records': records, 'next_tx': tx, 'watermark_tx': tx,
+            'capture': 'old_and_new_values', 'source': dict(IDENTITY)}
+
+
+def fill_to_capacity(journal):
+    """Pad custody to exactly MAX_PENDING behind the real drainable item.
+
+    Filler rows carry a far-future attempt, so the real fixture item is
+    drained first by the unchanged effect tick.
+    """
+    have = journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
+    journal.db.executemany('INSERT INTO pending(id,tx,last_attempt) VALUES(?,?,1e18)',
+                           [(f'demo-fill{n}', 10) for n in range(custody.MAX_PENDING - have)])
+    journal.db.commit()
+
+
+class FullCustodyBackpressure(Tick):
+    """Review P2: full custody pauses admission; it never exits the consumer."""
+
+    def offer(self, sub, stream_id, body):
+        done = threading.Event()
+        sub.pending.put((stream_id, body, done))
+        return done
+
+    def subscription(self):
+        sub = object.__new__(stream.Subscription)
+        sub.cursor = self.j.cursor
+        sub.pending = queue.Queue(maxsize=1)
+        return sub
+
+    def pending_ids(self):
+        return [row[0] for row in self.j.db.execute('SELECT id FROM pending')]
+
+    def test_full_custody_holds_transaction_drains_then_admits_once(self):
+        self.j.retain(page())
+        fill_to_capacity(self.j)
+        sub = self.subscription()
+        nxt = wide_transaction(11, [subject('-next')])
+        done = self.offer(sub, 11, nxt)
+        for _ in range(2):  # Repeated turns keep holding; nothing is skipped.
+            self.assertFalse(sub.retain_one(self.j, timeout=0))
+            self.assertTrue(sub.paused)
+            self.assertFalse(done.is_set())  # Transport not acknowledged: intake paused.
+            self.assertEqual((sub.cursor, self.j.cursor), (10, 10))
+            self.assertEqual(len(self.pending_ids()), custody.MAX_PENDING)
+            self.assertNotIn('demo-fill-next', self.pending_ids())
+        drained = sync.tick(self.reader, self.j, self.post, changes=None,
+                            plane='urn:private:knowledge', actor='fixture')
+        # The drain tick still runs and verifies the real item. (Filler rows
+        # are not resolvable by this fixture, so the tick stops after it.)
+        self.assertEqual((drained['verified'], drained['writes'], drained['backlog']),
+                         (1, 1, custody.MAX_PENDING - 1), drained)
+        self.assertNotIn('demo-one', self.pending_ids())
+        self.assertTrue(sub.retain_one(self.j, timeout=0))
+        self.assertFalse(sub.paused)
+        self.assertTrue(done.is_set())
+        self.assertEqual((sub.cursor, self.j.cursor), (11, 11))
+        ids = self.pending_ids()
+        self.assertEqual(ids.count('demo-fill-next'), 1)
+        self.assertEqual(len(ids), custody.MAX_PENDING)
+        # Admitted exactly once: an empty queue admits nothing further.
+        self.assertFalse(sub.retain_one(self.j, timeout=0))
+        self.assertEqual(self.j.cursor, 11)
+
+    def test_held_transaction_is_the_next_one_admitted_in_order(self):
+        self.j.retain(page())
+        fill_to_capacity(self.j)
+        sub = self.subscription()
+        done11 = self.offer(sub, 11, wide_transaction(11, [subject('-a')]))
+        self.assertFalse(sub.retain_one(self.j, timeout=0))
+        # The reader is blocked on done11, but even a queued later transaction
+        # must not overtake the held one.
+        done12 = self.offer(sub, 12, wide_transaction(12, [subject('-b')]))
+        self.j.db.execute("DELETE FROM pending WHERE id='demo-fill0'")
+        self.j.db.execute("DELETE FROM pending WHERE id='demo-fill1'")
+        self.j.db.commit()
+        self.assertTrue(sub.retain_one(self.j, timeout=0))
+        self.assertTrue(done11.is_set())
+        self.assertEqual(self.j.cursor, 11)
+        self.assertFalse(done12.is_set())
+        self.assertTrue(sub.retain_one(self.j, timeout=0))
+        self.assertEqual(self.j.cursor, 12)
+        self.assertIn('demo-fill-a', self.pending_ids())
+        self.assertIn('demo-fill-b', self.pending_ids())
+
+    def test_transaction_larger_than_all_custody_still_refuses(self):
+        # Nothing to drain: waiting could never admit it, so it stays a refusal.
+        sub = self.subscription()
+        done = self.offer(sub, 10, wide_transaction(10, [subject(n) for n in range(custody.MAX_PENDING + 1)]))
+        with self.assertRaises(custody.CustodyFull):
+            sub.retain_one(self.j, timeout=0)
+        self.assertTrue(done.is_set())
+        self.assertFalse(sub.paused)
+        self.assertEqual((sub.cursor, self.j.cursor), (9, 9))
+        self.assertEqual(self.pending_ids(), [])

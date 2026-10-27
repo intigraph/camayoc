@@ -32,7 +32,14 @@ transaction stays UNKNOWN, with the prior cursor retained.
 
 The network reader queues at most one complete transaction. Only the SQLite
 owner thread commits candidates and the cursor together, then acknowledges
-transport delivery. Projection effects remain separate: pending bodies are
+transport delivery. When a complete transaction would push pending custody
+past its 256-item cap, the owner holds that transaction unacknowledged: the
+reader stops reading the stream, the cursor stays put, and effect ticks keep
+draining the existing pending set. The same transaction is offered again each
+turn and admitted, in order and once, as soon as it fits. A restart while
+paused resumes from the retained cursor, so the source redelivers it. Only a
+transaction larger than all of custody, with nothing left to drain, is still
+refused. Receipts report `stream_admission_paused`. Projection effects remain separate: pending bodies are
 prepared before a write and verified before acknowledgement. A lost response
 is read back, never blindly resent. The existing maximum four serial effects,
 request ceiling and minute cadence remain unchanged; idle ticks have no feed
