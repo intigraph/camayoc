@@ -184,9 +184,9 @@ class SuiteTotalTests(unittest.TestCase):
         # aegis:DeploymentEvent class (Quipu proposal 31).
         figures = coverage.totals()
         self.assertEqual(9, figures["slices"])
-        self.assertEqual(109, figures["total"])
+        self.assertEqual(110, figures["total"])
         self.assertEqual(44, figures["covered"])
-        self.assertEqual(27, figures["unwritten"])
+        self.assertEqual(28, figures["unwritten"])
         self.assertEqual(38, figures["gaps"])
 
     def test_the_three_states_account_for_every_question(self):

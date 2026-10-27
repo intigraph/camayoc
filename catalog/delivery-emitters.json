@@ -1,0 +1,110 @@
+{
+  "name": "camayoc-delivery-emitter-catalog",
+  "group_id": "camayoc-public",
+  "source": "https://github.com/intigraph/camayoc/tree/main/catalog",
+  "episode_body": "Supported source adapters, not an installation manifest or runtime coverage claim. Each adapter uses the same CDEvents mapping and governed ingress. Deployment adapters have success and failure fixtures; the lifecycle emitter has CI outcome and native review controls. DORA queries require recorded deployment and change coverage; publishing this catalog does not arm a producer.",
+  "nodes": [
+    {
+      "name": "camayoc-emitter-actions",
+      "type": "Tool",
+      "description": "GitHub / Forgejo Actions adapter support in Camayoc. Source support is separate from runtime activation and measured event coverage.",
+      "properties": {
+        "emitterCatalog": "camayoc-delivery-v1",
+        "emitterOrder": "1",
+        "emitterTool": "GitHub / Forgejo Actions",
+        "emitterStandard": "CDEvents on CloudEvents",
+        "emitterHow": "Reusable deployment-event action or CLI; skipped and cancelled jobs emit no deployment.",
+        "emitterStatus": "Supported adapter; activation is separate",
+        "emitterDocs": "https://github.com/intigraph/camayoc/blob/main/actions/deployment-event/README.md",
+        "sourceKind": "declared",
+        "emitterEvidence": "https://github.com/intigraph/camayoc/blob/main/tests/test_actions_emitter.py"
+      }
+    },
+    {
+      "name": "camayoc-emitter-ansible",
+      "type": "Tool",
+      "description": "Ansible adapter support in Camayoc. Source support is separate from runtime activation and measured event coverage.",
+      "properties": {
+        "emitterCatalog": "camayoc-delivery-v1",
+        "emitterOrder": "2",
+        "emitterTool": "Ansible",
+        "emitterStandard": "CDEvents on CloudEvents",
+        "emitterHow": "Callback writes one event per applied host; failed or unreachable recap counters mean failure.",
+        "emitterStatus": "Supported adapter; activation is separate",
+        "emitterDocs": "https://github.com/intigraph/camayoc/blob/main/emitters/ansible/README.md",
+        "sourceKind": "declared",
+        "emitterEvidence": "https://github.com/intigraph/camayoc/blob/main/tests/test_ansible_emitter.py"
+      }
+    },
+    {
+      "name": "camayoc-emitter-terraform",
+      "type": "Tool",
+      "description": "Terraform adapter support in Camayoc. Source support is separate from runtime activation and measured event coverage.",
+      "properties": {
+        "emitterCatalog": "camayoc-delivery-v1",
+        "emitterOrder": "3",
+        "emitterTool": "Terraform",
+        "emitterStandard": "CDEvents on CloudEvents",
+        "emitterHow": "Wrap an actual apply -json; errors or a nonzero exit after an attempted change mean failure.",
+        "emitterStatus": "Supported adapter; activation is separate",
+        "emitterDocs": "https://github.com/intigraph/camayoc/blob/main/emitters/terraform/README.md",
+        "sourceKind": "declared",
+        "emitterEvidence": "https://github.com/intigraph/camayoc/blob/main/tests/test_terraform_emitter.py"
+      }
+    },
+    {
+      "name": "camayoc-emitter-native",
+      "type": "Tool",
+      "description": "Native CDEvents adapter support in Camayoc. Source support is separate from runtime activation and measured event coverage.",
+      "properties": {
+        "emitterCatalog": "camayoc-delivery-v1",
+        "emitterOrder": "4",
+        "emitterTool": "Native CDEvents",
+        "emitterStandard": "CDEvents on CloudEvents",
+        "emitterHow": "Pass supported CDEvents through the single governed ingress; unknown types are quarantined.",
+        "emitterStatus": "Supported adapter; activation is separate",
+        "emitterDocs": "https://github.com/intigraph/camayoc/blob/main/docs/design/ingress.md",
+        "sourceKind": "declared",
+        "emitterEvidence": "https://github.com/intigraph/camayoc/blob/main/tests/test_ingest_cdevents.py"
+      }
+    },
+    {
+      "name": "camayoc-emitter-github-changes",
+      "type": "Tool",
+      "description": "GitHub change lifecycle adapter support in Camayoc. Source support is separate from runtime activation and measured event coverage.",
+      "properties": {
+        "emitterCatalog": "camayoc-delivery-v1",
+        "emitterOrder": "5",
+        "emitterTool": "GitHub change lifecycle",
+        "emitterStandard": "CDEvents on CloudEvents",
+        "emitterHow": "Read change, CI and native review records into ChangeEvent history; scheduling is separate.",
+        "emitterStatus": "Supported adapter; activation is separate",
+        "emitterDocs": "https://github.com/intigraph/camayoc/blob/main/emitters/github/changes.py",
+        "sourceKind": "declared",
+        "emitterEvidence": "https://github.com/intigraph/camayoc/blob/main/tests/test_github_changes_emitter.py"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "camayoc-emitter-actions",
+      "target": "camayoc-emitter-native",
+      "relation": "depends_on"
+    },
+    {
+      "source": "camayoc-emitter-ansible",
+      "target": "camayoc-emitter-native",
+      "relation": "depends_on"
+    },
+    {
+      "source": "camayoc-emitter-terraform",
+      "target": "camayoc-emitter-native",
+      "relation": "depends_on"
+    },
+    {
+      "source": "camayoc-emitter-github-changes",
+      "target": "camayoc-emitter-native",
+      "relation": "depends_on"
+    }
+  ]
+}

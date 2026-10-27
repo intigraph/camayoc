@@ -36,6 +36,7 @@ forge: never comment bodies or check logs.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 import re
@@ -66,7 +67,7 @@ query($owner: String!, $name: String!, $after: String) {
           statusCheckRollup { contexts(first: 100) { nodes {
             __typename
             ... on CheckRun { databaseId name status conclusion startedAt completedAt }
-            ... on StatusContext { context state createdAt } } } } } } }
+            ... on StatusContext { context state createdAt description } } } } } } }
       }
     }
   }
@@ -107,6 +108,40 @@ def event(repo: str, number: int, step: str, kind: str, time: str, *,
             "subject": change, "datacontenttype": "application/json", "data": cdevent}
 
 
+# The native review verdict, published as a commit status (aegis-6ye). It is a
+# review, not CI: it never counts toward green, even if a branch requires it.
+REVIEW_STATUS = "review/approved"
+_REVIEW_DESCRIPTION = re.compile(
+    r"^reviewer (?P<reviewer>\S+) receipt (?P<receipt>\S+) reviewed_at (?P<at>\S+)$")
+
+
+def native_reviews(contexts: list[dict]) -> list[tuple[str, str]]:
+    """(receipt id, reviewed_at) of verified native APPROVE statuses on one commit.
+
+    Only a SUCCESS state whose description names the native receipt's own
+    reviewed_at counts: the status's createdAt is when it was published, not
+    when the review happened. A failure is a revocation and records nothing; a
+    legacy description without reviewed_at is UNKNOWN and records nothing.
+    """
+    found = []
+    for ctx in contexts:
+        if ctx.get("__typename") != "StatusContext" or ctx.get("context") != REVIEW_STATUS:
+            continue
+        if ctx.get("state") != "SUCCESS":
+            continue
+        m = _REVIEW_DESCRIPTION.match(ctx.get("description") or "")
+        if not m:
+            continue
+        try:
+            instant(m["at"])
+        except argparse.ArgumentTypeError:
+            continue
+        if not m["at"].endswith("Z"):
+            continue
+        found.append((m["receipt"], m["at"]))
+    return found
+
+
 def ci_result(contexts: list[dict], required: list[str]) -> tuple[str, str] | None:
     """('pass'|'fail', time) for one commit's required checks, or None while undecided.
 
@@ -117,6 +152,7 @@ def ci_result(contexts: list[dict], required: list[str]) -> tuple[str, str] | No
     cannot be ordered by time. Such a check is undecided, even when an older run
     of it succeeded: a rerun queued or in progress must not inherit that green.
     """
+    required = [name for name in required if name != REVIEW_STATUS]
     latest: dict[str, tuple[tuple, str | None, str | None]] = {}
     for ctx in contexts:
         if ctx.get("__typename") == "CheckRun":
@@ -167,6 +203,11 @@ def events_for(repo: str, pr: dict, required: list[str]) -> list[dict]:
                                       "type": "testSuiteRun",
                                       "content": {"outcome": outcome, "environment": {"id": "ci"}}},
                              custom={"changeId": f"{repo}#{n}", "changeRepository": repo, "commitSha": commit["oid"]}))
+    for node in pr["commits"]["nodes"]:
+        rollup = node["commit"].get("statusCheckRollup") or {}
+        for receipt, at in native_reviews(((rollup.get("contexts") or {}).get("nodes")) or []):
+            out.append(event(repo, n, f"review/native-{receipt}", "dev.cdevents.change.reviewed.0.2.0", at,
+                             custom={"reviewState": "approved", "commitSha": node["commit"]["oid"]}))
     for review in pr["reviews"]["nodes"]:
         if review.get("submittedAt") and review.get("state") != "PENDING":
             custom = {"reviewState": review["state"].lower()}
@@ -223,12 +264,28 @@ def spool(ev: dict, directory: Path) -> Path | None:
     return path
 
 
+def instant(value: str) -> datetime:
+    """An RFC 3339 time with an explicit offset, as an aware UTC datetime."""
+    # More than six fractional digits (native receipts keep sub-microsecond
+    # precision) is truncated to what datetime can hold; the order is unchanged.
+    value = re.sub(r"(\.\d{6})\d+", r"\1", value)
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not an RFC 3339 time: {value!r}") from None
+    if parsed.tzinfo is None:
+        raise argparse.ArgumentTypeError(f"time needs an explicit offset or Z: {value!r}")
+    return parsed.astimezone(timezone.utc)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", required=True, help="owner/name")
     ap.add_argument("--since", required=True, help="RFC 3339 UTC; pull requests updated at or after it")
     ap.add_argument("--spool", type=Path, required=True)
     ap.add_argument("--branch", default="main", help="base branch whose required checks define green")
+    ap.add_argument("--not-before", type=instant, help="RFC 3339 UTC; spool only steps at or after it (the boundary after a "
+                    "reviewed backfill, so no step is delivered twice)")
     args = ap.parse_args(argv)
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
         ap.error("--repo must be owner/name")
@@ -240,6 +297,11 @@ def main(argv: list[str] | None = None) -> int:
     for pr in pull_requests(args.repo, args.since):
         counts["prs"] += 1
         for ev in events_for(args.repo, pr, required):
+            # Compared as instants: "12:00:00Z" is before "12:00:00.500Z" even
+            # though it sorts after it as text.
+            if args.not_before and instant(ev["time"]) < args.not_before:
+                counts["before-boundary"] = counts.get("before-boundary", 0) + 1
+                continue
             counts["spooled" if spool(ev, args.spool) else "present"] += 1
     print("changes: " + " ".join(f"{k}={v}" for k, v in counts.items()) + f" required={len(required)}")
     return 0
