@@ -18,7 +18,7 @@ was read back out of them.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/scbrown/camayoc/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/intigraph/camayoc/main/install.sh | sh
 ```
 
 Python 3.9+, curl, and a Linux or macOS shell. Downloads and verifies the latest source package into `~/.local/share/camayoc/TAG`.
@@ -33,7 +33,7 @@ Pinned releases, alternatives, configuration and removal are in the
 From an empty directory, bootstrap a governed memory and watch it prove its gate:
 
 ```bash
-git clone -q --depth 1 https://github.com/scbrown/camayoc
+git clone -q --depth 1 https://github.com/intigraph/camayoc
 QUIPU_SERVER=http://127.0.0.1:3030 bash camayoc/scripts/bootstrap.sh > bootstrap.log 2>&1
 grep -E '^(ontology|shapes|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
 ```
@@ -58,6 +58,31 @@ guarantee everything else rests on. Stop the server with
 
 **Load this repository’s graph:** public repository-pendant assets have not yet been verified. When a release supplies the archive, checksum and provenance, follow the [verified import workflow](https://scbrown.github.io/quipu/sharing/index.html): extract the share directory and use `quipu import SHARE_DIR --db repository.db`. Import stages knowledge; ROOT stays unchanged.
 
+<!-- delivery-catalog:start -->
+
+## Delivery events
+
+Bring deployment outcomes and change history into the same governed memory.
+These adapters use CDEvents on CloudEvents and Camayoc's single ingress.
+
+[Catalog data](https://github.com/intigraph/camayoc/blob/main/catalog/delivery-emitters.json) · [Updating the table](https://github.com/intigraph/camayoc/blob/main/catalog/README.md)
+
+| Tool | Standard | How | Status | Docs |
+| --- | --- | --- | --- | --- |
+| GitHub / Forgejo Actions | CDEvents on CloudEvents | Reusable deployment-event action or CLI; skipped and cancelled jobs emit no deployment. | Supported adapter; activation is separate | [Guide](https://github.com/intigraph/camayoc/blob/main/actions/deployment-event/README.md) |
+| Ansible | CDEvents on CloudEvents | Callback writes one event per applied host; failed or unreachable recap counters mean failure. | Supported adapter; activation is separate | [Guide](https://github.com/intigraph/camayoc/blob/main/emitters/ansible/README.md) |
+| Terraform | CDEvents on CloudEvents | Wrap an actual apply -json; errors or a nonzero exit after an attempted change mean failure. | Supported adapter; activation is separate | [Guide](https://github.com/intigraph/camayoc/blob/main/emitters/terraform/README.md) |
+| Native CDEvents | CDEvents on CloudEvents | Pass supported CDEvents through the single governed ingress; unknown types are quarantined. | Supported adapter; activation is separate | [Guide](https://github.com/intigraph/camayoc/blob/main/docs/design/ingress.md) |
+| GitHub change lifecycle | CDEvents on CloudEvents | Read change, CI and native review records into ChangeEvent history; scheduling is separate. | Supported adapter; activation is separate | [Guide](https://github.com/intigraph/camayoc/blob/main/emitters/github/changes.py) |
+
+The catalog describes source support, not installed producers or measured event coverage.
+The graph queries for deployment frequency, change failure rate, lead time and restore time
+need recorded events for the selected service, repository and time window.
+Missing change or deployment history is not a measured zero.
+
+<!-- catalog-source-sha256: ea2627bd96ba33263f3c3cc89dd0e64cfbb14788f6a14411df92448ec48aef14 -->
+<!-- delivery-catalog:end -->
+
 ## The stack
 
 <!-- stack-table:start -->
@@ -71,7 +96,7 @@ when.
 |---|---|
 | [tambo](https://github.com/intigraph/tambo) | 🧰 Agent Platform Toolkit - installs and configures the quipu stack |
 | [quipu](https://github.com/scbrown/quipu) | stores shared facts with provenance and history; can check writes against your rules |
-| [camayoc](https://github.com/scbrown/camayoc) | prepares knowledge and vocabulary for Quipu, with checks before it is admitted |
+| [camayoc](https://github.com/intigraph/camayoc) | prepares knowledge and vocabulary for Quipu, with checks before it is admitted |
 | [quechua](https://github.com/scbrown/quechua) | shared vocabulary and shapes for interoperable knowledge |
 | [chaski](https://github.com/scbrown/chaski) | reacts to graph changes and delivers governed notifications |
 | [bobbin](https://github.com/scbrown/bobbin) | indexes your codebase and injects context from that index and Quipu knowledge |

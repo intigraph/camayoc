@@ -1,20 +1,128 @@
 {
   "action": "load",
   "name": "camayoc_dora_open_changes",
-  "description": "Work in progress (aegis-rb3): changes of one repository opened before the instant and neither merged nor abandoned at it, with their opening time; age is the instant minus opened. From aegis:ChangeEvent.",
-  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change (MIN(?openedAt) AS ?opened) WHERE { GRAPH ?go { ?o a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"created\" ; aegis:occurredAt ?openedAt . } FILTER(STR(?openedAt) < \"{end}\") FILTER NOT EXISTS { GRAPH ?gc { ?x a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction ?closing ; aegis:occurredAt ?closedAt . } FILTER(?closing IN (\"merged\", \"abandoned\") && STR(?closedAt) < \"{end}\") } } GROUP BY ?change ORDER BY ?opened",
+  "description": "Work in progress (aegis-rb3): changes of one repository opened before the instant and neither merged nor abandoned at it, with their opening time; age is the instant minus opened. From aegis:ChangeEvent. Graphs are bound up front with VALUES (no per-graph string filter): the current and previous monthly window graphs, plus up to 16 exact staged-backfill graphs. An event older than the previous month is not read; its step reads as none/absent. A change opened before the previous month is not seen as open.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?change (MIN(?openedAt) AS ?opened) WHERE { VALUES ?go { <{changeNow}> <{changePrev}> <{staging1}> <{staging2}> <{staging3}> <{staging4}> <{staging5}> <{staging6}> <{staging7}> <{staging8}> <{staging9}> <{staging10}> <{staging11}> <{staging12}> <{staging13}> <{staging14}> <{staging15}> <{staging16}> } GRAPH ?go { ?o a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeRepository \"{repository}\" ; aegis:changeAction \"created\" ; aegis:occurredAt ?openedAt . } FILTER(STR(?openedAt) < \"{end}\") FILTER NOT EXISTS { VALUES ?gc { <{changeNow}> <{changePrev}> <{staging1}> <{staging2}> <{staging3}> <{staging4}> <{staging5}> <{staging6}> <{staging7}> <{staging8}> <{staging9}> <{staging10}> <{staging11}> <{staging12}> <{staging13}> <{staging14}> <{staging15}> <{staging16}> } GRAPH ?gc { ?x a aegis:ChangeEvent ; aegis:changeId ?change ; aegis:changeAction ?closing ; aegis:occurredAt ?closedAt . } FILTER(?closing IN (\"merged\", \"abandoned\") && STR(?closedAt) < \"{end}\") } } GROUP BY ?change ORDER BY ?opened",
   "params": [
     {
       "name": "repository",
       "type": "text",
       "required": true,
-      "description": "change repository as owner/repo, e.g. scbrown/quipu"
+      "description": "change repository as owner/repo"
     },
     {
       "name": "end",
       "type": "text",
       "required": true,
       "description": "the instant, RFC 3339 UTC"
+    },
+    {
+      "name": "changeNow",
+      "type": "iri",
+      "required": true,
+      "description": "change window graph for the window's end month, e.g. https://camayoc.local/window/change/2026-10"
+    },
+    {
+      "name": "changePrev",
+      "type": "iri",
+      "required": true,
+      "description": "change window graph for the month before changeNow"
+    },
+    {
+      "name": "staging1",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging2",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging3",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging4",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging5",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging6",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging7",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging8",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging9",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging10",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging11",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging12",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging13",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging14",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging15",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
+    },
+    {
+      "name": "staging16",
+      "type": "iri",
+      "required": true,
+      "description": "an exact reviewed staged-backfill graph (aegis-rb3 B2); unused slots carry an IRI with no data, e.g. urn:quipu:import:staging:none"
     }
   ]
 }

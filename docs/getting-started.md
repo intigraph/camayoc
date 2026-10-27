@@ -6,7 +6,7 @@ does not go to plan.
 ## Bootstrap from a shell
 
 ```bash
-git clone -q --depth 1 https://github.com/scbrown/camayoc
+git clone -q --depth 1 https://github.com/intigraph/camayoc
 QUIPU_SERVER=http://127.0.0.1:3030 bash camayoc/scripts/bootstrap.sh > bootstrap.log 2>&1
 grep -E '^(ontology|shapes|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
 ```

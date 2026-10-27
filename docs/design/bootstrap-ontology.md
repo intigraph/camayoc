@@ -11,7 +11,7 @@
 > configured base namespace (`aegis:` by default) so that quipu `/episode`
 > writes and the declarations agree out of the box — the namespace is still a
 > parameter, set in that file's prefix, never a hardcoded hostname. Every
-> term remains owed to a question in [competency/](https://github.com/scbrown/camayoc/tree/main/competency), now
+> term remains owed to a question in [competency/](https://github.com/intigraph/camayoc/tree/main/competency), now
 > six suites (workflow-and-archive joined on 2026-08-24; `just competency-list`
 > is the living count and watermark); per-question coverage is measured by
 > `just query-coverage` rather than asserted here.
@@ -48,7 +48,7 @@ public repo is two faults with one cause).
 ## 2. The upper terms (candidate set — the slice decides)
 
 Small and brutally curated. Current candidates, each owed to a competency
-question in [competency/](https://github.com/scbrown/camayoc/tree/main/competency):
+question in [competency/](https://github.com/intigraph/camayoc/tree/main/competency):
 
 - **`camayoc:WorkItem`** — a unit of intended work (a shantytown task, a bead,
   an issue). Deliberately tracker-agnostic: shantytown's adapter stance is

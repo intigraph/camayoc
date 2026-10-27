@@ -54,7 +54,7 @@ shantytown / git / yupana / sessions        (activity: raw fiber)
    maintained as the test harness for every ontology change. Six slices now:
    task lifecycle, metrics, verification-and-liveness (with its §D cost
    accounting), golden paths, document structure and chunks, and
-   workflow-and-archive. [competency/](https://github.com/scbrown/camayoc/blob/main/competency/)
+   workflow-and-archive. [competency/](https://github.com/intigraph/camayoc/blob/main/competency/)
 
 ### Metrics and nonfunctional requirements
 
@@ -150,7 +150,7 @@ measured, claim-by-claim ledger.
 - **The workflow slice** — `WorkflowDefinition`, `WorkflowStep`,
   `WorkflowRun`, and append-only `TransitionEvent`s; `currentState` is
   re-asserted per transition, never mutated. Every term is owed to a question
-  in [competency/workflow-and-archive.md](https://github.com/scbrown/camayoc/blob/main/competency/workflow-and-archive.md).
+  in [competency/workflow-and-archive.md](https://github.com/intigraph/camayoc/blob/main/competency/workflow-and-archive.md).
   [docs/design/workflow-and-archive.md](design/workflow-and-archive.md)
 - **Golden paths** — verified trajectories, blessed and enforced:
   `Trajectory`, `GoldenPath`, `PathOmission`, `PathPromotion`, with SHACL
@@ -158,7 +158,7 @@ measured, claim-by-claim ledger.
   its exemplar trajectory is refused) and a gate-probe arm proving each
   refusal. [docs/design/golden-paths.md](design/golden-paths.md)
 - **Stored queries, honest coverage** — every named query in
-  [queries/](https://github.com/scbrown/camayoc/blob/main/queries/) is tested against a seeded fixture with a positive
+  [queries/](https://github.com/intigraph/camayoc/blob/main/queries/) is tested against a seeded fixture with a positive
   *and* a control-negative arm. `just query-coverage` is the living figure:
   **40 of 91 stored across six slices**, plus 22 questions that are
   expressible with today's vocabulary and simply unwritten, and 29 that are
