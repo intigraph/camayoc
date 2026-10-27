@@ -1010,6 +1010,8 @@ the structural half.</p>
 WorkItem: its type, label, identifier and trust facts belong to tracker records
 and are not copied here. Readers join the records and provenance graphs.
 Code modules and commits retain their code namespace.
+Each commit also carries <code>sha</code> and <code>in_repo</code>, taken from that git record and
+repository name, so the shared Commit metadata constraint can judge it.
 Older output used <code>code/bead/&lt;id&gt;</code> for work items; those historical aliases need
 explicit reconciliation, not a second mint or deletion of their provenance.</p>
 <pre><code class="language-bash">scripts/ingest_git_provenance.py ../quipu ../yupana --project aegis &gt; /tmp/prov.ttl
