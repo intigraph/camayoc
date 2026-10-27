@@ -8,7 +8,7 @@
       "source": "docs/why-camayoc.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fwhy-camayoc.md",
       "summary": "Camayoc owns ontology, provenance-aware ingress and domain knowledge packs outside the governed store; competency questions precede new classes.",
-      "source_sha256": "d61c6b4ff673329a3786ae83b01888a378bad814667ee10d925bc348f944b831",
+      "source_sha256": "26a7116012c9de2c05f6bc87126e83bec9457e58cfe8f8be02e983528bdf1ebd",
       "type": "Concept"
     },
     {
@@ -24,7 +24,7 @@
       "source": "docs/reference.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Freference.md",
       "summary": "Script and just entry points expose bootstrap, competency coverage, planes and settled-decision checks; the reference points to the stored-query catalogue.",
-      "source_sha256": "732bba5183dd842006b8ccfa8b444cf31a594b3765364ecb4c1f22c1f450c150",
+      "source_sha256": "1a17ca404e9d9b9d5888e80d0ca1fd0802bad72dc77ff1a832caff524deb1e84",
       "properties": {
         "interfaceKind": "CLI",
         "publicName": "bootstrap, competency, planes, settled_decisions"
@@ -75,7 +75,7 @@
       "source": "docs/why-camayoc.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fwhy-camayoc.md",
       "summary": "Start with the ownership boundary between ontology, ingress, storage and retrieval.",
-      "source_sha256": "d61c6b4ff673329a3786ae83b01888a378bad814667ee10d925bc348f944b831",
+      "source_sha256": "26a7116012c9de2c05f6bc87126e83bec9457e58cfe8f8be02e983528bdf1ebd",
       "properties": {
         "startHereOrder": 1,
         "glossaryTerm": "https://scbrown.github.io/quechua/ns#Decision"
@@ -86,7 +86,7 @@
       "source": "docs/reference.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Freference.md",
       "summary": "Read the script entry points and competency-query interface before invoking a producer.",
-      "source_sha256": "732bba5183dd842006b8ccfa8b444cf31a594b3765364ecb4c1f22c1f450c150",
+      "source_sha256": "1a17ca404e9d9b9d5888e80d0ca1fd0802bad72dc77ff1a832caff524deb1e84",
       "properties": {
         "startHereOrder": 2
       }

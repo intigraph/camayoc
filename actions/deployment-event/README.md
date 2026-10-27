@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ... your deploy steps ...
-      - uses: scbrown/camayoc/actions/deployment-event@main
+      - uses: intigraph/camayoc/actions/deployment-event@main
         if: always()
         with:
           quipu-url: ${{ vars.QUIPU_URL }}
