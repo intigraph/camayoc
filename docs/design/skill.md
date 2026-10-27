@@ -73,10 +73,10 @@ This kills two design risks at once:
 
 ## 5. Related
 
-- [`skills/camayoc/SKILL.md`](https://github.com/scbrown/camayoc/blob/main/skills/camayoc/SKILL.md) — the artifact.
+- [`skills/camayoc/SKILL.md`](https://github.com/intigraph/camayoc/blob/main/skills/camayoc/SKILL.md) — the artifact.
 - [ingress.md](ingress.md) — the discipline the skill teaches; the shapes
   that enforce it.
 - [task-lifecycle-slice.md](task-lifecycle-slice.md) — the first slice,
   re-centered on the skill.
-- [competency/crew-task-lifecycle.md](https://github.com/scbrown/camayoc/blob/main/competency/crew-task-lifecycle.md)
+- [competency/crew-task-lifecycle.md](https://github.com/intigraph/camayoc/blob/main/competency/crew-task-lifecycle.md)
   — the questions the skill tells an agent to ask.

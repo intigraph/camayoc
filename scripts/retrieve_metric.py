@@ -26,6 +26,22 @@ def execute(method: dict[str, Any], timeout: float = 5.0) -> dict[str, Any]:
             return {"status": "retrieved", "system": system, "result": retrieve(params)}
         except (ValueError, TypeError, KeyError) as exc:
             return {"status": "invalid", "system": system, "error": str(exc)}
+    if system == "session_usage" and query == "work_cost_generation":
+        from pathlib import Path
+        import time
+        from usage_generation_reader import consume
+        if set(params) != {"producer", "harness", "session", "horizon", "consumer"} or params.get("consumer") not in ("st-cost", "brief"):
+            return {"status":"invalid", "system":system, "error":"invalid generation reader scope"}
+        # One persistent attempt fence per consumer, across every session and
+        # generation. A caller cannot multiply rate by choosing new filenames.
+        directory=Path(os.environ.get("CAMAYOC_COST_READ_STATE",Path.home()/".local/state/camayoc/cost-reads"))
+        try:
+            directory.mkdir(parents=True,exist_ok=True)
+            value=consume(producer=params["producer"],harness=params["harness"],session=params["session"],
+                          at=params["horizon"],state_path=directory/(params["consumer"]+".json"),now=time.time())
+            return {"status":"retrieved" if value["status"]=="COMPLETE" else "unknown", "system":system, "result":value}
+        except (ValueError,TypeError,KeyError,OSError):
+            return {"status":"unknown", "system":system, "error":"generation validation unavailable"}
     if system != "prometheus":
         return {"status": "unsupported", "system": system}
     endpoint = params.get("endpoint")

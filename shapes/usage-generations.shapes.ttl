@@ -1,0 +1,47 @@
+# PROPOSAL ONLY: aegis-srm; owner Camayoc. Not authorized/loaded in production.
+@prefix a: <http://aegis.gastown.local/ontology/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+a:UsageGeneration a rdfs:Class ; rdfs:comment "PROPOSED Camayoc usage envelope; not a UsageRecord and not a completeness assertion." .
+a:UsageGenerationSelector a rdfs:Class ; rdfs:comment "PROPOSED Camayoc usage envelope; not a UsageRecord and not a completeness assertion." .
+
+a:UsageGenerationShape a sh:NodeShape ; sh:targetClass a:UsageGeneration ;
+    sh:property [ sh:path a:inSession ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path a:usageHarness ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ("claude" "codex") ] ;
+    sh:property [ sh:path a:usageProducer ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path a:usageProfileVersion ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ("srm-generation-v1") ] ;
+    sh:property [ sh:path a:usageHorizon ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" ] ;
+    sh:property [ sh:path a:usageGraph ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path a:usageSourceDigest ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path a:usageManifestDigest ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path a:usageManifestJSON ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path a:usagePartitionCount ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ; sh:lessThanOrEquals a:usageRecordCount ] ;
+    sh:property [ sh:path a:usageRecordCount ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ] ;
+    sh:property [ sh:path a:usagePreviousGeneration ; sh:minCount 0 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] .
+
+a:UsageGenerationSelectorShape a sh:NodeShape ; sh:targetClass a:UsageGenerationSelector ;
+    sh:property [ sh:path a:inSession ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path a:usageHarness ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ("claude" "codex") ] ;
+    sh:property [ sh:path a:usageProducer ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path a:usageProfileVersion ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ("srm-generation-v1") ] ;
+    sh:property [ sh:path a:usageHorizon ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" ] ;
+    sh:property [ sh:path a:usageSelectedGeneration ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path a:usageManifestDigest ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] .
+
+a:UsageRequestIdentityShape a sh:NodeShape ; sh:targetSubjectsOf a:usageRequestId ;
+    sh:property [ sh:path a:usageRequestId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path a:inSession ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path a:usageHarness ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ("claude" "codex") ] ;
+    sh:property [ sh:path a:usageAttributionState ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ("attributed" "no proven focus" "overlapping focus") ] ;
+    sh:or (
+        [ sh:and (
+            [ sh:property [ sh:path a:usageAttributionState ; sh:hasValue "attributed" ] ]
+            [ sh:property [ sh:path a:attributedTo ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ]
+        ) ]
+        [ sh:and (
+            [ sh:property [ sh:path a:usageAttributionState ; sh:in ("no proven focus" "overlapping focus") ] ]
+            [ sh:property [ sh:path a:attributedTo ; sh:maxCount 0 ] ]
+        ) ]
+    ) .

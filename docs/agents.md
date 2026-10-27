@@ -5,7 +5,7 @@
 Camayoc ships as a **Claude Code plugin**. In Claude Code:
 
 ```text
-/plugin marketplace add scbrown/camayoc
+/plugin marketplace add intigraph/camayoc
 /plugin install camayoc@camayoc
 ```
 
@@ -63,7 +63,7 @@ modules, symbols, documents and sections that decisions anchor to — because
 ## How you use it: the skill is the interface
 
 Camayoc's primary consumer is an agent in a session, so camayoc **ships a
-skill** ([skills/camayoc/SKILL.md](https://github.com/scbrown/camayoc/blob/main/skills/camayoc/SKILL.md)) that teaches any
+skill** ([skills/camayoc/SKILL.md](https://github.com/intigraph/camayoc/blob/main/skills/camayoc/SKILL.md)) that teaches any
 agent the four moves: **bootstrap** a bare store (load ontology + shapes,
 *prove* the SHACL gate is live), **query first** (ask the competency
 questions before re-deciding anything), **record at the moment** (decisions

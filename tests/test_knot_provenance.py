@@ -130,7 +130,10 @@ class KnotWriteInventoryTests(unittest.TestCase):
         # writers. Each exemption names why; it must never write the edge.
         readers = {"directive_edges.py": "anchors a Directive's grace window on "
                    "its capture episode (aegis-q9m5mp.47); writes only governedBy, "
-                   "trackedBy and inferredAt"}
+                   "trackedBy and inferredAt",
+                   "exact_work_item_coverage.py": "reads the positive control's "
+                   "capture episode in exact-subject snapshots; its transport "
+                   "permits only /query and never writes the edge"}
         for path in sorted(SCRIPTS.rglob("*")):
             if path.suffix in (".sh", ".py") and path.is_file() and path.name not in readers:
                 self.assertNotIn("wasGeneratedBy", path.read_text(), str(path))

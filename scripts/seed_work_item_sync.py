@@ -5,6 +5,7 @@ The reviewed producer supplies the canonical Reader and durable custody.
 """
 from __future__ import annotations
 import json
+import re
 import sqlite3
 import time
 import seed_change_custody as custody
@@ -44,6 +45,22 @@ TICK_REQUESTS=1+MAX_DELIVERIES*ITEM_REQUESTS
 #: p90 0.97s, so a 1.0s budget stopped nearly every tick after one item. Incident reads
 #: (2-8s) still stop the tick.
 READ_BUDGET_SECONDS=2.5
+
+
+def failure_reason(exc):
+    """A bounded, payload-free reason for a failed tick (aegis-wu1s9ti4d).
+
+    CustodyUnknown carries only this library's literal reasons. A PlaneError is
+    reduced to a fixed class, because its text can hold server response bytes.
+    Anything else keeps only its type, as before. Never auth, payloads or URLs.
+    """
+    if isinstance(exc,custody.CustodyUnknown):return str(exc)[:120]
+    if type(exc).__name__!='PlaneError':return None
+    text=str(exc);code=re.search(r'\bHTTP (\d{3})\b',text)
+    if code:return 'HTTP '+code.group(1)
+    for marker,name in (('unreachable','unreachable'),('budget','response budget'),('credential','auth refused'),('401','auth refused')):
+        if marker in text:return name
+    return 'unclassified'
 
 
 def deliver(reader,journal,call,pending,*,plane,actor,wrote):
@@ -86,7 +103,7 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
 
 
 def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
-    requests=0;writes=0;slowest=0.0
+    requests=0;writes=0;slowest=0.0;last=None
     def wrote():
         nonlocal writes
         writes+=1
@@ -96,12 +113,16 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
         if requests>TICK_REQUESTS:raise custody.CustodyUnknown('tick request budget exhausted')
         return timed(post,endpoint,body)
     def timed(function,*args,**kwargs):
-        nonlocal slowest
+        nonlocal slowest,last
         started=clock()
         try:
             return function(*args,**kwargs)
         finally:
-            slowest=max(slowest,clock()-started)
+            elapsed=clock()-started
+            slowest=max(slowest,elapsed)
+            # The request whose answer a doubt rests on: for a failed custody
+            # read-back this is the read-back itself (aegis-wu1s9ti4d).
+            last={'endpoint':args[0] if args else '/changes','seconds':round(elapsed,3)}
     receipt={'status':'UNKNOWN','writes':0,'requests':0,'verified':0}
     try:
         pending=journal.next()
@@ -134,8 +155,12 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
             receipt.update(status='UNKNOWN',feed_error=feed_error)
     except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
         receipt.update(status='UNKNOWN',error=type(exc).__name__)
+        reason=failure_reason(exc)
+        if reason:receipt['reason']=reason
+        if last:receipt['last_request']=last
     if slowest>READ_BUDGET_SECONDS:
         receipt['slow_read']=round(slowest,3)
+    receipt['slowest_read']=round(slowest,3)
     receipt.update(requests=requests,writes=writes,cursor=journal.cursor,
                    backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0])
     return receipt
