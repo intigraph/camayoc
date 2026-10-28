@@ -44,7 +44,7 @@ ENV_MODE = "CAMAYOC_MEMORY_REDIRECT"
 ENV_PERSON = "CAMAYOC_PERSON"
 ENV_VERIFY = "CAMAYOC_REDIRECT_VERIFY"  # a nonce: log it, map + precheck only, never contact a store
 EDIT_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit", "apply_patch"}
-MEMORY_PATH = re.compile(r"(?:^|/)\.claude/projects/[^/]+/memory/[^/]")
+MEMORY_TAIL = re.compile(r"^projects/[^/]+/memory/[^/]")
 INDEX_FILE = "MEMORY.md"
 MAX_STDIN = 4 * 1024 * 1024
 LAND_TIMEOUT_S = 30.0
@@ -106,8 +106,33 @@ def log(event: str, env=None, **fields) -> None:
         pass
 
 
-def is_memory_path(path: str) -> bool:
-    return bool(path) and bool(MEMORY_PATH.search(str(path).replace("\\", "/")))
+def claude_roots(env=None) -> list[str]:
+    """The user's Claude config dirs: $CLAUDE_CONFIG_DIR and ~/.claude, each also symlink-resolved."""
+    env = os.environ if env is None else env
+    home = env.get("HOME") or str(Path.home())
+    roots = [env.get("CLAUDE_CONFIG_DIR") or "", os.path.join(home, ".claude")]
+    out: list[str] = []
+    for r in filter(None, roots):
+        for v in (os.path.normpath(os.path.expanduser(r)), os.path.realpath(os.path.expanduser(r))):
+            if v not in out:
+                out.append(v)
+    return out
+
+
+def is_memory_path(path: str, env=None) -> bool:
+    """True only under the user's own <claude dir>/projects/<project>/memory/, never a lookalike elsewhere."""
+    if not path:
+        return False
+    candidates = {os.path.normpath(str(path))}
+    try:
+        candidates.add(os.path.join(os.path.realpath(os.path.dirname(str(path))), os.path.basename(str(path))))
+    except (OSError, ValueError):
+        pass
+    for c in candidates:
+        for root in claude_roots(env):
+            if c.startswith(root + os.sep) and MEMORY_TAIL.match(c[len(root) + 1:].replace(os.sep, "/")):
+                return True
+    return False
 
 
 def _abs(path: str, cwd: str | None) -> str:
@@ -155,7 +180,7 @@ def parse_patch(patch: str) -> list[tuple[str, str | None, str]]:
     return [(p, "\n".join(c) + "\n" if isinstance(c, list) else None, op) for p, c, op in out]
 
 
-def targets(payload: dict) -> list[dict]:
+def targets(payload: dict, env=None) -> list[dict]:
     """The memory-path writes in one PreToolUse payload."""
     tool = payload.get("tool_name") or ""
     inp = payload.get("tool_input") or {}
@@ -175,7 +200,7 @@ def targets(payload: dict) -> list[dict]:
         found.append({"path": _abs(str(path), cwd) if path else "", "content": content,
                       "op": "write" if tool == "Write" else "edit",
                       "preview": _preview_edit(_abs(str(path), cwd), inp) if path and tool != "Write" else None})
-    return [t for t in found if is_memory_path(t["path"])]
+    return [t for t in found if is_memory_path(t["path"], env)]
 
 
 def _preview_edit(path: str, inp: dict) -> str | None:
@@ -531,7 +556,7 @@ def main(mode_arg: str | None = None, person: str | None = None, worker: str | N
         payload = json.loads(raw) if raw.strip() else {}
         if not isinstance(payload, dict):
             return 0
-        found = targets(payload)
+        found = targets(payload, env)
         if not found:
             return 0
         mode = resolve_mode(mode_arg, env)
