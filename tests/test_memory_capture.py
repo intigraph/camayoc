@@ -101,6 +101,8 @@ class KindHintTests(Isolated):
         quoted = "here is the old handoff:\nDIRECTIVE 10/7: everything else waits\nStiwi: never ask"
         self.assertIsNone(capture.kind_hint(quoted, issuers, "prompt"), "a marker below the first line is quoted")
         self.assertEqual("directive", capture.kind_hint(quoted, issuers, "explicit"), "a filed note is scanned whole")
+        self.assertIsNone(capture.kind_hint("fix the docs; e.g.\ncy record decision --chose A", issuers, "prompt"),
+                          "a cy line below the first line of a prompt is quoted")
         for text in ("DECIDED: ship it", "Stiwi: never ask", "cy record decision --chose A"):
             self.assertIsNone(capture.kind_hint(text, issuers, "answer"), "an agent answer is never a ruling")
 
@@ -219,6 +221,21 @@ class OfflineCaptureTests(Isolated):
         self.assertEqual(1, Slow.calls)
         self.assertEqual(["a prompt during the flush"], [e["text"] for e in capture.spooled(self.env)],
                          "the new capture waits in the fresh spool; the flushed one is gone")
+
+    def test_a_line_appended_during_the_swap_is_kept(self):
+        capture.spool(capture.build("first capture, long enough", "prompt", env=self.env), self.env)
+        late = capture.build("late line written into the renamed file", "prompt", env=self.env)
+
+        class Knot:
+            def knot(inner, *a, **k):
+                # simulate a hook that opened the spool before the rename
+                with open(capture.inflight_path(self.env), "ab") as f:
+                    f.write(capture._line(late))
+                return {"conforms": True}
+
+        out = capture.flush(client=Knot(), env=self.env)
+        self.assertEqual(1, out.data["written"])
+        self.assertEqual([late["text"]], [e["text"] for e in capture.spooled(self.env)])
 
     def test_turtle_is_untyped(self):
         entry = capture.build("RULING: x y z", "explicit", session="abc", env=self.env)

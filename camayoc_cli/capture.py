@@ -73,8 +73,8 @@ def kind_hint(text: str, issuers: dict | None = None, source: str = "explicit") 
 
     Only words a person wrote promote. An `answer` is the agent talking (it may
     quote a ruling, which does not make it one): never a candidate. A `prompt`
-    is a candidate only when it is not a relayed message and the marker or
-    issuer prefix opens it; a marker further down is quoted text (a pasted
+    is a candidate only when it is not a relayed message and the marker,
+    issuer prefix or `cy record` call opens it; a marker further down is quoted text (a pasted
     handoff, a memory line). Explicit notes and producers (redirect, import,
     stop-check) are scanned whole: an agent or producer chose to file them.
     """
@@ -83,10 +83,10 @@ def kind_hint(text: str, issuers: dict | None = None, source: str = "explicit") 
     if source == "prompt":
         if is_relayed(text):
             return None
+        text = first_line(text)
         m = CY_LINE.search(text)
         if m:
             return f"cy:{m.group(1)}"
-        text = first_line(text)
     else:
         m = CY_LINE.search(text)
         if m:
@@ -370,6 +370,10 @@ def _flush(client: quipu.Client, env=None) -> memory.Outcome:
             spool_file.unlink()
         else:
             os.replace(spool_file, inflight)
+    try:
+        seen = inflight.stat().st_size
+    except OSError:
+        seen = 0
     entries, dropped = retain(_read(inflight), _now(env))
     lines = [f"retention dropped {dropped}"] if dropped else []
     done = 0
@@ -401,6 +405,16 @@ def _flush(client: quipu.Client, env=None) -> memory.Outcome:
             continue
         done += len(batch)
     rest = entries[done:]
+    # A hook that opened the spool just before the rename appended to what is
+    # now the in-flight file; keep anything that arrived after it was read.
+    try:
+        with open(inflight, "rb") as f:
+            f.seek(seen)
+            late = [json.loads(ln) for ln in f.read().decode("utf-8", errors="replace").splitlines()
+                    if ln.strip().startswith("{")]
+    except (OSError, ValueError):
+        late = []
+    rest += late
     if rest:
         _write_private(inflight, rest)
     else:
