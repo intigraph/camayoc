@@ -55,7 +55,7 @@ jobs:
       - run: pip install rdflib
       - name: Chaski adapter tests on Python 3.10
         run: |
-          for t in test_instant_parsing test_review_due test_review_entity_iris test_change_adapter test_directive_edges test_blocked_by test_seed_work_items test_seed_change_custody test_seed_change_stream test_seed_work_item_stream test_seed_metadata_projection test_seed_work_item_sync test_seed_work_item_backfill test_exact_work_item_coverage test_scheduled_exact_coverage test_finite_coverage test_native_review_due test_native_review_changes; do
+          for t in test_instant_parsing test_review_due test_review_entity_iris test_change_adapter test_directive_edges test_blocked_by test_seed_work_items test_seed_change_custody test_seed_change_stream test_seed_work_item_stream test_seed_metadata_projection test_seed_work_item_sync test_seed_work_item_backfill test_exact_work_item_coverage test_scheduled_exact_coverage test_finite_coverage test_native_review_due test_native_review_changes test_github_ingress; do
             python3 -m unittest discover -s tests -p "$t.py" || exit 1
           done
 

@@ -1,0 +1,118 @@
+{
+ "body": {
+  "action": "completed",
+  "check_run": {
+   "app": {
+    "client_id": "Iv1.05c79e9ad1f6bdfa",
+    "created_at": "2018-07-30T09:30:17Z",
+    "description": "Automate your workflow from idea to production",
+    "events": [
+     "branch_protection_rule",
+     "check_run",
+     "check_suite",
+     "create",
+     "delete",
+     "deployment",
+     "deployment_status",
+     "discussion",
+     "discussion_comment",
+     "fork",
+     "gollum",
+     "issues",
+     "issue_comment",
+     "label",
+     "merge_group",
+     "milestone",
+     "page_build",
+     "public",
+     "pull_request",
+     "pull_request_review",
+     "pull_request_review_comment",
+     "push",
+     "registry_package",
+     "release",
+     "repository",
+     "repository_dispatch",
+     "status",
+     "watch",
+     "workflow_dispatch",
+     "workflow_run"
+    ],
+    "html_url": "https://github.com/apps/github-actions",
+    "id": 15368,
+    "name": "GitHub Actions",
+    "node_id": "MDM6QXBwMTUzNjg=",
+    "owner": {
+     "html_url": "https://github.com/github",
+     "id": 9919,
+     "login": "github",
+     "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+     "site_admin": false,
+     "type": "Organization",
+     "url": "https://api.github.com/users/github",
+     "user_view_type": "public"
+    },
+    "slug": "github-actions",
+    "updated_at": "2026-06-18T16:17:48Z"
+   },
+   "check_suite": {
+    "head_branch": "fix/stream-oversize-and-paused-metric",
+    "head_sha": "256a7e1433679ba0ccbff647d46738a65fdfc6af",
+    "id": 109947982537
+   },
+   "completed_at": "2026-10-27T18:51:29Z",
+   "conclusion": "success",
+   "external_id": "cc10d4eb-74d1-5346-8041-b726bdff3651",
+   "head_sha": "256a7e1433679ba0ccbff647d46738a65fdfc6af",
+   "html_url": "https://github.com/intigraph/camayoc/actions/runs/40563810279/job/122399587112",
+   "id": 122399587112,
+   "name": "lint",
+   "node_id": "CR_kwDOTvaTnM8AAAAcf5V7KA",
+   "output": {
+    "annotations_count": 2,
+    "summary": null,
+    "text": null,
+    "title": null
+   },
+   "pull_requests": [],
+   "started_at": "2026-10-27T18:51:19Z",
+   "status": "completed",
+   "url": "https://api.github.com/repos/intigraph/camayoc/check-runs/122399587112"
+  },
+  "repository": {
+   "created_at": "2026-08-06T05:38:21Z",
+   "default_branch": "main",
+   "full_name": "intigraph/camayoc",
+   "html_url": "https://github.com/intigraph/camayoc",
+   "id": 1324782492,
+   "name": "camayoc",
+   "node_id": "R_kgDOTvaTnA",
+   "owner": {
+    "html_url": "https://github.com/intigraph",
+    "id": 343335587,
+    "login": "intigraph",
+    "node_id": "O_kgDOFHbiow",
+    "site_admin": false,
+    "type": "Organization",
+    "url": "https://api.github.com/users/intigraph",
+    "user_view_type": "public"
+   },
+   "private": false,
+   "pushed_at": "2026-10-27T18:56:20Z",
+   "updated_at": "2026-10-27T18:56:26Z",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "sender": {
+   "id": 6656238,
+   "login": "scbrown",
+   "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+   "type": "User"
+  }
+ },
+ "headers": {
+  "Content-Type": "application/json",
+  "X-GitHub-Delivery": "00000000-0000-0000-0000-00005eed0005",
+  "X-GitHub-Event": "check_run",
+  "X-GitHub-Hook-ID": "100000001"
+ }
+}

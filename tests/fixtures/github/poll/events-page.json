@@ -1,0 +1,520 @@
+[
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T18:56:18Z",
+  "id": "18376142292",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "action": "merged",
+   "number": 177,
+   "pull_request": {
+    "base": {
+     "ref": "main",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "3af4ce31008507c77072dc2a852a636f5ef80496"
+    },
+    "head": {
+     "ref": "fix/stream-oversize-and-paused-metric",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "256a7e1433679ba0ccbff647d46738a65fdfc6af"
+    },
+    "id": 5039397264,
+    "number": 177,
+    "url": "https://api.github.com/repos/intigraph/camayoc/pulls/177"
+   }
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "PullRequestEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T18:51:13Z",
+  "id": "18375687605",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "action": "opened",
+   "number": 177,
+   "pull_request": {
+    "base": {
+     "ref": "main",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "3af4ce31008507c77072dc2a852a636f5ef80496"
+    },
+    "head": {
+     "ref": "fix/stream-oversize-and-paused-metric",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "256a7e1433679ba0ccbff647d46738a65fdfc6af"
+    },
+    "id": 5039397264,
+    "number": 177,
+    "url": "https://api.github.com/repos/intigraph/camayoc/pulls/177"
+   }
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "PullRequestEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T14:25:37Z",
+  "id": "25383952366",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "before": "b1417779562dbd534406ed42da9f1c5ce17fe07e",
+   "head": "6b2edfdd2e9204d69cbba2b359a12603dc60f0d0",
+   "push_id": 47969991078,
+   "ref": "refs/heads/main",
+   "repository_id": 1324782492
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "PushEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T13:50:42Z",
+  "id": "25383817962",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "before": "5ba9cc640bbdd97ee2ba9d72aba8ea12e1977eb2",
+   "head": "85ccd4245b1eb2ed8fcd392be01968e1b385c6d0",
+   "push_id": 47965914721,
+   "ref": "refs/heads/wu/intigraph-pages",
+   "repository_id": 1324782492
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "PushEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T14:00:25Z",
+  "id": "18347748379",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "action": "created",
+   "pull_request": {
+    "base": {
+     "ref": "main",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "b1417779562dbd534406ed42da9f1c5ce17fe07e"
+    },
+    "head": {
+     "ref": "malcolm/wu1s-custody-receipt",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "4f0199d42c1ee15d71705d86238b61608cd02a7b"
+    },
+    "id": 5005446754,
+    "number": 172,
+    "url": "https://api.github.com/repos/intigraph/camayoc/pulls/172"
+   },
+   "review": {
+    "body": "Looks right.",
+    "commit_id": "e0cfe0ebf24c2e7ec2974e79b166883e3b91b1d1",
+    "html_url": "https://github.com/intigraph/camayoc/pull/172#pullrequestreview-5668121975",
+    "id": 5668121975,
+    "node_id": "PRR_kwDOTvaTnM8AAAABUditdw",
+    "pull_request_url": "https://api.github.com/repos/intigraph/camayoc/pulls/172",
+    "state": "commented",
+    "submitted_at": "2026-10-27T13:51:16Z",
+    "updated_at": "2026-10-27T13:51:17Z",
+    "user": {
+     "html_url": "https://github.com/scbrown",
+     "id": 6656238,
+     "login": "scbrown",
+     "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+     "site_admin": false,
+     "type": "User",
+     "url": "https://api.github.com/users/scbrown",
+     "user_view_type": "public"
+    }
+   }
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "PullRequestReviewEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T13:53:48Z",
+  "id": "18347155526",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "action": "created",
+   "pull_request": {
+    "base": {
+     "ref": "main",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "09ec9ea0d3fc6ac4f11c45b594eaeee776ce4c92"
+    },
+    "head": {
+     "ref": "sattler/canonical-workitem-type",
+     "repo": {
+      "id": 1324782492,
+      "name": "camayoc",
+      "url": "https://api.github.com/repos/intigraph/camayoc"
+     },
+     "sha": "3154a513fe4311c5096c780fd229abbf09942ed0"
+    },
+    "id": 4914981503,
+    "number": 140,
+    "url": "https://api.github.com/repos/intigraph/camayoc/pulls/140"
+   },
+   "review": {
+    "body": "Looks right.",
+    "commit_id": "3154a513fe4311c5096c780fd229abbf09942ed0",
+    "html_url": "https://github.com/intigraph/camayoc/pull/140#pullrequestreview-5668160866",
+    "id": 5668160866,
+    "node_id": "PRR_kwDOTvaTnM8AAAABUdlFYg",
+    "pull_request_url": "https://api.github.com/repos/intigraph/camayoc/pulls/140",
+    "state": "commented",
+    "submitted_at": "2026-10-27T13:53:46Z",
+    "updated_at": "2026-10-27T13:53:46Z",
+    "user": {
+     "html_url": "https://github.com/scbrown",
+     "id": 6656238,
+     "login": "scbrown",
+     "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+     "site_admin": false,
+     "type": "User",
+     "url": "https://api.github.com/users/scbrown",
+     "user_view_type": "public"
+    }
+   }
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "PullRequestReviewEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T15:20:33Z",
+  "id": "18367371569",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "action": "created",
+   "comment": {
+    "body": "Thanks @Donna-Box",
+    "created_at": "2026-10-27T15:20:33Z",
+    "html_url": "https://github.com/intigraph/camayoc/pull/166#issuecomment-6445908461",
+    "id": 6445908461,
+    "issue_url": "https://api.github.com/repos/intigraph/camayoc/issues/166",
+    "minimized": null,
+    "node_id": "IC_kwDOTvaTnM8AAAABgDTB7Q",
+    "updated_at": "2026-10-27T15:20:33Z",
+    "url": "https://api.github.com/repos/intigraph/camayoc/issues/comments/6445908461",
+    "user": {
+     "html_url": "https://github.com/scbrown",
+     "id": 6656238,
+     "login": "scbrown",
+     "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+     "site_admin": false,
+     "type": "User",
+     "url": "https://api.github.com/users/scbrown",
+     "user_view_type": "public"
+    }
+   },
+   "issue": {
+    "active_lock_reason": null,
+    "assignee": null,
+    "assignees": [],
+    "body": "Tracking.",
+    "closed_at": "2026-10-27T15:30:29Z",
+    "comments": 1,
+    "created_at": "2026-10-24T01:05:29Z",
+    "draft": false,
+    "html_url": "https://github.com/intigraph/camayoc/pull/166",
+    "id": 6007808249,
+    "labels": [],
+    "locked": false,
+    "milestone": null,
+    "node_id": "PR_kwDOTvaTnM8AAAABKYAZcg",
+    "number": 166,
+    "pull_request": {
+     "html_url": "https://github.com/intigraph/camayoc/pull/166",
+     "merged_at": "2026-10-27T15:30:29Z",
+     "url": "https://api.github.com/repos/intigraph/camayoc/pulls/166"
+    },
+    "state": "closed",
+    "state_reason": null,
+    "title": "feat(cost): stage bounded usage generations for oversized sessions",
+    "type": null,
+    "updated_at": "2026-10-27T15:30:31Z",
+    "url": "https://api.github.com/repos/intigraph/camayoc/issues/166",
+    "user": {
+     "html_url": "https://github.com/scbrown",
+     "id": 6656238,
+     "login": "scbrown",
+     "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+     "site_admin": false,
+     "type": "User",
+     "url": "https://api.github.com/users/scbrown",
+     "user_view_type": "public"
+    }
+   }
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "IssueCommentEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T16:04:49Z",
+  "id": "18359970924",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "action": "created",
+   "comment": {
+    "body": "Thanks @Donna-Box",
+    "created_at": "2026-10-27T16:04:49Z",
+    "html_url": "https://github.com/intigraph/camayoc/pull/171#issuecomment-6446953753",
+    "id": 6446953753,
+    "issue_url": "https://api.github.com/repos/intigraph/camayoc/issues/171",
+    "minimized": null,
+    "node_id": "IC_kwDOTvaTnM8AAAABgES1GQ",
+    "updated_at": "2026-10-27T16:04:49Z",
+    "url": "https://api.github.com/repos/intigraph/camayoc/issues/comments/6446953753",
+    "user": {
+     "html_url": "https://github.com/scbrown",
+     "id": 6656238,
+     "login": "scbrown",
+     "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+     "site_admin": false,
+     "type": "User",
+     "url": "https://api.github.com/users/scbrown",
+     "user_view_type": "public"
+    }
+   },
+   "issue": {
+    "active_lock_reason": null,
+    "assignee": null,
+    "assignees": [],
+    "body": "Tracking.",
+    "closed_at": "2026-10-27T15:57:41Z",
+    "comments": 3,
+    "created_at": "2026-10-25T11:50:34Z",
+    "draft": false,
+    "html_url": "https://github.com/intigraph/camayoc/pull/171",
+    "id": 6024123517,
+    "labels": [],
+    "locked": false,
+    "milestone": null,
+    "node_id": "PR_kwDOTvaTnM8AAAABKko7Eg",
+    "number": 171,
+    "pull_request": {
+     "html_url": "https://github.com/intigraph/camayoc/pull/171",
+     "merged_at": "2026-10-27T15:57:41Z",
+     "url": "https://api.github.com/repos/intigraph/camayoc/pulls/171"
+    },
+    "state": "closed",
+    "state_reason": null,
+    "title": "feat(ingress): consume committed changes with existing durable custody",
+    "type": null,
+    "updated_at": "2026-10-27T16:04:49Z",
+    "url": "https://api.github.com/repos/intigraph/camayoc/issues/171",
+    "user": {
+     "html_url": "https://github.com/scbrown",
+     "id": 6656238,
+     "login": "scbrown",
+     "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+     "site_admin": false,
+     "type": "User",
+     "url": "https://api.github.com/users/scbrown",
+     "user_view_type": "public"
+    }
+   }
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "IssueCommentEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T14:10:46Z",
+  "id": "25382311839",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "full_ref": "refs/heads/wu/intigraph-pages",
+   "pusher_type": "user",
+   "ref": "wu/intigraph-pages",
+   "ref_type": "branch"
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "DeleteEvent"
+ },
+ {
+  "actor": {
+   "display_login": "scbrown",
+   "id": 6656238,
+   "login": "scbrown",
+   "url": "https://api.github.com/users/scbrown"
+  },
+  "created_at": "2026-10-27T14:18:57Z",
+  "id": "25382297298",
+  "org": {
+   "id": 343335587,
+   "login": "intigraph",
+   "url": "https://api.github.com/orgs/intigraph"
+  },
+  "payload": {
+   "full_ref": "refs/heads/grant/yqfk-commit-metadata-20261023",
+   "pusher_type": "user",
+   "ref": "grant/yqfk-commit-metadata-20261023",
+   "ref_type": "branch"
+  },
+  "public": true,
+  "repo": {
+   "id": 1324782492,
+   "name": "intigraph/camayoc",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "type": "DeleteEvent"
+ }
+]

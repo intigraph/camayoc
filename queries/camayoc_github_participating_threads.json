@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_github_participating_threads",
+  "description": "github-activity Q6: pull requests and issues where login <login> (lower-case) acted or was @-mentioned, with the latest activity time on each. Participation is judged here, at read time; it is never stored.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?thread ?kind (MAX(?at) AS ?last) WHERE { GRAPH ?g { ?a aegis:aboutGitHubEntity ?e ; aegis:occurredAt ?at . { ?a aegis:githubActorLogin ?who . FILTER(LCASE(STR(?who)) = \"{login}\") } UNION { ?a aegis:githubMentions \"{login}\" } } GRAPH ?g2 { { ?e aegis:onGitHubThread ?thread . } UNION { ?e a aegis:GitHubPullRequest . BIND(?e AS ?thread) } UNION { ?e a aegis:GitHubIssue . BIND(?e AS ?thread) } } GRAPH ?g3 { ?thread a ?kind . } } GROUP BY ?thread ?kind ORDER BY DESC(?last)",
+  "params": [
+    {
+      "name": "login",
+      "type": "text",
+      "required": true,
+      "description": "GitHub login, lower-case"
+    }
+  ]
+}

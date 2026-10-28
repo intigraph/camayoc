@@ -1,0 +1,98 @@
+{
+ "active_lock_reason": null,
+ "additions": 100,
+ "assignee": null,
+ "assignees": [],
+ "author_association": "MEMBER",
+ "auto_merge": null,
+ "base": {
+  "label": "intigraph:main",
+  "ref": "main",
+  "repo": {
+   "full_name": "intigraph/camayoc",
+   "id": 1324782492,
+   "node_id": "R_kgDOTvaTnA"
+  },
+  "sha": "3af4ce31008507c77072dc2a852a636f5ef80496",
+  "user": {
+   "html_url": "https://github.com/intigraph",
+   "id": 343335587,
+   "login": "intigraph",
+   "node_id": "O_kgDOFHbiow",
+   "site_admin": false,
+   "type": "Organization",
+   "url": "https://api.github.com/users/intigraph",
+   "user_view_type": "public"
+  }
+ },
+ "body": "Refuse oversize stream transactions up front. cc @scbrown and @Sattler-Bot",
+ "changed_files": 5,
+ "closed_at": "2026-10-27T18:56:18Z",
+ "comments": 0,
+ "commits": 1,
+ "created_at": "2026-10-27T18:51:13Z",
+ "deletions": 2,
+ "draft": false,
+ "head": {
+  "label": "intigraph:fix/stream-oversize-and-paused-metric",
+  "ref": "fix/stream-oversize-and-paused-metric",
+  "repo": {
+   "full_name": "intigraph/camayoc",
+   "id": 1324782492,
+   "node_id": "R_kgDOTvaTnA"
+  },
+  "sha": "256a7e1433679ba0ccbff647d46738a65fdfc6af",
+  "user": {
+   "html_url": "https://github.com/intigraph",
+   "id": 343335587,
+   "login": "intigraph",
+   "node_id": "O_kgDOFHbiow",
+   "site_admin": false,
+   "type": "Organization",
+   "url": "https://api.github.com/users/intigraph",
+   "user_view_type": "public"
+  }
+ },
+ "html_url": "https://github.com/intigraph/camayoc/pull/177",
+ "id": 5039397264,
+ "issue_url": "https://api.github.com/repos/intigraph/camayoc/issues/177",
+ "labels": [],
+ "locked": false,
+ "maintainer_can_modify": false,
+ "merge_commit_sha": "24091efeed09250206b3f3295bc7a31867c5b2c2",
+ "mergeable": null,
+ "mergeable_state": "unknown",
+ "merged": true,
+ "merged_at": "2026-10-27T18:56:18Z",
+ "merged_by": {
+  "html_url": "https://github.com/scbrown",
+  "id": 6656238,
+  "login": "scbrown",
+  "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+  "site_admin": false,
+  "type": "User",
+  "url": "https://api.github.com/users/scbrown",
+  "user_view_type": "public"
+ },
+ "milestone": null,
+ "node_id": "PR_kwDOTvaTnM8AAAABLF8ZkA",
+ "number": 177,
+ "rebaseable": null,
+ "requested_reviewers": [],
+ "requested_teams": [],
+ "review_comments": 0,
+ "state": "closed",
+ "title": "fix(ingress): refuse oversize stream transactions up front; export stream pause",
+ "updated_at": "2026-10-27T18:56:21Z",
+ "url": "https://api.github.com/repos/intigraph/camayoc/pulls/177",
+ "user": {
+  "html_url": "https://github.com/scbrown",
+  "id": 6656238,
+  "login": "scbrown",
+  "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+  "site_admin": false,
+  "type": "User",
+  "url": "https://api.github.com/users/scbrown",
+  "user_view_type": "public"
+ }
+}

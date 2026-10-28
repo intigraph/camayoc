@@ -1,0 +1,20 @@
+{
+  "action": "load",
+  "name": "camayoc_github_pr_current_state",
+  "description": "github-activity Q1: the state pull request <repo>#<number> was left in by its LATEST pull_request.* activity (state, merged, head, draft, kind, time). Current state is a read-time judgment over append-only GitHubActivity records in the github graph; nothing stores it.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT ?pr ?kind ?at ?state ?merged ?head ?draft WHERE { GRAPH ?g0 { ?repo aegis:githubFullName \"{repo}\" . } GRAPH ?g1 { ?pr a aegis:GitHubPullRequest ; aegis:inGitHubRepository ?repo ; aegis:githubNumber ?n . } FILTER(STR(?n) = \"{number}\") GRAPH ?g { ?a aegis:aboutGitHubEntity ?pr ; aegis:githubEventKind ?kind ; aegis:occurredAt ?at ; aegis:githubState ?state . OPTIONAL { ?a aegis:githubMerged ?merged } OPTIONAL { ?a aegis:commitSha ?head } OPTIONAL { ?a aegis:githubDraft ?draft } } FILTER(STRSTARTS(?kind, \"pull_request.\")) } ORDER BY DESC(?at) LIMIT 1",
+  "params": [
+    {
+      "name": "repo",
+      "type": "text",
+      "required": true,
+      "description": "owner/name"
+    },
+    {
+      "name": "number",
+      "type": "text",
+      "required": true,
+      "description": "pull request number"
+    }
+  ]
+}

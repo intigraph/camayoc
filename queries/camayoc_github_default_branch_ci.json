@@ -1,0 +1,20 @@
+{
+  "action": "load",
+  "name": "camayoc_github_default_branch_ci",
+  "description": "github-activity Q4: for repository <repo>, the conclusion, head commit and time of the latest completed run of each workflow on branch <branch>. Answers gh-ci-watch's question from facts instead of a gh run list poll.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> SELECT DISTINCT ?workflow ?conclusion ?head ?at WHERE { GRAPH ?g0 { ?repo aegis:githubFullName \"{repo}\" . } GRAPH ?g { ?a aegis:githubEventKind \"workflow_run.completed\" ; aegis:inGitHubRepository ?repo ; aegis:aboutGitHubEntity ?run ; aegis:githubBaseRef \"{branch}\" ; aegis:githubConclusion ?conclusion ; aegis:commitSha ?head ; aegis:occurredAt ?at . } GRAPH ?g2 { ?run aegis:githubName ?workflow . } FILTER NOT EXISTS { GRAPH ?g3 { ?b aegis:githubEventKind \"workflow_run.completed\" ; aegis:inGitHubRepository ?repo ; aegis:aboutGitHubEntity ?run2 ; aegis:githubBaseRef \"{branch}\" ; aegis:occurredAt ?at2 . } GRAPH ?g4 { ?run2 aegis:githubName ?workflow . } FILTER(?at2 > ?at) } } ORDER BY ?workflow",
+  "params": [
+    {
+      "name": "repo",
+      "type": "text",
+      "required": true,
+      "description": "owner/name"
+    },
+    {
+      "name": "branch",
+      "type": "text",
+      "required": true,
+      "description": "branch name, e.g. main"
+    }
+  ]
+}
