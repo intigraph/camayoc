@@ -420,6 +420,21 @@ Built so far, for Decision, Directive, Preference, Handoff and Reference:
   table is tested in `tests/test_cy_cli.py` against a throwaway local
   `quipu-server`. The secret rules moved into `camayoc_cli/secret_rules.py`,
   and `scripts/memory_secret_rules.py` re-exports them.
+- Generated surfaces, all from the same definitions:
+  - `camayoc_cli/data/mcp-tools.json`, served by `cy mcp` (MCP stdio, server
+    `camayoc-memory`, declared in `.claude-plugin/plugin.json`). It provides
+    `record_<entity>`, `recall_<entity>` and `recall_decision_history`.
+  - The Claude skill `skills/camayoc-memory/SKILL.md`, with the slash
+    commands `commands/record.md` and `commands/recall.md`.
+  - The Codex skill `.agents/skills/camayoc-memory/SKILL.md`, which includes
+    the `~/.codex/config.toml` MCP stanza.
+  - The man page `docs/man/cy.1`, and the primer's entity and MCP tables.
+    Both skills carry the primer between `camayoc prime` markers.
+
+  `tests/test_memory_surfaces.py` checks that the served surfaces agree with
+  each other: the same fields, the same required set and the same recall
+  filters. The generator drift check covers every file. Choosing which
+  surfaces to install (cli, mcp, harness or all) is tambo's step (gshu.9).
 - `queries/mem_index_since.json` (generated) is the one paged query bobbin's
   memory mirror consumes (gshu.2, bobbin #216). It is called with only
   `since`; the plane graphs are optional parameters with defaults. It returns

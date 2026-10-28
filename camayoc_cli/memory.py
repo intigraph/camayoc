@@ -361,6 +361,21 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
         return Outcome(2, lines)
 
 
+def record_or_queue(entity_name: str, args: dict, *, supersede: str | None = None,
+                    flags: dict | None = None, env=None) -> Outcome:
+    """record(), but an unreachable store queues the call (§3: exit 0, `queued <n>`)."""
+    try:
+        return record(entity_name, args, supersede=supersede, flags=flags, env=env)
+    except quipu.Unreachable as exc:
+        entity = definitions.load()["entities"][entity_name]
+        pre = precheck(entity, args)
+        if pre:
+            return Outcome(2, pre)
+        n = enqueue({"entity": entity_name, "args": args, "supersede": supersede, "flags": flags or {}}, env)
+        return Outcome(0, [f"queued {n} ({exc}); run `cy flush` once quipu is back"],
+                       {"status": "queued", "queued": n})
+
+
 # ---- offline queue (minimal; gshu.7 owns the full buffer) -----------------------
 
 def queue_path(env=None) -> Path:

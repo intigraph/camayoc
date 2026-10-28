@@ -28,13 +28,28 @@ and expired records.
 | `cy recall decision --history <key>` | Every version of one decision key |
 | `cy topic add <name> [--alias ...]` | Register a memory topic (a natural-key part) |
 | `cy flush` | Replay records queued while Quipu was unreachable |
+| `cy mcp` | Serve the same tools over MCP stdio (`record_<entity>`, `recall_<entity>`) |
 | `cy prime [--brief] [--json] [--static]` | This primer plus live state |
 | `cy record <entity> --help` | Every flag of one entity, from its shape |
 
 ## MCP tools
 
 <!-- BEGIN generated mcp-tools -->
-None yet.
+Served by `cy mcp` (server name `camayoc-memory`).
+
+| Tool | Use |
+| --- | --- |
+| `record_decision` | Record one ruling on a scoped question: what was chosen, by whom, about what. Refuses in plain words when a field is missing. |
+| `recall_decision` | Current decisions, optionally about one entity and topic. |
+| `recall_decision_history` | Every version of one decision key, newest first, superseded ones included. |
+| `record_directive` | Record a standing rule: one imperative sentence, who issued it, who it binds. Refuses in plain words when a field is missing. |
+| `recall_directive` | Current directives binding one agent, role or repo, plus crew-wide ones. |
+| `record_handoff` | Write the agent's one current handoff; each write supersedes the last. Refuses in plain words when a field is missing. |
+| `recall_handoff` | The agent's current handoff, if younger than its max age. |
+| `record_preference` | Record how a person wants something done, in one context. Refuses in plain words when a field is missing. |
+| `recall_preference` | Current preferences of one person, optionally in one context. |
+| `record_reference` | Record where a system lives and how to reach it. Key names only, never secrets. Refuses in plain words when a field is missing. |
+| `recall_reference` | Current references, optionally into one system and for one topic. |
 <!-- END generated mcp-tools -->
 
 ## Memory entities
@@ -59,5 +74,5 @@ None yet.
 ## Next steps
 
 - Design: `docs/design/agent-memory-entities.md` in the camayoc repo
-- Skill: `skills/camayoc/SKILL.md`
-- Help: `cy --help`, `cy record <entity> --help`
+- Skill: `skills/camayoc-memory/SKILL.md` (Claude) and `.agents/skills/camayoc-memory/SKILL.md` (Codex)
+- Help: `cy --help`, `cy record <entity> --help`, `man docs/man/cy.1`

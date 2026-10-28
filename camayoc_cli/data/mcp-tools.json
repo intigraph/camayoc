@@ -1,0 +1,385 @@
+{
+  "generated_by": "python3 scripts/memory_tools.py",
+  "schema": "camayoc-mcp-tools/1",
+  "server": "camayoc-memory",
+  "tools": [
+    {
+      "description": "Record one ruling on a scoped question: what was chosen, by whom, about what. Refuses in plain words when a field is missing.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "about": {
+            "description": "The entity the decision is about: host, repo, service, role, agent or person (IRI or local name).",
+            "type": "string"
+          },
+          "by": {
+            "description": "Who ruled: a Person or agent entity (IRI or local name).",
+            "type": "string"
+          },
+          "chose": {
+            "description": "What was chosen, in one sentence.",
+            "type": "string"
+          },
+          "decidedIn": {
+            "description": "The board item or session the decision was made in (IRI or local name).",
+            "type": "string"
+          },
+          "dry_run": {
+            "description": "Return the record without writing it.",
+            "type": "boolean"
+          },
+          "over": {
+            "description": "An alternative that was not chosen; repeat for each.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rationale": {
+            "description": "Why, in one or two sentences.",
+            "type": "string"
+          },
+          "supersede": {
+            "description": "Confirm replacing a ruling by someone else: that record's IRI.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "The registered memory topic the decision answers (cy topic add registers one).",
+            "type": "string"
+          },
+          "verbatim": {
+            "description": "The ruling in the decider's own words.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chose",
+          "by",
+          "about",
+          "topic"
+        ],
+        "type": "object"
+      },
+      "name": "record_decision"
+    },
+    {
+      "description": "Current decisions, optionally about one entity and topic.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "about": {
+            "description": "The entity the decision is about: host, repo, service, role, agent or person (IRI or local name). Optional filter.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "The registered memory topic the decision answers (cy topic add registers one). Optional filter.",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "recall_decision"
+    },
+    {
+      "description": "Every version of one decision key, newest first, superseded ones included.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "description": "The natural key: an IRI or the key path after mem/decision/ (for example about/topic).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
+      "name": "recall_decision_history"
+    },
+    {
+      "description": "Record a standing rule: one imperative sentence, who issued it, who it binds. Refuses in plain words when a field is missing.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "appliesTo": {
+            "description": "Who or what the rule binds: an agent, CrewRole or repo, or 'crew' for everyone.",
+            "type": "string"
+          },
+          "dry_run": {
+            "description": "Return the record without writing it.",
+            "type": "boolean"
+          },
+          "issuedBy": {
+            "description": "Who issued the rule: a Person or agent entity (IRI or local name).",
+            "type": "string"
+          },
+          "issuedOn": {
+            "description": "The date the rule was given, YYYY-MM-DD.",
+            "type": "string"
+          },
+          "rule": {
+            "description": "The rule, as one imperative sentence.",
+            "type": "string"
+          },
+          "supersede": {
+            "description": "Confirm replacing a ruling by someone else: that record's IRI.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "The registered memory topic the rule governs (cy topic add registers one).",
+            "type": "string"
+          },
+          "verbatim": {
+            "description": "The rule in the issuer's own words.",
+            "type": "string"
+          },
+          "why": {
+            "description": "Why the rule exists, in one sentence.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "issuedBy",
+          "appliesTo",
+          "topic"
+        ],
+        "type": "object"
+      },
+      "name": "record_directive"
+    },
+    {
+      "description": "Current directives binding one agent, role or repo, plus crew-wide ones.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "appliesTo": {
+            "description": "Who or what the rule binds: an agent, CrewRole or repo, or 'crew' for everyone. Optional filter.",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "recall_directive"
+    },
+    {
+      "description": "Write the agent's one current handoff; each write supersedes the last. Refuses in plain words when a field is missing.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "description": "The agent the handoff is for (IRI or local name).",
+            "type": "string"
+          },
+          "context": {
+            "description": "Context the next session needs; repeat, at most 3 lines.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
+          "dry_run": {
+            "description": "Return the record without writing it.",
+            "type": "boolean"
+          },
+          "next": {
+            "description": "A next step pointing at a board item, PR or entity; repeat, 1 to 7.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 7,
+            "type": "array"
+          },
+          "supersede": {
+            "description": "Confirm replacing a ruling by someone else: that record's IRI.",
+            "type": "string"
+          },
+          "waitingOn": {
+            "description": "What an item waits on; repeat, at most 7.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 7,
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent",
+          "next"
+        ],
+        "type": "object"
+      },
+      "name": "record_handoff"
+    },
+    {
+      "description": "The agent's current handoff, if younger than its max age.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "description": "The agent the handoff is for (IRI or local name). Optional filter.",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "recall_handoff"
+    },
+    {
+      "description": "Record how a person wants something done, in one context. Refuses in plain words when a field is missing.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "description": "Where it applies: email, chat, code-review, document, artifact, form or travel.",
+            "enum": [
+              "email",
+              "chat",
+              "code-review",
+              "document",
+              "artifact",
+              "form",
+              "travel"
+            ],
+            "type": "string"
+          },
+          "dry_run": {
+            "description": "Return the record without writing it.",
+            "type": "boolean"
+          },
+          "example": {
+            "description": "One short example of the preference applied.",
+            "type": "string"
+          },
+          "notWhen": {
+            "description": "When the preference does not apply.",
+            "type": "string"
+          },
+          "noticed": {
+            "description": "An agent noticed this preference; the person did not state it.",
+            "type": "boolean"
+          },
+          "person": {
+            "description": "Whose preference it is: a Person entity (IRI or local name).",
+            "type": "string"
+          },
+          "prefers": {
+            "description": "What the person prefers, in one sentence.",
+            "type": "string"
+          },
+          "supersede": {
+            "description": "Confirm replacing a ruling by someone else: that record's IRI.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "The registered memory topic (cy topic add registers one).",
+            "type": "string"
+          },
+          "verbatim": {
+            "description": "The preference in the person's own words.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "person",
+          "prefers",
+          "context",
+          "topic"
+        ],
+        "type": "object"
+      },
+      "name": "record_preference"
+    },
+    {
+      "description": "Current preferences of one person, optionally in one context.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "description": "Where it applies: email, chat, code-review, document, artifact, form or travel. Optional filter.",
+            "type": "string"
+          },
+          "person": {
+            "description": "Whose preference it is: a Person entity (IRI or local name). Optional filter.",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "recall_preference"
+    },
+    {
+      "description": "Record where a system lives and how to reach it. Key names only, never secrets. Refuses in plain words when a field is missing.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "description": "How to authenticate, in one sentence, without the secret.",
+            "type": "string"
+          },
+          "dry_run": {
+            "description": "Return the record without writing it.",
+            "type": "boolean"
+          },
+          "locator": {
+            "description": "Where it is: a URL, path, command or graph IRI. Never a secret.",
+            "type": "string"
+          },
+          "probed": {
+            "description": "The locator was just probed and answered.",
+            "type": "boolean"
+          },
+          "secretRef": {
+            "description": "The secret-store key name that holds the credential. A key name, never a value.",
+            "pattern": "^[A-Za-z][A-Za-z0-9_./-]{1,127}$",
+            "type": "string"
+          },
+          "subject": {
+            "description": "The system the reference points into: host, service, repo or tool (IRI or local name).",
+            "type": "string"
+          },
+          "supersede": {
+            "description": "Confirm replacing a ruling by someone else: that record's IRI.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "What the reference is for: a registered memory topic (cy topic add registers one).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "topic",
+          "locator"
+        ],
+        "type": "object"
+      },
+      "name": "record_reference"
+    },
+    {
+      "description": "Current references, optionally into one system and for one topic.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "subject": {
+            "description": "The system the reference points into: host, service, repo or tool (IRI or local name). Optional filter.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "What the reference is for: a registered memory topic (cy topic add registers one). Optional filter.",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "recall_reference"
+    }
+  ]
+}
