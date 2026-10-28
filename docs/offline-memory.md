@@ -57,3 +57,10 @@ both streams when that adapter is installed. Without it, capture backlog remains
 pending and is reported; the buffer never calls the older dropping replay path.
 Ordering is per producer stream, not a global order between capture and typed
 records. The source patch for the adapter depends on the capture branch.
+
+Capture replay also retains an existing `capture-spool.inflight.jsonl` as the
+older prefix, and includes it in `cy backlog`. Unbound legacy captures require
+operator reconciliation; they are not sent to the current endpoint by guess.
+Stop older-version flushers during an upgrade, since they do not share the new
+FIFO locks. The capture producer keeps its boolean append contract: at capacity
+only the new capture is refused, while existing entries remain untouched.

@@ -172,28 +172,19 @@ class OfflineCaptureTests(Isolated):
             with self.subTest(file=p.name):
                 self.assertEqual(0o600, p.stat().st_mode & 0o777)
 
-    def test_retention_bounds_age_count_and_bytes(self):
-        import datetime as dt
-        now = dt.datetime(2026, 10, 28, 12, tzinfo=dt.timezone.utc)
-        old = [{"at": "2026-10-01T00:00:00Z", "text": "old", "hash": "h"}] * 3
-        fresh = [{"at": "2026-10-27T00:00:00Z", "text": f"n{i}", "hash": "h"} for i in range(10)]
-        with mock.patch.object(capture, "MAX_ENTRIES", 4):
-            kept, dropped = capture.retain(old + fresh, now)
-        self.assertEqual((["n6", "n7", "n8", "n9"], 9), ([e["text"] for e in kept], dropped))
-        big = [{"at": "2026-10-27T00:00:00Z", "text": "x" * 1000, "hash": str(i)} for i in range(10)]
-        with mock.patch.object(capture, "MAX_BYTES", 3500):
-            kept, _ = capture.retain(big, now)
-        self.assertEqual(["7", "8", "9"], [e["hash"] for e in kept], "oldest dropped first")
-
-    def test_outage_cannot_pile_up_captures(self):
-        with mock.patch.object(capture, "MAX_ENTRIES", 5):
-            for i in range(12):
-                capture.spool(capture.build(f"prompt number {i} long enough", "prompt", env=self.env), self.env)
-                capture.flush(env=self.env)  # quipu down each time
-            self.assertEqual(5, len(capture.spooled(self.env)))
-        with mock.patch.object(capture, "HARD_BYTES", 0):
+    def test_outage_keeps_existing_captures_and_capacity_refuses_only_new_entry(self):
+        from camayoc_cli import offline
+        for i in range(12):
+            self.assertTrue(capture.spool(capture.build(f"prompt number {i} long enough", "prompt", env=self.env),
+                                          self.env))
+            capture.flush(env=self.env)
+        path = capture.spool_path(self.env)
+        before = path.read_bytes()
+        with mock.patch.object(offline, "MAX_BYTES", len(before)):
             self.assertFalse(capture.spool(capture.build("one more long enough prompt", "prompt", env=self.env),
-                                           self.env), "past the hard ceiling the hook drops, never grows")
+                                           self.env))
+        self.assertEqual(before, path.read_bytes())
+        self.assertEqual(12, len(capture.spooled(self.env)))
 
     def test_hook_returns_fast_while_a_flush_is_mid_network(self):
         import threading
@@ -207,7 +198,7 @@ class OfflineCaptureTests(Isolated):
                 return {"conforms": True}
 
         capture.spool(capture.build("first capture, long enough", "prompt", env=self.env), self.env)
-        t = threading.Thread(target=capture.flush, kwargs={"client": Slow(), "env": self.env})
+        t = threading.Thread(target=capture.flush, kwargs={"client": Slow(), "env": self.env, "limit": 1})
         t.start()
         time.sleep(0.2)  # the flush now holds its lock and is inside knot()
         self.assertTrue(capture.flush_running(self.env))
@@ -222,18 +213,18 @@ class OfflineCaptureTests(Isolated):
         self.assertEqual(["a prompt during the flush"], [e["text"] for e in capture.spooled(self.env)],
                          "the new capture waits in the fresh spool; the flushed one is gone")
 
-    def test_a_line_appended_during_the_swap_is_kept(self):
+    def test_legacy_inflight_prefix_and_append_during_rpc_are_kept(self):
         capture.spool(capture.build("first capture, long enough", "prompt", env=self.env), self.env)
-        late = capture.build("late line written into the renamed file", "prompt", env=self.env)
+        # An upgrade may leave a bound in-flight prefix. Never discard it.
+        os.replace(capture.spool_path(self.env), capture.inflight_path(self.env))
+        late = capture.build("late line arriving during the network call", "prompt", env=self.env)
 
         class Knot:
             def knot(inner, *a, **k):
-                # simulate a hook that opened the spool before the rename
-                with open(capture.inflight_path(self.env), "ab") as f:
-                    f.write(capture._line(late))
+                capture.spool(late, self.env)
                 return {"conforms": True}
 
-        out = capture.flush(client=Knot(), env=self.env)
+        out = capture.flush(client=Knot(), env=self.env, limit=1)
         self.assertEqual(1, out.data["written"])
         self.assertEqual([late["text"]], [e["text"] for e in capture.spooled(self.env)])
 
