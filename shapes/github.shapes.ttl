@@ -86,7 +86,7 @@ aegis:githubDatabaseId a rdf:Property ;
 
 aegis:githubFullName a rdf:Property ;
     rdfs:label "GitHub full name" ;
-    rdfs:comment "owner/name of a repository when first observed. Renames do not change the node id; a later name is a new value only on a new window's record." ;
+    rdfs:comment "owner/name of a repository when first observed. Renames do not change the node id; a later name is recorded as a further value." ;
     rdfs:range xsd:string .
 
 aegis:githubNumber a rdf:Property ;

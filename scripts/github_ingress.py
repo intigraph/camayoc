@@ -18,8 +18,12 @@ so the webhook receiver and the budgeted poller cannot disagree about meaning:
   constant time BEFORE any JSON parse; an empty or missing secret refuses
   everything. Spool first, then 202; a known X-GitHub-Delivery answers 200.
 - poller: only through `gh` (it holds the credential; the aegis-izs shim meters
-  it), ETag conditional reads, an hourly budget and a rate-limit reserve.
-- drain: payload -> episode. The activity key (payload fields only) is
+  it), ETag conditional reads, an hourly budget and a rate-limit reserve. A
+  403/429 ends the cycle and persists a backoff; a failed object fetch stays
+  retryable in the spool (state `hydrate`), never quarantined unless 404/410.
+- spool: REDACTED before it touches disk (no commits, pusher, emails or text;
+  a body becomes its @-mentions), mode 0600, kept --retain-days (default 2).
+- drain: payload -> episode in the ONE `github` operational graph. The activity key (payload fields only) is
   recorded in the spool, so the same change from both transports is written
   once. A re-sent body is byte-identical, so a lost Quipu response is safe to
   retry. An event the mapping cannot place is QUARANTINED with its reason.
@@ -34,6 +38,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import os
 import re
 import sqlite3
 import subprocess
@@ -48,7 +53,9 @@ from ingest_cdevents import Quarantined, event_month
 
 ROOT = Path(__file__).resolve().parents[1]
 MAPPING_FILE = ROOT / "mappings" / "github.json"
-WINDOW_FAMILY = "github"
+GRAPH_NAME = "github"
+RETAIN_DAYS = 2  # long enough to replay a remap or a Quipu outage; no longer
+MAX_PENDING = 10000  # above this the receiver answers 503 instead of filling the disk
 GROUP = "github"
 CLIENT = "camayoc-github-ingress"
 MAX_BODY = 5 * 1024 * 1024
@@ -343,7 +350,6 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
             raise Quarantined(f"event {event!r} is mapped but has no record builder")
 
     occurred = _instant(occurred_at if occurred_at is not None else when, f"{kind} time")
-    month = event_month(occurred)
     edges.append({"source": subject["name"], "target": repo["name"], "relation": "inGitHubRepository"})
     for node in nodes[1:]:  # the thread a review or comment belongs to
         edges.append({"source": node["name"], "target": repo["name"], "relation": "inGitHubRepository"})
@@ -360,10 +366,9 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                 "description": f"{kind} on {subject['description']}", "properties": props}
     edges += [{"source": activity["name"], "target": subject["name"], "relation": "aboutGitHubEntity"},
               {"source": activity["name"], "target": repo["name"], "relation": "inGitHubRepository"}]
-    windows = _windows()
     body = {
         "name": f"github:{key[:32]}",
-        "graph": windows.window_iri(WINDOW_FAMILY, month),
+        "graph": graph_iri(),
         "group_id": GROUP,
         "episode_body": f"GitHub {kind} in {full}",
         "source": f"github:mapping={mapping_sha[:16]}:{kind}:{key[:32]}",
@@ -374,9 +379,11 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
     return body, key
 
 
-def _windows():
-    import windows  # deferred: the mapper is pure; only IRIs come from here
-    return windows
+def graph_iri() -> str:
+    """The ONE operational graph every GitHub record lands in, beside the planes
+    under the same parameterized namespace root (never a hardcoded host)."""
+    import planes  # deferred: the mapper is pure; only the IRI comes from here
+    return planes.PLANE_NS.replace("/plane/", "/operational/") + GRAPH_NAME
 
 
 # ---- authentication ---------------------------------------------------------
@@ -386,8 +393,9 @@ def verify_signature(secret: bytes, header: str | None, body: bytes) -> bool:
     An empty secret verifies nothing (fail closed)."""
     if not secret or not header or not header.startswith("sha256="):
         return False
-    expected = hmac.new(secret, body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, header[len("sha256="):].strip().lower())
+    expected = hmac.new(secret, body, hashlib.sha256).hexdigest().encode()
+    given = header[len("sha256="):].strip().lower().encode("utf-8", "replace")
+    return hmac.compare_digest(expected, given)
 
 
 def read_secret(path: Path) -> bytes:
@@ -395,6 +403,53 @@ def read_secret(path: Path) -> bytes:
         return path.read_bytes().strip()
     except OSError:
         return b""
+
+
+# ---- redaction: the spool keeps only what the mapper reads -----------------
+
+_KEEP = {"node_id", "id", "number", "html_url", "url", "state", "merged", "merged_at", "merge_commit_sha",
+         "draft", "created_at", "updated_at", "closed_at", "submitted_at", "commit_id", "name", "head_sha",
+         "head_branch", "status", "conclusion", "run_attempt", "run_started_at", "started_at", "completed_at",
+         "tag_name", "prerelease", "published_at", "full_name", "pushed_at"}
+_LOGIN = {"user", "author", "actor", "triggering_actor", "sender"}
+
+
+def _slim(obj: object) -> object:
+    if not isinstance(obj, dict):
+        return obj
+    out = {k: v for k, v in obj.items() if k in _KEEP and not isinstance(v, (dict, list))}
+    for k in _LOGIN & set(obj):
+        if isinstance(obj[k], dict) and isinstance(obj[k].get("login"), str):
+            out[k] = {"login": obj[k]["login"]}
+    for side in ("head", "base"):
+        if isinstance(obj.get(side), dict):
+            out[side] = {k: obj[side][k] for k in ("sha", "ref") if k in obj[side]}
+    if isinstance(obj.get("check_suite"), dict) and "head_branch" in obj["check_suite"]:
+        out["check_suite"] = {"head_branch": obj["check_suite"]["head_branch"]}
+    if "pull_request" in obj:  # an issue that is a PR: keep only the marker
+        out["pull_request"] = {}
+    if isinstance(obj.get("body"), str):  # text never stored; its mentions are
+        out["body"] = " ".join("@" + m for m in mentions(obj["body"]))
+    return out
+
+
+def redact(payload: object) -> object:
+    """The payload with only the fields the mapper (and poll hydration) reads.
+    Drops commits, head_commit, pusher, emails and text; a body becomes its
+    @-mentions, so a replay maps byte-identically."""
+    if not isinstance(payload, dict):
+        return payload
+    out: dict = {}
+    for k in ("action", "ref", "before", "after", "forced", "_raw_action", "_hydrate"):
+        if k in payload:
+            out[k] = payload[k]
+    for k, v in payload.items():
+        if k == "sender" and isinstance(v, dict):
+            out[k] = {"login": v.get("login")} if isinstance(v.get("login"), str) else {}
+        elif k in ("repository", "pull_request", "review", "comment", "issue", "check_run",
+                 "workflow_run", "release"):
+            out[k] = _slim(v)
+    return out
 
 
 # ---- spool ------------------------------------------------------------------
@@ -409,6 +464,7 @@ CREATE TABLE IF NOT EXISTS activities (key TEXT PRIMARY KEY, delivery TEXT NOT N
 CREATE TABLE IF NOT EXISTS etags (url TEXT PRIMARY KEY, etag TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS repos (full_name TEXT PRIMARY KEY, body TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS budget (hour INTEGER PRIMARY KEY, spent INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value REAL NOT NULL);
 """
 
 
@@ -416,22 +472,60 @@ class Spool:
     """The one durable queue every transport feeds. Thread-safe by a lock."""
 
     def __init__(self, path: str):
-        self.conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
-        self.lock = threading.Lock()
-        with self.lock:
+        old = os.umask(0o077)  # the db and its -wal/-shm are owner-only (0600)
+        try:
             if path != ":memory:":
-                self.conn.execute("PRAGMA journal_mode=WAL")
-            self.conn.execute("PRAGMA synchronous=FULL")
-            self.conn.executescript(SCHEMA)
+                os.close(os.open(path, os.O_CREAT | os.O_RDWR, 0o600))
+            self.conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+            self.lock = threading.Lock()
+            with self.lock:
+                if path != ":memory:":
+                    self.conn.execute("PRAGMA journal_mode=WAL")
+                self.conn.execute("PRAGMA synchronous=FULL")
+                self.conn.executescript(SCHEMA)
+        finally:
+            os.umask(old)
+        if path != ":memory:":
+            for suffix in ("", "-wal", "-shm"):
+                if os.path.exists(path + suffix):
+                    os.chmod(path + suffix, 0o600)
 
-    def add(self, delivery: str, event: str, body: bytes, *, occurred_at: str | None = None,
-            now: float | None = None) -> str:
+    def add(self, delivery: str, event: str, payload: object, *, occurred_at: str | None = None,
+            now: float | None = None, state: str = "pending") -> str:
+        """Spool one delivery, REDACTED first: raw bodies never touch disk."""
         now = time.time() if now is None else now
+        body = json.dumps(redact(payload), sort_keys=True).encode()
         with self.lock:
             cur = self.conn.execute(
-                "INSERT OR IGNORE INTO deliveries (id, event, body, occurred_at, received_at) VALUES (?,?,?,?,?)",
-                (delivery, event, body, occurred_at, now))
+                "INSERT OR IGNORE INTO deliveries (id, event, body, occurred_at, received_at, state) "
+                "VALUES (?,?,?,?,?,?)", (delivery, event, body, occurred_at, now, state))
         return "accepted" if cur.rowcount == 1 else "duplicate"
+
+    def pending(self) -> int:
+        with self.lock:
+            return self.conn.execute(
+                "SELECT COUNT(*) FROM deliveries WHERE state IN ('pending','hydrate')").fetchone()[0]
+
+    def due_hydration(self, now: float, limit: int = 50) -> list[tuple]:
+        with self.lock:
+            return self.conn.execute(
+                "SELECT id, event, body, attempts FROM deliveries WHERE state='hydrate' AND next_at<=? "
+                "ORDER BY received_at, id LIMIT ?", (now, limit)).fetchall()
+
+    def hydrated(self, delivery: str, payload: object) -> None:
+        body = json.dumps(redact(payload), sort_keys=True).encode()
+        with self.lock:
+            self.conn.execute("UPDATE deliveries SET body=?, state='pending', next_at=0, reason=NULL WHERE id=?",
+                              (body, delivery))
+
+    def get_state(self, key: str, default: float = 0.0) -> float:
+        with self.lock:
+            row = self.conn.execute("SELECT value FROM state WHERE key=?", (key,)).fetchone()
+        return float(row[0]) if row else default
+
+    def set_state(self, key: str, value: float) -> None:
+        with self.lock:
+            self.conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES (?,?)", (key, value))
 
     def has(self, delivery: str) -> bool:
         with self.lock:
@@ -477,7 +571,7 @@ class Spool:
 
     def purge(self, retain_days: float, now: float) -> int:
         with self.lock:
-            cur = self.conn.execute("DELETE FROM deliveries WHERE state!='pending' AND received_at<?",
+            cur = self.conn.execute("DELETE FROM deliveries WHERE state NOT IN ('pending','hydrate') AND received_at<?",
                                     (now - retain_days * 86400,))
         return cur.rowcount
 
@@ -517,18 +611,22 @@ class Spool:
 # ---- drain ------------------------------------------------------------------
 
 class Writer:
-    """Posts episodes; ensures each month's window graph once."""
+    """Posts episodes; registers and labels the github graph once."""
 
     def __init__(self):
         self.ensured: set[str] = set()
 
     def __call__(self, body: dict) -> None:
         import planes
-        windows = _windows()
+        import windows
         graph = body["graph"]
         if graph not in self.ensured:
-            family, month = graph[len(windows.WINDOW_NS):].rsplit("/", 1)
-            windows.ensure_window(family, month, body["nodes"][0]["properties"]["occurredAt"])
+            # Register AND label, both or neither (the windows/planes discipline);
+            # one operational graph, never frozen by month.
+            planes._post("/graph/create", {"graph": graph}, client=CLIENT)
+            planes._post("/graph/label", {"graph": graph, "actor": CLIENT,
+                                          "timestamp": body["nodes"][0]["properties"]["occurredAt"],
+                                          **windows.WINDOW_LABEL}, client=CLIENT)
             self.ensured.add(graph)
         planes._post("/episode", body, client=CLIENT)
 
@@ -585,6 +683,7 @@ def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = Non
 def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: threading.Event):
     class Handler(BaseHTTPRequestHandler):
         server_version = "camayoc-github-ingress"
+        timeout = 10  # a slow client cannot hold a thread
 
         def _send(self, code: int, payload: dict) -> None:
             data = json.dumps(payload, sort_keys=True).encode()
@@ -628,7 +727,9 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
                 return self._send(200, {"outcome": "pong"})
             if full not in repos:
                 return self._send(202, {"outcome": "ignored", "reason": "repository not watched"})
-            outcome = spool.add(delivery, event, body)
+            if spool.pending() >= MAX_PENDING:
+                return self._send(503, {"error": "spool full; GitHub will show the delivery as failed"})
+            outcome = spool.add(delivery, event, payload)
             wake.set()
             self._send(202 if outcome == "accepted" else 200, {"outcome": outcome, "delivery": delivery})
 
@@ -636,7 +737,7 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
 
 
 def run_drain_loop(spool: Spool, *, actor: str, writer, repos: set[str], wake: threading.Event,
-                   stop: threading.Event, period: float = 15.0, retain_days: float = 14) -> None:
+                   stop: threading.Event, period: float = 15.0, retain_days: float = RETAIN_DAYS) -> None:
     while not stop.is_set():
         try:
             counts = drain_once(spool, actor=actor, writer=writer, repos=repos)
@@ -677,8 +778,22 @@ def parse_http(raw: bytes) -> tuple[int, dict, bytes]:
     return status, headers, body
 
 
+class RateLimited(Exception):
+    """GitHub said stop (403/429): the cycle ends and a backoff is persisted."""
+
+
+class Unavailable(Exception):
+    """This cycle cannot make the request (budget spent, transient error)."""
+
+
 class Poller:
-    """Budgeted, ETag'd reads of the Events API and Actions runs into the spool."""
+    """Budgeted, ETag'd reads of the Events API and Actions runs into the spool.
+
+    A 403 or 429 ends the cycle at once and persists `backoff_until` (from
+    Retry-After, else x-ratelimit-reset when remaining is 0, else exponential),
+    and no call at all is made until it passes. A trimmed Events API object is
+    spooled as `hydrate`; its fetch is retried with attempts and backoff, and
+    only a real 404/410 lets it through unhydrated (to be quarantined)."""
 
     def __init__(self, spool: Spool, transport, repos: list[str], *, budget_per_hour: int = 300,
                  reserve: int = 1000, mapping: tuple[dict, str] | None = None):
@@ -687,130 +802,202 @@ class Poller:
         self.mapping, self.sha = mapping or load_mapping()
         self.poll_interval = 60
 
-    def _counted(self, path: str, now: float, receipt: dict, etag_key: str | None = None):
-        if not self.spool.spend(now, self.budget):
+    def _back_off(self, now: float, headers: dict, receipt: dict) -> None:
+        retry_after = headers.get("retry-after", "")
+        reset = headers.get("x-ratelimit-reset", "")
+        n = int(self.spool.get_state("backoff_n"))
+        if retry_after.isdigit():
+            until = now + int(retry_after)
+        elif headers.get("x-ratelimit-remaining") == "0" and reset.isdigit():
+            until = float(reset)
+        else:
+            until = now + min(60 * 2 ** n, 3600)
+        until = max(until, now + 1)
+        self.spool.set_state("backoff_until", until)
+        self.spool.set_state("backoff_n", n + 1)
+        receipt["rate_limited"] = until
+
+    def _get(self, path: str, now: float, receipt: dict, *, etag_key: str | None = None,
+             counted: bool = True) -> tuple[int, dict, bytes]:
+        if counted and not self.spool.spend(now, self.budget):
             receipt["over_budget"] = True
-            return None
+            raise Unavailable("hourly budget spent")
         status, headers, body = self.transport.get(path, self.spool.etag(etag_key) if etag_key else None)
-        receipt["requests"] = receipt.get("requests", 0) + 1
+        if counted:
+            receipt["requests"] = receipt.get("requests", 0) + 1
         if headers.get("x-poll-interval", "").isdigit():
             self.poll_interval = max(self.poll_interval, int(headers["x-poll-interval"]))
+        if status in (403, 429):
+            self._back_off(now, headers, receipt)
+            raise RateLimited(f"{path}: HTTP {status}")
+        return status, headers, body
+
+    def _json(self, path: str, now: float, receipt: dict, *, etag_key: str | None = None):
+        """Parsed body, "304", or None (an error, recorded in the receipt)."""
+        status, headers, body = self._get(path, now, receipt, etag_key=etag_key)
         if status == 304:
             receipt["not_modified"] = receipt.get("not_modified", 0) + 1
             return "304"
         if status != 200:
             receipt.setdefault("errors", []).append(f"{path}: HTTP {status}")
             return None
-        if etag_key and headers.get("etag"):
-            self.spool.set_etag(etag_key, headers["etag"])
         try:
-            return json.loads(body)
+            parsed = json.loads(body)
         except ValueError:
             receipt.setdefault("errors", []).append(f"{path}: body is not JSON")
             return None
+        if etag_key and headers.get("etag"):
+            self.spool.set_etag(etag_key, headers["etag"])
+        return parsed
 
     def _repo(self, full: str, now: float, receipt: dict) -> dict | None:
         cached = self.spool.repo(full)
         if cached:
             return cached
-        got = self._counted(f"/repos/{full}", now, receipt)
+        got = self._json(f"/repos/{full}", now, receipt)
         if isinstance(got, dict) and got.get("node_id"):
             keep = {k: got.get(k) for k in ("id", "node_id", "name", "full_name", "html_url", "default_branch")}
             self.spool.set_repo(full, keep)
             return keep
         return None
 
-    def _hydrate(self, obj: dict, now: float, receipt: dict) -> dict:
-        url = obj.get("url") if isinstance(obj, dict) else None
-        if not isinstance(url, str) or not url.startswith(API + "/"):
-            return obj
-        cache = receipt.setdefault("_objects", {})  # one fetch per object per cycle
-        if url not in cache:
-            got = self._counted(url[len(API):], now, receipt)
-            cache[url] = got if isinstance(got, dict) else None
-            if cache[url] is not None:
-                receipt["hydrated"] = receipt.get("hydrated", 0) + 1
-        return cache[url] if cache[url] is not None else obj
-
-    def normalize(self, ev: dict, repo: dict, now: float, receipt: dict) -> tuple[str, dict] | None:
-        """One Events API event -> (webhook event name, webhook-shaped payload)."""
+    def normalize(self, ev: dict, repo: dict) -> tuple[str, dict] | None:
+        """One Events API event -> (webhook event name, webhook-shaped payload).
+        Objects the Events API trims are named in `_hydrate` for a later fetch."""
         api = self.mapping["events_api"]
         event = api["types"].get(ev.get("type"))
         if event is None:
             return None
         raw = ev.get("payload") or {}
-        payload = {k: v for k, v in raw.items()}
+        sender = {"login": (ev.get("actor") or {}).get("login")}
+        if event == "push":
+            return event, {"ref": raw.get("ref"), "before": raw.get("before"), "after": raw.get("head"),
+                           "repository": repo, "sender": sender}
+        payload = dict(raw)
         if "action" in payload:
+            payload["_raw_action"] = payload["action"]
             payload["action"] = api["actions"].get(ev["type"], {}).get(payload["action"], payload["action"])
         payload["repository"] = repo
-        payload["sender"] = {"login": (ev.get("actor") or {}).get("login")}
-        if event == "push":
-            payload = {"ref": raw.get("ref"), "before": raw.get("before"), "after": raw.get("head"),
-                       "repository": repo, "sender": payload["sender"]}
-        if event == "pull_request":
-            trimmed = raw.get("pull_request") or {}
-            full = self._hydrate(trimmed, now, receipt)
-            if full is not trimmed:
-                # The hydrated object is the PR NOW; the event's own head/base and
-                # action decide the state it left at the event.
-                full = dict(full)
-                for side in ("head", "base"):
-                    if isinstance(trimmed.get(side), dict):
-                        full[side] = {**(full.get(side) or {}), **trimmed[side]}
-                full.pop("draft", None)
-                closed = payload["action"] == "closed"
-                full["state"] = "closed" if closed else ("open" if payload["action"] in ("opened", "reopened") else full.get("state"))
-                full["merged"] = raw.get("action") == "merged"
-            payload["pull_request"] = full
-        elif event in ("pull_request_review", "pull_request_review_comment"):
-            payload["pull_request"] = self._hydrate(raw.get("pull_request") or {}, now, receipt)
+        payload["sender"] = sender
+        pr = payload.get("pull_request")
+        if isinstance(pr, dict) and not pr.get("node_id") and isinstance(pr.get("url"), str):
+            payload["_hydrate"] = {"pull_request": pr["url"]}
         return event, payload
+
+    @staticmethod
+    def _apply(event: str, payload: dict, key: str, full: dict) -> None:
+        trimmed = payload.get(key) or {}
+        if event != "pull_request":
+            payload[key] = full
+            return
+        # The fetched object is the PR NOW; the event's own head/base and action
+        # decide the state it left at the event.
+        full = dict(full)
+        for side in ("head", "base"):
+            if isinstance(trimmed.get(side), dict):
+                full[side] = {**(full.get(side) or {}), **trimmed[side]}
+        full.pop("draft", None)
+        action = payload.get("action")
+        full["state"] = "closed" if action == "closed" else ("open" if action in ("opened", "reopened") else full.get("state"))
+        full["merged"] = payload.get("_raw_action") == "merged"
+        payload[key] = full
+
+    def hydrate_due(self, now: float, receipt: dict) -> None:
+        cache: dict[str, object] = {}
+        for delivery, event, raw, attempts in self.spool.due_hydration(now):
+            payload = json.loads(raw)
+            try:
+                for key, url in (payload.get("_hydrate") or {}).items():
+                    if url not in cache:
+                        if not url.startswith(API + "/"):
+                            cache[url] = "gone"
+                        else:
+                            status, _, body = self._get(url[len(API):], now, receipt)
+                            if status == 200:
+                                cache[url] = json.loads(body)
+                                receipt["hydrated"] = receipt.get("hydrated", 0) + 1
+                            elif status in (404, 410):
+                                cache[url] = "gone"
+                            else:
+                                cache[url] = Unavailable(f"{url}: HTTP {status}")
+                    if isinstance(cache[url], Unavailable):
+                        raise cache[url]  # one failed fetch defers every event naming it
+                    if cache[url] != "gone":
+                        self._apply(event, payload, key, cache[url])
+            except (Unavailable, ValueError) as exc:
+                self.spool.retry(delivery, attempts, now, f"hydration: {exc}")
+                receipt["hydration_retry"] = receipt.get("hydration_retry", 0) + 1
+                if isinstance(exc, Unavailable) and receipt.get("over_budget"):
+                    break
+                continue
+            except RateLimited:
+                self.spool.retry(delivery, attempts, now, "hydration: rate limited")
+                raise
+            payload.pop("_hydrate", None)
+            payload.pop("_raw_action", None)
+            self.spool.hydrated(delivery, payload)  # gone objects stay trimmed: drain quarantines
 
     def cycle(self, now: float | None = None) -> dict:
         now = time.time() if now is None else now
         receipt: dict = {"at": now}
-        status, headers, body = self.transport.get("/rate_limit")  # free: does not count
-        try:
-            remaining = json.loads(body)["resources"]["core"]["remaining"] if status == 200 else None
-        except (ValueError, KeyError, TypeError):
-            remaining = None
-        receipt["remaining"] = remaining
-        if remaining is None or remaining < self.reserve:
-            receipt["skipped"] = "rate limit unknown" if remaining is None else "below reserve"
+        until = self.spool.get_state("backoff_until")
+        if now < until:
+            receipt["skipped"] = f"backoff until {until:.0f}"
             return receipt
-        for full in self.repos:
-            repo = self._repo(full, now, receipt)
-            if repo is None:
-                receipt.setdefault("errors", []).append(f"{full}: repository unknown")
-                continue
-            page = self._counted(f"/repos/{full}/events?per_page=100", now, receipt, etag_key=f"events:{full}")
-            if isinstance(page, list):
-                for ev in sorted(page, key=lambda e: (e.get("created_at") or "", e.get("id") or "")):
-                    delivery = f"poll:{ev.get('id')}"
-                    if not ev.get("id") or self.spool.has(delivery):
-                        continue
-                    shaped = self.normalize(ev, repo, now, receipt)
-                    if shaped is None:
-                        continue
-                    event, payload = shaped
-                    outcome = self.spool.add(delivery, event, json.dumps(payload, sort_keys=True).encode(),
-                                             occurred_at=ev.get("created_at"), now=now)
-                    receipt[outcome] = receipt.get(outcome, 0) + 1
-            runs = self._counted(f"/repos/{full}/actions/runs?per_page=20", now, receipt, etag_key=f"runs:{full}")
-            if isinstance(runs, dict):
-                for run in runs.get("workflow_runs") or []:
-                    action = {"completed": "completed", "in_progress": "in_progress"}.get(run.get("status"), "requested")
-                    delivery = f"poll:run:{run.get('id')}:{run.get('run_attempt')}:{run.get('status')}:{run.get('conclusion')}"
-                    if self.spool.has(delivery):
-                        continue
-                    payload = {"action": action, "workflow_run": run, "repository": repo,
-                               "sender": {"login": (run.get("triggering_actor") or run.get("actor") or {}).get("login")}}
-                    outcome = self.spool.add(delivery, "workflow_run", json.dumps(payload, sort_keys=True).encode(), now=now)
-                    receipt[outcome] = receipt.get(outcome, 0) + 1
-            if receipt.get("over_budget"):
-                break
-        receipt.pop("_objects", None)
+        try:
+            status, _, body = self._get("/rate_limit", now, receipt, counted=False)  # free
+            try:
+                remaining = json.loads(body)["resources"]["core"]["remaining"] if status == 200 else None
+            except (ValueError, KeyError, TypeError):
+                remaining = None
+            receipt["remaining"] = remaining
+            if remaining is None or remaining < self.reserve:
+                receipt["skipped"] = "rate limit unknown" if remaining is None else "below reserve"
+                return receipt
+            for full in self.repos:
+                try:
+                    self._poll_repo(full, now, receipt)
+                except Unavailable:
+                    break
+            try:
+                self.hydrate_due(now, receipt)
+            except Unavailable:
+                pass
+        except RateLimited:
+            return receipt
+        self.spool.set_state("backoff_n", 0)
         return receipt
+
+    def _spool(self, delivery: str, event: str, payload: dict, now: float, receipt: dict,
+               occurred_at: str | None = None) -> None:
+        state = "hydrate" if payload.get("_hydrate") else "pending"
+        outcome = self.spool.add(delivery, event, payload, occurred_at=occurred_at, now=now, state=state)
+        receipt[outcome] = receipt.get(outcome, 0) + 1
+
+    def _poll_repo(self, full: str, now: float, receipt: dict) -> None:
+        repo = self._repo(full, now, receipt)
+        if repo is None:
+            receipt.setdefault("errors", []).append(f"{full}: repository unknown")
+            return
+        page = self._json(f"/repos/{full}/events?per_page=100", now, receipt, etag_key=f"events:{full}")
+        if isinstance(page, list):
+            for ev in sorted(page, key=lambda e: (e.get("created_at") or "", e.get("id") or "")):
+                delivery = f"poll:{ev.get('id')}"
+                if not ev.get("id") or self.spool.has(delivery):
+                    continue
+                shaped = self.normalize(ev, repo)
+                if shaped is not None:
+                    self._spool(delivery, shaped[0], shaped[1], now, receipt, occurred_at=ev.get("created_at"))
+        runs = self._json(f"/repos/{full}/actions/runs?per_page=20", now, receipt, etag_key=f"runs:{full}")
+        if isinstance(runs, dict):
+            for run in runs.get("workflow_runs") or []:
+                action = {"completed": "completed", "in_progress": "in_progress"}.get(run.get("status"), "requested")
+                delivery = f"poll:run:{run.get('id')}:{run.get('run_attempt')}:{run.get('status')}:{run.get('conclusion')}"
+                if self.spool.has(delivery):
+                    continue
+                payload = {"action": action, "workflow_run": run, "repository": repo,
+                           "sender": {"login": (run.get("triggering_actor") or run.get("actor") or {}).get("login")}}
+                self._spool(delivery, "workflow_run", payload, now, receipt)
 
 
 # ---- CLI --------------------------------------------------------------------
@@ -819,8 +1006,7 @@ def _replay(directory: Path, *, actor: str, writer, spool: Spool) -> dict:
     """Recorded deliveries ({headers, body}) through the spool and drain."""
     for path in sorted(directory.glob("*.json")):
         rec = json.loads(path.read_text())
-        body = json.dumps(rec["body"], sort_keys=True).encode()
-        spool.add(rec["headers"]["X-GitHub-Delivery"], rec["headers"]["X-GitHub-Event"], body)
+        spool.add(rec["headers"]["X-GitHub-Delivery"], rec["headers"]["X-GitHub-Event"], rec["body"])
     return drain_once(spool, actor=actor, writer=writer)
 
 
@@ -850,7 +1036,7 @@ def main(argv: list[str] | None = None) -> int:
         cmd.add_argument("--repo", action="append", required=True, help="owner/name; repeat")
         cmd.add_argument("--actor", required=True)
         cmd.add_argument("--dry-run", action="store_true", help="print episodes instead of posting")
-        cmd.add_argument("--retain-days", type=float, default=14)
+        cmd.add_argument("--retain-days", type=float, default=RETAIN_DAYS)
     d = sub.add_parser("drain", help="one drain pass over the spool")
     d.add_argument("--spool", required=True)
     d.add_argument("--actor", required=True)

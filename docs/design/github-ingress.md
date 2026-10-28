@@ -114,11 +114,17 @@ Every key also includes the kind.
 
 ## 3. Graph placement and events
 
-Each activity is one `/episode` with `group_id: "github"`, written to that
-month's operational window graph `{WINDOW_NS}github/{YYYY-MM}` (see
-`scripts/windows.py`). The month comes from `occurredAt`. This is how the
-deployment events work: a completed month can be frozen whole, and entity IRIs
-stay valid across windows because they do not depend on the graph.
+Each activity is one `/episode` with `group_id: "github"`. All of them go to
+ONE registered operational graph, `{PLANE_NS root}/operational/github` (by
+default `https://camayoc.local/operational/github`). It is labelled like a
+window graph (`operational`, `fresh`, `soleRecord`), but it has no month.
+
+Monthly windows were rejected in review of the producer PR. Activities would
+be placed by `occurredAt`, so one PR's life would be split across months. Each
+window would also need its own copy of every entity. Chaski would have to
+describe two exact graph names and restart at every rollover. Freezing can be
+revisited when volume calls for it. Entity IRIs do not depend on the graph, so
+a later split would not rename anything.
 
 The episode name is `github:<digest>`. Its source is
 `github:mapping=<sha16>:<kind>:<digest>`. Every byte of the body comes from the
@@ -140,14 +146,14 @@ transaction also emits these events:
 
 - `episode.ingested` for `github:<digest>`, group `github`
 - `entity.added` for the new `GitHubActivity`, and for any entity seen for the
-  first time in that window
+  first time
 - `entity.updated` for entities that already exist
 
 Chaski does not route on Quipu event names alone. Their payload carries only
 the subject, so a rule would have to read the facts anyway. The routing
 contract for c01c.4 is an incremental adapter (`trigger: changes`) subscribed
-to `types: [aegis:GitHubActivity]` and to the current and next month's
-`github` window graphs. It routes on `githubEventKind`. The kinds chaski needs
+to `types: [aegis:GitHubActivity]` and to the one `github` graph. It routes
+on `githubEventKind`. The kinds chaski needs
 first:
 
 | kind | rule it feeds (c01c.4) |
@@ -158,11 +164,6 @@ first:
 | `release.published` | install / announce jobs |
 | `issues.opened`, `issue_comment.created`, `pull_request_review_comment.created` with `githubMentions` containing the watched login, or on a thread the login participates in | participation notice to the administrator (aegis-2no) |
 | `push` to the default branch | bobbin reindex for GitHub-sourced repositories (now pull-only) |
-
-Chaski's adapter `--describe` names graphs exactly (`incremental.py`). Window
-rollover therefore needs the adapter to describe two months at once. If chaski
-caches the description for its lifetime, it needs a restart each month or
-prefix matching instead. **Open for c01c.4.**
 
 ## 4. Transport
 
@@ -181,15 +182,31 @@ the pattern of bobbin's `webhook-index.py`:
 - **Limits.** Bodies over 5 MiB get 413. Repositories outside `--repo`
   (`owner/name`) are acknowledged and ignored, never written. `ping` is
   acknowledged.
-- **Spool first.** The receiver writes `(delivery id, event name, body)` to a
-  SQLite spool (WAL, `synchronous=FULL`), then answers 202. GitHub expects an
+- **Spool first.** The receiver writes `(delivery id, event name, redacted
+  body)` to a SQLite spool (WAL, `synchronous=FULL`), then answers 202. GitHub expects an
   answer within 10 s, and nothing slow happens before the answer. A delivery
   id already in the spool gets 200 `duplicate`. GitHub keeps
   `X-GitHub-Delivery` on manual and automatic redelivery, so this is the
-  first idempotency layer.
+  first idempotency layer. With more than 10,000 entries pending (a long Quipu
+  outage, for example), the receiver answers 503 rather than fill the disk.
+  GitHub then shows the delivery as failed. Each connection times out after
+  10 s.
+- **Privacy.** Before anything is written, the spool keeps only the fields
+  the mapper reads:
+  - ids, numbers, times, state, shas and refs
+  - logins (author, sender and actor)
+  - the issue's pull-request marker
+
+  `commits`, `head_commit`, `pusher` and every email are dropped. A PR, issue,
+  comment or review body is replaced by its `@`-mentions. Mention extraction
+  gives the same result on the replacement, so a replay maps byte-identically.
+  The spool file and its `-wal` and `-shm` files are created with mode 0600.
+  Entries are kept for `--retain-days` (default 2), which covers a remap
+  replay and a Quipu outage. The activity-key ledger holds keys only, and is
+  kept.
 - **Drain.** A worker thread maps each pending entry and posts it with
-  `planes._post("/episode")`. Before the first write to a month it calls
-  `windows.ensure_window`. It then marks the entry `written`. A failed post
+  `planes._post("/episode")`. Before its first write it registers and labels
+  the `github` graph, both or neither. It then marks the entry `written`. A failed post
   stays pending with exponential backoff. A response that never arrives is
   safe to resend, because the episode is byte-identical (§3). An event the
   mapping cannot place is marked `quarantined` with its reason, never
@@ -222,11 +239,19 @@ meters every call.
 - **Conditional requests.** Every read sends the stored ETag. A 304 costs no
   primary quota. On a quiet repository nearly every request is a 304.
 - **Budget.** A local hourly token bucket, `--budget-per-hour` (default 300,
-  6% of 5,000), counts 200 responses and hydration requests. Before each
-  cycle the poller reads `X-RateLimit-Remaining` and stops spending below
+  6% of 5,000), counts every request except the free `/rate_limit` read.
+  Before each cycle the poller reads `/rate_limit` and spends nothing below
   `--reserve` (default 1,000). The interactive crew keeps that reserve. When
-  the poller is over budget it skips the cycle and says so in its receipt. It
-  never sleeps inside a request.
+  the budget runs out mid-cycle, the poller stops and says so in its receipt.
+  It never sleeps inside a request.
+- **403 and 429.** Either response ends the cycle at once. The poller then
+  persists `backoff_until` in the spool and makes no call at all, not even
+  `/rate_limit`, until that time passes. The time is the first of these that
+  applies:
+  1. `Retry-After`
+  2. `x-ratelimit-reset`, when `x-ratelimit-remaining` is 0
+  3. an exponential delay: 60 s doubling to at most 1 h, reset by the next
+     clean cycle
 - **Cadence.** It waits at least `X-Poll-Interval`, which GitHub sets (usually
   60 s), and never less than `--interval`.
 - **Hydration.** Events API payloads are smaller than webhook payloads. This
@@ -244,9 +269,14 @@ meters every call.
     `draft`.
   - It renames the actions through `mappings/github.json`.
 
-  A fetch that fails leaves the trimmed object in place. The mapper then
-  quarantines the entry with the missing field named, and the poller does not
-  retry it.
+  An event that needs a fetch is spooled in state `hydrate`, which the drain
+  does not read. Its fetch runs in the same cycle, once per object. A fetch
+  that fails because the budget ran out, a 5xx or a rate limit leaves the
+  entry in `hydrate`. Its attempt count goes up, it waits with backoff, and a
+  later cycle retries it. Only a real 404 or 410 releases the trimmed object
+  to the drain, which then quarantines it with the missing field named. The
+  events ETag can move on safely, because a deferred event is already in the
+  spool.
 - **Spool keys.** `poll:<events-api id>` and
   `poll:run:<run id>:<attempt>:<status>:<conclusion>`. These differ from
   webhook delivery ids, but the activity key is the same for the same change.
@@ -284,7 +314,8 @@ first producer.
    content hash makes the second write a no-op.
 4. **Mapping change.** The mapping sha in `source` changes, so a re-mapped
    activity is a NEW episode over the same activity node. It is replayable
-   from the spool; the spool keeps bodies for `--retain-days` (default 14).
+   from the spool, which keeps redacted bodies for `--retain-days` (default
+   2).
 5. **Unknown event or action.** The entry is quarantined with a reason and
    counted. It is never guessed or dropped.
 6. **Receiver down.** GitHub marks the delivery failed and does not retry

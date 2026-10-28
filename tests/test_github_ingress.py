@@ -36,7 +36,7 @@ FIX = ROOT / "tests/fixtures/github"
 DELIVERIES = FIX / "deliveries"
 POLL = FIX / "poll"
 SECRET = b"test-secret-not-a-real-credential"
-WINDOW = "https://camayoc.local/window/github/2026-10"
+GRAPH = "https://camayoc.local/operational/github"
 
 
 def delivery(name: str) -> dict:
@@ -44,6 +44,7 @@ def delivery(name: str) -> dict:
 
 
 def body_bytes(rec: dict) -> bytes:
+    """What a webhook sends on the wire (the receiver signs and redacts this)."""
     return json.dumps(rec["body"], sort_keys=True).encode()
 
 
@@ -93,7 +94,7 @@ class MappingTests(unittest.TestCase):
         self.assertEqual("256a7e1433679ba0ccbff647d46738a65fdfc6af", props["commitSha"])
         self.assertEqual("2026-10-27T18:56:18Z", props["occurredAt"])
         self.assertEqual("main", props["githubBaseRef"])
-        self.assertEqual(WINDOW, body["graph"])
+        self.assertEqual(GRAPH, body["graph"])
         self.assertEqual("github", body["group_id"])
         pr = body["nodes"][1]
         self.assertEqual(("github.PR_kwDOTvaTnM8AAAABLF8ZkA", "GitHubPullRequest", 177),
@@ -181,8 +182,8 @@ class ReplayTests(unittest.TestCase):
     def test_redelivery_is_spooled_once(self):
         spool = gi.Spool(":memory:")
         rec = delivery("pull_request.closed")
-        self.assertEqual("accepted", spool.add(rec["headers"]["X-GitHub-Delivery"], "pull_request", body_bytes(rec)))
-        self.assertEqual("duplicate", spool.add(rec["headers"]["X-GitHub-Delivery"], "pull_request", body_bytes(rec)))
+        self.assertEqual("accepted", spool.add(rec["headers"]["X-GitHub-Delivery"], "pull_request", rec["body"]))
+        self.assertEqual("duplicate", spool.add(rec["headers"]["X-GitHub-Delivery"], "pull_request", rec["body"]))
         writer = Collect()
         self.assertEqual({"written": 1}, gi.drain_once(spool, actor="t", writer=writer))
         self.assertEqual({}, gi.drain_once(spool, actor="t", writer=writer))
@@ -190,7 +191,7 @@ class ReplayTests(unittest.TestCase):
     def test_failed_write_stays_pending_then_lands(self):
         spool = gi.Spool(":memory:")
         rec = delivery("push")
-        spool.add("d1", "push", body_bytes(rec), now=0)
+        spool.add("d1", "push", rec["body"], now=0)
         writer = Collect(fail=1)
         self.assertEqual({"retry": 1}, gi.drain_once(spool, actor="t", writer=writer, now=1))
         self.assertEqual({}, gi.drain_once(spool, actor="t", writer=writer, now=2))  # backing off
@@ -199,7 +200,7 @@ class ReplayTests(unittest.TestCase):
 
     def test_unwatched_repository_is_not_written(self):
         spool = gi.Spool(":memory:")
-        spool.add("d1", "push", body_bytes(delivery("push")))
+        spool.add("d1", "push", delivery("push")["body"])
         self.assertEqual({"foreign": 1}, gi.drain_once(spool, actor="t", writer=Collect(), repos={"other/repo"}))
 
 
@@ -217,6 +218,7 @@ class SignatureTests(unittest.TestCase):
         self.assertFalse(gi.verify_signature(b"", sig, b"x"))  # no secret: fail closed
         self.assertFalse(gi.verify_signature(SECRET, None, b"x"))
         self.assertFalse(gi.verify_signature(SECRET, sig.replace("sha256=", "sha1="), b"x"))
+        self.assertFalse(gi.verify_signature(SECRET, "sha256=\u00e9\u00e9", b"x"))  # non-ASCII: refused, no TypeError
 
 
 class ReceiverTests(unittest.TestCase):
@@ -252,6 +254,17 @@ class ReceiverTests(unittest.TestCase):
         self.assertTrue(self.wake.is_set())
         self.assertEqual({"pending": 1}, self.spool.counts())
 
+    def test_full_spool_answers_503(self):
+        old = gi.MAX_PENDING
+        gi.MAX_PENDING = 1
+        try:
+            rec = delivery("pull_request.closed")
+            self.assertEqual(202, self.post(rec)[0])
+            other = copy.deepcopy(delivery("push"))
+            self.assertEqual(503, self.post(other)[0])
+        finally:
+            gi.MAX_PENDING = old
+
     def test_refusals_spool_nothing(self):
         rec = delivery("pull_request.closed")
         self.assertEqual(401, self.post(rec, secret=b"wrong")[0])
@@ -278,8 +291,13 @@ class FakeTransport:
             "/repos/intigraph/camayoc/pulls/172": "pull-172.json",
         }
 
+    overrides: dict  # path -> list of (status, headers, body), served first, once each
+
     def get(self, path, etag=None):
         self.calls.append(path)
+        queued = getattr(self, "overrides", {}).get(path)
+        if queued:
+            return queued.pop(0)
         if path == "/rate_limit":
             return 200, {}, json.dumps({"resources": {"core": {"remaining": self.remaining}}}).encode()
         name = self.files.get(path)
@@ -305,6 +323,7 @@ class PollerTests(unittest.TestCase):
         # Hydration: each object once per cycle, though two events name PR 177.
         self.assertEqual(1, t.calls.count("/repos/intigraph/camayoc/pulls/177"))
         self.assertIn("/repos/intigraph/camayoc/pulls/140", t.calls)  # recorded 404: stays trimmed
+        self.assertEqual({"pending": 9}, p.spool.counts())
         second = p.cycle(now=1100)
         self.assertEqual(2, second["not_modified"])
         self.assertNotIn("accepted", second)
@@ -312,10 +331,69 @@ class PollerTests(unittest.TestCase):
         self.assertEqual(0, drained.get("retry", 0))
         self.assertGreaterEqual(drained["written"], 6)
 
+    def test_429_ends_the_cycle_and_backs_off_until_retry_after(self):
+        t = FakeTransport()
+        t.overrides = {"/repos/intigraph/camayoc/events?per_page=100": [(429, {"retry-after": "120"}, b"")]}
+        spool = gi.Spool(":memory:")
+        receipt = self.poller(t, spool).cycle(now=1000)
+        self.assertEqual(1120, receipt["rate_limited"])
+        self.assertNotIn("/repos/intigraph/camayoc/actions/runs?per_page=20", t.calls)  # cycle ended at once
+        calls = len(t.calls)
+        self.assertIn("backoff", self.poller(t, spool).cycle(now=1100)["skipped"])
+        self.assertEqual(calls, len(t.calls))  # not even /rate_limit during the backoff
+        later = self.poller(t, spool).cycle(now=1121)
+        self.assertNotIn("skipped", later)
+        self.assertEqual(9, later["accepted"])
+        self.assertEqual(0, spool.get_state("backoff_n"))
+
+    def test_403_with_spent_quota_waits_for_the_reset_and_otherwise_doubles(self):
+        t = FakeTransport()
+        t.overrides = {"/repos/intigraph/camayoc": [(403, {"x-ratelimit-remaining": "0",
+                                                           "x-ratelimit-reset": "5000"}, b"")]}
+        spool = gi.Spool(":memory:")
+        self.assertEqual(5000, self.poller(t, spool).cycle(now=1000)["rate_limited"])
+        t.overrides = {"/repos/intigraph/camayoc": [(403, {}, b""), (403, {}, b"")]}
+        self.assertEqual(5000 + 120, self.poller(t, spool).cycle(now=5000)["rate_limited"])  # 60 * 2**1
+        self.assertEqual(5120 + 240, self.poller(t, spool).cycle(now=5120)["rate_limited"])
+
+    def test_transient_hydration_failure_stays_retryable(self):
+        t = FakeTransport()
+        t.overrides = {"/repos/intigraph/camayoc/pulls/177": [(502, {}, b"")]}
+        spool = gi.Spool(":memory:")
+        p = self.poller(t, spool)
+        receipt = p.cycle(now=1000)
+        self.assertEqual(2, receipt["hydration_retry"])  # both PR 177 events
+        rows = spool.conn.execute("SELECT state, attempts, reason FROM deliveries WHERE state='hydrate'").fetchall()
+        self.assertEqual(2, len(rows))
+        self.assertTrue(all(r[1] == 1 and "HTTP 502" in r[2] for r in rows), rows)
+        gi.drain_once(spool, actor="t", writer=Collect(), now=1000)  # drain never touches 'hydrate'
+        self.assertEqual(2, spool.conn.execute("SELECT COUNT(*) FROM deliveries WHERE state='hydrate'").fetchone()[0])
+        self.assertEqual(0, spool.conn.execute(
+            "SELECT COUNT(*) FROM deliveries WHERE state='quarantined' AND reason LIKE '%PR_%'").fetchone()[0])
+        p.cycle(now=1100)  # past the 10 s backoff: fetch succeeds
+        self.assertEqual(0, spool.conn.execute("SELECT COUNT(*) FROM deliveries WHERE state='hydrate'").fetchone()[0])
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer, now=1200)
+        kinds = {activity(b)["githubEventKind"] for b in writer.bodies}
+        self.assertTrue({"pull_request.opened", "pull_request.closed"} <= kinds, kinds)
+
+    def test_spent_budget_leaves_hydration_pending_not_quarantined(self):
+        spool = gi.Spool(":memory:")
+        # rate_limit is free; repo, events, runs = 3; one hydration fits, the rest wait.
+        receipt = self.poller(FakeTransport(), spool, budget_per_hour=4).cycle(now=10)
+        self.assertTrue(receipt["over_budget"])
+        waiting = spool.conn.execute("SELECT COUNT(*) FROM deliveries WHERE state='hydrate'").fetchone()[0]
+        self.assertGreaterEqual(waiting, 1)
+        gi.drain_once(spool, actor="t", writer=Collect(), now=11)
+        self.assertEqual(waiting, spool.conn.execute(
+            "SELECT COUNT(*) FROM deliveries WHERE state='hydrate'").fetchone()[0])
+        self.poller(FakeTransport(), spool, budget_per_hour=50).cycle(now=3600 * 2)  # next hour
+        self.assertEqual(0, spool.conn.execute("SELECT COUNT(*) FROM deliveries WHERE state='hydrate'").fetchone()[0])
+
     def test_webhook_and_poll_of_one_change_write_once(self):
         spool = gi.Spool(":memory:")
         rec = delivery("pull_request.closed")
-        spool.add(rec["headers"]["X-GitHub-Delivery"], "pull_request", body_bytes(rec), now=0)
+        spool.add(rec["headers"]["X-GitHub-Delivery"], "pull_request", rec["body"], now=0)
         self.poller(FakeTransport(), spool).cycle(now=1)
         writer = Collect()
         counts = gi.drain_once(spool, actor="t", writer=writer, repos={"intigraph/camayoc"}, now=2)
@@ -344,13 +422,60 @@ class PollerTests(unittest.TestCase):
         self.assertTrue(receipt["over_budget"])
         self.assertEqual(2, receipt["requests"])
 
-    def test_failed_hydration_is_quarantined_with_its_reason(self):
+    def test_only_a_real_404_is_quarantined(self):
         spool = gi.Spool(":memory:")
         self.poller(FakeTransport(), spool).cycle(now=1)
         gi.drain_once(spool, actor="t", writer=Collect(), now=2)
-        reasons = [r[0] for r in spool.conn.execute("SELECT reason FROM deliveries WHERE state='quarantined'")]
-        self.assertTrue(reasons)
-        self.assertTrue(all("pull_request" in r for r in reasons), reasons)
+        rows = spool.conn.execute("SELECT id, reason FROM deliveries WHERE state='quarantined'").fetchall()
+        self.assertEqual(1, len(rows), rows)  # the review on PR 140, whose fetch was a recorded 404
+        self.assertIn("pull_request", rows[0][1])
+
+
+class SpoolPrivacyTests(unittest.TestCase):
+    def test_spool_files_are_owner_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "spool.db")
+            spool = gi.Spool(path)
+            spool.add("d1", "push", delivery("push")["body"])
+            for suffix in ("", "-wal", "-shm"):
+                if Path(path + suffix).exists():
+                    self.assertEqual(0o600, Path(path + suffix).stat().st_mode & 0o777, suffix)
+            self.assertTrue(Path(path).exists())
+
+    def test_bodies_are_stripped_before_they_touch_disk(self):
+        push = copy.deepcopy(delivery("push")["body"])
+        push["pusher"] = {"name": "scbrown", "email": "someone@example.invalid"}
+        push["commits"] = [{"id": "1" * 40, "message": "secret plans",
+                            "author": {"email": "someone@example.invalid"}}]
+        push["head_commit"] = push["commits"][0]
+        comment = copy.deepcopy(delivery("issue_comment.created")["body"])
+        run = copy.deepcopy(delivery("workflow_run.completed")["body"])
+        run["workflow_run"]["head_commit"] = {"author": {"email": "someone@example.invalid"}, "message": "m"}
+        spool = gi.Spool(":memory:")
+        spool.add("p", "push", push)
+        spool.add("c", "issue_comment", comment)
+        spool.add("w", "workflow_run", run)
+        stored = " ".join(r[0].decode() for r in spool.conn.execute("SELECT body FROM deliveries"))
+        for leaked in ("@example.invalid", "secret plans", "commits", "head_commit", "pusher", "Landed",
+                       "Thanks", "Tracking"):
+            self.assertNotIn(leaked, stored)
+        self.assertIn("@donna-box", stored)  # the mention survives as itself
+        # and the stripped spool still maps to the same records as the raw payloads
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer)
+        raw = [gi.episode_for(e, p, actor="t")[0] for e, p in
+               (("push", push), ("issue_comment", comment), ("workflow_run", run))]
+        self.assertEqual(sorted(json.dumps(b, sort_keys=True) for b in raw),
+                         sorted(json.dumps(b, sort_keys=True) for b in writer.bodies))
+
+    def test_retention_is_short(self):
+        self.assertLessEqual(gi.RETAIN_DAYS, 2)
+        spool = gi.Spool(":memory:")
+        spool.add("d1", "push", delivery("push")["body"], now=0)
+        gi.drain_once(spool, actor="t", writer=Collect(), now=1)
+        self.assertEqual(0, spool.purge(gi.RETAIN_DAYS, now=gi.RETAIN_DAYS * 86400 - 10))
+        self.assertEqual(1, spool.purge(gi.RETAIN_DAYS, now=gi.RETAIN_DAYS * 86400 + 10))
+        self.assertTrue(spool.activity_written(gi.episode_for("push", delivery("push")["body"], actor="t")[1]))
 
 
 @requires_quipu
@@ -362,7 +487,7 @@ class QuipuRoundTripTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.db = str(Path(cls.tmp.name) / "s.db")
-        subprocess.run([str(QUIPU), "graph", "create", WINDOW, "--db", cls.db], check=True, capture_output=True)
+        subprocess.run([str(QUIPU), "graph", "create", GRAPH, "--db", cls.db], check=True, capture_output=True)
         _, cls.bodies = replay()
         cls.outputs = []
         for i, body in enumerate(cls.bodies + cls.bodies[:1]):
@@ -381,7 +506,7 @@ class QuipuRoundTripTests(unittest.TestCase):
                               check=True).stdout
 
     def test_exported_window_conforms_to_the_shapes(self):
-        ttl = subprocess.run([str(QUIPU), "export", "--graph", WINDOW, "--format", "turtle", "--db", self.db],
+        ttl = subprocess.run([str(QUIPU), "export", "--graph", GRAPH, "--format", "turtle", "--db", self.db],
                              capture_output=True, text=True, check=True).stdout
         data = Path(self.tmp.name) / "window.ttl"
         data.write_text(ttl)
