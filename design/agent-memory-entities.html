@@ -640,9 +640,11 @@ parameter. A bad value is a plain-word refusal on the CLI and an <code>isError</
 result over MCP, and the server keeps serving (<code>FuzzTests</code>).</p>
 </li>
 <li>
-<p>The offline queue is minimal: an append-only JSONL file that <code>cy flush</code>
-replays in order. The full buffer, with its backlog line in bobbin's
-header, is gshu.7.</p>
+<p>The offline buffer (gshu.7) uses a locked local JSONL FIFO, ordered replay
+with durable acknowledgment only after success, source provenance and
+endpoint/plane binding. <code>cy flush --hook</code> always exits 0. Bobbin's companion
+reader reports the local backlog in its existing memory header; see
+<code>docs/offline-memory.md</code> for the format and acceptance limits.</p>
 </li>
 <li>
 <p>The memory-file redirect (gshu.1) is <code>camayoc_cli/memory_redirect.py</code>,
