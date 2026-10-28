@@ -109,6 +109,27 @@ plugin, `bash camayoc/scripts/bootstrap.sh --with-claude-hooks` adds the same
 status hook to `.claude/settings.json`. The plugin also declares a `jev` MCP
 server for typed decisions. Details: [Using it with agents](https://intigraph.github.io/camayoc/agents.html).
 
+### Agent-memory CLI (`camayoc`, alias `cy`)
+
+One purpose-built command per memory entity (Decision, Directive, Preference,
+Handoff, Reference), generated from `shapes/agent-memory.shapes.ttl`
+([design](design/agent-memory-entities.md)). It needs only the Python standard
+library and is installed with:
+
+```bash
+uv tool install git+https://github.com/intigraph/camayoc
+```
+
+This installs `camayoc` and `cy` (the same entry point). `cy prime` prints
+the agent primer and live state, `cy record <entity> --help` lists the flags
+taken from the shape, and `cy recall <entity>` runs the recall stored queries.
+Writes go to `$QUIPU_SERVER` (default `http://localhost:3030`) with the bearer
+from `QUIPU_AUTH_TOKEN`, then `QUIPU_AUTH_TOKEN_FILE`, then
+`~/.config/quipu/token`. The bearer is never printed. The target store needs
+the agent-memory shapes and the registered planes (`scripts/planes.py ensure`).
+When Quipu is unreachable, a record is queued under
+`$XDG_STATE_HOME/camayoc/` and `cy flush` replays it.
+
 ### Typed decisions with jev-mcp
 
 The plugin registers the stdio server in

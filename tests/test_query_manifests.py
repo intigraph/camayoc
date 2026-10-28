@@ -17,12 +17,16 @@ class StoredQueryManifestTests(unittest.TestCase):
                 params = manifest.get("params", [])
                 self.assertTrue(all(isinstance(param, dict) for param in params))
                 for param in params:
-                    self.assertEqual(
-                        {"name", "type", "required", "description"}, set(param)
-                    )
                     self.assertIn(param["type"], {"iri", "text"})
-                    self.assertIs(param["required"], True)
                     self.assertTrue(param["description"])
+                    if param["required"] is True:
+                        self.assertEqual({"name", "type", "required", "description"}, set(param))
+                    else:
+                        # Quipu refuses an optional param without a default: an omitted
+                        # optional would leave `{name}` verbatim in the rendered SPARQL.
+                        self.assertIs(param["required"], False)
+                        self.assertEqual({"name", "type", "required", "default", "description"}, set(param))
+                        self.assertIsInstance(param["default"], str)
 
                 declared = {param["name"] for param in params}
                 referenced = set(re.findall(r"\{([A-Za-z][A-Za-z0-9_]*)\}", manifest["template"]))

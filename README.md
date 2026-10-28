@@ -24,6 +24,10 @@ curl -fsSL https://raw.githubusercontent.com/intigraph/camayoc/main/install.sh |
 Python 3.9+, curl, and a Linux or macOS shell. Downloads and verifies the latest source package into `~/.local/share/camayoc/TAG`.
 No native executable, server or agent enrollment is installed.
 
+The agent-memory CLI (`camayoc`, alias `cy`) installs separately with
+`uv tool install git+https://github.com/intigraph/camayoc`; see the
+[reference](docs/installation-reference.md#agent-memory-cli-camayoc-alias-cy).
+
 Set `STACK_INSTALL_ROOT` on the receiving shell for another prefix.
 Pinned releases, alternatives, configuration and removal are in the
 [installation and usage reference](docs/installation-reference.md).
