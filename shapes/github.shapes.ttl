@@ -1,0 +1,353 @@
+@prefix aegis:  <http://aegis.gastown.local/ontology/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+# GitHub vocabulary: one ingress writes GitHub activity as typed facts
+# (aegis-c01c.3, docs/design/github-ingress.md).
+#
+# STANDALONE like delivery.shapes.ttl: own prefixes, own class and predicate
+# declarations, loadable as one shape set. The classes still go through Quipu's
+# governed schema path before a store accepts them; until then the producer's
+# --post is refused by the store, and these shapes are proven offline only.
+#
+# Two kinds of record:
+#   - ENTITIES (repository, pull request, issue, comment, review, workflow
+#     run, check run, release, push) carry only facts that never change:
+#     identity, number, name, author, creation. Re-asserting one is
+#     byte-identical, so maxCount 1 never sees two values.
+#   - GitHubActivity is one observed change, append-only. Every changing
+#     state (PR open/closed/merged, head, draft, review verdict, run status and
+#     conclusion) rides here. "Current state" is the latest activity, a
+#     read-time judgment (stored queries), never a stored fact.
+#
+# Natural key: the GitHub node_id (aegis:githubNodeId), global and stable
+# across renames. A push has no node id; its key is repository + ref + before
+# + after. What a shape cannot prove (key derivation, byte-identical replay,
+# calendar validity of instants) is the producer's guarantee, tested in
+# tests/test_github_ingress.py.
+
+# ---- Classes -----------------------------------------------------------
+
+aegis:GitHubRepository a rdfs:Class ;
+    rdfs:subClassOf schema:SoftwareSourceCode ;
+    rdfs:label "GitHub repository" ;
+    rdfs:comment "A repository on GitHub, keyed by its node id. A specialization of schema:SoftwareSourceCode, the public replacement for the deprecated GitRepo/GitRepository/Repo terms." .
+
+aegis:GitHubPullRequest a rdfs:Class ;
+    rdfs:label "GitHub pull request" ;
+    rdfs:comment "A pull request, keyed by node id. Its state is read from its latest GitHubActivity, never stored on it. Distinct from aegis:ChangeEvent, which is one DORA lifecycle step." .
+
+aegis:GitHubIssue a rdfs:Class ;
+    rdfs:label "GitHub issue" ;
+    rdfs:comment "An issue (not a pull request), keyed by node id." .
+
+aegis:GitHubComment a rdfs:Class ;
+    rdfs:label "GitHub comment" ;
+    rdfs:comment "An issue comment or a pull request review comment, keyed by node id. Its body is never stored; only its @-mentions ride on the activity." .
+
+aegis:GitHubReview a rdfs:Class ;
+    rdfs:label "GitHub review" ;
+    rdfs:comment "A pull request review, keyed by node id. Its verdict and reviewed commit ride on the activity, because a review can later be dismissed." .
+
+aegis:GitHubWorkflowRun a rdfs:Class ;
+    rdfs:label "GitHub Actions workflow run" ;
+    rdfs:comment "One GitHub Actions workflow run, keyed by node id. NOT aegis:WorkflowRun, which is a shuttle workflow execution." .
+
+aegis:GitHubCheckRun a rdfs:Class ;
+    rdfs:label "GitHub check run" ;
+    rdfs:comment "One check run on a commit, keyed by node id." .
+
+aegis:GitHubRelease a rdfs:Class ;
+    rdfs:label "GitHub release" ;
+    rdfs:comment "A release, keyed by node id." .
+
+aegis:GitHubPush a rdfs:Class ;
+    rdfs:label "GitHub push" ;
+    rdfs:comment "One push to one ref. GitHub gives it no node id, so its key is repository node id + ref + before + after." .
+
+aegis:GitHubActivity a rdfs:Class ;
+    rdfs:label "GitHub activity" ;
+    rdfs:comment "One observed change to a GitHub entity: an event and action (githubEventKind) with the state it left behind. Append-only; keyed by a digest of payload fields, so a webhook delivery and a poll of the same change are the same record." .
+
+# ---- Predicates (rdfs:range only, never rdfs:domain) --------------------
+
+aegis:githubNodeId a rdf:Property ;
+    rdfs:label "GitHub node id" ;
+    rdfs:comment "GitHub's global node id, exactly as GitHub returns it. The natural key." ;
+    rdfs:range xsd:string .
+
+aegis:githubDatabaseId a rdf:Property ;
+    rdfs:label "GitHub database id" ;
+    rdfs:comment "GitHub's numeric REST id, where the payload has one." ;
+    rdfs:range xsd:integer .
+
+aegis:githubFullName a rdf:Property ;
+    rdfs:label "GitHub full name" ;
+    rdfs:comment "owner/name of a repository when first observed. Renames do not change the node id; a later name is a new value only on a new window's record." ;
+    rdfs:range xsd:string .
+
+aegis:githubNumber a rdf:Property ;
+    rdfs:label "GitHub number" ;
+    rdfs:comment "The pull request or issue number within its repository." ;
+    rdfs:range xsd:integer .
+
+aegis:githubUrl a rdf:Property ;
+    rdfs:label "GitHub URL" ;
+    rdfs:comment "The object's html_url." ;
+    rdfs:range xsd:string .
+
+aegis:githubAuthorLogin a rdf:Property ;
+    rdfs:label "GitHub author login" ;
+    rdfs:comment "Login of the account that created the object." ;
+    rdfs:range xsd:string .
+
+aegis:githubCreatedAt a rdf:Property ;
+    rdfs:label "GitHub created at" ;
+    rdfs:comment "RFC 3339 instant the object was created, as GitHub reports it." ;
+    rdfs:range xsd:string .
+
+aegis:githubName a rdf:Property ;
+    rdfs:label "GitHub name" ;
+    rdfs:comment "Name of a workflow (for a workflow run) or of a check (for a check run)." ;
+    rdfs:range xsd:string .
+
+aegis:githubTagName a rdf:Property ;
+    rdfs:label "GitHub tag name" ;
+    rdfs:comment "The tag a release names." ;
+    rdfs:range xsd:string .
+
+aegis:githubRef a rdf:Property ;
+    rdfs:label "GitHub ref" ;
+    rdfs:comment "Full ref a push updated, e.g. refs/heads/main." ;
+    rdfs:range xsd:string .
+
+aegis:githubBeforeSha a rdf:Property ;
+    rdfs:label "GitHub before sha" ;
+    rdfs:comment "40-hex commit the ref pointed at before a push (all zeros for a new ref)." ;
+    rdfs:range xsd:string .
+
+aegis:githubAfterSha a rdf:Property ;
+    rdfs:label "GitHub after sha" ;
+    rdfs:comment "40-hex commit the ref points at after a push (all zeros for a deleted ref)." ;
+    rdfs:range xsd:string .
+
+aegis:githubForced a rdf:Property ;
+    rdfs:label "GitHub forced" ;
+    rdfs:comment "Whether a push was a force push." ;
+    rdfs:range xsd:boolean .
+
+aegis:inGitHubRepository a rdf:Property ;
+    rdfs:label "in GitHub repository" ;
+    rdfs:comment "The repository an entity or activity belongs to." ;
+    rdfs:range aegis:GitHubRepository .
+
+aegis:onGitHubThread a rdf:Property ;
+    rdfs:label "on GitHub thread" ;
+    rdfs:comment "The pull request or issue a review or comment belongs to." ;
+    rdfs:range rdfs:Resource .
+
+aegis:aboutGitHubEntity a rdf:Property ;
+    rdfs:label "about GitHub entity" ;
+    rdfs:comment "The entity an activity changed." ;
+    rdfs:range rdfs:Resource .
+
+aegis:githubEventKind a rdf:Property ;
+    rdfs:label "GitHub event kind" ;
+    rdfs:comment "Closed set: <event>.<action> of the webhook (e.g. pull_request.closed), or push. The key chaski routes on." ;
+    rdfs:range xsd:string .
+
+aegis:githubActivityKey a rdf:Property ;
+    rdfs:label "GitHub activity key" ;
+    rdfs:comment "sha256 (64 hex) of the activity's key fields; identical for the same change from any transport." ;
+    rdfs:range xsd:string .
+
+aegis:githubActorLogin a rdf:Property ;
+    rdfs:label "GitHub actor login" ;
+    rdfs:comment "Login of the account that performed the activity (the payload's sender, or the Events API actor)." ;
+    rdfs:range xsd:string .
+
+aegis:githubState a rdf:Property ;
+    rdfs:label "GitHub state" ;
+    rdfs:comment "open or closed, as left by a pull request or issue activity. A merged PR is closed with githubMerged true." ;
+    rdfs:range xsd:string .
+
+aegis:githubMerged a rdf:Property ;
+    rdfs:label "GitHub merged" ;
+    rdfs:comment "Whether the pull request was merged as of the activity." ;
+    rdfs:range xsd:boolean .
+
+aegis:githubMergeCommitSha a rdf:Property ;
+    rdfs:label "GitHub merge commit sha" ;
+    rdfs:comment "40-hex merge commit of a merged pull request." ;
+    rdfs:range xsd:string .
+
+aegis:githubDraft a rdf:Property ;
+    rdfs:label "GitHub draft" ;
+    rdfs:comment "Whether the pull request was a draft as of the activity." ;
+    rdfs:range xsd:boolean .
+
+aegis:githubBaseRef a rdf:Property ;
+    rdfs:label "GitHub base ref" ;
+    rdfs:comment "Branch a pull request targets, or the branch a workflow or check ran on." ;
+    rdfs:range xsd:string .
+
+aegis:githubStatus a rdf:Property ;
+    rdfs:label "GitHub status" ;
+    rdfs:comment "Closed set for runs and checks: queued, in_progress, completed, requested, waiting, pending." ;
+    rdfs:range xsd:string .
+
+aegis:githubConclusion a rdf:Property ;
+    rdfs:label "GitHub conclusion" ;
+    rdfs:comment "Closed set for completed runs and checks: success, failure, neutral, cancelled, skipped, timed_out, action_required, stale, startup_failure." ;
+    rdfs:range xsd:string .
+
+aegis:githubRunAttempt a rdf:Property ;
+    rdfs:label "GitHub run attempt" ;
+    rdfs:comment "Attempt number of a workflow run (1 for the first run, higher for re-runs)." ;
+    rdfs:range xsd:integer .
+
+aegis:githubMentions a rdf:Property ;
+    rdfs:label "GitHub mentions" ;
+    rdfs:comment "Logins @-mentioned in the text the activity carried. Multi-valued. The text itself is never stored." ;
+    rdfs:range xsd:string .
+
+aegis:githubPrerelease a rdf:Property ;
+    rdfs:label "GitHub prerelease" ;
+    rdfs:comment "Whether a release is marked prerelease." ;
+    rdfs:range xsd:boolean .
+
+# Reused, not minted: aegis:sourceKind (core), aegis:occurredAt,
+# aegis:commitSha and aegis:reviewState (delivery.shapes.ttl). commitSha on an
+# activity is the head commit it concerns: the PR head, the reviewed commit,
+# the run or check head, the push's after.
+
+# ---- Shapes ------------------------------------------------------------
+
+aegis:GitHubRepositoryShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubRepository ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:githubNodeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubDatabaseId ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path aegis:githubFullName ; sh:minCount 1 ; sh:datatype xsd:string ; sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" ] ;
+    sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] .
+
+aegis:GitHubThreadShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubPullRequest, aegis:GitHubIssue ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:githubNodeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubNumber ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ;
+    sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
+    sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] ;
+    sh:property [ sh:path aegis:githubAuthorLogin ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubCreatedAt ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] .
+
+aegis:GitHubThreadItemShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubComment, aegis:GitHubReview ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:githubNodeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubDatabaseId ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
+    sh:property [ sh:path aegis:onGitHubThread ; sh:minCount 1 ; sh:maxCount 1 ;
+                  sh:or ( [ sh:class aegis:GitHubPullRequest ] [ sh:class aegis:GitHubIssue ] ) ] ;
+    sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] ;
+    sh:property [ sh:path aegis:githubAuthorLogin ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] .
+
+aegis:GitHubReviewThreadShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubReview ;
+    sh:property [ sh:path aegis:onGitHubThread ; sh:class aegis:GitHubPullRequest ] .
+
+aegis:GitHubRunShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubWorkflowRun, aegis:GitHubCheckRun ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:githubNodeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubDatabaseId ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
+    sh:property [ sh:path aegis:githubName ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:commitSha ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] .
+
+aegis:GitHubReleaseShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubRelease ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:githubNodeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubDatabaseId ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
+    sh:property [ sh:path aegis:githubTagName ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] .
+
+aegis:GitHubPushShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubPush ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
+    sh:property [ sh:path aegis:githubRef ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^refs/" ] ;
+    sh:property [ sh:path aegis:githubBeforeSha ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:githubAfterSha ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:githubForced ; sh:maxCount 1 ; sh:datatype xsd:boolean ] .
+
+aegis:GitHubActivityShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubActivity ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path aegis:githubEventKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in (
+        "push"
+        "pull_request.opened" "pull_request.reopened" "pull_request.closed" "pull_request.synchronize"
+        "pull_request.ready_for_review" "pull_request.converted_to_draft" "pull_request.edited"
+        "pull_request_review.submitted" "pull_request_review.dismissed" "pull_request_review.edited"
+        "pull_request_review_comment.created" "pull_request_review_comment.edited"
+        "issues.opened" "issues.reopened" "issues.closed" "issues.edited"
+        "issue_comment.created" "issue_comment.edited"
+        "check_run.created" "check_run.completed" "check_run.rerequested"
+        "workflow_run.requested" "workflow_run.in_progress" "workflow_run.completed"
+        "release.published" "release.released" "release.prereleased" "release.edited"
+        "release.unpublished" "release.deleted"
+    ) ] ;
+    sh:property [ sh:path aegis:githubActivityKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] ;
+    sh:property [ sh:path aegis:aboutGitHubEntity ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
+    sh:property [ sh:path aegis:githubActorLogin ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:commitSha ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:githubState ; sh:maxCount 1 ; sh:in ("open" "closed") ] ;
+    sh:property [ sh:path aegis:githubMerged ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path aegis:githubMergeCommitSha ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:githubDraft ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path aegis:githubBaseRef ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:reviewState ; sh:maxCount 1 ; sh:in ("approved" "changes_requested" "commented" "dismissed") ] ;
+    sh:property [ sh:path aegis:githubStatus ; sh:maxCount 1 ; sh:in ("queued" "in_progress" "completed" "requested" "waiting" "pending") ] ;
+    sh:property [ sh:path aegis:githubConclusion ; sh:maxCount 1 ; sh:in (
+        "success" "failure" "neutral" "cancelled" "skipped" "timed_out" "action_required" "stale" "startup_failure"
+    ) ] ;
+    sh:property [ sh:path aegis:githubRunAttempt ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ;
+    sh:property [ sh:path aegis:githubMentions ; sh:datatype xsd:string ; sh:pattern "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$" ] ;
+    sh:property [ sh:path aegis:githubPrerelease ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    # Kind-dependent state, as implications (the delivery shape's style): a
+    # pull request or issue activity must say what state it left; a run or
+    # check activity must say its status; a submitted review must say its
+    # verdict; a merged PR must name its merge commit. A malformed kind is
+    # reported once, by its own sh:in above, not again here.
+    sh:or (
+        [ sh:not [ sh:property [ sh:path aegis:githubEventKind ; sh:minCount 1 ; sh:in (
+            "pull_request.opened" "pull_request.reopened" "pull_request.closed" "pull_request.synchronize"
+            "pull_request.ready_for_review" "pull_request.converted_to_draft" "pull_request.edited"
+            "issues.opened" "issues.reopened" "issues.closed" "issues.edited" ) ] ] ]
+        [ sh:property [ sh:path aegis:githubState ; sh:minCount 1 ] ]
+    ) ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path aegis:githubEventKind ; sh:minCount 1 ; sh:in (
+            "check_run.created" "check_run.completed" "check_run.rerequested"
+            "workflow_run.requested" "workflow_run.in_progress" "workflow_run.completed" ) ] ] ]
+        [ sh:property [ sh:path aegis:githubStatus ; sh:minCount 1 ] ]
+    ) ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path aegis:githubEventKind ; sh:hasValue "pull_request_review.submitted" ] ] ]
+        [ sh:property [ sh:path aegis:reviewState ; sh:minCount 1 ] ]
+    ) ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path aegis:githubMerged ; sh:hasValue true ] ] ]
+        [ sh:property [ sh:path aegis:githubMergeCommitSha ; sh:minCount 1 ] ]
+    ) .
