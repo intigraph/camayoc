@@ -22,7 +22,7 @@ import sys
 from contextlib import contextmanager, ExitStack
 from pathlib import Path
 
-from . import memory, offline, planes, quipu
+from . import capture_spool, memory, offline, planes, quipu
 from .secret_rules import RULES, find_secrets
 
 PROV = "http://www.w3.org/ns/prov#"
@@ -33,6 +33,7 @@ SOURCES = ("prompt", "answer", "explicit", "stop-check", "file-redirect", "impor
 MAX_TEXT = 4000
 MIN_PROMPT = 20
 BATCH = 25
+MAX_AGE_DAYS = 7
 
 # Prompts the harness (not a person) wrote: notifications, slash-command
 # expansions, hook feedback. They are not knowledge.
@@ -241,10 +242,9 @@ def _line(entry: dict) -> bytes:
 
 
 def spool(entry: dict, env=None) -> bool:
-    """Durable append; False refuses only the new entry at capacity.
+    """Durable bounded-cost append; replay handles expiry and quarantine.
 
-    Preserve the producer's boolean contract. Existing records never expire or
-    get evicted to make room. Hooks catch local errors and always exit zero.
+    Preserve the producer's boolean contract. Hooks always exit zero.
     """
     _private_dir(env)
     context = memory._queued_context(env)
@@ -254,7 +254,7 @@ def spool(entry: dict, env=None) -> bool:
     context['env'] = origin
     path = spool_path(env)
     try:
-        offline.enqueue(dict(entry, _offline_context=context), env, path=path)
+        capture_spool.append(path, inflight_path(env), dict(entry, _offline_context=context))
     except offline.QueueError:
         return False
     return True
@@ -282,61 +282,99 @@ def flush_running(env=None) -> bool:
         return not held
 
 
-def flush(client: quipu.Client | None = None, env=None, *, limit=100, deadline=None) -> memory.Outcome:
-    """Confirm ordered heads within the shared replay budget, then acknowledge.
+def quarantine(env=None, *, clear=False) -> memory.Outcome:
+    """Operator-only local inspection/discard, with no network or raw text output."""
+    try:
+        path = spool_path(env)
+        if clear:
+            count = capture_spool.clear(path)
+            return memory.Outcome(0, [f'cleared {count} quarantined captures'],
+                                  dict(cleared=count, quarantined=0))
+        rows = capture_spool.quarantined(path)
+        return memory.Outcome(0, [f'{len(rows)} quarantined captures; cy capture quarantine --clear discards them'],
+            dict(quarantined=len(rows), entries=[{k: row[k] for k in ('id', 'reason', 'at')} for row in rows]))
+    except (OSError, ValueError, TypeError, KeyError):
+        return memory.Outcome(1, ['capture quarantine UNKNOWN; inspect local files'], dict(quarantined=None))
 
-    Retain a refused/uncertain head and all later captures. Legacy entries
-    without a frozen destination require operator reconciliation, not guessing.
+
+def flush(client: quipu.Client | None = None, env=None, *, limit=100, deadline=None) -> memory.Outcome:
+    """Quarantine unusable heads; retain uncertain RPCs for ordered retry.
+
+    Each visited record/fragment counts against the replay budget, including
+    expiry and refusal. Archive-before-ack keeps rejected evidence recoverable.
     """
     import time
     env = os.environ if env is None else env
     deadline = time.monotonic() + 10.0 if deadline is None else deadline
-    done, lines, local_error = 0, [], False
+    done, visited, lines, local_error, rejected = 0, 0, [], False, []
+    path, prefix = spool_path(env), inflight_path(env)
     try:
         with _flush_lock(env) as held:
             if not held:
                 return memory.Outcome(1, ['another capture flush is running'],
                                       dict(written=0, spooled=offline.capture_length(env)))
-            while done < limit and time.monotonic() < deadline:
-                path = inflight_path(env)
-                entry = offline.head(path)
-                if entry is None:
-                    path = spool_path(env)
-                    entry = offline.head(path)
-                if entry is None:
+            while visited < limit and time.monotonic() < deadline:
+                raw = capture_spool.next_head(path, prefix)
+                if not raw:
                     break
-                context = entry.get('_offline_context')
-                current = memory._queued_context(env)
-                if (not isinstance(context, dict) or not context.get('server') or
-                        not isinstance(context.get('env'), dict) or
-                        context.get('server') != current['server'] or
-                        context.get('plane_ns') != current['plane_ns']):
-                    lines.append('stopped: capture destination differs or is unknown; head retained')
-                    break
-                replay = client or quipu.Client(context['server'],
-                    timeout=max(0.001, deadline - time.monotonic()), deadline=deadline,
-                    provenance_env=context['env'])
-                if isinstance(replay, quipu.Client):
-                    if replay.base != context['server']:
-                        lines.append('stopped: client destination differs; capture head retained')
-                        break
-                    replay.provenance_env = context['env']
-                    replay.deadline = deadline
+                visited += 1
+                reason, entry = None, None
                 try:
-                    replay.knot(turtle(entry), context['plane_ns'] + planes.ROUTES['inferred'],
-                                entry['agent'], 'camayoc:cy capture')
-                except quipu.QuipuError as exc:
-                    lines.append(f'stopped: {type(exc).__name__}; capture head retained')
-                    break
-                offline.acknowledge(path, entry)
-                done += 1
+                    entry = json.loads(raw)
+                    if not raw.endswith(b'\n') or len(raw) > offline.MAX_RECORD_BYTES or not isinstance(entry, dict):
+                        raise ValueError('invalid capture fragment')
+                    stamp = _dt.datetime.fromisoformat(entry['at'].replace('Z', '+00:00'))
+                    if stamp.tzinfo is None:
+                        raise ValueError('capture needs an aware timestamp')
+                    if stamp < _now(env) - _dt.timedelta(days=MAX_AGE_DAYS):
+                        reason = 'expired'
+                    context = entry.get('_offline_context')
+                    current = memory._queued_context(env)
+                    if reason is None and (not isinstance(context, dict) or not context.get('server') or
+                            not isinstance(context.get('env'), dict) or
+                            context.get('server') != current['server'] or
+                            context.get('plane_ns') != current['plane_ns']):
+                        reason = 'destination'
+                    if reason is None:
+                        ttl = turtle(entry)
+                except (ValueError, KeyError, TypeError, AttributeError):
+                    reason = 'malformed'
+                if reason is None:
+                    replay = client or quipu.Client(context['server'],
+                        timeout=max(0.001, deadline - time.monotonic()), deadline=deadline,
+                        provenance_env=context['env'])
+                    if isinstance(replay, quipu.Client):
+                        if replay.base != context['server']:
+                            lines.append('stopped: client destination differs; capture retained')
+                            break
+                        replay.provenance_env = context['env']
+                        replay.deadline = deadline
+                    try:
+                        replay.knot(ttl, context['plane_ns'] + planes.ROUTES['inferred'],
+                                    entry['agent'], 'camayoc:cy capture')
+                    except quipu.Refused:
+                        reason = 'refused'
+                    except quipu.QuipuError as exc:
+                        lines.append(f'stopped: {type(exc).__name__}; uncertain capture retained')
+                        break
+                if reason:
+                    capture_spool.quarantine(path, raw, reason, memory.iso(_now(env)))
+                    if isinstance(entry, dict) and isinstance(entry.get('hash'), str):
+                        rejected.append(entry['hash'])
+                capture_spool.acknowledge(prefix, raw)
+                if not reason:
+                    done += 1
     except (OSError, ValueError, KeyError, TypeError) as exc:
         local_error = True
         lines.append(f'stopped: capture buffer {type(exc).__name__}; inspect acknowledgment state')
     rest = offline.capture_length(env)
-    lines.append(f'captured {done}, {rest if rest is not None else "UNKNOWN"} still spooled')
-    return memory.Outcome(0 if rest == 0 and not local_error else 1, lines,
-                          dict(written=done, spooled=rest))
+    held = quarantine(env).data['quarantined']
+    lines.append(f'captured {done}, {rest if rest is not None else "UNKNOWN"} still spooled, '
+                 f'{held if held is not None else "UNKNOWN"} quarantined')
+    if held:
+        lines.append('inspect: cy capture quarantine; discard: cy capture quarantine --clear')
+    return memory.Outcome(0 if rest == 0 and held == 0 and not local_error else 1, lines,
+                          dict(written=done, spooled=rest, quarantined=held, quarantined_hashes=rejected))
 
 
 def flush_detached(env=None) -> None:
@@ -415,6 +453,7 @@ def hook(event: str, payload: dict, env=None) -> memory.Outcome:
         if entry is None:
             return memory.Outcome(0, ["nothing kept"])
         if not spool(entry, env):
+            flush_detached(env)  # maintenance can quarantine expired/invalid heads
             return memory.Outcome(0, ["spool full; capture dropped"])
         flush_detached(env)
         return memory.Outcome(0, ["spooled"])
@@ -450,6 +489,12 @@ def note(text: str, *, kind: str | None = None, about: str | None = None, env=No
         return memory.Outcome(3, ["Not captured: the capture spool is full; run `cy capture flush` once quipu is back."])
     out = flush(client=client, env=env)
     iri = capture_iri(entry)
+    if entry['hash'] in out.data.get('quarantined_hashes', []):
+        return memory.Outcome(3, ['Not captured: quarantined locally; inspect `cy capture quarantine`.'],
+                              dict(iri=iri, status='quarantined'))
+    if out.data.get('spooled') is None:
+        return memory.Outcome(3, ['Capture delivery UNKNOWN; inspect local spool before retrying.'],
+                              dict(iri=iri, status='unknown'))
     dropped = [ln for ln in out.lines if ln.startswith(("dropped", "batch retried"))]
     if dropped:
         return memory.Outcome(3, [f"Not captured: quipu refused the write ({' '.join(dropped)[:300]})."])

@@ -38,8 +38,9 @@ Quipu. Its existing prompt eligibility and memory-lane switch still apply.
 A zero backlog adds no line. Deploy both changes to enable this header surface.
 
 The existing SessionStart hook invokes `cy flush --hook` when the CLI is
-available. Hook mode processes at most 20 records within a 750 ms network budget,
-never writes output into the prompt, and exits 0 on every outcome. The hook also
+available. Hook mode starts a detached worker processing at most 20 records within a
+750 ms network budget, never scans the spool on the harness thread, never writes
+output into the prompt, and exits 0 on every outcome. The hook also
 continues if the CLI is missing or fails. A second replayer never waits on the
 first. Ordinary `cy flush` returns 1 while records remain; hooks must use the
 hook mode. No daemon, cron entry or additional prompt hook is installed.
@@ -51,16 +52,26 @@ continue, not that persistence succeeded. Queue and replay locks use Unix flock.
 Enabling automatic capture, installing memory shapes, and replacing file memory
 remain separate deployment steps.
 
-The capture producer (gshu.4) uses its own FIFO with the same lock and
-acknowledgment primitives via the companion capture adapter. `cy flush` replays
-both streams when that adapter is installed. Without it, capture backlog remains
-pending and is reported; the buffer never calls the older dropping replay path.
-Ordering is per producer stream, not a global order between capture and typed
-records. The source patch for the adapter depends on the capture branch.
+The capture producer uses a separate FIFO. `cy flush` replays both streams;
+ordering is per producer, not a global order between capture and typed records.
+Capture append reads only file sizes and one tail byte. Replay rotates the
+active spool to `capture-spool.inflight.jsonl` under the append lock, then scans
+and acknowledges that isolated older prefix without blocking hook appends.
+An existing in-flight file remains the older prefix and counts in backlog.
+Stop older-version flushers before upgrading the rotation protocol.
 
-Capture replay also retains an existing `capture-spool.inflight.jsonl` as the
-older prefix, and includes it in `cy backlog`. Unbound legacy captures require
-operator reconciliation; they are not sent to the current endpoint by guess.
-Stop older-version flushers during an upgrade, since they do not share the new
-FIFO locks. The capture producer keeps its boolean append contract: at capacity
-only the new capture is refused, while existing entries remain untouched.
+Capture records older than seven days, refused writes, malformed/torn fragments
+and unknown/changed destinations move to durable local quarantine before replay
+continues. Network uncertainty still stops ordered capture replay. Each visited
+record/fragment counts against the budget. Failed archival or acknowledgment
+retains the head, and a retry reuses the same archive ID. Nothing is silently
+retargeted or recorded as delivered because it left pending replay.
+
+`cy backlog` adds `quarantined_captures` (null when unreadable), separate from
+`queued`. `cy capture quarantine --json` lists IDs, reasons and timestamps
+without raw text or any network operation. Private original bytes remain in
+`capture-quarantine/` until `cy capture quarantine --clear` deliberately discards
+them. There is no automatic quarantine retry or disk eviction: inspect and back
+up evidence before clearing. Capture flush exits 1 while quarantine needs
+attention. See [the capture design](design/memory-capture.md) for retention and
+failure details. The typed write FIFO's refusal behavior remains unchanged.
