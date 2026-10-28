@@ -275,6 +275,8 @@ class LocalStoreTests(unittest.TestCase):
             "topic-public-launch", "repo-goldblum", "system-seeds-board", "hammond", "sattler", "host-vati"))
         seed += f"<{A}person-stiwi> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Stiwi\" .\n"
         seed += f"<{A}person-robin> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Robin\" .\n"
+        seed += "".join(f"<{A}tie-{i:02d}> <http://www.w3.org/2000/01/rdf-schema#label> \"tie {i}\" .\n"
+                        for i in range(60))
         seed += "".join(f"<{A}pager-{i:02d}> <http://www.w3.org/2000/01/rdf-schema#label> \"pager {i}\" .\n"
                         for i in range(55))
         seed += f"<{A}person-ellie> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Ellie\" .\n"
@@ -466,14 +468,43 @@ class LocalStoreTests(unittest.TestCase):
         for r in rows:
             by_iri.setdefault(r["iri"], []).append(r)
         self.assertEqual(["superseded"], [r["status"] for r in by_iri[old]])
-        self.assertEqual("2026-11-01T01:00:00Z", by_iri[old][0]["cursor"])
+        self.assertEqual(f"2026-11-01T01:00:00Z|{old}", by_iri[old][0]["cursor"])
         self.assertEqual(["current"], [r["status"] for r in by_iri[new]])
         self.assertEqual("step again", by_iri[new][0]["body"])
         current = [r for r in rows if r["status"] == "current"]
         self.assertEqual(55, len(current))
-        self.assertEqual(sorted((r["cursor"], r["iri"]) for r in rows), [(r["cursor"], r["iri"]) for r in rows])
+        self.assertEqual(sorted(r["cursor"] for r in rows), [r["cursor"] for r in rows])
         for col in ("naturalKey", "kind", "label", "sourceKind", "recordedAt"):
             self.assertTrue(all(r.get(col) for r in current), col)
+
+    def test_index_since_pages_records_sharing_a_timestamp(self):
+        """Review of bobbin #216: ties on recordedAt must not fall between pages."""
+        self.post("/queries", json.loads((ROOT / "queries/mem_index_since.json").read_text()))
+        for i in range(45):  # rows 1-45 of the window, distinct instants
+            code, _, err = self.cy("record", "handoff", "--agent", f"tie-{i:02d}", "--next", f"early {i}",
+                                   now=f"2026-12-01T00:{i:02d}:00Z")
+            self.assertEqual(0, code, err)
+        tied = []
+        for i in range(45, 60):  # rows 46-60 share one instant, straddling the 50-row page
+            code, out, err = self.cy("record", "handoff", "--agent", f"tie-{i:02d}", "--next", f"tied {i}",
+                                     now="2026-12-01T01:00:00Z")
+            self.assertEqual(0, code, err)
+            tied.append(out.split()[-1])
+        rows, since, pages = [], "2026-11-30T23:59:59Z", 0
+        while True:
+            page = self.post("/ask", {"name": "mem_index_since", "params": {"since": since}})["rows"]
+            pages += 1
+            rows += page[:50]
+            if len(page) <= 50:
+                break
+            since = page[49]["cursor"]
+        self.assertEqual(2, pages)
+        iris = [r["iri"] for r in rows]
+        self.assertEqual(60, len(iris))
+        self.assertEqual(len(iris), len(set(iris)), "no row repeats across pages")
+        self.assertEqual(sorted(tied), [r["iri"] for r in rows if r["cursor"].startswith("2026-12-01T01:00:00Z|")])
+        first_page_ties = [r for r in rows[:50] if r["cursor"].startswith("2026-12-01T01:00:00Z|")]
+        self.assertEqual(5, len(first_page_ties), "the tie straddles the page boundary")
 
     def test_prime_live_counts(self):
         with mock.patch.dict(os.environ, self.env):

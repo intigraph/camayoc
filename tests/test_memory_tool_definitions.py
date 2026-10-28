@@ -137,7 +137,9 @@ class DefinitionTests(unittest.TestCase):
         self.assertNotIn("IF(", t)
         self.assertNotIn("COALESCE", t)
         self.assertIn("FILTER(?cursor > '{since}')", t)
-        self.assertTrue(t.endswith("ORDER BY ?cursor ?iri LIMIT 51"))
+        self.assertTrue(t.endswith("ORDER BY ?cursor LIMIT 51"))
+        self.assertIn('CONCAT(STR(?currentAt), "|", STR(?iri)) AS ?cursor', t)
+        self.assertIn('CONCAT(STR(?supersededAt), "|", STR(?iri)) AS ?cursor', t)
 
 
 if __name__ == "__main__":

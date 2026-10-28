@@ -426,7 +426,9 @@ Built so far, for Decision, Directive, Preference, Handoff and Reference:
   `current` rows at their own `recordedAt` and `superseded` rows at the
   `recordedAt` of the record that replaced them. status and cursor come from a
   UNION of the two branches, never IF/COALESCE, which older quipu leaves
-  unbound. It returns 50 rows plus one overflow sentinel.
+  unbound. The cursor is `<recordedAt>|<iri>`, ordered by recordedAt and then
+  iri, so records that share a timestamp never fall between two pages. It
+  returns 50 rows plus one overflow sentinel.
 - Review fixes: the secret check no longer scores URL locations or whole paths
   as one token, and the false positives from review are pass tests. A record
   whose key has more than one current version repairs the dangling
