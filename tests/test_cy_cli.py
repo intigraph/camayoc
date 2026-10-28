@@ -152,6 +152,80 @@ class OfflineTests(unittest.TestCase):
         self.assertEqual(0, memory.queue_length(self.env))
 
 
+BAD_VALUES = ["a b", "<x>", 'q"uote', "it's", "line\nbreak", "nul\x00byte", "tab\there", "{x}", "a|b",
+              "back\\slash", "caret^", "`tick`", "http://a b/c", "urn:x y", "aegis:", "aegis:a b", "\u00e9t\u00e9",
+              "x" * 5000, "-", ".", "' } ; DROP ALL ; #", 42, 3.5, True, {"a": 1}, ["one", "two"], [None], ""]
+
+
+class FuzzTests(unittest.TestCase):
+    """Review of #184: no caller value may crash the CLI or the MCP server."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.env = {"QUIPU_SERVER": f"http://127.0.0.1:{free_port()}", "XDG_STATE_HOME": self.tmp.name,
+                    "QUIPU_AUTH_TOKEN": "", "QUIPU_AUTH_TOKEN_FILE": str(Path(self.tmp.name) / "none"),
+                    "SHANTY_AGENT": "tester"}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_every_field_survives_every_bad_value(self):
+        from camayoc_cli import mcp
+        with mock.patch.dict(os.environ, self.env):
+            for name, e in definitions.load()["entities"].items():
+                base = {k: v for k, v in e["example"].items()}
+                for f in e["fields"]:
+                    for bad in BAD_VALUES:
+                        with self.subTest(entity=name, field=f["name"], value=repr(bad)[:40]):
+                            out = mcp.call(e["verb"], {**base, f["name"]: bad, "dry_run": True})
+                            self.assertIn(out.code, (0, 2, 3))
+                            if f["kind"] == "iri" and f["name"] != "topic" and isinstance(bad, str) \
+                                    and bad and bad.strip() != "" and not re.fullmatch(r"[A-Za-z0-9._~-]+", bad):
+                                self.assertEqual(2, out.code, out.lines)
+                                self.assertTrue(out.lines[0].startswith("Not recorded: "), out.lines)
+                for r in e["recall"]:
+                    for bad in BAD_VALUES:
+                        args = {"key": bad} if r.get("history") else {x: bad for x in r.get("filters", [])}
+                        out = mcp.call(r["verb"], args)
+                        self.assertIn(out.code, (0, 2, 3))
+        self.assertEqual(0, memory.queue_length(self.env), "a bad value is refused, never queued")
+
+    def test_cli_prints_refusals_not_tracebacks(self):
+        for bad in ("a b", "<x>", "line\nbreak", "' } ; DROP ALL ; #"):
+            code, _, err = run_cy("record", "decision", "--chose", "x", "--by", "person-stiwi", "--about", bad,
+                                  "--topic", "t", env=self.env)
+            self.assertEqual(2, code)
+            self.assertNotIn("Traceback", err)
+            self.assertIn("Not recorded: --about", err)
+            code, _, err = run_cy("recall", "decision", "--history", bad, env=self.env)
+            self.assertEqual(2, code, err)
+            self.assertNotIn("Traceback", err)
+
+    def test_mcp_server_stays_up_after_bad_calls(self):
+        calls = [{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "record_decision", "arguments": {
+                     "chose": "x", "by": "person-stiwi", "about": "a b", "topic": "t"}}},
+                 {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "recall_decision_history",
+                                                                                 "arguments": {"key": "<bad>"}}},
+                 {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": "not an object"},
+                 ["not", "a", "request"],
+                 {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "record_handoff",
+                                                                                 "arguments": {"agent": {"x": 1}, "next": 7}}},
+                 {"jsonrpc": "2.0", "id": 5, "method": "ping"}]
+        env = {**os.environ, **self.env, "PYTHONPATH": str(ROOT), "PYTHONDONTWRITEBYTECODE": "1"}
+        proc = subprocess.run([sys.executable, "-m", "camayoc_cli", "mcp"], env=env, capture_output=True, text=True,
+                              input="".join(json.dumps(c) + "\n" for c in calls) + "{not json\n", timeout=30)
+        replies = [json.loads(x) for x in proc.stdout.splitlines()]
+        by_id = {r.get("id"): r for r in replies}
+        self.assertTrue(by_id[1]["result"]["isError"])
+        self.assertIn("Not recorded: --about 'a b' is not an entity IRI or local name.",
+                      by_id[1]["result"]["content"][0]["text"])
+        self.assertTrue(by_id[2]["result"]["isError"])
+        self.assertTrue(by_id[4]["result"]["isError"])
+        self.assertEqual({}, by_id[5]["result"], "the server answers a ping after every bad call")
+        self.assertEqual(7, len(replies))
+        self.assertNotIn("Traceback", proc.stderr)
+
+
 class _Slow(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         time.sleep(3)
@@ -274,6 +348,7 @@ class LocalStoreTests(unittest.TestCase):
         seed = "".join(f"<{A}{n}> <http://www.w3.org/2000/01/rdf-schema#label> \"{n}\" .\n" for n in (
             "topic-public-launch", "repo-goldblum", "system-seeds-board", "hammond", "sattler", "host-vati"))
         seed += f"<{A}person-stiwi> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Stiwi\" .\n"
+        seed += f"<{A}person-kai> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Kai\" .\n"
         seed += f"<{A}person-robin> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Robin\" .\n"
         seed += "".join(f"<{A}tie-{i:02d}> <http://www.w3.org/2000/01/rdf-schema#label> \"tie {i}\" .\n"
                         for i in range(60))
@@ -505,6 +580,43 @@ class LocalStoreTests(unittest.TestCase):
         self.assertEqual(sorted(tied), [r["iri"] for r in rows if r["cursor"].startswith("2026-12-01T01:00:00Z|")])
         first_page_ties = [r for r in rows[:50] if r["cursor"].startswith("2026-12-01T01:00:00Z|")]
         self.assertEqual(5, len(first_page_ties), "the tie straddles the page boundary")
+
+    def test_late_repair_still_reaches_the_feed(self):
+        """A supersession written after the reader's cursor must still come back as `superseded`."""
+        self.post("/queries", json.loads((ROOT / "queries/mem_index_since.json").read_text()))
+        from camayoc_cli import quipu
+        base = ["record", "preference", "--person", "person-kai", "--context", "chat", "--topic", "chat-signoff"]
+        code, out, err = self.cy(*base, "--prefers", "Terse.", now="2026-12-05T00:00:00Z")
+        self.assertEqual(0, code, err)
+        old = out.split()[-1]
+        real, calls = quipu.Client.knot, []
+
+        def flaky(client, *args, **kwargs):
+            calls.append(args)
+            if len(calls) == 2:
+                raise quipu.QuipuError("injected failure")
+            return real(client, *args, **kwargs)
+
+        with mock.patch.object(quipu.Client, "knot", flaky):
+            self.cy(*base, "--prefers", "Terser.", now="2026-12-05T00:01:00Z")
+
+        def pull(since):
+            rows = []
+            while True:
+                page = self.post("/ask", {"name": "mem_index_since", "params": {"since": since}})["rows"]
+                rows += page[:50]
+                if not page:
+                    return rows, since
+                since = page[min(len(page), 50) - 1]["cursor"]
+                if len(page) <= 50:
+                    return rows, since
+
+        _, cursor = pull("")  # the mirror is now past both versions
+        code, out, err = self.cy(*base, "--prefers", "Terser.", now="2026-12-06T00:00:00Z")
+        self.assertIn(f"repaired: {old}", out)
+        rows, _ = pull(cursor)
+        self.assertEqual([("superseded", f"2026-12-06T00:00:00Z|{old}")],
+                         [(r["status"], r["cursor"]) for r in rows if r["iri"] == old])
 
     def test_prime_live_counts(self):
         with mock.patch.dict(os.environ, self.env):

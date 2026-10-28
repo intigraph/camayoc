@@ -129,6 +129,14 @@ def main(argv: list[str] | None = None) -> int:
     except quipu.QuipuError as exc:
         print(f"camayoc: {exc}", file=sys.stderr)
         return 3
+    except memory.BadInput:
+        print("Not recorded: a value cannot be used in an IRI or query (spaces, brackets, quotes or "
+              "control characters).", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001 - plain words, never a traceback
+        print(f"camayoc: unexpected {type(exc).__name__}; nothing was written. Report it with the command you ran.",
+              file=sys.stderr)
+        return 3
     return 2
 
 

@@ -49,9 +49,14 @@ def call(name: str, arguments: dict) -> memory.Outcome:
         return memory.recall(entity_name, filters, history=arguments.get("key") if recall_def.get("history") else None)
     except quipu.QuipuError as exc:
         return memory.Outcome(3, [f"camayoc: {exc}"])
+    except Exception as exc:  # noqa: BLE001 - one bad call must never take the server down
+        return memory.Outcome(3, [f"camayoc: could not run {name} ({type(exc).__name__}); "
+                                  "the server is still running"])
 
 
-def handle(msg: dict) -> dict | None:
+def handle(msg) -> dict | None:
+    if not isinstance(msg, dict):
+        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}}
     method, mid = msg.get("method"), msg.get("id")
     if mid is None:
         return None  # notification
@@ -66,8 +71,9 @@ def handle(msg: dict) -> dict | None:
     elif method == "tools/list":
         result = {"tools": tools()}
     elif method == "tools/call":
-        params = msg.get("params") or {}
-        out = call(params.get("name", ""), params.get("arguments") or {})
+        params = msg.get("params") if isinstance(msg.get("params"), dict) else {}
+        arguments = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
+        out = call(str(params.get("name", "")), arguments)
         text = "\n".join(out.lines)
         result = {"content": [{"type": "text", "text": text}], "isError": out.code != 0}
         if out.data:

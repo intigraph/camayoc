@@ -63,7 +63,12 @@ aegis:MemoryRecordShape a sh:NodeShape ;
         sh:path aegis:supersedes ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
         sh:name "supersedes" ;
         sh:description "The earlier version this record replaces; filled by the tool on the same natural key." ;
-        sh:message "Not recorded: a record supersedes at most one earlier version, by IRI." ] .
+        sh:message "Not recorded: a record supersedes at most one earlier version, by IRI." ] ;
+    sh:property [
+        sh:path aegis:supersededAt ; sh:maxCount 1 ; sh:datatype xsd:dateTime ;
+        sh:name "supersededAt" ;
+        sh:description "UTC instant the supersededBy link was written; the cursor bobbin's feed uses to drop the record." ;
+        sh:message "Not recorded: a record is superseded once, at one UTC instant." ] .
 
 aegis:MemoryTopicShape a sh:NodeShape ;
     sh:targetClass aegis:MemoryTopic ;

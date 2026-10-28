@@ -442,12 +442,18 @@ Built so far, for Decision, Directive, Preference, Handoff and Reference:
   `recordedAt` of the record that replaced them. status and cursor come from a
   UNION of the two branches, never IF/COALESCE, which older quipu leaves
   unbound. The cursor is `<recordedAt>|<iri>`, ordered by recordedAt and then
-  iri, so records that share a timestamp never fall between two pages. It
+  iri, so records that share a timestamp never fall between two pages. A
+  superseded row's instant is its `aegis:supersededAt`, the wall-clock time
+  the back-link was written. A late repair therefore still lands after the
+  reader's cursor. It
   returns 50 rows plus one overflow sentinel.
 - Review fixes: the secret check no longer scores URL locations or whole paths
   as one token, and the false positives from review are pass tests. A record
   whose key has more than one current version repairs the dangling
   `supersededBy` before doing anything else.
+- Every caller value is checked before it becomes an IRI or a query
+  parameter. A bad value is a plain-word refusal on the CLI and an `isError`
+  result over MCP, and the server keeps serving (`FuzzTests`).
 - The offline queue is minimal: an append-only JSONL file that `cy flush`
   replays in order. The full buffer, with its backlog line in bobbin's
   header, is gshu.7.
