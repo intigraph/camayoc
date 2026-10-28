@@ -499,7 +499,7 @@ def man_page(doc: dict) -> str:
            "cy, camayoc \\- record and recall typed agent memory in a Quipu store", ".SH SYNOPSIS",
            ".B cy record", ".I entity", "[\\fB\\-\\-field\\fR \\fIvalue\\fR ...]", ".br",
            ".B cy recall", ".I entity", "[\\fIfilters\\fR]", ".br",
-           ".B cy topic add", ".I name", ".br", ".B cy flush | cy mcp | cy prime", ".SH DESCRIPTION",
+           ".B cy topic add", ".I name", ".br", ".B cy flush [--hook] | cy backlog | cy mcp | cy prime", ".SH DESCRIPTION",
            _roff("One purpose-built command per memory entity. Every write goes through Quipu's SHACL "
                  "shapes; a refusal names the missing field in plain words and exits 2."),
            ".SH ENTITIES"]
@@ -512,7 +512,7 @@ def man_page(doc: dict) -> str:
             ".TP", ".B QUIPU_AUTH_TOKEN, QUIPU_AUTH_TOKEN_FILE",
             _roff("Bearer for writes, else ~/.config/quipu/token. Never printed."),
             ".TP", ".B SHANTY_AGENT", "The agent recorded as recordedBy.",
-            ".SH EXIT STATUS", "0 recorded, unchanged, superseded or queued; 2 refused; 3 Quipu error.",
+            ".SH EXIT STATUS", "0 recorded, unchanged, superseded or queued; 1 flush still pending; 2 refused; 3 Quipu error. Hook replay always exits 0.",
             ".SH SEE ALSO", _roff("cy prime; docs/design/agent-memory-entities.md in the camayoc repository."), ""]
     return "\n".join(out)
 

@@ -66,13 +66,25 @@ class SessionStartTest(unittest.TestCase):
         self.srv.server_close()
 
     def run_hook(self, **env_over) -> str:
-        env = {k: v for k, v in os.environ.items() if k not in ("QUIPU_SERVER", "QUIPU_AUTH_TOKEN")}
+        env = {k: v for k, v in os.environ.items() if k not in ("QUIPU_SERVER", "QUIPU_AUTH_TOKEN", "QUIPU_AUTH_TOKEN_FILE")}
         env["CLAUDE_PROJECT_DIR"] = str(self.project)
+        env["XDG_STATE_HOME"] = str(self.project / "state")
         env.update(env_over)
         p = subprocess.run(["bash", str(HOOK)], cwd=self.project, env=env,
                            capture_output=True, text=True, timeout=30)
         self.assertEqual(p.returncode, 0, p.stderr)  # never blocks a session
         return json.loads(p.stdout)["hookSpecificOutput"]["additionalContext"]
+
+    def test_replay_failure_never_blocks_the_existing_hook(self):
+        bindir = self.project / "bin"
+        bindir.mkdir()
+        stub = bindir / "cy"
+        stub.write_text("#!/bin/sh\nprintf called > replay-called\nexit 7\n")
+        stub.chmod(0o700)
+        context = self.run_hook(PATH=str(bindir) + os.pathsep + os.environ["PATH"],
+                                QUIPU_SERVER=self.url)
+        self.assertIn("ACTIVE", context)
+        self.assertEqual("called", (self.project / "replay-called").read_text())
 
     # -- the incident --------------------------------------------------------
     def test_an_unconfigured_responder_on_the_default_port_is_not_active(self):

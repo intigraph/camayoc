@@ -166,7 +166,9 @@ and expired records.
 | `cy recall <entity> [filters]` | Current records, declared first, at most 50 |
 | `cy recall decision --history <key>` | Every version of one decision key |
 | `cy topic add <name> [--alias ...]` | Register a memory topic (a natural-key part) |
-| `cy flush` | Replay records queued while Quipu was unreachable |
+| `cy flush` | Replay the local FIFO; keep any unconfirmed head and its tail |
+| `cy flush --hook` | Bounded replay for hooks; always exits 0 |
+| `cy backlog` | Read the local queued count as JSON; unknown is null |
 | `cy mcp` | Serve the same tools over MCP stdio (`record_<entity>`, `recall_<entity>`) |
 | `cy prime [--brief] [--json] [--static]` | This primer plus live state |
 | `cy record <entity> --help` | Every flag of one entity, from its shape |
@@ -208,7 +210,9 @@ Served by `cy mcp` (server name `camayoc-memory`).
 - Writes route to a plane by sourceKind: declared (a human said it), observed
   (measured), inferred (an agent concluded it). Inferred never overrides declared.
 - Replacing a ruling by someone else needs `--supersede <iri>`.
-- When Quipu is unreachable a record is queued and `cy flush` replays it.
+- When Quipu is unreachable a record is queued and `cy flush` replays it in order.
+- Queued is pending, never confirmed. Bobbin reports the local backlog without reading Quipu.
+- A refused head stays queued; inspect it before retrying. See `docs/offline-memory.md`.
 
 ## Next steps
 

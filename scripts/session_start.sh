@@ -5,6 +5,12 @@
 # quipu" is NOT "no knowledge" — the two answers are kept distinct.
 set -u
 
+# Ordered local replay is bounded and cannot block session startup on an error.
+# Missing CLI is allowed: the plugin can be installed before the memory tools.
+if command -v cy >/dev/null 2>&1; then
+  cy flush --hook >/dev/null 2>&1 || :
+fi
+
 # Prints "<url> <source>". The source is part of the answer: a server the
 # operator named is a claim about THEIR store, the default port is not. Once,
 # an orphaned test store sat on :3030 for ~5 days and this hook

@@ -69,7 +69,9 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("name")
     add.add_argument("--alias", action="append", default=[], help="another spelling; repeat")
 
-    sub.add_parser("flush", help="replay records queued while quipu was unreachable")
+    flush = sub.add_parser("flush", help="replay records queued while quipu was unreachable")
+    flush.add_argument("--hook", action="store_true", help="bounded hook replay; always exits 0")
+    sub.add_parser("backlog", help="read the local queue count as JSON (unknown stays null)")
 
     note = sub.add_parser("note", help="capture a note now (untyped; promotion types it later)")
     note.add_argument("text")
@@ -134,6 +136,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         ap.print_help()
         return 2
+    if args.command == "backlog":
+        from . import offline
+        print(json.dumps(offline.backlog()))
+        return 0
+    if args.command == "flush" and args.hook:
+        try:
+            memory.flush_all(limit=20, timeout=0.75)
+        except Exception:  # hook failures must never block the harness
+            print("camayoc: offline replay unavailable; backlog unconfirmed", file=sys.stderr)
+        return 0
     if args.command == "mcp":
         from . import mcp
         return mcp.serve()
@@ -179,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
                 ap.parse_args(["topic", "--help"])
             return _emit(memory.add_topic(args.name, args.alias), False)
         if args.command == "flush":
-            return _emit(memory.flush(), False)
+            return _emit(memory.flush_all(), False)
         if args.command == "note":
             from . import capture
             return _emit(capture.note(args.text, kind=args.kind, about=args.about, source=args.source), args.json)

@@ -49,7 +49,11 @@ def free_port() -> int:
 
 def run_cy(*argv: str, env: dict | None = None) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
-    with mock.patch.dict(os.environ, env or {}), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+    # Never inherit a live endpoint or bearer from the operator shell.
+    safe_env = {"QUIPU_SERVER": "http://127.0.0.1:0", "QUIPU_AUTH_TOKEN": "",
+                "QUIPU_AUTH_TOKEN_FILE": os.devnull}
+    safe_env.update(env or {})
+    with mock.patch.dict(os.environ, safe_env), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         try:
             code = cli.main(list(argv))
         except SystemExit as exc:
