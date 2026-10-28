@@ -395,3 +395,60 @@ flips the setting. All five checks must hold:
 5. **Reversible.** tambo writes `autoMemoryEnabled:false` with a marker,
    never overrides a value the user set, and `tambo memory restore` reverts
    the switch.
+
+## 7. Implementation status (gshu.10)
+
+Built so far, for Decision, Directive, Preference, Handoff and Reference:
+
+- `shapes/agent-memory.shapes.ttl`: one NodeShape per entity, plus
+  `MemoryRecordShape` for the tool-filled fields and `MemoryTopicShape`. Every
+  property carries `sh:name`, `sh:description` and `sh:message`, and every
+  required field's message names its flag.
+- `tools/memory/<entity>.tool.json`: the sidecars. They hold no field
+  definitions; the generator's lint refuses one that does.
+- `scripts/memory_tools.py`: lints the shape and the sidecars, then writes
+  `camayoc_cli/data/definitions.json` and the recall stored queries
+  `queries/mem_*.json`. `--check` is the drift gate, and
+  `tests/test_memory_tool_definitions.py` runs it in the normal suite.
+
+Choices made while building:
+
+- The memory Decision stores who ruled on `aegis:decidedBy` (an IRI), never
+  on `aegis:by`. `aegis:by` is the governance literal that quipu's
+  `DecisionShape` requires, so the memory shape never asks for it.
+- The Preference natural key is `person` + `topic`, as the gate fixture
+  (`tests/fixtures/agent-memory/gate-prompts.json`) spells it. The context is a
+  required field but not a key part; a topic that differs by context gets its
+  own topic name.
+- Topic IRIs are `aegis:mem/topic/<name>`, so a topic's local name is the key
+  segment.
+- Directive `expiresAt` is left out for now. `aegis:expiresAt` is declared
+  with `rdfs:domain aegis:DecisionRequest` and an integer range, so writing it
+  on a Directive would type the Directive as a DecisionRequest.
+- Recall queries take the three plane IRIs as parameters (like the existing
+  `{records}` convention), and every filter is a required text parameter where
+  the empty string matches anything, because stored-query parameters here are
+  all required.
+
+### 7.1 Schema proposal owed before production
+
+Nothing here is loaded into production quipu. Loading it needs a schema
+proposal (`quipu_propose_schema_change`) that covers:
+
+1. **New classes and terms.** `aegis:Preference`, `aegis:Handoff`,
+   `aegis:Reference`, `aegis:MemoryTopic`; properties `naturalKey`,
+   `recordedAt`, `recordedBy`, `topic`, `rule`, `issuedBy`, `appliesTo`,
+   `issuedOn`, `why`, `verbatim`, `person`, `prefers`, `context`, `notWhen`,
+   `example`, `agent`, `next`, `waitingOn`, `handoffContext`, `subject`,
+   `locator`, `secretRef`, `access`, `alias`, `supersedes`.
+2. **Tightening live classes.** `MemoryDirectiveShape` targets
+   `aegis:Directive`, which has 923 live nodes with free-form fields (§1.2).
+   They are not revalidated until rewritten, but any rewrite would be refused.
+   The proposal must choose between migrating them or scoping the shape to
+   memory records (`sh:targetSubjectsOf aegis:naturalKey` plus a class check).
+3. **The Decision split (§1.3).** `MemoryDecisionShape` cannot load beside
+   quipu's governance `DecisionShape` until the GateApproval migration ships.
+4. **The plane graphs.** The writes route to the `crew:declared`,
+   `crew:records` and `crew:inferred` planes, which must be registered and
+   labelled (`scripts/planes.py ensure`) on the target store.
+5. **The recall stored queries** `queries/mem_*.json`.

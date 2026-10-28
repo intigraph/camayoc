@@ -1,0 +1,32 @@
+{
+  "action": "load",
+  "description": "Every version of one decision key, newest first, superseded ones included. Generated from tools/memory/decision.tool.json; drops superseded and expired records, ranks declared > observed > inferred, at most 50 rows plus one overflow sentinel.",
+  "name": "mem_decision_history",
+  "params": [
+    {
+      "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+      "name": "declared",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+      "name": "records",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+      "name": "inferred",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The natural-key IRI whose versions to list.",
+      "name": "key",
+      "required": true,
+      "type": "iri"
+    }
+  ],
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"decision\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Decision ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:chose ?b . FILTER(?naturalKey = <{key}>) OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY DESC(?recordedAt) ?iri LIMIT 51"
+}

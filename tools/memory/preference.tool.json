@@ -1,0 +1,22 @@
+{
+  "entity": "preference",
+  "class": "aegis:Preference",
+  "shape": "aegis:MemoryPreferenceShape",
+  "verb": "record_preference",
+  "noun": "preference",
+  "summary": "Record how a person wants something done, in one context.",
+  "body": "prefers",
+  "key": ["person", "topic"],
+  "issuer": "person",
+  "sourceKind": {"default": "declared", "flags": {"noticed": {"sourceKind": "inferred", "help": "An agent noticed this preference; the person did not state it."}}},
+  "lifecycle": {"reviewAfterDays": 180},
+  "recall": [
+    {"name": "mem_preferences", "verb": "recall_preference", "summary": "Current preferences of one person, optionally in one context.", "filters": ["person", "context"]}
+  ],
+  "example": {
+    "person": "person-stiwi",
+    "prefers": "No sign-off line on chat or DM messages; emails keep it.",
+    "context": "chat",
+    "topic": "chat-signoff"
+  }
+}

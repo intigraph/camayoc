@@ -1,0 +1,265 @@
+# camayoc agent-memory shapes (docs/design/agent-memory-entities.md §2, §3)
+#
+# The source of truth for every agent-memory create tool. Each property says:
+#   sh:name         the argument name (CLI flag = kebab-case of it, MCP arg = it)
+#   sh:description  the help text every surface prints
+#   sh:message      the plain-word refusal, naming the flag
+# `scripts/memory_tools.py` reads this file plus tools/memory/*.tool.json and
+# generates every surface; its lint fails the build on a minCount without an
+# sh:message (the 10/27 "unnamed field" bug class).
+#
+# Shared fields (label, naturalKey, sourceKind, recordedAt, recordedBy,
+# contentHash, lifecycle) are filled by the tool, never by the caller, and are
+# checked by MemoryRecordShape so a tool bug is refused like any other write.
+#
+# NOT loaded into production quipu by this change: the Decision and Directive
+# shapes tighten classes that already have live nodes, and the Decision shape
+# needs the quipu GateApproval split first (design §1.3). See the schema
+# proposal note in docs/design/agent-memory-entities.md §7.
+
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+
+# ---- Shared record fields (tool-filled) -------------------------------------
+
+aegis:MemoryRecordShape a sh:NodeShape ;
+    sh:targetSubjectsOf aegis:naturalKey ;
+    sh:property [
+        sh:path aegis:naturalKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:name "naturalKey" ;
+        sh:description "The record's natural-key IRI (aegis:mem/<kind>/<scope>/<topic>); filled by the tool." ;
+        sh:message "Not recorded: the record has no natural key (camayoc tool bug; report it)." ] ;
+    sh:property [
+        sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:name "label" ;
+        sh:description "One-line label; filled by the tool from the record body." ;
+        sh:message "Not recorded: the record has no label (camayoc tool bug; report it)." ] ;
+    sh:property [
+        sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:in ( "observed" "declared" "inferred" ) ;
+        sh:name "sourceKind" ;
+        sh:description "Provenance tag: observed, declared or inferred; filled by the tool's sourceKind rule." ;
+        sh:message "Not recorded: the record needs exactly one sourceKind of observed, declared or inferred." ] ;
+    sh:property [
+        sh:path aegis:recordedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:dateTime ;
+        sh:name "recordedAt" ;
+        sh:description "UTC instant the record was written; filled by the tool." ;
+        sh:message "Not recorded: the record has no recordedAt instant (camayoc tool bug; report it)." ] ;
+    sh:property [
+        sh:path aegis:recordedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:name "recordedBy" ;
+        sh:description "The agent that wrote the record ($SHANTY_AGENT or the harness agent id); filled by the tool." ;
+        sh:message "Not recorded: the record does not say which agent wrote it; set SHANTY_AGENT." ] ;
+    sh:property [
+        sh:path aegis:contentHash ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:pattern "^sha256:[0-9a-f]{64}$" ;
+        sh:name "contentHash" ;
+        sh:description "sha256 over the caller-supplied fields; how an unchanged re-record is detected." ;
+        sh:message "Not recorded: the record has no content hash (camayoc tool bug; report it)." ] ;
+    sh:property [
+        sh:path aegis:supersedes ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:name "supersedes" ;
+        sh:description "The earlier version this record replaces; filled by the tool on the same natural key." ;
+        sh:message "Not recorded: a record supersedes at most one earlier version, by IRI." ] .
+
+aegis:MemoryTopicShape a sh:NodeShape ;
+    sh:targetClass aegis:MemoryTopic ;
+    sh:property [
+        sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:name "label" ;
+        sh:description "The topic's registered name, kebab-case." ;
+        sh:message "Not recorded: a topic needs one name (cy topic add <name>)." ] ;
+    sh:property [
+        sh:path aegis:alias ; sh:datatype xsd:string ;
+        sh:name "alias" ;
+        sh:description "Another spelling that resolves to this topic." ;
+        sh:message "Not recorded: a topic alias is plain text." ] .
+
+# ---- Decision: one ruling on a scoped question ------------------------------
+# aegis:Decision is the memory Decision (design §1.3 ruling). `by` is stored on
+# aegis:decidedBy, an IRI, so it never collides with the governance aegis:by
+# literal that quipu's GateApproval shape requires.
+
+aegis:MemoryDecisionShape a sh:NodeShape ;
+    sh:targetClass aegis:Decision ;
+    sh:property [
+        sh:path aegis:chose ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 1 ; sh:name "chose" ;
+        sh:description "What was chosen, in one sentence." ;
+        sh:message "Not recorded: a decision needs what was chosen (--chose)." ] ;
+    sh:property [
+        sh:path aegis:decidedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 2 ; sh:name "by" ;
+        sh:description "Who ruled: a Person or agent entity (IRI or local name)." ;
+        sh:message "Not recorded: a decision needs who ruled (--by), as an existing person or agent." ] ;
+    sh:property [
+        sh:path aegis:about ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 3 ; sh:name "about" ;
+        sh:description "The entity the decision is about: host, repo, service, role, agent or person (IRI or local name)." ;
+        sh:message "Not recorded: a decision needs what it is about (--about), as an existing entity." ] ;
+    sh:property [
+        sh:path aegis:topic ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 4 ; sh:name "topic" ;
+        sh:description "The registered memory topic the decision answers (cy topic add registers one)." ;
+        sh:message "Not recorded: a decision needs a registered topic (--topic)." ] ;
+    sh:property [
+        sh:path aegis:over ; sh:datatype xsd:string ;
+        sh:order 5 ; sh:name "over" ;
+        sh:description "An alternative that was not chosen; repeat for each." ;
+        sh:message "Not recorded: --over is plain text, one alternative per flag." ] ;
+    sh:property [
+        sh:path aegis:rationale ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 6 ; sh:name "rationale" ;
+        sh:description "Why, in one or two sentences." ;
+        sh:message "Not recorded: give one --rationale." ] ;
+    sh:property [
+        sh:path aegis:decidedIn ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 7 ; sh:name "decidedIn" ;
+        sh:description "The board item or session the decision was made in (IRI or local name)." ;
+        sh:message "Not recorded: --decided-in names one board item or session." ] ;
+    sh:property [
+        sh:path aegis:verbatim ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 8 ; sh:name "verbatim" ;
+        sh:description "The ruling in the decider's own words." ;
+        sh:message "Not recorded: give one --verbatim quote." ] .
+
+# ---- Directive: a standing rule ---------------------------------------------
+
+aegis:MemoryDirectiveShape a sh:NodeShape ;
+    sh:targetClass aegis:Directive ;
+    sh:property [
+        sh:path aegis:rule ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 1 ; sh:name "rule" ;
+        sh:description "The rule, as one imperative sentence." ;
+        sh:message "Not recorded: a directive needs the rule as one imperative sentence (--rule)." ] ;
+    sh:property [
+        sh:path aegis:issuedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 2 ; sh:name "issuedBy" ;
+        sh:description "Who issued the rule: a Person or agent entity (IRI or local name)." ;
+        sh:message "Not recorded: a directive needs who issued it (--issued-by), as an existing person or agent." ] ;
+    sh:property [
+        sh:path aegis:appliesTo ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 3 ; sh:name "appliesTo" ;
+        sh:description "Who or what the rule binds: an agent, CrewRole or repo, or 'crew' for everyone." ;
+        sh:message "Not recorded: a directive needs who it applies to (--applies-to), an existing agent, role or repo, or 'crew'." ] ;
+    sh:property [
+        sh:path aegis:topic ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 4 ; sh:name "topic" ;
+        sh:description "The registered memory topic the rule governs (cy topic add registers one)." ;
+        sh:message "Not recorded: a directive needs a registered topic (--topic)." ] ;
+    sh:property [
+        sh:path aegis:issuedOn ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" ;
+        sh:order 5 ; sh:name "issuedOn" ;
+        sh:description "The date the rule was given, YYYY-MM-DD." ;
+        sh:message "Not recorded: --issued-on is one date, YYYY-MM-DD." ] ;
+    sh:property [
+        sh:path aegis:why ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 6 ; sh:name "why" ;
+        sh:description "Why the rule exists, in one sentence." ;
+        sh:message "Not recorded: give one --why." ] ;
+    sh:property [
+        sh:path aegis:verbatim ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 7 ; sh:name "verbatim" ;
+        sh:description "The rule in the issuer's own words." ;
+        sh:message "Not recorded: give one --verbatim quote." ] .
+
+# ---- Preference: how a person wants things done -----------------------------
+
+aegis:MemoryPreferenceShape a sh:NodeShape ;
+    sh:targetClass aegis:Preference ;
+    sh:property [
+        sh:path aegis:person ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 1 ; sh:name "person" ;
+        sh:description "Whose preference it is: a Person entity (IRI or local name)." ;
+        sh:message "Not recorded: a preference needs whose it is (--person), as an existing person." ] ;
+    sh:property [
+        sh:path aegis:prefers ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 2 ; sh:name "prefers" ;
+        sh:description "What the person prefers, in one sentence." ;
+        sh:message "Not recorded: a preference needs what is preferred, in one sentence (--prefers)." ] ;
+    sh:property [
+        sh:path aegis:context ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:in ( "email" "chat" "code-review" "document" "artifact" "form" "travel" ) ;
+        sh:order 3 ; sh:name "context" ;
+        sh:description "Where it applies: email, chat, code-review, document, artifact, form or travel." ;
+        sh:message "Not recorded: a preference needs a context (--context): email, chat, code-review, document, artifact, form or travel." ] ;
+    sh:property [
+        sh:path aegis:topic ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 4 ; sh:name "topic" ;
+        sh:description "The registered memory topic (cy topic add registers one)." ;
+        sh:message "Not recorded: a preference needs a registered topic (--topic)." ] ;
+    sh:property [
+        sh:path aegis:notWhen ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 5 ; sh:name "notWhen" ;
+        sh:description "When the preference does not apply." ;
+        sh:message "Not recorded: give one --not-when." ] ;
+    sh:property [
+        sh:path aegis:example ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 6 ; sh:name "example" ;
+        sh:description "One short example of the preference applied." ;
+        sh:message "Not recorded: give one --example." ] ;
+    sh:property [
+        sh:path aegis:verbatim ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 7 ; sh:name "verbatim" ;
+        sh:description "The preference in the person's own words." ;
+        sh:message "Not recorded: give one --verbatim quote." ] .
+
+# ---- Handoff: one current note per agent ------------------------------------
+
+aegis:MemoryHandoffShape a sh:NodeShape ;
+    sh:targetClass aegis:Handoff ;
+    sh:property [
+        sh:path aegis:agent ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 1 ; sh:name "agent" ;
+        sh:description "The agent the handoff is for (IRI or local name)." ;
+        sh:message "Not recorded: a handoff needs the agent it is for (--agent), as an existing agent." ] ;
+    sh:property [
+        sh:path aegis:next ; sh:minCount 1 ; sh:maxCount 7 ; sh:datatype xsd:string ;
+        sh:order 2 ; sh:name "next" ;
+        sh:description "A next step pointing at a board item, PR or entity; repeat, 1 to 7." ;
+        sh:message "Not recorded: a handoff needs 1 to 7 next steps (--next), each pointing at a board item, PR or entity." ] ;
+    sh:property [
+        sh:path aegis:waitingOn ; sh:maxCount 7 ; sh:datatype xsd:string ;
+        sh:order 3 ; sh:name "waitingOn" ;
+        sh:description "What an item waits on; repeat, at most 7." ;
+        sh:message "Not recorded: at most 7 --waiting-on lines." ] ;
+    sh:property [
+        sh:path aegis:handoffContext ; sh:maxCount 3 ; sh:datatype xsd:string ;
+        sh:order 4 ; sh:name "context" ;
+        sh:description "Context the next session needs; repeat, at most 3 lines." ;
+        sh:message "Not recorded: at most 3 --context lines; item state belongs on the board." ] .
+
+# ---- Reference: where a system lives and how to reach it --------------------
+
+aegis:MemoryReferenceShape a sh:NodeShape ;
+    sh:targetClass aegis:Reference ;
+    sh:property [
+        sh:path aegis:subject ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 1 ; sh:name "subject" ;
+        sh:description "The system the reference points into: host, service, repo or tool (IRI or local name)." ;
+        sh:message "Not recorded: a reference needs the system it points into (--subject), as an existing entity." ] ;
+    sh:property [
+        sh:path aegis:topic ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+        sh:order 2 ; sh:name "topic" ;
+        sh:description "What the reference is for: a registered memory topic (cy topic add registers one)." ;
+        sh:message "Not recorded: a reference needs a registered topic saying what it is for (--topic)." ] ;
+    sh:property [
+        sh:path aegis:locator ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 3 ; sh:name "locator" ;
+        sh:description "Where it is: a URL, path, command or graph IRI. Never a secret." ;
+        sh:message "Not recorded: a reference needs where it is (--locator): a URL, path, command or graph IRI." ] ;
+    sh:property [
+        sh:path aegis:secretRef ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:pattern "^[A-Za-z][A-Za-z0-9_./-]{1,127}$" ;
+        sh:order 4 ; sh:name "secretRef" ;
+        sh:description "The secret-store key name that holds the credential. A key name, never a value." ;
+        sh:message "Not recorded: --secret-ref must be a secret-store key name, not a value." ] ;
+    sh:property [
+        sh:path aegis:access ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:order 5 ; sh:name "access" ;
+        sh:description "How to authenticate, in one sentence, without the secret." ;
+        sh:message "Not recorded: give one --access sentence." ] .

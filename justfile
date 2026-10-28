@@ -10,6 +10,12 @@ check:
 test:
     python3 -m unittest discover -s tests -v
 
+# Regenerate the agent-memory tool surfaces from shapes/agent-memory.shapes.ttl
+# and tools/memory/*.tool.json (docs/design/agent-memory-entities.md §3).
+# `just memory-tools --check` is the drift gate the test suite also runs.
+memory-tools *args:
+    @python3 scripts/memory_tools.py {{args}}
+
 # Benchmark competency or ordered rubrics; ordinal defaults to a keyless dry run.
 jev-bench *args:
     @python3 scripts/jev_bench.py {{args}}

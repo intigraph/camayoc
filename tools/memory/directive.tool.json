@@ -1,0 +1,23 @@
+{
+  "entity": "directive",
+  "class": "aegis:Directive",
+  "shape": "aegis:MemoryDirectiveShape",
+  "verb": "record_directive",
+  "noun": "directive",
+  "summary": "Record a standing rule: one imperative sentence, who issued it, who it binds.",
+  "body": "rule",
+  "key": ["appliesTo", "topic"],
+  "issuer": "issuedBy",
+  "sourceKind": {"default": "declared"},
+  "lifecycle": {"reviewAfterDays": 90},
+  "recall": [
+    {"name": "mem_directives_for", "verb": "recall_directive", "summary": "Current directives binding one agent, role or repo, plus crew-wide ones.", "filters": ["appliesTo"], "alsoMatch": "aegis:crew"}
+  ],
+  "example": {
+    "rule": "Run disruptive deploys between 02:00 and 09:00 ET; never ask for a window.",
+    "issuedBy": "person-stiwi",
+    "appliesTo": "crew",
+    "topic": "deploy-window",
+    "issuedOn": "2026-10-27"
+  }
+}

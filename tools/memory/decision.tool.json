@@ -1,0 +1,24 @@
+{
+  "entity": "decision",
+  "class": "aegis:Decision",
+  "shape": "aegis:MemoryDecisionShape",
+  "verb": "record_decision",
+  "noun": "decision",
+  "summary": "Record one ruling on a scoped question: what was chosen, by whom, about what.",
+  "body": "chose",
+  "key": ["about", "topic"],
+  "issuer": "by",
+  "sourceKind": {"default": "inferred", "declaredWhen": {"field": "by", "isA": "aegis:Person"}},
+  "lifecycle": {"reviewAfterDays": 90},
+  "recall": [
+    {"name": "mem_decisions_current", "verb": "recall_decision", "summary": "Current decisions, optionally about one entity and topic.", "filters": ["about", "topic"]},
+    {"name": "mem_decision_history", "verb": "recall_decision_history", "summary": "Every version of one decision key, newest first, superseded ones included.", "history": true}
+  ],
+  "example": {
+    "chose": "Hostnames and crew names may appear in public repos and posts.",
+    "by": "person-stiwi",
+    "about": "topic-public-launch",
+    "topic": "hostnames-in-public",
+    "rationale": "They are not secrets; history rewrites cost more than they protect."
+  }
+}
