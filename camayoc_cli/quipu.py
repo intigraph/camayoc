@@ -11,6 +11,7 @@ import json
 import os
 import re
 import socket
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -88,20 +89,28 @@ def provenance_headers(env=None) -> dict[str, str]:
 
 
 class Client:
-    def __init__(self, base: str | None = None, timeout: float = 15.0):
+    def __init__(self, base: str | None = None, timeout: float = 15.0, *, deadline=None, provenance_env=None):
         self.base = (base or server()).rstrip("/")
         self.timeout = timeout
+        self.deadline = deadline
+        self.provenance_env = provenance_env
 
     def _request(self, path: str, body: dict | None = None, timeout: float | None = None) -> dict:
-        headers = {"Content-Type": "application/json", "X-Quipu-Client": "camayoc-cy", **provenance_headers()}
+        headers = {"Content-Type": "application/json", "X-Quipu-Client": "camayoc-cy", **provenance_headers(self.provenance_env)}
         bearer = token()
         if bearer:
             headers["Authorization"] = f"Bearer {bearer}"
         data = None if body is None else json.dumps(body).encode()
         req = urllib.request.Request(self.base + path, data=data, headers=headers,
                                      method="GET" if body is None else "POST")
+        request_timeout = timeout or self.timeout
+        if self.deadline is not None:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimedOut('Quipu replay deadline reached')
+            request_timeout = min(request_timeout, remaining)
         try:
-            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=request_timeout) as resp:
                 return json.loads(resp.read() or b"{}")
         except urllib.error.HTTPError as exc:
             detail = exc.read()[:4000].decode(errors="replace")

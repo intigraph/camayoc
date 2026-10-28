@@ -457,9 +457,11 @@ Built so far, for Decision, Directive, Preference, Handoff and Reference:
 - Every caller value is checked before it becomes an IRI or a query
   parameter. A bad value is a plain-word refusal on the CLI and an `isError`
   result over MCP, and the server keeps serving (`FuzzTests`).
-- The offline queue is minimal: an append-only JSONL file that `cy flush`
-  replays in order. The full buffer, with its backlog line in bobbin's
-  header, is gshu.7.
+- The offline buffer (gshu.7) uses a locked local JSONL FIFO, ordered replay
+  with durable acknowledgment only after success, source provenance and
+  endpoint/plane binding. `cy flush --hook` always exits 0. Bobbin's companion
+  reader reports the local backlog in its existing memory header; see
+  `docs/offline-memory.md` for the format and acceptance limits.
 - The memory-file redirect (gshu.1) is `camayoc_cli/memory_redirect.py`,
   served as `cy hook memory-redirect`. It is off until tambo wires it in, and
   then runs in `copy` (the default) or `block` mode. The modes and the mapping

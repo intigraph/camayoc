@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import definitions, planes, quipu
+from .offline import queue_path, queue_length, enqueue
 from .secret_rules import refusals as secret_refusals
 
 CREW = "crew"
@@ -421,65 +422,115 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
         return Outcome(2, lines)
 
 
+def _queued_context(env=None):
+    env = os.environ if env is None else env
+    # Credentials never enter the buffer. Replay uses current credentials but
+    # preserves the origin actor/session and refuses an endpoint/plane change.
+    keys = ('SHANTY_AGENT', 'QUIPU_AGENT', 'CLAUDE_CODE_SESSION_ID', 'CODEX_SESSION_ID',
+            'CODEX_THREAD_ID', 'QUIPU_SESSION', 'QUIPU_HARNESS', 'QUIPU_MODEL',
+            'SHANTY_MODEL', 'CLAUDECODE', 'CODEX_HOME', 'USER')
+    return dict(server=env.get('QUIPU_SERVER', quipu.DEFAULT_SERVER).rstrip('/'),
+                plane_ns=env.get('CAMAYOC_PLANE_NS', 'https://camayoc.local/plane/'),
+                env={key: env[key] for key in keys if env.get(key)})
+
+
 def record_or_queue(entity_name: str, args: dict, *, supersede: str | None = None,
                     flags: dict | None = None, env=None) -> Outcome:
-    """record(), but an unreachable store queues the call (§3: exit 0, `queued <n>`)."""
-    try:
-        return record(entity_name, args, supersede=supersede, flags=flags, env=env)
-    except quipu.Unreachable as exc:
-        entity = definitions.load()["entities"][entity_name]
-        pre = precheck(entity, args)
-        if pre:
-            return Outcome(2, pre)
-        n = enqueue({"entity": entity_name, "args": args, "supersede": supersede, "flags": flags or {}}, env)
-        return Outcome(0, [f"queued {n} ({exc}); run `cy flush` once quipu is back"],
-                       {"status": "queued", "queued": n})
-
-
-# ---- offline queue (minimal; gshu.7 owns the full buffer) -----------------------
-
-def queue_path(env=None) -> Path:
-    env = os.environ if env is None else env
-    root = Path(env.get("XDG_STATE_HOME") or Path.home() / ".local/state")
-    return root / "camayoc" / "memory-queue.jsonl"
-
-
-def queue_length(env=None) -> int:
-    path = queue_path(env)
-    try:
-        return sum(1 for line in path.read_text().splitlines() if line.strip())
-    except OSError:
-        return 0
-
-
-def enqueue(call: dict, env=None) -> int:
-    path = queue_path(env)
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with path.open("a") as out:
-        out.write(json.dumps(call, sort_keys=True) + "\n")
-    return queue_length(env)
-
-
-def flush(client: quipu.Client | None = None, env=None) -> Outcome:
-    path = queue_path(env)
-    try:
-        calls = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-    except OSError:
-        return Outcome(0, ["queue empty"])
-    lines, done = [], 0
-    for call in calls:
+    """Local prechecks precede both writes and buffering. Never leapfrog a FIFO."""
+    entity = definitions.load()["entities"][entity_name]
+    problems = precheck(entity, args)
+    problems.extend(secret_refusals({"supersede": supersede}) if supersede else [])
+    if problems:
+        return Outcome(2, problems + [example_line(entity)])
+    count = queue_length(env)
+    if count is None:
+        return Outcome(3, ['Not recorded: offline queue is unreadable; inspect it before retrying.'])
+    if not count:
         try:
-            out = record(call["entity"], call["args"], supersede=call.get("supersede"),
-                         flags=call.get("flags"), client=client, env=env)
-        except quipu.Unreachable as exc:
-            lines.append(f"stopped: {exc}")
-            break
-        lines.extend(out.lines)
-        done += 1
-    rest = calls[done:]
-    path.write_text("".join(json.dumps(c, sort_keys=True) + "\n" for c in rest))
-    lines.append(f"replayed {done}, {len(rest)} still queued")
-    return Outcome(0 if not rest else 1, lines)
+            return record(entity_name, args, supersede=supersede, flags=flags, env=env)
+        except quipu.Unreachable:
+            pass
+    context = _queued_context(env)
+    n = enqueue({"entity": entity_name, "args": args, "supersede": supersede,
+                 "flags": flags or {}, "context": context}, env)
+    return Outcome(0, [f"queued {n}; run `cy flush` once quipu is back"],
+                   {"status": "queued", "queued": n})
+
+
+# ---- offline queue -------------------------------------------------------------
+
+
+
+def flush(client: quipu.Client | None = None, env=None, *, limit=100, timeout=10.0) -> Outcome:
+    from . import offline
+    import time
+    path = queue_path(env)
+    if not path.exists() and not path.is_symlink():
+        return Outcome(0, ["queue empty"])
+    lines, done, local_error = [], 0, False
+    deadline = time.monotonic() + timeout
+    try:
+        with offline.locked(path, replay=True):
+            while done < limit and time.monotonic() < deadline:
+                call = offline.head(path)
+                if call is None:
+                    break
+                context = call.get('context')
+                replay_env = {}  # legacy entries have no trustworthy origin metadata
+                if context:
+                    current = _queued_context(env)
+                    if (context.get('server') != current['server']
+                            or context.get('plane_ns') != current['plane_ns']):
+                        lines.append('stopped: queued endpoint or plane differs; restore the original configuration')
+                        break
+                    replay_env = dict(context.get('env', {}))
+                actual_client = client or quipu.Client(base=_queued_context(env)['server'],
+                                                       timeout=timeout, deadline=deadline,
+                                                       provenance_env=replay_env)
+                try:
+                    out = record(call['entity'], call['args'], supersede=call.get('supersede'),
+                                 flags=call.get('flags'), client=actual_client, env=replay_env)
+                except quipu.QuipuError as exc:
+                    lines.append(f'stopped: {type(exc).__name__}; head retained')
+                    break
+                lines.extend(out.lines)
+                if out.code != 0 or out.data.get('status') in ('queued', 'dry-run'):
+                    lines.append('stopped: head was not confirmed; retained for inspection')
+                    break
+                offline.acknowledge(path, call)
+                done += 1
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        local_error = True
+        lines.append(f'stopped: local buffer {type(exc).__name__}; inspect acknowledgment state')
+    rest = queue_length(env)
+    lines.append(f"replayed {done}, {rest if rest is not None else 'UNKNOWN'} still queued")
+    ok = rest == 0 and not local_error
+    return Outcome(0 if ok else 1, lines,
+                   dict(replayed=done, queued=rest, status='ok' if ok else 'pending'))
+
+
+def flush_all(env=None, *, limit=100, timeout=10.0) -> Outcome:
+    """Both producer FIFOs; capture support is activated by its explicit adapter."""
+    from . import offline
+    import time
+    deadline = time.monotonic() + timeout
+    out = flush(env=env, limit=limit, timeout=timeout)
+    if out.code or offline.capture_length(env) == 0:
+        return out
+    try:
+        from . import capture
+    except ImportError:
+        return Outcome(1, out.lines + ['capture backlog pending; capture replay adapter is not installed'])
+    if not getattr(capture, 'OFFLINE_FIFO_V1', False):
+        return Outcome(1, out.lines + ['capture backlog pending; capture replay adapter is not installed'])
+    remaining = deadline - time.monotonic()
+    remaining_limit = limit - out.data.get('replayed', 0)
+    if remaining <= 0 or remaining_limit <= 0:
+        return Outcome(1, out.lines + ['capture backlog pending; replay budget exhausted'])
+    client = capture.client_for(env, timeout=remaining)
+    client.deadline = deadline
+    captured = capture.flush(client=client, env=env, limit=remaining_limit, deadline=deadline)
+    return Outcome(captured.code, out.lines + captured.lines, offline.backlog(env))
 
 
 # ---- topics ---------------------------------------------------------------------

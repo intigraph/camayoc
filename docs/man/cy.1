@@ -14,7 +14,7 @@ cy, camayoc \- record and recall typed agent memory in a Quipu store
 .B cy topic add
 .I name
 .br
-.B cy flush | cy mcp | cy prime
+.B cy flush [--hook] | cy backlog | cy mcp | cy prime
 .SH DESCRIPTION
 One purpose\-built command per memory entity. Every write goes through Quipu\(aqs SHACL shapes; a refusal names the missing field in plain words and exits 2.
 .SH ENTITIES
@@ -132,6 +132,6 @@ Bearer for writes, else ~/.config/quipu/token. Never printed.
 .B SHANTY_AGENT
 The agent recorded as recordedBy.
 .SH EXIT STATUS
-0 recorded, unchanged, superseded or queued; 2 refused; 3 Quipu error.
+0 recorded, unchanged, superseded or queued; 1 flush still pending; 2 refused; 3 Quipu error. Hook replay always exits 0.
 .SH SEE ALSO
 cy prime; docs/design/agent\-memory\-entities.md in the camayoc repository.

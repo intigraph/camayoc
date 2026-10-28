@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import __version__, definitions, memory, planes, quipu
+from . import __version__, definitions, memory, planes, quipu, offline
 
 PRIMER = Path(__file__).resolve().parent / "primer.md"
 DEADLINE_S = 0.8
@@ -37,7 +37,7 @@ def live(deadline_s: float = DEADLINE_S) -> dict:
     start = time.monotonic()
     server = quipu.server()
     summary = {"server": server, "credential": "present" if quipu.has_token() else "absent",
-               "queued": memory.queue_length()}
+               "queued": offline.backlog()["queued"]}
 
     def remaining() -> float:
         return max(0.05, deadline_s - (time.monotonic() - start))
@@ -81,7 +81,7 @@ def live_lines(state: dict) -> list[str]:
     for key in ("fix", "note"):
         if key in s:
             lines.append(f"- {key}: {s[key]}")
-    lines.append(f"- offline queue: {s['queued']} record(s)" + (" (run `cy flush`)" if s["queued"] else ""))
+    lines.append(f"- offline queue: {s['queued'] if s['queued'] is not None else 'UNKNOWN'} record(s)" + (" (run `cy flush`)" if s["queued"] else ""))
     return lines
 
 
