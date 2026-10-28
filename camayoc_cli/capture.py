@@ -282,17 +282,76 @@ def flush_running(env=None) -> bool:
         return not held
 
 
-def quarantine(env=None, *, clear=False) -> memory.Outcome:
+def _replay_entry(raw, env):
+    """The same local eligibility checks for normal replay and explicit requeue."""
+    entry = None
+    try:
+        entry = json.loads(raw)
+        if not raw.endswith(b'\n') or len(raw) > offline.MAX_RECORD_BYTES or not isinstance(entry, dict):
+            raise ValueError('invalid capture fragment')
+        stamp = _dt.datetime.fromisoformat(entry['at'].replace('Z', '+00:00'))
+        if stamp.tzinfo is None:
+            raise ValueError('capture needs an aware timestamp')
+        if stamp < _now(env) - _dt.timedelta(days=MAX_AGE_DAYS):
+            return entry, 'expired'
+        context = entry.get('_offline_context')
+        current = memory._queued_context(env)
+        if (not isinstance(context, dict) or not context.get('server') or
+                not isinstance(context.get('env'), dict) or
+                context.get('server') != current['server'] or
+                context.get('plane_ns') != current['plane_ns']):
+            return entry, 'destination'
+        turtle(entry)
+        return entry, None
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return entry, 'malformed'
+
+
+def retention_note(totals):
+    if totals is None:
+        return 'quarantine retention totals UNKNOWN; inspect the local ledger'
+    pending = '; eviction pending' if totals.get('pending') else ''
+    return (f"quarantine retention since clear: expired={totals['expired']}, capacity={totals['capacity']}, "
+            f"orphaned={totals['orphaned']}, bytes={totals['bytes']}; "
+            f"last={totals['last_eviction_at'] or 'never'}{pending}")
+
+
+def quarantine(env=None, *, clear=False, requeue=False) -> memory.Outcome:
+    result = _quarantine(env, clear=clear, requeue=requeue)
+    totals = capture_spool.retention_totals(spool_path(env))
+    result.data['retention_totals'] = totals
+    result.lines.append(retention_note(totals))
+    if totals is None or totals.get('pending'):
+        result.code = 1
+    return result
+
+
+def _quarantine(env=None, *, clear=False, requeue=False) -> memory.Outcome:
     """Operator-only local inspection/discard, with no network or raw text output."""
     try:
         path = spool_path(env)
+        if clear and requeue:
+            raise ValueError('choose clear or requeue')
+        if requeue:
+            def accept(raw):
+                entry, reason = _replay_entry(raw, env)
+                return entry, reason
+            with _flush_lock(env) as held:
+                if not held:
+                    return memory.Outcome(1, ['another capture replay is running; requeue unchanged'], dict(requeued=0))
+                result = capture_spool.requeue(path, inflight_path(env), memory.iso(_now(env)), accept)
+            return memory.Outcome(0 if result['quarantined'] == 0 else 1,
+                [f"requeued {result['requeued']}, {result['quarantined']} still quarantined; no network writes",
+                 f"retention discarded {result['retention']['expired']} expired, {result['retention']['capacity']} oldest archives and {result['retention'].get('orphaned', 0)} orphaned staging files",
+                 'restore the original endpoint/plane before retrying destination entries; expired/malformed entries cannot replay'], result)
         if clear:
             count = capture_spool.clear(path)
             return memory.Outcome(0, [f'cleared {count} quarantined captures'],
                                   dict(cleared=count, quarantined=0))
         rows = capture_spool.quarantined(path)
-        return memory.Outcome(0, [f'{len(rows)} quarantined captures; cy capture quarantine --clear discards them'],
-            dict(quarantined=len(rows), entries=[{k: row[k] for k in ('id', 'reason', 'at')} for row in rows]))
+        return memory.Outcome(0, [f'{len(rows)} quarantined captures; --requeue retries locally, --clear discards them'],
+            dict(quarantined=len(rows), limits=dict(bytes=capture_spool.MAX_QUARANTINE_BYTES,
+                 entries=capture_spool.MAX_QUARANTINE_ENTRIES, age_days=capture_spool.MAX_QUARANTINE_AGE_DAYS), entries=[{k: row[k] for k in ('id', 'reason', 'at')} for row in rows]))
     except (OSError, ValueError, TypeError, KeyError):
         return memory.Outcome(1, ['capture quarantine UNKNOWN; inspect local files'], dict(quarantined=None))
 
@@ -307,38 +366,23 @@ def flush(client: quipu.Client | None = None, env=None, *, limit=100, deadline=N
     env = os.environ if env is None else env
     deadline = time.monotonic() + 10.0 if deadline is None else deadline
     done, visited, lines, local_error, rejected = 0, 0, [], False, []
+    retention = dict(expired=0, capacity=0, bytes=0)
     path, prefix = spool_path(env), inflight_path(env)
     try:
         with _flush_lock(env) as held:
             if not held:
                 return memory.Outcome(1, ['another capture flush is running'],
                                       dict(written=0, spooled=offline.capture_length(env)))
+            retention = capture_spool.prune(path, memory.iso(_now(env)))
             while visited < limit and time.monotonic() < deadline:
                 raw = capture_spool.next_head(path, prefix)
                 if not raw:
                     break
                 visited += 1
-                reason, entry = None, None
-                try:
-                    entry = json.loads(raw)
-                    if not raw.endswith(b'\n') or len(raw) > offline.MAX_RECORD_BYTES or not isinstance(entry, dict):
-                        raise ValueError('invalid capture fragment')
-                    stamp = _dt.datetime.fromisoformat(entry['at'].replace('Z', '+00:00'))
-                    if stamp.tzinfo is None:
-                        raise ValueError('capture needs an aware timestamp')
-                    if stamp < _now(env) - _dt.timedelta(days=MAX_AGE_DAYS):
-                        reason = 'expired'
-                    context = entry.get('_offline_context')
-                    current = memory._queued_context(env)
-                    if reason is None and (not isinstance(context, dict) or not context.get('server') or
-                            not isinstance(context.get('env'), dict) or
-                            context.get('server') != current['server'] or
-                            context.get('plane_ns') != current['plane_ns']):
-                        reason = 'destination'
-                    if reason is None:
-                        ttl = turtle(entry)
-                except (ValueError, KeyError, TypeError, AttributeError):
-                    reason = 'malformed'
+                entry, reason = _replay_entry(raw, env)
+                if reason is None:
+                    context = entry['_offline_context']
+                    ttl = turtle(entry)
                 if reason is None:
                     replay = client or quipu.Client(context['server'],
                         timeout=max(0.001, deadline - time.monotonic()), deadline=deadline,
@@ -358,7 +402,7 @@ def flush(client: quipu.Client | None = None, env=None, *, limit=100, deadline=N
                         lines.append(f'stopped: {type(exc).__name__}; uncertain capture retained')
                         break
                 if reason:
-                    capture_spool.quarantine(path, raw, reason, memory.iso(_now(env)))
+                    capture_spool.quarantine(path, raw, reason, memory.iso(_now(env)), retention=retention)
                     if isinstance(entry, dict) and isinstance(entry.get('hash'), str):
                         rejected.append(entry['hash'])
                 capture_spool.acknowledge(prefix, raw)
@@ -371,10 +415,14 @@ def flush(client: quipu.Client | None = None, env=None, *, limit=100, deadline=N
     held = quarantine(env).data['quarantined']
     lines.append(f'captured {done}, {rest if rest is not None else "UNKNOWN"} still spooled, '
                  f'{held if held is not None else "UNKNOWN"} quarantined')
+    if retention['expired'] or retention['capacity'] or retention.get('orphaned'):
+        lines.append(f"quarantine retention discarded {retention['expired']} expired, {retention['capacity']} oldest archives and {retention.get('orphaned', 0)} orphaned staging files")
+    totals = capture_spool.retention_totals(path)
+    lines.append(retention_note(totals))
     if held:
-        lines.append('inspect: cy capture quarantine; discard: cy capture quarantine --clear')
-    return memory.Outcome(0 if rest == 0 and held == 0 and not local_error else 1, lines,
-                          dict(written=done, spooled=rest, quarantined=held, quarantined_hashes=rejected))
+        lines.append('inspect: cy capture quarantine; retry locally: --requeue; discard: --clear')
+    return memory.Outcome(0 if rest == 0 and held == 0 and not local_error and totals is not None and not totals.get('pending') else 1, lines,
+                          dict(written=done, spooled=rest, quarantined=held, quarantined_hashes=rejected, quarantine_retention=retention, retention_totals=totals))
 
 
 def flush_detached(env=None) -> None:

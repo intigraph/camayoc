@@ -14,7 +14,6 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from . import definitions, planes, quipu
 from .offline import queue_path, queue_length, enqueue
@@ -514,13 +513,34 @@ def flush_all(env=None, *, limit=100, timeout=10.0) -> Outcome:
     from . import offline
     import time
     deadline = time.monotonic() + timeout
-    out = flush(env=env, limit=limit, timeout=timeout)
-    if out.code or offline.capture_length(env) == 0:
-        return out
+    # Archive retention must run even if the typed FIFO cannot replay or the
+    # capture queue is empty. This is a worker/operator path, never hook append.
     try:
-        from . import capture
-    except ImportError:
-        return Outcome(1, out.lines + ['capture backlog pending; capture replay adapter is not installed'])
+        from . import capture, capture_spool
+        retention = capture_spool.prune(capture.spool_path(env), iso(capture._now(env)))
+    except (ImportError, OSError, ValueError, TypeError, KeyError):
+        retention = None
+    out = flush(env=env, limit=limit, timeout=max(0.0, deadline - time.monotonic()))
+    out.data['quarantine_retention'] = retention
+    out.data['retention_totals'] = (capture_spool.retention_totals(capture.spool_path(env))
+                                    if retention is not None else None)
+    out.lines.append(capture.retention_note(out.data['retention_totals']) if retention is not None
+                     else 'quarantine retention totals UNKNOWN; inspect the local ledger')
+    if retention is None:
+        out.code = 1
+        out.lines.append('quarantine maintenance UNKNOWN; inspect local state before retrying')
+        return out
+    if retention['expired'] or retention['capacity'] or retention.get('orphaned'):
+        out.lines.append(f"quarantine retention discarded {retention['expired']} expired, {retention['capacity']} oldest archives and {retention.get('orphaned', 0)} orphaned staging files")
+    if out.code:
+        return out
+    if offline.capture_length(env) == 0:
+        count = capture.quarantine(env).data['quarantined']
+        out.data['quarantined_captures'] = count
+        if count is None or count > 0:
+            out.code = 1
+            out.lines.append(f'{count if count is not None else "UNKNOWN"} quarantined captures; inspect cy capture quarantine')
+        return out
     if not getattr(capture, 'OFFLINE_FIFO_V1', False):
         return Outcome(1, out.lines + ['capture backlog pending; capture replay adapter is not installed'])
     remaining = deadline - time.monotonic()
@@ -530,7 +550,11 @@ def flush_all(env=None, *, limit=100, timeout=10.0) -> Outcome:
     client = capture.client_for(env, timeout=remaining)
     client.deadline = deadline
     captured = capture.flush(client=client, env=env, limit=remaining_limit, deadline=deadline)
-    return Outcome(captured.code, out.lines + captured.lines, offline.backlog(env))
+    data = offline.backlog(env)
+    extra = captured.data.get('quarantine_retention', {})
+    data['quarantine_retention'] = {key: retention.get(key, 0) + extra.get(key, 0)
+                                   for key in retention.keys() | extra.keys()}
+    return Outcome(captured.code, out.lines + captured.lines, data)
 
 
 # ---- topics ---------------------------------------------------------------------

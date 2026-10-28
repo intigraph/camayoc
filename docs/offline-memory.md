@@ -68,10 +68,33 @@ retains the head, and a retry reuses the same archive ID. Nothing is silently
 retargeted or recorded as delivered because it left pending replay.
 
 `cy backlog` adds `quarantined_captures` (null when unreadable), separate from
-`queued`. `cy capture quarantine --json` lists IDs, reasons and timestamps
-without raw text or any network operation. Private original bytes remain in
-`capture-quarantine/` until `cy capture quarantine --clear` deliberately discards
-them. There is no automatic quarantine retry or disk eviction: inspect and back
-up evidence before clearing. Capture flush exits 1 while quarantine needs
-attention. See [the capture design](design/memory-capture.md) for retention and
-failure details. The typed write FIFO's refusal behavior remains unchanged.
+`queued`. `cy capture quarantine --json` lists IDs, reasons, timestamps and
+retention limits without raw text or any network operation. After restoring the
+original endpoint/plane, `cy capture quarantine --requeue` moves eligible entries
+to the pending tail without contacting Quipu. It preserves original origin,
+timestamp and target; expired, malformed and still-mismatched entries stay out
+of replay. Run `cy capture flush` afterward to attempt delivery. Durable append
+precedes archive removal, and a pending marker prevents duplicate appends after
+a failed local unlink. If a prior copy already replayed, retry retains the
+normal deterministic-IRI, at-least-once semantics.
+
+Private quarantine archives have a 16 MiB encoded-byte cap, a 1,024-entry cap
+and a seven-day age limit since archival. Background/shared replay maintenance
+and explicit requeue prune expired files; insertion also evicts oldest archives
+to meet capacity. Shared maintenance runs even if the typed FIFO is blocked.
+Age cleanup is lazy until the next maintenance run, never part of hook append
+or read-only inspection. Reported retention counts distinguish expiry from
+capacity eviction and orphan cleanup. A private 0600 metadata-only ledger in
+`capture-quarantine-retention.json` preserves cumulative counts, discarded bytes
+and the last eviction time across silent background runs. Both
+`cy capture quarantine` (text/JSON) and `cy backlog` expose `retention_totals`.
+Inspection leaves the counters and their mtime unchanged; only explicit
+`cy capture quarantine --clear` acknowledges them and discards archives.
+Unreported eviction is refused if its durable receipt cannot be written;
+interrupted counter commits are recovered without counting a removal twice. Back up evidence before it expires. The separate capture
+pending-age limit is not reset by requeue.
+
+`cy capture quarantine --clear` deliberately discards all remaining archives;
+it cannot be combined with `--requeue`. Capture flush exits 1 while quarantine
+needs attention. See [the capture design](design/memory-capture.md) for the
+failure and retention details. The typed FIFO's refusal policy is unchanged.

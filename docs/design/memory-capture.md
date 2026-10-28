@@ -57,17 +57,51 @@ capacity only the new entry is refused and maintenance is requested. Existing
 `capture-spool.inflight.jsonl` remains the older prefix. Stop old-version
 flushers before upgrading: they do not honor this version's rotation protocol.
 
-**Quarantine.** `cy capture quarantine --json` shows a count and entry IDs,
-reason categories and timestamps, without raw text or a network call.
+**Quarantine.** `cy capture quarantine --json` shows a count, retention limits,
+entry IDs, reason categories and timestamps, without raw text or a network call.
 `cy backlog` includes `quarantined_captures` separately from pending `queued`.
 An unreadable archive gives an UNKNOWN count, not zero. Original bytes (even
-torn or invalid UTF-8 fragments) remain private in `capture-quarantine/` until
-the operator deliberately runs `cy capture quarantine --clear` to discard them.
-Quarantine has no automatic retry and is not successful graph delivery. Inspect
-and back up evidence before clearing it; retained quarantine can consume disk
-until cleared. Ordinary capture flush exits 1 while quarantine needs attention,
-even after valid later entries have replayed. The typed `cy record` FIFO keeps
-its existing stop-on-refusal policy; this quarantine policy is capture-only.
+torn or invalid UTF-8 fragments) are private in `capture-quarantine/`.
+
+Restore the original `QUIPU_SERVER` and plane, then run
+`cy capture quarantine --requeue` to move eligible captures to the pending tail.
+This is a local operation; run `cy capture flush` afterward to attempt delivery.
+Original timestamp, agent, session, hash and frozen destination are preserved.
+No endpoint or plane is rewritten. Expired captures, malformed fragments and
+unbound or still-mismatched destinations remain quarantined with skipped reason
+counts. A previously refused valid capture can retry after its cause is fixed.
+Clear and requeue are mutually exclusive. `cy capture quarantine --clear`
+deliberately discards remaining local archives.
+
+Requeue holds the nonblocking capture replay lock and the archive mutation lock.
+It durably appends before removing the archive; a full pending spool leaves the
+archive intact. A marker recognizes a pending copy after a failed local unlink.
+If that copy already replayed before retry, the same deterministic capture IRI
+may replay again: this remains at-least-once delivery. Requeue never reports
+that the graph accepted a capture.
+
+Quarantine retains at most 16 MiB of encoded archive files and 1,024 entries.
+Archives older than seven days **since archival** expire. Malformed archive
+metadata uses file mtime for retention and remains ineligible for replay. Background capture
+flush, shared replay maintenance and explicit requeue enforce age; every archive
+insertion also enforces size/count, evicting oldest archives first. Maintenance
+runs even when the typed FIFO is blocked or captures are otherwise empty.
+These are lazy bounds: an idle installation needs its next maintenance run to
+remove aged archives. Read-only inspection does not prune. Retention reports
+expired/capacity/orphaned discard counts and bytes, and cleans interrupted
+private staging files. Cumulative counts and the last eviction time persist in
+`capture-quarantine-retention.json` (0600, metadata only), so discarded worker
+output cannot hide data loss. `cy capture quarantine` shows these totals in
+text and JSON, and `cy backlog` includes the same `retention_totals`. Reads do
+not acknowledge them; `cy capture quarantine --clear` explicitly clears both
+archives and retention totals. A pending durable receipt survives interruption
+between unlink and counter commit; corrupt or changed receipt state is UNKNOWN.
+Back up evidence before it expires or reaches capacity. Requeue never refreshes
+the original capture's separate seven-day pending age.
+
+Ordinary capture flush exits 1 while quarantine needs attention, even after
+valid later entries replay. The typed `cy record` FIFO keeps its existing
+stop-on-refusal policy; this quarantine policy is capture-only.
 
 **What is skipped.** Prompts under 20 characters, and harness-written prompts
 (`<task-notification>`, `<command-name>`, and the like). Text is cut to 4,000

@@ -138,4 +138,5 @@ def backlog(env=None):
     except (OSError, ValueError, TypeError, KeyError):
         quarantined = None
     return dict(schema='camayoc-backlog/1', records=records, captures=captures, quarantined_captures=quarantined,
+                retention_totals=capture_spool.retention_totals(queue_path(env).with_name('capture-spool.jsonl')),
                 queued=records + captures if records is not None and captures is not None else None)

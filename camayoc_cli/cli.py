@@ -88,7 +88,9 @@ def build_parser() -> argparse.ArgumentParser:
     cap_sub = cap.add_subparsers(dest="capture_command", metavar="<action>")
     cap_sub.add_parser("flush", help="write spooled captures to quipu")
     quarantine = cap_sub.add_parser("quarantine", help="inspect local rejected/expired capture counts (no network)")
-    quarantine.add_argument("--clear", action="store_true", help="discard all quarantined captures locally")
+    action = quarantine.add_mutually_exclusive_group()
+    action.add_argument("--clear", action="store_true", help="discard all quarantined captures locally")
+    action.add_argument("--requeue", action="store_true", help="return eligible captures to the pending tail without network writes")
     quarantine.add_argument("--json", action="store_true")
 
 
@@ -211,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "capture":
             from . import capture
             if args.capture_command == "quarantine":
-                return _emit(capture.quarantine(clear=args.clear), args.json)
+                return _emit(capture.quarantine(clear=args.clear, requeue=args.requeue), args.json)
             if args.capture_command != "flush":
                 ap.parse_args(["capture", "--help"])
             return _emit(capture.flush(), False)
