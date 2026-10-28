@@ -72,6 +72,18 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("flush", help="replay records queued while quipu was unreachable")
     sub.add_parser("mcp", help="serve the generated record_*/recall_* MCP tools on stdio")
 
+    hook = sub.add_parser("hook", help="harness hooks (installed by tambo; off unless wired)")
+    hook_sub = hook.add_subparsers(dest="hook_name", metavar="<hook>")
+    mr = hook_sub.add_parser("memory-redirect",
+                             help="PreToolUse on Write|Edit|MultiEdit (Codex: apply_patch): move writes under "
+                                  "*/.claude/projects/*/memory/* into camayoc entities")
+    mr.add_argument("--mode", choices=("off", "copy", "block"),
+                    help="copy (default): allow the write, record it in the background; block: refuse it and "
+                         "print the cy record call; off: do nothing. CAMAYOC_MEMORY_REDIRECT overrides this.")
+    mr.add_argument("--person", metavar="IRI",
+                    help="who issues rulings/preferences in these files (default $CAMAYOC_PERSON)")
+    mr.add_argument("--worker", metavar="JOB", help=argparse.SUPPRESS)
+
     pr = sub.add_parser("prime", help="agent primer and live state (stack-prime/1)")
     pr.add_argument("--brief", action="store_true")
     pr.add_argument("--json", action="store_true")
@@ -99,6 +111,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "mcp":
         from . import mcp
         return mcp.serve()
+    if args.command == "hook":
+        if args.hook_name != "memory-redirect":
+            ap.parse_args(["hook", "--help"])
+        from . import memory_redirect
+        return memory_redirect.main(args.mode, args.person, args.worker)
     if args.command == "prime":
         return prime.run(brief=args.brief, as_json=args.json, static=args.static, section=args.section)
     try:
