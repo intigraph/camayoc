@@ -1,0 +1,173 @@
+{
+  "description": "Gate check 2 for turning off Claude auto-memory (docs/design/agent-memory-entities.md section 6). Each prompt must surface a current record whose aegis:naturalKey equals expect.key in bobbin's injection within the section 4 caps; at least 18 of 20 must pass. The superseded fixture's older version must never appear.",
+  "min_prompt_length": 20,
+  "prompts": [
+    {
+      "id": "g01",
+      "prompt": "Can I push straight to main in the goldblum repo without opening a PR?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/repo-goldblum/push-policy"
+      }
+    },
+    {
+      "id": "g02",
+      "prompt": "When is the standing window for disruptive deploys, upgrades and reboots?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/crew/deploy-window"
+      }
+    },
+    {
+      "id": "g03",
+      "prompt": "Should I hold new pull requests while the open-PR backlog drains?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/crew/pr-freeze"
+      }
+    },
+    {
+      "id": "g04",
+      "prompt": "Do docs-only pull requests on the quipu repo need a review before merge?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/repo-quipu/merge-review"
+      }
+    },
+    {
+      "id": "g05",
+      "prompt": "Is it fine to run the memory benchmark arms on Claude models?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/crew/benchmark-models"
+      }
+    },
+    {
+      "id": "g06",
+      "prompt": "Where do crew process rules belong: the agent instruction file or quipu?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/crew/process-rule-home"
+      }
+    },
+    {
+      "id": "g07",
+      "prompt": "Should an agent wake itself on a polling timer to check for changes?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/crew/polling-wakeups"
+      }
+    },
+    {
+      "id": "g08",
+      "prompt": "May an agent load a secret from the secret store into an env var at launch?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/crew/secret-env-load"
+      }
+    },
+    {
+      "id": "g09",
+      "prompt": "Which work may crew agents run on Claude and which goes to codex?",
+      "expect": {
+        "kind": "directive",
+        "key": "http://aegis.gastown.local/ontology/mem/directive/crew/model-routing"
+      }
+    },
+    {
+      "id": "g10",
+      "prompt": "Where do domain shapes go versus core engine shapes and shared terms?",
+      "expect": {
+        "kind": "decision",
+        "key": "http://aegis.gastown.local/ontology/mem/decision/topic-shape-placement/shape-placement"
+      }
+    },
+    {
+      "id": "g11",
+      "prompt": "Are homelab hostnames in public repo history a blocker for the launch?",
+      "expect": {
+        "kind": "decision",
+        "key": "http://aegis.gastown.local/ontology/mem/decision/topic-public-launch/hostnames-in-public"
+      }
+    },
+    {
+      "id": "g12",
+      "prompt": "How do I read a remote agent's tmux pane from the Mac?",
+      "expect": {
+        "kind": "reference",
+        "key": "http://aegis.gastown.local/ontology/mem/reference/host-vati/agent-pane-read"
+      }
+    },
+    {
+      "id": "g13",
+      "prompt": "How do I query the work board from the Mac, locally or over ssh?",
+      "expect": {
+        "kind": "reference",
+        "key": "http://aegis.gastown.local/ontology/mem/reference/system-seeds-board/board-access"
+      }
+    },
+    {
+      "id": "g14",
+      "prompt": "Which named graph holds the Gas City knowledge, and why can't search see it?",
+      "expect": {
+        "kind": "reference",
+        "key": "http://aegis.gastown.local/ontology/mem/reference/system-quipu/named-graph-gascity"
+      }
+    },
+    {
+      "id": "g15",
+      "prompt": "Why does a launchd job lose local network access on macOS?",
+      "expect": {
+        "kind": "lesson",
+        "key": "http://aegis.gastown.local/ontology/mem/lesson/system-macos-launchd/lan-privacy"
+      }
+    },
+    {
+      "id": "g16",
+      "prompt": "Typing into a Chrome page input is rejected by the browser tools; what causes it?",
+      "expect": {
+        "kind": "lesson",
+        "key": "http://aegis.gastown.local/ontology/mem/lesson/tool-chrome-extension/input-rejected"
+      }
+    },
+    {
+      "id": "g17",
+      "prompt": "Can saves to a Google Maps list be automated with synthetic page clicks?",
+      "expect": {
+        "kind": "lesson",
+        "key": "http://aegis.gastown.local/ontology/mem/lesson/tool-google-maps/list-save-automation"
+      }
+    },
+    {
+      "id": "g18",
+      "prompt": "When the operator asks for a link to a page, what should I send?",
+      "expect": {
+        "kind": "preference",
+        "key": "http://aegis.gastown.local/ontology/mem/preference/person-stiwi/link-format"
+      }
+    },
+    {
+      "id": "g19",
+      "prompt": "Do messages sent in chat apps end with an email-style sign-off?",
+      "expect": {
+        "kind": "preference",
+        "key": "http://aegis.gastown.local/ontology/mem/preference/person-stiwi/chat-signoff"
+      }
+    },
+    {
+      "id": "g20",
+      "prompt": "What spelling convention and tone do drafts written in the operator's voice use?",
+      "expect": {
+        "kind": "preference",
+        "key": "http://aegis.gastown.local/ontology/mem/preference/person-stiwi/draft-voice"
+      }
+    }
+  ],
+  "superseded_fixture": {
+    "prompt": "Which work may crew agents run on Claude and which goes to codex?",
+    "must_not_return": {
+      "key": "http://aegis.gastown.local/ontology/mem/directive/crew/model-routing",
+      "version_recorded_before": "2026-10-21T00:00:00Z"
+    }
+  }
+}
