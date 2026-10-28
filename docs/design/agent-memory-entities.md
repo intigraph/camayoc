@@ -499,3 +499,7 @@ proposal (`quipu_propose_schema_change`) that covers:
    `crew:records` and `crew:inferred` planes, which must be registered and
    labelled (`scripts/planes.py ensure`) on the target store.
 5. **The recall stored queries** `queries/mem_*.json`.
+
+The proposal is written up in `docs/design/proposals/agent-memory-schema.md`.
+It has the live Directive census (0 of 923 meet the shape), the decision to
+scope rather than migrate, and the ordered accept and load steps (aegis-gshu.12).
