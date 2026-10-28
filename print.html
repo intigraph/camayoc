@@ -3526,6 +3526,61 @@ titles at SessionStart.</li>
 never overrides a value the user set, and <code>tambo memory restore</code> reverts
 the switch.</li>
 </ol>
+<h2 id="7-implementation-status-gshu10"><a class="header" href="#7-implementation-status-gshu10">7. Implementation status (gshu.10)</a></h2>
+<p>Built so far, for Decision, Directive, Preference, Handoff and Reference:</p>
+<ul>
+<li><code>shapes/agent-memory.shapes.ttl</code>: one NodeShape per entity, plus
+<code>MemoryRecordShape</code> for the tool-filled fields and <code>MemoryTopicShape</code>. Every
+property carries <code>sh:name</code>, <code>sh:description</code> and <code>sh:message</code>, and every
+required field's message names its flag.</li>
+<li><code>tools/memory/&lt;entity&gt;.tool.json</code>: the sidecars. They hold no field
+definitions; the generator's lint refuses one that does.</li>
+<li><code>scripts/memory_tools.py</code>: lints the shape and the sidecars, then writes
+<code>camayoc_cli/data/definitions.json</code> and the recall stored queries
+<code>queries/mem_*.json</code>. <code>--check</code> is the drift gate, and
+<code>tests/test_memory_tool_definitions.py</code> runs it in the normal suite.</li>
+</ul>
+<p>Choices made while building:</p>
+<ul>
+<li>The memory Decision stores who ruled on <code>aegis:decidedBy</code> (an IRI), never
+on <code>aegis:by</code>. <code>aegis:by</code> is the governance literal that quipu's
+<code>DecisionShape</code> requires, so the memory shape never asks for it.</li>
+<li>The Preference natural key is <code>person</code> + <code>topic</code>, as the gate fixture
+(<code>tests/fixtures/agent-memory/gate-prompts.json</code>) spells it. The context is a
+required field but not a key part; a topic that differs by context gets its
+own topic name.</li>
+<li>Topic IRIs are <code>aegis:mem/topic/&lt;name&gt;</code>, so a topic's local name is the key
+segment.</li>
+<li>Directive <code>expiresAt</code> is left out for now. <code>aegis:expiresAt</code> is declared
+with <code>rdfs:domain aegis:DecisionRequest</code> and an integer range, so writing it
+on a Directive would type the Directive as a DecisionRequest.</li>
+<li>Recall queries take the three plane IRIs as parameters (like the existing
+<code>{records}</code> convention), and every filter is a required text parameter where
+the empty string matches anything, because stored-query parameters here are
+all required.</li>
+</ul>
+<h3 id="71-schema-proposal-owed-before-production"><a class="header" href="#71-schema-proposal-owed-before-production">7.1 Schema proposal owed before production</a></h3>
+<p>Nothing here is loaded into production quipu. Loading it needs a schema
+proposal (<code>quipu_propose_schema_change</code>) that covers:</p>
+<ol>
+<li><strong>New classes and terms.</strong> <code>aegis:Preference</code>, <code>aegis:Handoff</code>,
+<code>aegis:Reference</code>, <code>aegis:MemoryTopic</code>; properties <code>naturalKey</code>,
+<code>recordedAt</code>, <code>recordedBy</code>, <code>topic</code>, <code>rule</code>, <code>issuedBy</code>, <code>appliesTo</code>,
+<code>issuedOn</code>, <code>why</code>, <code>verbatim</code>, <code>person</code>, <code>prefers</code>, <code>context</code>, <code>notWhen</code>,
+<code>example</code>, <code>agent</code>, <code>next</code>, <code>waitingOn</code>, <code>handoffContext</code>, <code>subject</code>,
+<code>locator</code>, <code>secretRef</code>, <code>access</code>, <code>alias</code>, <code>supersedes</code>.</li>
+<li><strong>Tightening live classes.</strong> <code>MemoryDirectiveShape</code> targets
+<code>aegis:Directive</code>, which has 923 live nodes with free-form fields (§1.2).
+They are not revalidated until rewritten, but any rewrite would be refused.
+The proposal must choose between migrating them or scoping the shape to
+memory records (<code>sh:targetSubjectsOf aegis:naturalKey</code> plus a class check).</li>
+<li><strong>The Decision split (§1.3).</strong> <code>MemoryDecisionShape</code> cannot load beside
+quipu's governance <code>DecisionShape</code> until the GateApproval migration ships.</li>
+<li><strong>The plane graphs.</strong> The writes route to the <code>crew:declared</code>,
+<code>crew:records</code> and <code>crew:inferred</code> planes, which must be registered and
+labelled (<code>scripts/planes.py ensure</code>) on the target store.</li>
+<li><strong>The recall stored queries</strong> <code>queries/mem_*.json</code>.</li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-camayoc--yupana-thesis-boundary"><a class="header" href="#the-camayoc--yupana-thesis-boundary">The camayoc / yupana thesis boundary</a></h1>
 <blockquote>
 <p><strong>Implementation status (2026-08-17):</strong> ✅ <strong>Proposed and written down on both
