@@ -278,11 +278,16 @@ reported it. Time is used only where an action can repeat:</p>
 </div>
 <p>Every key also includes the kind.</p>
 <h2 id="3-graph-placement-and-events"><a class="header" href="#3-graph-placement-and-events">3. Graph placement and events</a></h2>
-<p>Each activity is one <code>/episode</code> with <code>group_id: "github"</code>, written to that
-month's operational window graph <code>{WINDOW_NS}github/{YYYY-MM}</code> (see
-<code>scripts/windows.py</code>). The month comes from <code>occurredAt</code>. This is how the
-deployment events work: a completed month can be frozen whole, and entity IRIs
-stay valid across windows because they do not depend on the graph.</p>
+<p>Each activity is one <code>/episode</code> with <code>group_id: "github"</code>. All of them go to
+ONE registered operational graph, <code>{PLANE_NS root}/operational/github</code> (by
+default <code>https://camayoc.local/operational/github</code>). It is labelled like a
+window graph (<code>operational</code>, <code>fresh</code>, <code>soleRecord</code>), but it has no month.</p>
+<p>Monthly windows were rejected in review of the producer PR. Activities would
+be placed by <code>occurredAt</code>, so one PR's life would be split across months. Each
+window would also need its own copy of every entity. Chaski would have to
+describe two exact graph names and restart at every rollover. Freezing can be
+revisited when volume calls for it. Entity IRIs do not depend on the graph, so
+a later split would not rename anything.</p>
 <p>The episode name is <code>github:&lt;digest&gt;</code>. Its source is
 <code>github:mapping=&lt;sha16&gt;:&lt;kind&gt;:&lt;digest&gt;</code>. Every byte of the body comes from the
 delivery and the mapping, so re-sending one delivery sends an identical
@@ -301,14 +306,14 @@ transaction also emits these events:</p>
 <ul>
 <li><code>episode.ingested</code> for <code>github:&lt;digest&gt;</code>, group <code>github</code></li>
 <li><code>entity.added</code> for the new <code>GitHubActivity</code>, and for any entity seen for the
-first time in that window</li>
+first time</li>
 <li><code>entity.updated</code> for entities that already exist</li>
 </ul>
 <p>Chaski does not route on Quipu event names alone. Their payload carries only
 the subject, so a rule would have to read the facts anyway. The routing
 contract for c01c.4 is an incremental adapter (<code>trigger: changes</code>) subscribed
-to <code>types: [aegis:GitHubActivity]</code> and to the current and next month's
-<code>github</code> window graphs. It routes on <code>githubEventKind</code>. The kinds chaski needs
+to <code>types: [aegis:GitHubActivity]</code> and to the one <code>github</code> graph. It routes
+on <code>githubEventKind</code>. The kinds chaski needs
 first:</p>
 <div class="table-wrapper"><table><thead><tr><th>kind</th><th>rule it feeds (c01c.4)</th></tr></thead><tbody>
 <tr><td><code>pull_request.opened</code>, <code>.synchronize</code>, <code>.ready_for_review</code></td><td>review job when CI is green and no non-author review exists after N min</td></tr>
@@ -319,38 +324,60 @@ first:</p>
 <tr><td><code>push</code> to the default branch</td><td>bobbin reindex for GitHub-sourced repositories (now pull-only)</td></tr>
 </tbody></table>
 </div>
-<p>Chaski's adapter <code>--describe</code> names graphs exactly (<code>incremental.py</code>). Window
-rollover therefore needs the adapter to describe two months at once. If chaski
-caches the description for its lifetime, it needs a restart each month or
-prefix matching instead. <strong>Open for c01c.4.</strong></p>
 <h2 id="4-transport"><a class="header" href="#4-transport">4. Transport</a></h2>
 <h3 id="41-webhook-receiver-primary"><a class="header" href="#41-webhook-receiver-primary">4.1 Webhook receiver (primary)</a></h3>
 <p>A small stdlib Python service, <code>scripts/github_ingress.py serve</code>. It follows
 the pattern of bobbin's <code>webhook-index.py</code>:</p>
 <ul>
-<li><strong>Authentication.</strong> The receiver reads <code>X-Hub-Signature-256</code>
+<li>
+<p><strong>Authentication.</strong> The receiver reads <code>X-Hub-Signature-256</code>
 (<code>sha256=&lt;hex&gt;</code>, an HMAC-SHA256 of the exact body) and checks it with a
 constant-time compare before parsing any JSON. The secret comes from an
 owner-only file (<code>--secret-file</code>), which Ansible renders from Infisical. It
 is read once at startup. An empty or missing secret refuses every delivery,
 so the receiver fails closed. The secret never appears in logs, the spool
-or Quipu.</li>
-<li><strong>Limits.</strong> Bodies over 5 MiB get 413. Repositories outside <code>--repo</code>
+or Quipu.</p>
+</li>
+<li>
+<p><strong>Limits.</strong> Bodies over 5 MiB get 413. Repositories outside <code>--repo</code>
 (<code>owner/name</code>) are acknowledged and ignored, never written. <code>ping</code> is
-acknowledged.</li>
-<li><strong>Spool first.</strong> The receiver writes <code>(delivery id, event name, body)</code> to a
-SQLite spool (WAL, <code>synchronous=FULL</code>), then answers 202. GitHub expects an
+acknowledged.</p>
+</li>
+<li>
+<p><strong>Spool first.</strong> The receiver writes <code>(delivery id, event name, redacted body)</code> to a SQLite spool (WAL, <code>synchronous=FULL</code>), then answers 202. GitHub expects an
 answer within 10 s, and nothing slow happens before the answer. A delivery
 id already in the spool gets 200 <code>duplicate</code>. GitHub keeps
 <code>X-GitHub-Delivery</code> on manual and automatic redelivery, so this is the
-first idempotency layer.</li>
-<li><strong>Drain.</strong> A worker thread maps each pending entry and posts it with
-<code>planes._post("/episode")</code>. Before the first write to a month it calls
-<code>windows.ensure_window</code>. It then marks the entry <code>written</code>. A failed post
+first idempotency layer. With more than 10,000 entries pending (a long Quipu
+outage, for example), the receiver answers 503 rather than fill the disk.
+GitHub then shows the delivery as failed. Each connection times out after
+10 s.</p>
+</li>
+<li>
+<p><strong>Privacy.</strong> Before anything is written, the spool keeps only the fields
+the mapper reads:</p>
+<ul>
+<li>ids, numbers, times, state, shas and refs</li>
+<li>logins (author, sender and actor)</li>
+<li>the issue's pull-request marker</li>
+</ul>
+<p><code>commits</code>, <code>head_commit</code>, <code>pusher</code> and every email are dropped. A PR, issue,
+comment or review body is replaced by its <code>@</code>-mentions. Mention extraction
+gives the same result on the replacement, so a replay maps byte-identically.
+The spool file and its <code>-wal</code> and <code>-shm</code> files are created with mode 0600.
+Entries are kept for <code>--retain-days</code> (default 2), which covers a remap
+replay and a Quipu outage. The activity-key ledger holds keys only, and is
+kept.</p>
+</li>
+<li>
+<p><strong>Drain.</strong> A worker thread maps each pending entry and posts it with
+<code>planes._post("/episode")</code>. Before its first write it registers and labels
+the <code>github</code> graph, both or neither. It then marks the entry <code>written</code>. A failed post
 stays pending with exponential backoff. A response that never arrives is
 safe to resend, because the episode is byte-identical (§3). An event the
 mapping cannot place is marked <code>quarantined</code> with its reason, never
-dropped. The receiver's metrics report it, and it never blocks the queue.</li>
+dropped. The receiver's metrics report it, and it never blocks the queue.</p>
+</li>
 </ul>
 <p><strong>Hosting.</strong> The receiver runs on the chaski host as a systemd user unit next
 to chaski. The order is GitHub, then Quipu, then chaski: facts land in Quipu
@@ -381,11 +408,23 @@ primary quota. On a quiet repository nearly every request is a 304.</p>
 </li>
 <li>
 <p><strong>Budget.</strong> A local hourly token bucket, <code>--budget-per-hour</code> (default 300,
-6% of 5,000), counts 200 responses and hydration requests. Before each
-cycle the poller reads <code>X-RateLimit-Remaining</code> and stops spending below
+6% of 5,000), counts every request except the free <code>/rate_limit</code> read.
+Before each cycle the poller reads <code>/rate_limit</code> and spends nothing below
 <code>--reserve</code> (default 1,000). The interactive crew keeps that reserve. When
-the poller is over budget it skips the cycle and says so in its receipt. It
-never sleeps inside a request.</p>
+the budget runs out mid-cycle, the poller stops and says so in its receipt.
+It never sleeps inside a request.</p>
+</li>
+<li>
+<p><strong>403 and 429.</strong> Either response ends the cycle at once. The poller then
+persists <code>backoff_until</code> in the spool and makes no call at all, not even
+<code>/rate_limit</code>, until that time passes. The time is the first of these that
+applies:</p>
+<ol>
+<li><code>Retry-After</code></li>
+<li><code>x-ratelimit-reset</code>, when <code>x-ratelimit-remaining</code> is 0</li>
+<li>an exponential delay: 60 s doubling to at most 1 h, reset by the next
+clean cycle</li>
+</ol>
 </li>
 <li>
 <p><strong>Cadence.</strong> It waits at least <code>X-Poll-Interval</code>, which GitHub sets (usually
@@ -407,9 +446,14 @@ object shows the PR as it is now, not as it was at the event. It drops
 <code>draft</code>.</li>
 <li>It renames the actions through <code>mappings/github.json</code>.</li>
 </ul>
-<p>A fetch that fails leaves the trimmed object in place. The mapper then
-quarantines the entry with the missing field named, and the poller does not
-retry it.</p>
+<p>An event that needs a fetch is spooled in state <code>hydrate</code>, which the drain
+does not read. Its fetch runs in the same cycle, once per object. A fetch
+that fails because the budget ran out, a 5xx or a rate limit leaves the
+entry in <code>hydrate</code>. Its attempt count goes up, it waits with backoff, and a
+later cycle retries it. Only a real 404 or 410 releases the trimmed object
+to the drain, which then quarantines it with the missing field named. The
+events ETag can move on safely, because a deferred event is already in the
+spool.</p>
 </li>
 <li>
 <p><strong>Spool keys.</strong> <code>poll:&lt;events-api id&gt;</code> and
@@ -447,7 +491,8 @@ both are written. Consumers treat activities as at-least-once.</li>
 content hash makes the second write a no-op.</li>
 <li><strong>Mapping change.</strong> The mapping sha in <code>source</code> changes, so a re-mapped
 activity is a NEW episode over the same activity node. It is replayable
-from the spool; the spool keeps bodies for <code>--retain-days</code> (default 14).</li>
+from the spool, which keeps redacted bodies for <code>--retain-days</code> (default
+2).</li>
 <li><strong>Unknown event or action.</strong> The entry is quarantined with a reason and
 counted. It is never guessed or dropped.</li>
 <li><strong>Receiver down.</strong> GitHub marks the delivery failed and does not retry
@@ -479,17 +524,19 @@ Not "send me everything": unmapped events would only be quarantined.</li>
 </li>
 </ol>
 <h2 id="8-stored-queries-written-with-the-producer"><a class="header" href="#8-stored-queries-written-with-the-producer">8. Stored queries (written with the producer)</a></h2>
+<p>All three run against a quipu 0.16.0 store built from the recorded deliveries
+(<code>tests/test_github_ingress.py</code>):</p>
 <ul>
-<li><code>camayoc_github_pr_current_state</code>: per PR, the state, head and draft flag
-of its latest <code>pull_request.*</code> activity.</li>
-<li><code>camayoc_github_reviews_on_head</code>: reviews whose <code>commitSha</code> equals the PR's
-current head, with verdict and author. Chaski uses it for "no non-author
-review".</li>
-<li><code>camayoc_github_default_branch_ci</code>: latest <code>workflow_run.completed</code> per
-(repository, workflow name) on the default branch.</li>
-<li><code>camayoc_github_participating_threads</code>: threads where a login authored,
-acted or was mentioned. Participation is decided when read, never stored.</li>
+<li><code>camayoc_github_pr_current_state</code>: a PR's state, merged flag, head and draft
+flag, from its latest <code>pull_request.*</code> activity.</li>
+<li><code>camayoc_github_default_branch_ci</code>: the latest <code>workflow_run.completed</code> per
+workflow on a branch. gh-ci-watch reads this instead of polling.</li>
+<li><code>camayoc_github_participating_threads</code>: threads where a login acted, or was
+@-mentioned, with the time of its latest activity. Participation is
+decided when read, never stored.</li>
 </ul>
+<p>The query for "reviews on the current head by a non-author" (competency Q2,
+Q3) belongs to chaski's review rule and lands with c01c.4.</p>
 <h2 id="9-related"><a class="header" href="#9-related">9. Related</a></h2>
 <p>aegis-c01c (epic), c01c.4 (chaski rules), c01c.5 (tambo verify), aegis-2no,
 aegis-izs, aegis-j09 (bobbin webhook), <code>docs/design/ingress.md</code>,
