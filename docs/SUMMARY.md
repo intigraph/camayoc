@@ -24,6 +24,7 @@
 - [Prose entity mentions](design/entity-mentions.md)
 - [Governed RML-subset execution](design/rml-executor.md)
 - [Request cost attribution](design/work-cost.md)
+- [GitHub ingress](design/github-ingress.md)
 - [Jev: typed decisions](design/jev-typed-decisions.md)
 - [The camayoc / yupana thesis boundary](design/thesis-boundary.md)
 - [Paper plan](design/paper.md)
