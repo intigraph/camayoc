@@ -1,0 +1,1005 @@
+{
+  "entities": {
+    "decision": {
+      "body": "chose",
+      "class": "aegis:Decision",
+      "entity": "decision",
+      "example": {
+        "about": "topic-public-launch",
+        "by": "person-stiwi",
+        "chose": "Hostnames and crew names may appear in public repos and posts.",
+        "rationale": "They are not secrets; history rewrites cost more than they protect.",
+        "topic": "hostnames-in-public"
+      },
+      "fields": [
+        {
+          "datatype": "xsd:string",
+          "description": "What was chosen, in one sentence.",
+          "enum": null,
+          "flag": "--chose",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: a decision needs what was chosen (--chose).",
+          "name": "chose",
+          "path": "aegis:chose",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "Who ruled: a Person or agent entity (IRI or local name).",
+          "enum": null,
+          "flag": "--by",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a decision needs who ruled (--by), as an existing person or agent.",
+          "name": "by",
+          "path": "aegis:decidedBy",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "The entity the decision is about: host, repo, service, role, agent or person (IRI or local name).",
+          "enum": null,
+          "flag": "--about",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a decision needs what it is about (--about), as an existing entity.",
+          "name": "about",
+          "path": "aegis:about",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "The registered memory topic the decision answers (cy topic add registers one).",
+          "enum": null,
+          "flag": "--topic",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a decision needs a registered topic (--topic).",
+          "name": "topic",
+          "path": "aegis:topic",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "An alternative that was not chosen; repeat for each.",
+          "enum": null,
+          "flag": "--over",
+          "kind": "text",
+          "maxCount": null,
+          "message": "Not recorded: --over is plain text, one alternative per flag.",
+          "name": "over",
+          "path": "aegis:over",
+          "pattern": null,
+          "repeatable": true,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "Why, in one or two sentences.",
+          "enum": null,
+          "flag": "--rationale",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --rationale.",
+          "name": "rationale",
+          "path": "aegis:rationale",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": null,
+          "description": "The board item or session the decision was made in (IRI or local name).",
+          "enum": null,
+          "flag": "--decided-in",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: --decided-in names one board item or session.",
+          "name": "decidedIn",
+          "path": "aegis:decidedIn",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "The ruling in the decider's own words.",
+          "enum": null,
+          "flag": "--verbatim",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --verbatim quote.",
+          "name": "verbatim",
+          "path": "aegis:verbatim",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        }
+      ],
+      "issuer": "by",
+      "key": [
+        "about",
+        "topic"
+      ],
+      "lifecycle": {
+        "reviewAfterDays": 90
+      },
+      "noun": "decision",
+      "recall": [
+        {
+          "filters": [
+            "about",
+            "topic"
+          ],
+          "name": "mem_decisions_current",
+          "params": [
+            {
+              "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+              "name": "declared",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+              "name": "records",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+              "name": "inferred",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The entity the decision is about: host, repo, service, role, agent or person (IRI or local name). Empty string matches any.",
+              "name": "about",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "The registered memory topic the decision answers (cy topic add registers one). Empty string matches any.",
+              "name": "topic",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "Current UTC instant (ISO-8601); records past expiresAt drop out.",
+              "name": "now",
+              "required": true,
+              "type": "text"
+            }
+          ],
+          "summary": "Current decisions, optionally about one entity and topic.",
+          "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"decision\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Decision ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:chose ?b . ?iri aegis:about ?f_about . FILTER('{about}' = '' || STR(?f_about) = '{about}') ?iri aegis:topic ?f_topic . FILTER('{topic}' = '' || STR(?f_topic) = '{topic}') FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer } FILTER NOT EXISTS { ?iri aegis:expiresAt ?expires . FILTER(STR(?expires) < '{now}') } OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY ?rank DESC(?recordedAt) ?iri LIMIT 51",
+          "verb": "recall_decision"
+        },
+        {
+          "history": true,
+          "name": "mem_decision_history",
+          "params": [
+            {
+              "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+              "name": "declared",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+              "name": "records",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+              "name": "inferred",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The natural-key IRI whose versions to list.",
+              "name": "key",
+              "required": true,
+              "type": "iri"
+            }
+          ],
+          "summary": "Every version of one decision key, newest first, superseded ones included.",
+          "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"decision\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Decision ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:chose ?b . FILTER(?naturalKey = <{key}>) OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY DESC(?recordedAt) ?iri LIMIT 51",
+          "verb": "recall_decision_history"
+        }
+      ],
+      "shape": "aegis:MemoryDecisionShape",
+      "sourceKind": {
+        "declaredWhen": {
+          "field": "by",
+          "isA": "aegis:Person"
+        },
+        "default": "inferred"
+      },
+      "summary": "Record one ruling on a scoped question: what was chosen, by whom, about what.",
+      "verb": "record_decision"
+    },
+    "directive": {
+      "body": "rule",
+      "class": "aegis:Directive",
+      "entity": "directive",
+      "example": {
+        "appliesTo": "crew",
+        "issuedBy": "person-stiwi",
+        "issuedOn": "2026-10-27",
+        "rule": "Run disruptive deploys between 02:00 and 09:00 ET; never ask for a window.",
+        "topic": "deploy-window"
+      },
+      "fields": [
+        {
+          "datatype": "xsd:string",
+          "description": "The rule, as one imperative sentence.",
+          "enum": null,
+          "flag": "--rule",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: a directive needs the rule as one imperative sentence (--rule).",
+          "name": "rule",
+          "path": "aegis:rule",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "Who issued the rule: a Person or agent entity (IRI or local name).",
+          "enum": null,
+          "flag": "--issued-by",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a directive needs who issued it (--issued-by), as an existing person or agent.",
+          "name": "issuedBy",
+          "path": "aegis:issuedBy",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "Who or what the rule binds: an agent, CrewRole or repo, or 'crew' for everyone.",
+          "enum": null,
+          "flag": "--applies-to",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a directive needs who it applies to (--applies-to), an existing agent, role or repo, or 'crew'.",
+          "name": "appliesTo",
+          "path": "aegis:appliesTo",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "The registered memory topic the rule governs (cy topic add registers one).",
+          "enum": null,
+          "flag": "--topic",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a directive needs a registered topic (--topic).",
+          "name": "topic",
+          "path": "aegis:topic",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "The date the rule was given, YYYY-MM-DD.",
+          "enum": null,
+          "flag": "--issued-on",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: --issued-on is one date, YYYY-MM-DD.",
+          "name": "issuedOn",
+          "path": "aegis:issuedOn",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "Why the rule exists, in one sentence.",
+          "enum": null,
+          "flag": "--why",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --why.",
+          "name": "why",
+          "path": "aegis:why",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "The rule in the issuer's own words.",
+          "enum": null,
+          "flag": "--verbatim",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --verbatim quote.",
+          "name": "verbatim",
+          "path": "aegis:verbatim",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        }
+      ],
+      "issuer": "issuedBy",
+      "key": [
+        "appliesTo",
+        "topic"
+      ],
+      "lifecycle": {
+        "reviewAfterDays": 90
+      },
+      "noun": "directive",
+      "recall": [
+        {
+          "alsoMatch": "aegis:crew",
+          "filters": [
+            "appliesTo"
+          ],
+          "name": "mem_directives_for",
+          "params": [
+            {
+              "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+              "name": "declared",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+              "name": "records",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+              "name": "inferred",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "Who or what the rule binds: an agent, CrewRole or repo, or 'crew' for everyone. Empty string matches any.",
+              "name": "appliesTo",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "Current UTC instant (ISO-8601); records past expiresAt drop out.",
+              "name": "now",
+              "required": true,
+              "type": "text"
+            }
+          ],
+          "summary": "Current directives binding one agent, role or repo, plus crew-wide ones.",
+          "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"directive\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Directive ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:rule ?b . ?iri aegis:appliesTo ?f_appliesTo . FILTER('{appliesTo}' = '' || STR(?f_appliesTo) = '{appliesTo}' || ?f_appliesTo = aegis:crew) FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer } FILTER NOT EXISTS { ?iri aegis:expiresAt ?expires . FILTER(STR(?expires) < '{now}') } OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY ?rank DESC(?recordedAt) ?iri LIMIT 51",
+          "verb": "recall_directive"
+        }
+      ],
+      "shape": "aegis:MemoryDirectiveShape",
+      "sourceKind": {
+        "default": "declared"
+      },
+      "summary": "Record a standing rule: one imperative sentence, who issued it, who it binds.",
+      "verb": "record_directive"
+    },
+    "handoff": {
+      "body": "next",
+      "class": "aegis:Handoff",
+      "entity": "handoff",
+      "example": {
+        "agent": "hammond",
+        "context": [
+          "Local quipu tests only; production shapes wait on a schema proposal."
+        ],
+        "next": [
+          "Review camayoc PR for the cy CLI (board item aegis-gshu.10)"
+        ]
+      },
+      "fields": [
+        {
+          "datatype": null,
+          "description": "The agent the handoff is for (IRI or local name).",
+          "enum": null,
+          "flag": "--agent",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a handoff needs the agent it is for (--agent), as an existing agent.",
+          "name": "agent",
+          "path": "aegis:agent",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "A next step pointing at a board item, PR or entity; repeat, 1 to 7.",
+          "enum": null,
+          "flag": "--next",
+          "kind": "text",
+          "maxCount": 7,
+          "message": "Not recorded: a handoff needs 1 to 7 next steps (--next), each pointing at a board item, PR or entity.",
+          "name": "next",
+          "path": "aegis:next",
+          "pattern": null,
+          "repeatable": true,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "What an item waits on; repeat, at most 7.",
+          "enum": null,
+          "flag": "--waiting-on",
+          "kind": "text",
+          "maxCount": 7,
+          "message": "Not recorded: at most 7 --waiting-on lines.",
+          "name": "waitingOn",
+          "path": "aegis:waitingOn",
+          "pattern": null,
+          "repeatable": true,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "Context the next session needs; repeat, at most 3 lines.",
+          "enum": null,
+          "flag": "--context",
+          "kind": "text",
+          "maxCount": 3,
+          "message": "Not recorded: at most 3 --context lines; item state belongs on the board.",
+          "name": "context",
+          "path": "aegis:handoffContext",
+          "pattern": null,
+          "repeatable": true,
+          "required": false
+        }
+      ],
+      "issuer": null,
+      "key": [
+        "agent"
+      ],
+      "lifecycle": {
+        "maxAge": "P2D"
+      },
+      "noun": "handoff",
+      "recall": [
+        {
+          "filters": [
+            "agent"
+          ],
+          "fresh": true,
+          "name": "mem_handoff",
+          "params": [
+            {
+              "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+              "name": "declared",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+              "name": "records",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+              "name": "inferred",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The agent the handoff is for (IRI or local name). Empty string matches any.",
+              "name": "agent",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "Current UTC instant (ISO-8601); records past expiresAt drop out.",
+              "name": "now",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "Oldest recordedAt still inside maxAge (ISO-8601, filled by cy).",
+              "name": "fresh_since",
+              "required": true,
+              "type": "text"
+            }
+          ],
+          "summary": "The agent's current handoff, if younger than its max age.",
+          "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"handoff\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Handoff ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:next ?b . ?iri aegis:agent ?f_agent . FILTER('{agent}' = '' || STR(?f_agent) = '{agent}') FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer } FILTER NOT EXISTS { ?iri aegis:expiresAt ?expires . FILTER(STR(?expires) < '{now}') } FILTER(STR(?recordedAt) >= '{fresh_since}') OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY ?rank DESC(?recordedAt) ?iri LIMIT 51",
+          "verb": "recall_handoff"
+        }
+      ],
+      "shape": "aegis:MemoryHandoffShape",
+      "sourceKind": {
+        "default": "observed"
+      },
+      "summary": "Write the agent's one current handoff; each write supersedes the last.",
+      "verb": "record_handoff"
+    },
+    "preference": {
+      "body": "prefers",
+      "class": "aegis:Preference",
+      "entity": "preference",
+      "example": {
+        "context": "chat",
+        "person": "person-stiwi",
+        "prefers": "No sign-off line on chat or DM messages; emails keep it.",
+        "topic": "chat-signoff"
+      },
+      "fields": [
+        {
+          "datatype": null,
+          "description": "Whose preference it is: a Person entity (IRI or local name).",
+          "enum": null,
+          "flag": "--person",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a preference needs whose it is (--person), as an existing person.",
+          "name": "person",
+          "path": "aegis:person",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "What the person prefers, in one sentence.",
+          "enum": null,
+          "flag": "--prefers",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: a preference needs what is preferred, in one sentence (--prefers).",
+          "name": "prefers",
+          "path": "aegis:prefers",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "Where it applies: email, chat, code-review, document, artifact, form or travel.",
+          "enum": [
+            "email",
+            "chat",
+            "code-review",
+            "document",
+            "artifact",
+            "form",
+            "travel"
+          ],
+          "flag": "--context",
+          "kind": "enum",
+          "maxCount": 1,
+          "message": "Not recorded: a preference needs a context (--context): email, chat, code-review, document, artifact, form or travel.",
+          "name": "context",
+          "path": "aegis:context",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "The registered memory topic (cy topic add registers one).",
+          "enum": null,
+          "flag": "--topic",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a preference needs a registered topic (--topic).",
+          "name": "topic",
+          "path": "aegis:topic",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "When the preference does not apply.",
+          "enum": null,
+          "flag": "--not-when",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --not-when.",
+          "name": "notWhen",
+          "path": "aegis:notWhen",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "One short example of the preference applied.",
+          "enum": null,
+          "flag": "--example",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --example.",
+          "name": "example",
+          "path": "aegis:example",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "The preference in the person's own words.",
+          "enum": null,
+          "flag": "--verbatim",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --verbatim quote.",
+          "name": "verbatim",
+          "path": "aegis:verbatim",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        }
+      ],
+      "issuer": "person",
+      "key": [
+        "person",
+        "topic"
+      ],
+      "lifecycle": {
+        "reviewAfterDays": 180
+      },
+      "noun": "preference",
+      "recall": [
+        {
+          "filters": [
+            "person",
+            "context"
+          ],
+          "name": "mem_preferences",
+          "params": [
+            {
+              "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+              "name": "declared",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+              "name": "records",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+              "name": "inferred",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "Whose preference it is: a Person entity (IRI or local name). Empty string matches any.",
+              "name": "person",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "Where it applies: email, chat, code-review, document, artifact, form or travel. Empty string matches any.",
+              "name": "context",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "Current UTC instant (ISO-8601); records past expiresAt drop out.",
+              "name": "now",
+              "required": true,
+              "type": "text"
+            }
+          ],
+          "summary": "Current preferences of one person, optionally in one context.",
+          "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"preference\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Preference ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:prefers ?b . ?iri aegis:person ?f_person . FILTER('{person}' = '' || STR(?f_person) = '{person}') ?iri aegis:context ?f_context . FILTER('{context}' = '' || STR(?f_context) = '{context}') FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer } FILTER NOT EXISTS { ?iri aegis:expiresAt ?expires . FILTER(STR(?expires) < '{now}') } OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY ?rank DESC(?recordedAt) ?iri LIMIT 51",
+          "verb": "recall_preference"
+        }
+      ],
+      "shape": "aegis:MemoryPreferenceShape",
+      "sourceKind": {
+        "default": "declared",
+        "flags": {
+          "noticed": {
+            "help": "An agent noticed this preference; the person did not state it.",
+            "sourceKind": "inferred"
+          }
+        }
+      },
+      "summary": "Record how a person wants something done, in one context.",
+      "verb": "record_preference"
+    },
+    "reference": {
+      "body": "locator",
+      "class": "aegis:Reference",
+      "entity": "reference",
+      "example": {
+        "access": "SHANTY_AGENT names the caller; no ssh needed.",
+        "locator": "sd show <id> (run locally; the board is seeds on quipu.svc)",
+        "subject": "system-seeds-board",
+        "topic": "board-access"
+      },
+      "fields": [
+        {
+          "datatype": null,
+          "description": "The system the reference points into: host, service, repo or tool (IRI or local name).",
+          "enum": null,
+          "flag": "--subject",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a reference needs the system it points into (--subject), as an existing entity.",
+          "name": "subject",
+          "path": "aegis:subject",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": null,
+          "description": "What the reference is for: a registered memory topic (cy topic add registers one).",
+          "enum": null,
+          "flag": "--topic",
+          "kind": "iri",
+          "maxCount": 1,
+          "message": "Not recorded: a reference needs a registered topic saying what it is for (--topic).",
+          "name": "topic",
+          "path": "aegis:topic",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "Where it is: a URL, path, command or graph IRI. Never a secret.",
+          "enum": null,
+          "flag": "--locator",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: a reference needs where it is (--locator): a URL, path, command or graph IRI.",
+          "name": "locator",
+          "path": "aegis:locator",
+          "pattern": null,
+          "repeatable": false,
+          "required": true
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "The secret-store key name that holds the credential. A key name, never a value.",
+          "enum": null,
+          "flag": "--secret-ref",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: --secret-ref must be a secret-store key name, not a value.",
+          "name": "secretRef",
+          "path": "aegis:secretRef",
+          "pattern": "^[A-Za-z][A-Za-z0-9_./-]{1,127}$",
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": "xsd:string",
+          "description": "How to authenticate, in one sentence, without the secret.",
+          "enum": null,
+          "flag": "--access",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: give one --access sentence.",
+          "name": "access",
+          "path": "aegis:access",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        }
+      ],
+      "issuer": null,
+      "key": [
+        "subject",
+        "topic"
+      ],
+      "lifecycle": {
+        "reviewAfterDays": 60
+      },
+      "noun": "reference",
+      "recall": [
+        {
+          "filters": [
+            "subject",
+            "topic"
+          ],
+          "name": "mem_reference",
+          "params": [
+            {
+              "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+              "name": "declared",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+              "name": "records",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+              "name": "inferred",
+              "required": true,
+              "type": "iri"
+            },
+            {
+              "description": "The system the reference points into: host, service, repo or tool (IRI or local name). Empty string matches any.",
+              "name": "subject",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "What the reference is for: a registered memory topic (cy topic add registers one). Empty string matches any.",
+              "name": "topic",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "description": "Current UTC instant (ISO-8601); records past expiresAt drop out.",
+              "name": "now",
+              "required": true,
+              "type": "text"
+            }
+          ],
+          "summary": "Current references, optionally into one system and for one topic.",
+          "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"reference\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Reference ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:locator ?b . ?iri aegis:subject ?f_subject . FILTER('{subject}' = '' || STR(?f_subject) = '{subject}') ?iri aegis:topic ?f_topic . FILTER('{topic}' = '' || STR(?f_topic) = '{topic}') FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer } FILTER NOT EXISTS { ?iri aegis:expiresAt ?expires . FILTER(STR(?expires) < '{now}') } OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY ?rank DESC(?recordedAt) ?iri LIMIT 51",
+          "verb": "recall_reference"
+        }
+      ],
+      "shape": "aegis:MemoryReferenceShape",
+      "sourceKind": {
+        "default": "declared",
+        "flags": {
+          "probed": {
+            "help": "The locator was just probed and answered.",
+            "sourceKind": "observed"
+          }
+        }
+      },
+      "summary": "Record where a system lives and how to reach it. Key names only, never secrets.",
+      "verb": "record_reference"
+    }
+  },
+  "generated_by": "python3 scripts/memory_tools.py",
+  "namespace": "http://aegis.gastown.local/ontology/",
+  "prefixes": {
+    "aegis": "http://aegis.gastown.local/ontology/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#"
+  },
+  "rank": {
+    "declared": 0,
+    "inferred": 2,
+    "observed": 1
+  },
+  "schema": "camayoc-memory-tools/1",
+  "shared": [
+    {
+      "datatype": "xsd:string",
+      "description": "sha256 over the caller-supplied fields; how an unchanged re-record is detected.",
+      "enum": null,
+      "flag": "--content-hash",
+      "kind": "text",
+      "maxCount": 1,
+      "message": "Not recorded: the record has no content hash (camayoc tool bug; report it).",
+      "name": "contentHash",
+      "path": "aegis:contentHash",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "repeatable": false,
+      "required": true
+    },
+    {
+      "datatype": "xsd:string",
+      "description": "One-line label; filled by the tool from the record body.",
+      "enum": null,
+      "flag": "--label",
+      "kind": "text",
+      "maxCount": 1,
+      "message": "Not recorded: the record has no label (camayoc tool bug; report it).",
+      "name": "label",
+      "path": "rdfs:label",
+      "pattern": null,
+      "repeatable": false,
+      "required": true
+    },
+    {
+      "datatype": null,
+      "description": "The record's natural-key IRI (aegis:mem/<kind>/<scope>/<topic>); filled by the tool.",
+      "enum": null,
+      "flag": "--natural-key",
+      "kind": "iri",
+      "maxCount": 1,
+      "message": "Not recorded: the record has no natural key (camayoc tool bug; report it).",
+      "name": "naturalKey",
+      "path": "aegis:naturalKey",
+      "pattern": null,
+      "repeatable": false,
+      "required": true
+    },
+    {
+      "datatype": "xsd:dateTime",
+      "description": "UTC instant the record was written; filled by the tool.",
+      "enum": null,
+      "flag": "--recorded-at",
+      "kind": "text",
+      "maxCount": 1,
+      "message": "Not recorded: the record has no recordedAt instant (camayoc tool bug; report it).",
+      "name": "recordedAt",
+      "path": "aegis:recordedAt",
+      "pattern": null,
+      "repeatable": false,
+      "required": true
+    },
+    {
+      "datatype": "xsd:string",
+      "description": "The agent that wrote the record ($SHANTY_AGENT or the harness agent id); filled by the tool.",
+      "enum": null,
+      "flag": "--recorded-by",
+      "kind": "text",
+      "maxCount": 1,
+      "message": "Not recorded: the record does not say which agent wrote it; set SHANTY_AGENT.",
+      "name": "recordedBy",
+      "path": "aegis:recordedBy",
+      "pattern": null,
+      "repeatable": false,
+      "required": true
+    },
+    {
+      "datatype": null,
+      "description": "Provenance tag: observed, declared or inferred; filled by the tool's sourceKind rule.",
+      "enum": [
+        "observed",
+        "declared",
+        "inferred"
+      ],
+      "flag": "--source-kind",
+      "kind": "enum",
+      "maxCount": 1,
+      "message": "Not recorded: the record needs exactly one sourceKind of observed, declared or inferred.",
+      "name": "sourceKind",
+      "path": "aegis:sourceKind",
+      "pattern": null,
+      "repeatable": false,
+      "required": true
+    },
+    {
+      "datatype": null,
+      "description": "The earlier version this record replaces; filled by the tool on the same natural key.",
+      "enum": null,
+      "flag": "--supersedes",
+      "kind": "iri",
+      "maxCount": 1,
+      "message": "Not recorded: a record supersedes at most one earlier version, by IRI.",
+      "name": "supersedes",
+      "path": "aegis:supersedes",
+      "pattern": null,
+      "repeatable": false,
+      "required": false
+    }
+  ],
+  "sources": {
+    "shapes": "shapes/agent-memory.shapes.ttl",
+    "sidecars": "tools/memory"
+  }
+}

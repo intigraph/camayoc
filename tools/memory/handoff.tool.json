@@ -1,0 +1,21 @@
+{
+  "entity": "handoff",
+  "class": "aegis:Handoff",
+  "shape": "aegis:MemoryHandoffShape",
+  "verb": "record_handoff",
+  "noun": "handoff",
+  "summary": "Write the agent's one current handoff; each write supersedes the last.",
+  "body": "next",
+  "key": ["agent"],
+  "issuer": null,
+  "sourceKind": {"default": "observed"},
+  "lifecycle": {"maxAge": "P2D"},
+  "recall": [
+    {"name": "mem_handoff", "verb": "recall_handoff", "summary": "The agent's current handoff, if younger than its max age.", "filters": ["agent"], "fresh": true}
+  ],
+  "example": {
+    "agent": "hammond",
+    "next": ["Review camayoc PR for the cy CLI (board item aegis-gshu.10)"],
+    "context": ["Local quipu tests only; production shapes wait on a schema proposal."]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "entity": "reference",
+  "class": "aegis:Reference",
+  "shape": "aegis:MemoryReferenceShape",
+  "verb": "record_reference",
+  "noun": "reference",
+  "summary": "Record where a system lives and how to reach it. Key names only, never secrets.",
+  "body": "locator",
+  "key": ["subject", "topic"],
+  "issuer": null,
+  "sourceKind": {"default": "declared", "flags": {"probed": {"sourceKind": "observed", "help": "The locator was just probed and answered."}}},
+  "lifecycle": {"reviewAfterDays": 60},
+  "recall": [
+    {"name": "mem_reference", "verb": "recall_reference", "summary": "Current references, optionally into one system and for one topic.", "filters": ["subject", "topic"]}
+  ],
+  "example": {
+    "subject": "system-seeds-board",
+    "topic": "board-access",
+    "locator": "sd show <id> (run locally; the board is seeds on quipu.svc)",
+    "access": "SHANTY_AGENT names the caller; no ssh needed."
+  }
+}

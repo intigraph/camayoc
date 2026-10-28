@@ -1,0 +1,38 @@
+{
+  "action": "load",
+  "description": "Current directives binding one agent, role or repo, plus crew-wide ones. Generated from tools/memory/directive.tool.json; drops superseded and expired records, ranks declared > observed > inferred, at most 50 rows plus one overflow sentinel.",
+  "name": "mem_directives_for",
+  "params": [
+    {
+      "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+      "name": "declared",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+      "name": "records",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+      "name": "inferred",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "Who or what the rule binds: an agent, CrewRole or repo, or 'crew' for everyone. Empty string matches any.",
+      "name": "appliesTo",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "description": "Current UTC instant (ISO-8601); records past expiresAt drop out.",
+      "name": "now",
+      "required": true,
+      "type": "text"
+    }
+  ],
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"directive\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Directive ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:rule ?b . ?iri aegis:appliesTo ?f_appliesTo . FILTER('{appliesTo}' = '' || STR(?f_appliesTo) = '{appliesTo}' || ?f_appliesTo = aegis:crew) FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer } FILTER NOT EXISTS { ?iri aegis:expiresAt ?expires . FILTER(STR(?expires) < '{now}') } OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY ?rank DESC(?recordedAt) ?iri LIMIT 51"
+}

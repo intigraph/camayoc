@@ -1,0 +1,44 @@
+{
+  "action": "load",
+  "description": "Current references, optionally into one system and for one topic. Generated from tools/memory/reference.tool.json; drops superseded and expired records, ranks declared > observed > inferred, at most 50 rows plus one overflow sentinel.",
+  "name": "mem_reference",
+  "params": [
+    {
+      "description": "The crew:declared plane graph IRI (filled by cy from its plane table).",
+      "name": "declared",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The crew:records plane graph IRI (filled by cy from its plane table).",
+      "name": "records",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The crew:inferred plane graph IRI (filled by cy from its plane table).",
+      "name": "inferred",
+      "required": true,
+      "type": "iri"
+    },
+    {
+      "description": "The system the reference points into: host, service, repo or tool (IRI or local name). Empty string matches any.",
+      "name": "subject",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "description": "What the reference is for: a registered memory topic (cy topic add registers one). Empty string matches any.",
+      "name": "topic",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "description": "Current UTC instant (ISO-8601); records past expiresAt drop out.",
+      "name": "now",
+      "required": true,
+      "type": "text"
+    }
+  ],
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?iri ?naturalKey (\"reference\" AS ?kind) ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) ?sourceKind ?recordedAt ?supersedes FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { ?iri a aegis:Reference ; aegis:naturalKey ?naturalKey ; rdfs:label ?label ; aegis:sourceKind ?sourceKind ; aegis:recordedAt ?recordedAt ; aegis:locator ?b . ?iri aegis:subject ?f_subject . FILTER('{subject}' = '' || STR(?f_subject) = '{subject}') ?iri aegis:topic ?f_topic . FILTER('{topic}' = '' || STR(?f_topic) = '{topic}') FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer } FILTER NOT EXISTS { ?iri aegis:expiresAt ?expires . FILTER(STR(?expires) < '{now}') } OPTIONAL { ?iri aegis:supersedes ?supersedes } BIND(IF(?sourceKind = \"declared\", 0, IF(?sourceKind = \"observed\", 1, 2)) AS ?rank) } GROUP BY ?iri ?naturalKey ?label ?sourceKind ?recordedAt ?supersedes ?rank ORDER BY ?rank DESC(?recordedAt) ?iri LIMIT 51"
+}
