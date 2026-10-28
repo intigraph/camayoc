@@ -457,6 +457,18 @@ Built so far, for Decision, Directive, Preference, Handoff and Reference:
 - The offline queue is minimal: an append-only JSONL file that `cy flush`
   replays in order. The full buffer, with its backlog line in bobbin's
   header, is gshu.7.
+- The memory-file redirect (gshu.1) is `camayoc_cli/memory_redirect.py`,
+  served as `cy hook memory-redirect`. It is off until tambo wires it in, and
+  then runs in `copy` (the default) or `block` mode. The modes and the mapping
+  order are in the
+  [installation reference](../installation-reference.md#memory-file-redirect-hook-off-by-default).
+  `tests/test_memory_redirect.py` runs it on the fixture files in
+  `tests/fixtures/memory-redirect/`, offline and against a throwaway
+  `quipu-server`. **Deviation from §5:** captures (gshu.4) do not exist yet,
+  so copy mode records the typed entity directly through `memory.record`, and
+  the shapes still gate it. A refused mapping is logged with cy's plain-word
+  lines and goes no further. Once `aegis:MemoryCapture` lands, the worker
+  should write the refused file as a capture with `kindHint`.
 
 Choices made while building:
 

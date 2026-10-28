@@ -130,6 +130,48 @@ the agent-memory shapes and the registered planes (`scripts/planes.py ensure`).
 When Quipu is unreachable, a record is queued under
 `$XDG_STATE_HOME/camayoc/` and `cy flush` replays it.
 
+#### Memory-file redirect hook (off by default)
+
+`cy hook memory-redirect` is a `PreToolUse` hook for writes to
+`*/.claude/projects/*/memory/*`, every file in the directory, including
+`MEMORY.md`. Nothing enables it on install. Tambo wires it into Claude Code
+(`Write|Edit|MultiEdit`) or Codex (`apply_patch`) only when you ask, and it
+never runs as part of the camayoc plugin's own hooks.
+
+| Mode | What the hook does |
+|---|---|
+| `copy` (the default once wired) | Lets the write through. A detached worker waits for the file to land, maps its frontmatter and body to one entity, and records it with the same code as `cy record`. The worker queues the record when Quipu is unreachable. The agent is never held, and the hook exits 0. |
+| `block` | Refuses the write (exit 2) and names the exact `cy record <entity> ...` call to run instead. |
+| `off` | Does nothing. |
+
+`CAMAYOC_MEMORY_REDIRECT=off|copy|block` overrides `--mode`, so you can switch
+the hook off without editing harness settings. `--person <IRI>` (or
+`CAMAYOC_PERSON`) names whoever issues the rulings and preferences recorded in
+the files.
+
+The mapping is deterministic. An explicit `camayoc:` block in the frontmatter
+(at the top level or under `metadata`) wins: it holds `entity:` plus field
+names from `cy record <entity> --help`. Without one, the worker picks the
+entity in this order:
+
+1. A file named `handoff*` is a Handoff.
+2. Frontmatter type `user` is a Preference.
+3. Frontmatter type `reference` is a Reference.
+4. A directive cue (DIRECTIVE, standing order, never or always) is a Directive.
+5. A ruling cue (ruled, decided or chose) is a Decision.
+6. A project file with a URL or a backticked command is a Reference.
+7. Otherwise `feedback` is a Directive and everything else is a Decision.
+
+The topic is the file's `name`. It must be a registered topic, or the record
+is refused with the `cy topic add` call. A field the worker cannot derive is
+left out, so cy refuses with the shape's plain-word message.
+
+Every event goes to `$XDG_STATE_HOME/camayoc/memory-redirect.jsonl` as one
+line: `fired`, `recorded`, `queued`, `refused`, `skipped` or `error`. Each line
+holds the path, the entity and cy's outcome lines, and never the file's text.
+A value that trips a secret rule is refused, and it is redacted from block
+mode's suggested command.
+
 ### Typed decisions with jev-mcp
 
 The plugin registers the stdio server in
