@@ -473,7 +473,10 @@ dropped.</p>
 </div>
 <h2 id="5-capture-and-promotion-gshu4"><a class="header" href="#5-capture-and-promotion-gshu4">5. Capture and promotion (gshu.4)</a></h2>
 <p>Capture is cheap and untyped. Promotion is the only path that has to pass
-the shapes.</p>
+the shapes. Built in gshu.4; <a href="memory-capture.html">memory-capture.md</a> settles
+the hook placement, the chaski trigger and one change to the shape below:
+captures carry no <code>rdf:type</code>, because a strict store refuses an unsanctioned
+class and a capture must never be refused.</p>
 <p><strong>Capture shape</strong> (<code>aegis:MemoryCapture</code>, a <code>prov:Activity</code>, plane
 <code>crew:inferred</code>):</p>
 <ul>
