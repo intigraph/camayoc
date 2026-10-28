@@ -530,12 +530,12 @@ COVERAGE_GH: dict[int, dict] = {
     # Every question needs the GitHub classes (shapes/github.shapes.ttl), which
     # go through Quipu's governed schema path before a store accepts them.
     # Until then nothing here is expressible against the loaded vocabulary.
-    1: {"query": None, "gap": "Needs GitHubPullRequest and GitHubActivity in the ontology; then the latest pull_request.* activity per PR answers it.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    1: {"query": None, "gap": "camayoc_github_pr_current_state is written (and answers on a test store) but its classes are not yet in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
     2: {"query": None, "gap": "Needs GitHubReview and GitHubActivity (reviewState, commitSha) in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
     3: {"query": None, "gap": "Needs GitHubActivity and GitHubWorkflowRun in the ontology; then a join of PR head, run conclusion and reviews.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
-    4: {"query": None, "gap": "Needs GitHubWorkflowRun and GitHubActivity (githubConclusion, githubBaseRef) in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    4: {"query": None, "gap": "camayoc_github_default_branch_ci is written (and answers on a test store) but its classes are not yet in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
     5: {"query": None, "gap": "Needs GitHubRelease, GitHubPush and GitHubActivity in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
-    6: {"query": None, "gap": "Needs GitHubActivity (githubActorLogin, githubMentions) and the thread entities in the ontology; participation is judged at read time, never stored.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    6: {"query": None, "gap": "camayoc_github_participating_threads is written (and answers on a test store) but its classes are not yet in the ontology; participation is judged at read time, never stored.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
 }
 
 COVERAGE_WB: dict[int, dict] = {

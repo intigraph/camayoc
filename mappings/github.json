@@ -1,0 +1,67 @@
+{
+  "_README": "GitHub webhook -> native graph record admission (aegis-c01c.3, docs/design/github-ingress.md). Governed DATA: admitting an event or an action is a reviewed edit here. 'events' keys are X-GitHub-Event names; 'actions' lists the admitted payload actions (push has none); 'class' is the subject entity's class; 'object' is the payload key holding the subject; 'thread' is the payload key holding the pull request or issue a review or comment belongs to. Every admitted <event>.<action> must also be in GitHubActivityShape's githubEventKind sh:in list (tests/test_github_ingress.py holds the two together). An event or action not listed is QUARANTINED with its reason, never dropped and never guessed; 'ping' is acknowledged and writes nothing. 'events_api' maps the poller's Events API types onto webhook event names, and renames the actions the Events API spells differently. The sha256 of this file rides in every episode's source.",
+  "events": {
+    "pull_request": {
+      "actions": ["opened", "reopened", "closed", "synchronize", "ready_for_review", "converted_to_draft", "edited"],
+      "class": "GitHubPullRequest",
+      "object": "pull_request"
+    },
+    "pull_request_review": {
+      "actions": ["submitted", "dismissed", "edited"],
+      "class": "GitHubReview",
+      "object": "review",
+      "thread": "pull_request"
+    },
+    "pull_request_review_comment": {
+      "actions": ["created", "edited"],
+      "class": "GitHubComment",
+      "object": "comment",
+      "thread": "pull_request"
+    },
+    "issues": {
+      "actions": ["opened", "reopened", "closed", "edited"],
+      "class": "GitHubIssue",
+      "object": "issue"
+    },
+    "issue_comment": {
+      "actions": ["created", "edited"],
+      "class": "GitHubComment",
+      "object": "comment",
+      "thread": "issue"
+    },
+    "check_run": {
+      "actions": ["created", "completed", "rerequested"],
+      "class": "GitHubCheckRun",
+      "object": "check_run"
+    },
+    "workflow_run": {
+      "actions": ["requested", "in_progress", "completed"],
+      "class": "GitHubWorkflowRun",
+      "object": "workflow_run"
+    },
+    "release": {
+      "actions": ["published", "released", "prereleased", "edited", "unpublished", "deleted"],
+      "class": "GitHubRelease",
+      "object": "release"
+    },
+    "push": {
+      "actions": null,
+      "class": "GitHubPush"
+    }
+  },
+  "events_api": {
+    "types": {
+      "PullRequestEvent": "pull_request",
+      "PullRequestReviewEvent": "pull_request_review",
+      "PullRequestReviewCommentEvent": "pull_request_review_comment",
+      "IssuesEvent": "issues",
+      "IssueCommentEvent": "issue_comment",
+      "ReleaseEvent": "release",
+      "PushEvent": "push"
+    },
+    "actions": {
+      "PullRequestEvent": {"merged": "closed"},
+      "PullRequestReviewEvent": {"created": "submitted"}
+    }
+  }
+}

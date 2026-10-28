@@ -1,0 +1,159 @@
+{
+ "body": {
+  "action": "submitted",
+  "pull_request": {
+   "active_lock_reason": null,
+   "additions": 81,
+   "assignee": null,
+   "assignees": [],
+   "author_association": "MEMBER",
+   "auto_merge": null,
+   "base": {
+    "label": "intigraph:main",
+    "ref": "main",
+    "repo": {
+     "full_name": "intigraph/camayoc",
+     "id": 1324782492,
+     "node_id": "R_kgDOTvaTnA"
+    },
+    "sha": "b1417779562dbd534406ed42da9f1c5ce17fe07e",
+    "user": {
+     "html_url": "https://github.com/intigraph",
+     "id": 343335587,
+     "login": "intigraph",
+     "node_id": "O_kgDOFHbiow",
+     "site_admin": false,
+     "type": "Organization",
+     "url": "https://api.github.com/users/intigraph",
+     "user_view_type": "public"
+    }
+   },
+   "body": "Say why a work-item tick failed.",
+   "changed_files": 2,
+   "closed_at": "2026-10-27T14:25:35Z",
+   "comments": 0,
+   "commits": 2,
+   "created_at": "2026-10-25T14:05:49Z",
+   "deletions": 3,
+   "draft": false,
+   "head": {
+    "label": "intigraph:malcolm/wu1s-custody-receipt",
+    "ref": "malcolm/wu1s-custody-receipt",
+    "repo": {
+     "full_name": "intigraph/camayoc",
+     "id": 1324782492,
+     "node_id": "R_kgDOTvaTnA"
+    },
+    "sha": "4f0199d42c1ee15d71705d86238b61608cd02a7b",
+    "user": {
+     "html_url": "https://github.com/intigraph",
+     "id": 343335587,
+     "login": "intigraph",
+     "node_id": "O_kgDOFHbiow",
+     "site_admin": false,
+     "type": "Organization",
+     "url": "https://api.github.com/users/intigraph",
+     "user_view_type": "public"
+    }
+   },
+   "html_url": "https://github.com/intigraph/camayoc/pull/172",
+   "id": 5005446754,
+   "issue_url": "https://api.github.com/repos/intigraph/camayoc/issues/172",
+   "labels": [],
+   "locked": false,
+   "maintainer_can_modify": false,
+   "merge_commit_sha": "6b2edfdd2e9204d69cbba2b359a12603dc60f0d0",
+   "mergeable": null,
+   "mergeable_state": "unknown",
+   "merged": true,
+   "merged_at": "2026-10-27T14:25:35Z",
+   "merged_by": {
+    "html_url": "https://github.com/scbrown",
+    "id": 6656238,
+    "login": "scbrown",
+    "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+    "site_admin": false,
+    "type": "User",
+    "url": "https://api.github.com/users/scbrown",
+    "user_view_type": "public"
+   },
+   "milestone": null,
+   "node_id": "PR_kwDOTvaTnM8AAAABKlkOYg",
+   "number": 172,
+   "rebaseable": null,
+   "requested_reviewers": [],
+   "requested_teams": [],
+   "review_comments": 0,
+   "state": "closed",
+   "title": "fix(ingress): say why a work-item tick failed (aegis-wu1s9ti4d)",
+   "updated_at": "2026-10-27T14:25:38Z",
+   "url": "https://api.github.com/repos/intigraph/camayoc/pulls/172",
+   "user": {
+    "html_url": "https://github.com/scbrown",
+    "id": 6656238,
+    "login": "scbrown",
+    "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+    "site_admin": false,
+    "type": "User",
+    "url": "https://api.github.com/users/scbrown",
+    "user_view_type": "public"
+   }
+  },
+  "repository": {
+   "created_at": "2026-08-06T05:38:21Z",
+   "default_branch": "main",
+   "full_name": "intigraph/camayoc",
+   "html_url": "https://github.com/intigraph/camayoc",
+   "id": 1324782492,
+   "name": "camayoc",
+   "node_id": "R_kgDOTvaTnA",
+   "owner": {
+    "html_url": "https://github.com/intigraph",
+    "id": 343335587,
+    "login": "intigraph",
+    "node_id": "O_kgDOFHbiow",
+    "site_admin": false,
+    "type": "Organization",
+    "url": "https://api.github.com/users/intigraph",
+    "user_view_type": "public"
+   },
+   "private": false,
+   "pushed_at": "2026-10-27T18:56:20Z",
+   "updated_at": "2026-10-27T18:56:26Z",
+   "url": "https://api.github.com/repos/intigraph/camayoc"
+  },
+  "review": {
+   "body": "APPROVE: the oversize refusal reads well. @scbrown merge when green.",
+   "commit_id": "e0cfe0ebf24c2e7ec2974e79b166883e3b91b1d1",
+   "html_url": "https://github.com/intigraph/camayoc/pull/172#pullrequestreview-5668121975",
+   "id": 5668121975,
+   "node_id": "PRR_kwDOTvaTnM8AAAABUditdw",
+   "pull_request_url": "https://api.github.com/repos/intigraph/camayoc/pulls/172",
+   "state": "approved",
+   "submitted_at": "2026-10-27T13:51:16Z",
+   "updated_at": "2026-10-27T13:51:17Z",
+   "user": {
+    "html_url": "https://github.com/scbrown",
+    "id": 6656238,
+    "login": "scbrown",
+    "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+    "site_admin": false,
+    "type": "User",
+    "url": "https://api.github.com/users/scbrown",
+    "user_view_type": "public"
+   }
+  },
+  "sender": {
+   "id": 6656238,
+   "login": "scbrown",
+   "node_id": "MDQ6VXNlcjY2NTYyMzg=",
+   "type": "User"
+  }
+ },
+ "headers": {
+  "Content-Type": "application/json",
+  "X-GitHub-Delivery": "00000000-0000-0000-0000-00005eed0003",
+  "X-GitHub-Event": "pull_request_review",
+  "X-GitHub-Hook-ID": "100000001"
+ }
+}

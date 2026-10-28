@@ -315,15 +315,19 @@ Both of these are outward changes and wait for approval:
 
 ## 8. Stored queries (written with the producer)
 
-- `camayoc_github_pr_current_state`: per PR, the state, head and draft flag
-  of its latest `pull_request.*` activity.
-- `camayoc_github_reviews_on_head`: reviews whose `commitSha` equals the PR's
-  current head, with verdict and author. Chaski uses it for "no non-author
-  review".
-- `camayoc_github_default_branch_ci`: latest `workflow_run.completed` per
-  (repository, workflow name) on the default branch.
-- `camayoc_github_participating_threads`: threads where a login authored,
-  acted or was mentioned. Participation is decided when read, never stored.
+All three run against a quipu 0.16.0 store built from the recorded deliveries
+(`tests/test_github_ingress.py`):
+
+- `camayoc_github_pr_current_state`: a PR's state, merged flag, head and draft
+  flag, from its latest `pull_request.*` activity.
+- `camayoc_github_default_branch_ci`: the latest `workflow_run.completed` per
+  workflow on a branch. gh-ci-watch reads this instead of polling.
+- `camayoc_github_participating_threads`: threads where a login acted, or was
+  @-mentioned, with the time of its latest activity. Participation is
+  decided when read, never stored.
+
+The query for "reviews on the current head by a non-author" (competency Q2,
+Q3) belongs to chaski's review rule and lands with c01c.4.
 
 ## 9. Related
 
