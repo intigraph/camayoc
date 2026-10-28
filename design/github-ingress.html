@@ -1,0 +1,549 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>GitHub ingress - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/intigraph/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="github-ingress-one-reader-typed-facts-events"><a class="header" href="#github-ingress-one-reader-typed-facts-events">GitHub ingress: one reader, typed facts, events</a></h1>
+<p><strong>Status: proposed (2026-10-28).</strong> Shapes and the producer are source only.
+Nothing is deployed, scheduled or registered with GitHub by these changes.</p>
+<h2 id="1-problem"><a class="header" href="#1-problem">1. Problem</a></h2>
+<p>GitHub activity reaches the stack through four separate readers, and none of
+them writes facts that another tool can query:</p>
+<div class="table-wrapper"><table><thead><tr><th>reader</th><th>what it reads</th><th>where the result goes</th></tr></thead><tbody>
+<tr><td><code>aegis/scripts/gh-ci-watch.sh</code> (cron)</td><td><code>gh run list</code> per repo and workflow</td><td>Prometheus metrics, crew inbox, escalation items</td></tr>
+<tr><td><code>aegis/scripts/github-issues-patrol.sh</code></td><td><code>gh issue list</code> on one repo</td><td>tracker items</td></tr>
+<tr><td>participation watch (aegis-2no)</td><td>GitHub notification mail over IMAP</td><td><code>st inbox hammond</code></td></tr>
+<tr><td><code>camayoc/emitters/github/changes.py</code></td><td>GraphQL, PRs updated since a time</td><td>CDEvents for DORA lead time</td></tr>
+</tbody></table>
+</div>
+<p>The shared REST quota ran out twice in one hour on 2026-10-21 (aegis-izs). On
+that day 1,310 of 1,402 sampled <code>gh</code> processes came from cron, and
+<code>gh-ci-watch.sh</code> alone made 27% of them. Pull request, review and merge work
+cannot react to GitHub: no reader turns a review or a green check into
+something chaski can route.</p>
+<p>This design replaces those readers with ONE ingress. It writes each GitHub
+activity into Quipu as typed facts. The write's own transaction emits the Quipu
+events that chaski routes on.</p>
+<pre><code class="language-text">GitHub --webhook--&gt; receiver --+
+                               +--&gt; spool (dedup by delivery) --&gt; mapper --&gt; Quipu /episode
+GitHub &lt;--poll (budgeted)-- poller --+                                      |
+                                                    entity.added/updated, episode.ingested
+                                                                            v
+                                                     chaski (c01c.4 rules) --&gt; st jobs (c01c.2)
+</code></pre>
+<h2 id="2-entities-and-natural-keys"><a class="header" href="#2-entities-and-natural-keys">2. Entities and natural keys</a></h2>
+<p>All terms are in the <code>aegis:</code> namespace, as for the delivery vocabulary.
+Classes are prefixed <code>GitHub</code>. This avoids a clash with shuttle's
+<code>aegis:WorkflowRun</code> and keeps the forge's meaning out of generic names. The
+shapes are in <code>shapes/github.shapes.ttl</code>.</p>
+<div class="table-wrapper"><table><thead><tr><th>class</th><th>GitHub object</th><th>natural key</th><th>node name</th></tr></thead><tbody>
+<tr><td><code>GitHubRepository</code> (<code>rdfs:subClassOf schema:SoftwareSourceCode</code>)</td><td>repository</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubPullRequest</code></td><td>pull request</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubIssue</code></td><td>issue</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubComment</code></td><td>issue comment, review comment</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubReview</code></td><td>pull request review</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubWorkflowRun</code></td><td>Actions workflow run</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubCheckRun</code></td><td>check run</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubRelease</code></td><td>release</td><td><code>node_id</code></td><td><code>github.&lt;node_id&gt;</code></td></tr>
+<tr><td><code>GitHubPush</code></td><td>push (no node id)</td><td>repository <code>node_id</code> + ref + before + after</td><td><code>github.push.&lt;digest&gt;</code></td></tr>
+<tr><td><code>GitHubActivity</code></td><td>one observed change to any of the above</td><td>activity key (below)</td><td><code>github.activity.&lt;digest&gt;</code></td></tr>
+</tbody></table>
+</div>
+<p>GitHub node ids are global, opaque and stable across renames and transfers.
+Within one id format they are unique across object types. Older repositories
+can return legacy base64 ids, which may contain <code>=</code>, <code>+</code> or <code>/</code>. Those ids are
+hashed (<code>github.b&lt;sha256[:32]&gt;</code>) instead of being sanitized. Sanitizing could
+merge two ids. The exact id is always kept in <code>aegis:githubNodeId</code>.</p>
+<p><strong>Entities carry only facts that never change</strong>: node id, database id,
+number, full name at first sight, URL, author and creation time. <strong>Changing
+state goes on <code>GitHubActivity</code></strong>: PR open, closed or merged, head commit,
+draft, review verdict, run status and conclusion, attempt. This follows the
+rule that a fact must be true when written. A PR's state is "the state on its
+latest activity", which is a stored query evaluated when read. It also means
+re-asserting an entity is always byte-identical, so a <code>maxCount 1</code> never sees
+two values.</p>
+<p>Not modeled: comment and review bodies, check logs and commit messages. Only
+identifiers, times, verdict words and <code>@</code> mentions are stored. Mentions are
+extracted from the text, which is then discarded. The <code>changes.py</code> rule applies
+here too.</p>
+<h3 id="21-githubactivity"><a class="header" href="#21-githubactivity">2.1 GitHubActivity</a></h3>
+<p>One record per distinct change, never updated:</p>
+<ul>
+<li><code>githubEventKind</code>: a closed set, <code>&lt;event&gt;.&lt;action&gt;</code> (for example
+<code>pull_request.closed</code> or <code>workflow_run.completed</code>), or <code>push</code>.</li>
+<li><code>githubActivityKey</code>: sha256 of the activity key. <code>occurredAt</code> (RFC 3339)
+comes from the payload, never the time the record was received.</li>
+<li><code>aboutGitHubEntity</code>: the entity it changes. <code>inGitHubRepository</code>: the
+repository.</li>
+<li><code>githubActorLogin</code>: who acted. <code>commitSha</code> (reused): the head commit the
+activity concerns.</li>
+<li>State, where the kind has it: <code>githubState</code>, <code>githubMerged</code>,
+<code>githubMergeCommitSha</code>, <code>githubDraft</code>, <code>githubBaseRef</code>, <code>reviewState</code>
+(reused), <code>githubStatus</code>, <code>githubConclusion</code>, <code>githubRunAttempt</code>,
+<code>githubMentions</code>, and <code>githubPrerelease</code>.</li>
+</ul>
+<p>Activity keys are built from payload fields that both transports carry. The
+same change therefore gets the same key whether a webhook or the poller
+reported it. Time is used only where an action can repeat:</p>
+<div class="table-wrapper"><table><thead><tr><th>kind</th><th>key fields</th></tr></thead><tbody>
+<tr><td><code>pull_request.opened</code></td><td>PR node id</td></tr>
+<tr><td><code>pull_request.closed</code></td><td>PR node id, <code>closed_at</code></td></tr>
+<tr><td><code>pull_request.synchronize</code></td><td>PR node id, new head sha</td></tr>
+<tr><td>other <code>pull_request.*</code></td><td>PR node id, <code>updated_at</code></td></tr>
+<tr><td><code>pull_request_review.submitted</code>, <code>.dismissed</code></td><td>review node id</td></tr>
+<tr><td><code>*_comment.created</code></td><td>comment node id</td></tr>
+<tr><td><code>*.edited</code> (comments, reviews)</td><td>node id, <code>updated_at</code> (<code>submitted_at</code> for reviews)</td></tr>
+<tr><td><code>issues.opened</code> / <code>.closed</code> / other</td><td>as for pull requests</td></tr>
+<tr><td><code>check_run.*</code></td><td>check node id, status, conclusion</td></tr>
+<tr><td><code>workflow_run.*</code></td><td>run node id, <code>run_attempt</code>, status, conclusion</td></tr>
+<tr><td><code>push</code></td><td>repository node id, ref, before, after</td></tr>
+<tr><td><code>release.*</code></td><td>release node id</td></tr>
+</tbody></table>
+</div>
+<p>Every key also includes the kind.</p>
+<h2 id="3-graph-placement-and-events"><a class="header" href="#3-graph-placement-and-events">3. Graph placement and events</a></h2>
+<p>Each activity is one <code>/episode</code> with <code>group_id: "github"</code>, written to that
+month's operational window graph <code>{WINDOW_NS}github/{YYYY-MM}</code> (see
+<code>scripts/windows.py</code>). The month comes from <code>occurredAt</code>. This is how the
+deployment events work: a completed month can be frozen whole, and entity IRIs
+stay valid across windows because they do not depend on the graph.</p>
+<p>The episode name is <code>github:&lt;digest&gt;</code>. Its source is
+<code>github:mapping=&lt;sha16&gt;:&lt;kind&gt;:&lt;digest&gt;</code>. Every byte of the body comes from the
+delivery and the mapping, so re-sending one delivery sends an identical
+episode. Quipu's content hash (hq-fhc) then makes the re-ingest a no-op: no new
+transaction and no new events. This was measured with quipu 0.16.0: the second
+ingest reported <code>0 facts (tx 0)</code>.</p>
+<p>The two transports can describe one change with slightly different bytes. A
+webhook's <code>pushed_at</code> and the Events API's <code>created_at</code> can differ by a
+second, for example. So the spool records each written activity key, and the
+first transport to write an activity wins. A later delivery with the same key
+is marked <code>duplicate</code> and is not written. Without that, one activity node
+could end up with two <code>occurredAt</code> values.</p>
+<p>The write lands as facts on the change feed in the same transaction. With a
+quipu that has registered named-graph events (<code>event-push.md</code> §4), the same
+transaction also emits these events:</p>
+<ul>
+<li><code>episode.ingested</code> for <code>github:&lt;digest&gt;</code>, group <code>github</code></li>
+<li><code>entity.added</code> for the new <code>GitHubActivity</code>, and for any entity seen for the
+first time in that window</li>
+<li><code>entity.updated</code> for entities that already exist</li>
+</ul>
+<p>Chaski does not route on Quipu event names alone. Their payload carries only
+the subject, so a rule would have to read the facts anyway. The routing
+contract for c01c.4 is an incremental adapter (<code>trigger: changes</code>) subscribed
+to <code>types: [aegis:GitHubActivity]</code> and to the current and next month's
+<code>github</code> window graphs. It routes on <code>githubEventKind</code>. The kinds chaski needs
+first:</p>
+<div class="table-wrapper"><table><thead><tr><th>kind</th><th>rule it feeds (c01c.4)</th></tr></thead><tbody>
+<tr><td><code>pull_request.opened</code>, <code>.synchronize</code>, <code>.ready_for_review</code></td><td>review job when CI is green and no non-author review exists after N min</td></tr>
+<tr><td><code>pull_request_review.submitted</code> (<code>reviewState</code> approved)</td><td>merge job through the per-repo serialized merge lane</td></tr>
+<tr><td><code>workflow_run.completed</code> / <code>check_run.completed</code> on the default branch, <code>githubConclusion</code> failure</td><td>main-CI-red triage job</td></tr>
+<tr><td><code>release.published</code></td><td>install / announce jobs</td></tr>
+<tr><td><code>issues.opened</code>, <code>issue_comment.created</code>, <code>pull_request_review_comment.created</code> with <code>githubMentions</code> containing the watched login, or on a thread the login participates in</td><td>participation notice to the administrator (aegis-2no)</td></tr>
+<tr><td><code>push</code> to the default branch</td><td>bobbin reindex for GitHub-sourced repositories (now pull-only)</td></tr>
+</tbody></table>
+</div>
+<p>Chaski's adapter <code>--describe</code> names graphs exactly (<code>incremental.py</code>). Window
+rollover therefore needs the adapter to describe two months at once. If chaski
+caches the description for its lifetime, it needs a restart each month or
+prefix matching instead. <strong>Open for c01c.4.</strong></p>
+<h2 id="4-transport"><a class="header" href="#4-transport">4. Transport</a></h2>
+<h3 id="41-webhook-receiver-primary"><a class="header" href="#41-webhook-receiver-primary">4.1 Webhook receiver (primary)</a></h3>
+<p>A small stdlib Python service, <code>scripts/github_ingress.py serve</code>. It follows
+the pattern of bobbin's <code>webhook-index.py</code>:</p>
+<ul>
+<li><strong>Authentication.</strong> The receiver reads <code>X-Hub-Signature-256</code>
+(<code>sha256=&lt;hex&gt;</code>, an HMAC-SHA256 of the exact body) and checks it with a
+constant-time compare before parsing any JSON. The secret comes from an
+owner-only file (<code>--secret-file</code>), which Ansible renders from Infisical. It
+is read once at startup. An empty or missing secret refuses every delivery,
+so the receiver fails closed. The secret never appears in logs, the spool
+or Quipu.</li>
+<li><strong>Limits.</strong> Bodies over 5 MiB get 413. Repositories outside <code>--repo</code>
+(<code>owner/name</code>) are acknowledged and ignored, never written. <code>ping</code> is
+acknowledged.</li>
+<li><strong>Spool first.</strong> The receiver writes <code>(delivery id, event name, body)</code> to a
+SQLite spool (WAL, <code>synchronous=FULL</code>), then answers 202. GitHub expects an
+answer within 10 s, and nothing slow happens before the answer. A delivery
+id already in the spool gets 200 <code>duplicate</code>. GitHub keeps
+<code>X-GitHub-Delivery</code> on manual and automatic redelivery, so this is the
+first idempotency layer.</li>
+<li><strong>Drain.</strong> A worker thread maps each pending entry and posts it with
+<code>planes._post("/episode")</code>. Before the first write to a month it calls
+<code>windows.ensure_window</code>. It then marks the entry <code>written</code>. A failed post
+stays pending with exponential backoff. A response that never arrives is
+safe to resend, because the episode is byte-identical (§3). An event the
+mapping cannot place is marked <code>quarantined</code> with its reason, never
+dropped. The receiver's metrics report it, and it never blocks the queue.</li>
+</ul>
+<p><strong>Hosting.</strong> The receiver runs on the chaski host as a systemd user unit next
+to chaski. The order is GitHub, then Quipu, then chaski: facts land in Quipu
+before anything reacts. Chaski's <code>external_event.py</code> queues reactions; it does
+not write facts. The ingress is camayoc's job, as it is for CDEvents.</p>
+<p><strong>Reachability, measured.</strong> There is no public HTTPS route into the LAN today.
+The bobbin webhook takes Forgejo pushes inside the LAN only. goldblum's
+<code>bobbin_server</code> defaults say GitHub-sourced repositories are "pull-only (no
+webhook)". GitHub cannot reach traefik. The webhook path needs one outward
+change, which Steve approves (§7). Until then the poller is the only
+transport.</p>
+<h3 id="42-budgeted-poller-fallback-and-the-only-path-until-7"><a class="header" href="#42-budgeted-poller-fallback-and-the-only-path-until-7">4.2 Budgeted poller (fallback, and the only path until §7)</a></h3>
+<p><code>scripts/github_ingress.py poll</code> puts entries into the same spool as the
+receiver, and the same mapper drains them. It calls the API only through <code>gh</code>,
+which holds the credential. That way the aegis-izs <code>gh</code> shim attributes and
+meters every call.</p>
+<ul>
+<li>
+<p><strong>Sources per repository.</strong> It reads <code>GET /repos/{r}/events</code>, which covers
+pushes, pull requests, reviews, review comments, issues, issue comments and
+releases. It also reads <code>GET /repos/{r}/actions/runs?per_page=20</code> for
+workflow runs. Check runs are not polled: one request per commit is too
+expensive, and <code>workflow_run</code> covers CI for Actions repositories.</p>
+</li>
+<li>
+<p><strong>Conditional requests.</strong> Every read sends the stored ETag. A 304 costs no
+primary quota. On a quiet repository nearly every request is a 304.</p>
+</li>
+<li>
+<p><strong>Budget.</strong> A local hourly token bucket, <code>--budget-per-hour</code> (default 300,
+6% of 5,000), counts 200 responses and hydration requests. Before each
+cycle the poller reads <code>X-RateLimit-Remaining</code> and stops spending below
+<code>--reserve</code> (default 1,000). The interactive crew keeps that reserve. When
+the poller is over budget it skips the cycle and says so in its receipt. It
+never sleeps inside a request.</p>
+</li>
+<li>
+<p><strong>Cadence.</strong> It waits at least <code>X-Poll-Interval</code>, which GitHub sets (usually
+60 s), and never less than <code>--interval</code>.</p>
+</li>
+<li>
+<p><strong>Hydration.</strong> Events API payloads are smaller than webhook payloads. This
+was measured on <code>intigraph/camayoc</code> on 2026-10-28. A <code>PullRequestEvent</code>
+carries only <code>id</code>, <code>number</code>, <code>url</code>, <code>head</code> and <code>base</code>. It spells a merge as
+action <code>merged</code>, and a review as <code>created</code>. <code>PushEvent</code> has <code>head</code> instead
+of <code>after</code>. The <code>repo</code> object has no <code>node_id</code>.</p>
+<p>The poller handles each of these:</p>
+<ul>
+<li>It fetches the repository object once and caches it in the spool.</li>
+<li>It fetches a trimmed pull request once, by its API URL, and counts the
+request in the budget.</li>
+<li>It keeps the event's own head, base and action, because the fetched
+object shows the PR as it is now, not as it was at the event. It drops
+<code>draft</code>.</li>
+<li>It renames the actions through <code>mappings/github.json</code>.</li>
+</ul>
+<p>A fetch that fails leaves the trimmed object in place. The mapper then
+quarantines the entry with the missing field named, and the poller does not
+retry it.</p>
+</li>
+<li>
+<p><strong>Spool keys.</strong> <code>poll:&lt;events-api id&gt;</code> and
+<code>poll:run:&lt;run id&gt;:&lt;attempt&gt;:&lt;status&gt;:&lt;conclusion&gt;</code>. These differ from
+webhook delivery ids, but the activity key is the same for the same change.
+The spool's activity ledger therefore writes it once (§3).</p>
+</li>
+</ul>
+<h3 id="43-threads-outside-watched-repositories"><a class="header" href="#43-threads-outside-watched-repositories">4.3 Threads outside watched repositories</a></h3>
+<p>aegis-2no also covers threads in repositories Steve does not own, such as
+upstream issues where he commented. Webhooks cannot be registered there.
+Phase 2 adds a third poller source:
+<code>GET /notifications?participating=true</code> (ETag'd), which re-uses hydration to
+fetch the subject thread. That replaces the Gmail IMAP path. It is not in the
+first producer.</p>
+<h2 id="5-what-happens-to-the-existing-readers"><a class="header" href="#5-what-happens-to-the-existing-readers">5. What happens to the existing readers</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>reader</th><th>keeps</th><th>moves</th></tr></thead><tbody>
+<tr><td><code>gh-ci-watch.sh</code></td><td>Its transition state machine (BROKE / RECOVERED / TERMINAL-CANCELLED), metrics, and auto-deploy P1 promotion, until c01c.4 ships the main-CI-red rule.</td><td>Its <code>gh run list</code> polling moves to the ingress. The watcher reads the latest <code>workflow_run.completed</code> activity per (repository, workflow) from Quipu. This drops about 27% of the measured <code>gh</code> burn. Once chaski's triage rule is live, the script keeps only the Prometheus exporter, or retires.</td></tr>
+<tr><td>aegis-2no participation watch</td><td>Discord half, unchanged (not GitHub). Its acceptance contract: one delivery per natural event, no duplicates on replay.</td><td>The GitHub half (IMAP of notification mail) moves to <code>GitHubActivity</code> plus a chaski participation rule. The "natural comment, review and mention samples" its acceptance waits on can then be counted in Quipu.</td></tr>
+<tr><td><code>github-issues-patrol.sh</code></td><td>Nothing.</td><td>It becomes a chaski rule: <code>issues.opened</code>, then a tracker item.</td></tr>
+<tr><td><code>emitters/github/changes.py</code></td><td>The CDEvents output contract for DORA.</td><td>Its GraphQL reads become a projection of GitHub activities, with no API calls (follow-up).</td></tr>
+<tr><td>bobbin webhook (Forgejo)</td><td>Unchanged.</td><td>GitHub-sourced repositories gain push reindexing through chaski (<code>push</code> to the default branch).</td></tr>
+<tr><td><code>shantytown/pr_binding_check.py</code></td><td>Unchanged (on-demand read).</td><td>Nothing.</td></tr>
+</tbody></table>
+</div>
+<h2 id="6-idempotency-and-failure-end-to-end"><a class="header" href="#6-idempotency-and-failure-end-to-end">6. Idempotency and failure, end to end</a></h2>
+<ol>
+<li><strong>Same delivery twice.</strong> The spool refuses it by delivery id and answers
+200.</li>
+<li><strong>Same change from webhook and poller.</strong> The activity key is the same, and
+the spool's activity ledger marks the second one <code>duplicate</code>. Where the
+two transports disagree on the timestamp a key uses (a reopen, an edit),
+both are written. Consumers treat activities as at-least-once.</li>
+<li><strong>Lost Quipu response.</strong> Resend. The body is byte-identical, so Quipu's
+content hash makes the second write a no-op.</li>
+<li><strong>Mapping change.</strong> The mapping sha in <code>source</code> changes, so a re-mapped
+activity is a NEW episode over the same activity node. It is replayable
+from the spool; the spool keeps bodies for <code>--retain-days</code> (default 14).</li>
+<li><strong>Unknown event or action.</strong> The entry is quarantined with a reason and
+counted. It is never guessed or dropped.</li>
+<li><strong>Receiver down.</strong> GitHub marks the delivery failed and does not retry
+automatically. The poller's next cycle covers the gap from the Events API,
+which keeps 30 days and 300 events. A long outage can be replayed from the
+GitHub "recent deliveries" API (follow-up).</li>
+</ol>
+<h2 id="7-registration-steve-approves-not-done-here"><a class="header" href="#7-registration-steve-approves-not-done-here">7. Registration Steve approves (not done here)</a></h2>
+<p>Both of these are outward changes and wait for approval:</p>
+<ol>
+<li><strong>A public HTTPS route</strong> to the receiver, and only to its one path. There
+are two options. One is a Cloudflare Tunnel or a port-forwarded traefik
+entrypoint carrying only <code>PathPrefix(/hooks/github)</code>. The other is GitHub's
+webhook forwarding to an existing public host. The receiver checks every
+delivery's HMAC either way.</li>
+<li><strong>One webhook per watched repository.</strong> An org-level hook on <code>intigraph</code>
+works too, plus per-repo hooks for <code>scbrown/*</code>. Settings:
+<ul>
+<li>Payload URL: <code>https://&lt;public host&gt;/hooks/github</code></li>
+<li>Content type: <code>application/json</code></li>
+<li>Secret: a new random 32-byte value, stored in Infisical as
+<code>GITHUB_WEBHOOK_SECRET</code>. Ansible renders it to the receiver's secret
+file. It is never pasted anywhere else.</li>
+<li>SSL verification: on</li>
+<li>Events: Pushes, Pull requests, Pull request reviews, Pull request review
+comments, Issues, Issue comments, Check runs, Workflow runs, Releases.
+Not "send me everything": unmapped events would only be quarantined.</li>
+</ul>
+</li>
+</ol>
+<h2 id="8-stored-queries-written-with-the-producer"><a class="header" href="#8-stored-queries-written-with-the-producer">8. Stored queries (written with the producer)</a></h2>
+<ul>
+<li><code>camayoc_github_pr_current_state</code>: per PR, the state, head and draft flag
+of its latest <code>pull_request.*</code> activity.</li>
+<li><code>camayoc_github_reviews_on_head</code>: reviews whose <code>commitSha</code> equals the PR's
+current head, with verdict and author. Chaski uses it for "no non-author
+review".</li>
+<li><code>camayoc_github_default_branch_ci</code>: latest <code>workflow_run.completed</code> per
+(repository, workflow name) on the default branch.</li>
+<li><code>camayoc_github_participating_threads</code>: threads where a login authored,
+acted or was mentioned. Participation is decided when read, never stored.</li>
+</ul>
+<h2 id="9-related"><a class="header" href="#9-related">9. Related</a></h2>
+<p>aegis-c01c (epic), c01c.4 (chaski rules), c01c.5 (tambo verify), aegis-2no,
+aegis-izs, aegis-j09 (bobbin webhook), <code>docs/design/ingress.md</code>,
+<code>scripts/ingest_cdevents.py</code>, quipu <code>docs/design/event-push.md</code>.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/work-cost.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/jev-typed-decisions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/work-cost.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/jev-typed-decisions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
