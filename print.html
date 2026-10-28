@@ -3529,16 +3529,55 @@ the switch.</li>
 <h2 id="7-implementation-status-gshu10"><a class="header" href="#7-implementation-status-gshu10">7. Implementation status (gshu.10)</a></h2>
 <p>Built so far, for Decision, Directive, Preference, Handoff and Reference:</p>
 <ul>
-<li><code>shapes/agent-memory.shapes.ttl</code>: one NodeShape per entity, plus
+<li>
+<p><code>shapes/agent-memory.shapes.ttl</code>: one NodeShape per entity, plus
 <code>MemoryRecordShape</code> for the tool-filled fields and <code>MemoryTopicShape</code>. Every
 property carries <code>sh:name</code>, <code>sh:description</code> and <code>sh:message</code>, and every
-required field's message names its flag.</li>
-<li><code>tools/memory/&lt;entity&gt;.tool.json</code>: the sidecars. They hold no field
-definitions; the generator's lint refuses one that does.</li>
-<li><code>scripts/memory_tools.py</code>: lints the shape and the sidecars, then writes
+required field's message names its flag.</p>
+</li>
+<li>
+<p><code>tools/memory/&lt;entity&gt;.tool.json</code>: the sidecars. They hold no field
+definitions; the generator's lint refuses one that does.</p>
+</li>
+<li>
+<p><code>scripts/memory_tools.py</code>: lints the shape and the sidecars, then writes
 <code>camayoc_cli/data/definitions.json</code> and the recall stored queries
 <code>queries/mem_*.json</code>. <code>--check</code> is the drift gate, and
-<code>tests/test_memory_tool_definitions.py</code> runs it in the normal suite.</li>
+<code>tests/test_memory_tool_definitions.py</code> runs it in the normal suite.</p>
+</li>
+<li>
+<p><code>camayoc_cli/</code>: the <code>camayoc</code> CLI and its <code>cy</code> alias. It is a Python entry
+point that uses only the standard library (<code>pyproject.toml</code>), installed with
+<code>uv tool install git+https://github.com/intigraph/camayoc</code>. It provides
+<code>cy record &lt;entity&gt;</code>, <code>cy recall &lt;entity&gt;</code> (<code>/ask</code> on the stored query, or
+the same template rendered client-side when the store has not loaded it),
+<code>cy topic add</code>, <code>cy flush</code> and <code>cy prime</code> (stack-prime/1). The §3 behavior
+table is tested in <code>tests/test_cy_cli.py</code> against a throwaway local
+<code>quipu-server</code>. The secret rules moved into <code>camayoc_cli/secret_rules.py</code>,
+and <code>scripts/memory_secret_rules.py</code> re-exports them.</p>
+</li>
+<li>
+<p><code>queries/mem_index_since.json</code> (generated) is the one paged query bobbin's
+memory mirror consumes (gshu.2, bobbin #216). It is called with only
+<code>since</code>; the plane graphs are optional parameters with defaults. It returns
+<code>current</code> rows at their own <code>recordedAt</code> and <code>superseded</code> rows at the
+<code>recordedAt</code> of the record that replaced them. status and cursor come from a
+UNION of the two branches, never IF/COALESCE, which older quipu leaves
+unbound. The cursor is <code>&lt;recordedAt&gt;|&lt;iri&gt;</code>, ordered by recordedAt and then
+iri, so records that share a timestamp never fall between two pages. It
+returns 50 rows plus one overflow sentinel.</p>
+</li>
+<li>
+<p>Review fixes: the secret check no longer scores URL locations or whole paths
+as one token, and the false positives from review are pass tests. A record
+whose key has more than one current version repairs the dangling
+<code>supersededBy</code> before doing anything else.</p>
+</li>
+<li>
+<p>The offline queue is minimal: an append-only JSONL file that <code>cy flush</code>
+replays in order. The full buffer, with its backlog line in bobbin's
+header, is gshu.7.</p>
+</li>
 </ul>
 <p>Choices made while building:</p>
 <ul>
