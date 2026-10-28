@@ -3557,6 +3557,24 @@ table is tested in <code>tests/test_cy_cli.py</code> against a throwaway local
 and <code>scripts/memory_secret_rules.py</code> re-exports them.</p>
 </li>
 <li>
+<p>Generated surfaces, all from the same definitions:</p>
+<ul>
+<li><code>camayoc_cli/data/mcp-tools.json</code>, served by <code>cy mcp</code> (MCP stdio, server
+<code>camayoc-memory</code>, declared in <code>.claude-plugin/plugin.json</code>). It provides
+<code>record_&lt;entity&gt;</code>, <code>recall_&lt;entity&gt;</code> and <code>recall_decision_history</code>.</li>
+<li>The Claude skill <code>skills/camayoc-memory/SKILL.md</code>, with the slash
+commands <code>commands/record.md</code> and <code>commands/recall.md</code>.</li>
+<li>The Codex skill <code>.agents/skills/camayoc-memory/SKILL.md</code>, which includes
+the <code>~/.codex/config.toml</code> MCP stanza.</li>
+<li>The man page <code>docs/man/cy.1</code>, and the primer's entity and MCP tables.
+Both skills carry the primer between <code>camayoc prime</code> markers.</li>
+</ul>
+<p><code>tests/test_memory_surfaces.py</code> checks that the served surfaces agree with
+each other: the same fields, the same required set and the same recall
+filters. The generator drift check covers every file. Choosing which
+surfaces to install (cli, mcp, harness or all) is tambo's step (gshu.9).</p>
+</li>
+<li>
 <p><code>queries/mem_index_since.json</code> (generated) is the one paged query bobbin's
 memory mirror consumes (gshu.2, bobbin #216). It is called with only
 <code>since</code>; the plane graphs are optional parameters with defaults. It returns
@@ -3564,7 +3582,10 @@ memory mirror consumes (gshu.2, bobbin #216). It is called with only
 <code>recordedAt</code> of the record that replaced them. status and cursor come from a
 UNION of the two branches, never IF/COALESCE, which older quipu leaves
 unbound. The cursor is <code>&lt;recordedAt&gt;|&lt;iri&gt;</code>, ordered by recordedAt and then
-iri, so records that share a timestamp never fall between two pages. It
+iri, so records that share a timestamp never fall between two pages. A
+superseded row's instant is its <code>aegis:supersededAt</code>, the wall-clock time
+the back-link was written. A late repair therefore still lands after the
+reader's cursor. It
 returns 50 rows plus one overflow sentinel.</p>
 </li>
 <li>
@@ -3572,6 +3593,11 @@ returns 50 rows plus one overflow sentinel.</p>
 as one token, and the false positives from review are pass tests. A record
 whose key has more than one current version repairs the dangling
 <code>supersededBy</code> before doing anything else.</p>
+</li>
+<li>
+<p>Every caller value is checked before it becomes an IRI or a query
+parameter. A bad value is a plain-word refusal on the CLI and an <code>isError</code>
+result over MCP, and the server keeps serving (<code>FuzzTests</code>).</p>
 </li>
 <li>
 <p>The offline queue is minimal: an append-only JSONL file that <code>cy flush</code>
