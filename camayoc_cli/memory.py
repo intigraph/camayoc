@@ -267,7 +267,8 @@ def repair(client: quipu.Client, current: list[dict], env=None) -> list[str]:
 # ---- record ---------------------------------------------------------------------
 
 def record(entity_name: str, args: dict, *, supersede: str | None = None, flags: dict | None = None,
-           dry_run: bool = False, client: quipu.Client | None = None, env=None) -> Outcome:
+           dry_run: bool = False, client: quipu.Client | None = None, env=None,
+           derived_from: str | None = None, source: str | None = None) -> Outcome:
     defs = definitions.load()
     entity = defs["entities"][entity_name]
     flags = flags or {}
@@ -383,6 +384,8 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
             triples.append(f"<{a}maxAge> {lit(life['maxAge'])}")
         if old:
             triples.append(f"<{a}supersedes> {iri_ref(old['iri'])}")
+        if derived_from:  # promotion (§5 step 4): the capture this record came from
+            triples.append(f"<http://www.w3.org/ns/prov#wasDerivedFrom> {iri_ref(derived_from)}")
         for name in sorted(resolved, key=lambda n: [f["name"] for f in entity["fields"]].index(n)):
             f = by_name[name]
             pred = f"<{definitions.expand(f['path'])}>"
@@ -395,7 +398,7 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
                            {"iri": version, "status": "dry-run", "graph": graph, "turtle": turtle})
 
         actor = agent_name(env)
-        source = f"camayoc:cy record {entity_name}"
+        source = source or f"camayoc:cy record {entity_name}"
         client.knot(turtle, graph, actor, source)
         if old:
             back = supersession_turtle(old["iri"], version)

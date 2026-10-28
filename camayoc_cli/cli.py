@@ -70,6 +70,29 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--alias", action="append", default=[], help="another spelling; repeat")
 
     sub.add_parser("flush", help="replay records queued while quipu was unreachable")
+
+    note = sub.add_parser("note", help="capture a note now (untyped; promotion types it later)")
+    note.add_argument("text")
+    note.add_argument("--kind", choices=["directive", "decision"], help="mark it a promotion candidate")
+    note.add_argument("--about", help="the entity it is about (IRI or local name)")
+    note.add_argument("--source", default="explicit", choices=["explicit", "stop-check", "file-redirect", "import"],
+                      help="which producer captured it (default explicit)")
+    note.add_argument("--json", action="store_true")
+
+    cap = sub.add_parser("capture", help="capture spool (written by the harness hooks)")
+    cap_sub = cap.add_subparsers(dest="capture_command", metavar="<action>")
+    cap_sub.add_parser("flush", help="write spooled captures to quipu")
+
+
+    pro = sub.add_parser("promote", help="promote captured rulings and cy calls to typed entities")
+    pro.add_argument("mode", nargs="?", choices=["adapter"], help="adapter: chaski incremental protocol")
+    pro.add_argument("--describe", action="store_true", help="adapter: subscription metadata")
+    pro.add_argument("--changes", action="store_true", help="adapter: one request as JSON on stdin")
+    pro.add_argument("--session", help="only this session's captures")
+    pro.add_argument("--retry-blocked", action="store_true", help="try blocked captures again")
+    pro.add_argument("--pending", action="store_true", help="list blocked captures with the cy call that finishes each")
+    pro.add_argument("--event", action="store_true", help="chaski command sink: one event JSON on stdin")
+    pro.add_argument("--json", action="store_true")
     sub.add_parser("mcp", help="serve the generated record_*/recall_* MCP tools on stdio")
 
     hook = sub.add_parser("hook", help="harness hooks (installed by tambo; off unless wired)")
@@ -83,6 +106,9 @@ def build_parser() -> argparse.ArgumentParser:
     mr.add_argument("--person", metavar="IRI",
                     help="who issues rulings/preferences in these files (default $CAMAYOC_PERSON)")
     mr.add_argument("--worker", metavar="JOB", help=argparse.SUPPRESS)
+    for event, what in (("user-prompt-submit", "capture the prompt"), ("stop", "capture the final answer"),
+                        ("session-end", "flush captures and promote this session's candidates")):
+        hook_sub.add_parser(event, help=f"memory capture: {what} (hook JSON on stdin; always exits 0, prints nothing)")
 
     pr = sub.add_parser("prime", help="agent primer and live state (stack-prime/1)")
     pr.add_argument("--brief", action="store_true")
@@ -112,10 +138,21 @@ def main(argv: list[str] | None = None) -> int:
         from . import mcp
         return mcp.serve()
     if args.command == "hook":
-        if args.hook_name != "memory-redirect":
+        if args.hook_name == "memory-redirect":
+            from . import memory_redirect
+            return memory_redirect.main(args.mode, args.person, args.worker)
+        if args.hook_name not in ("user-prompt-submit", "stop", "session-end"):
             ap.parse_args(["hook", "--help"])
-        from . import memory_redirect
-        return memory_redirect.main(args.mode, args.person, args.worker)
+        from . import capture
+        try:
+            payload = json.load(sys.stdin)
+        except (ValueError, OSError):
+            payload = {}
+        capture.hook(args.hook_name, payload if isinstance(payload, dict) else {})
+        return 0  # a hook never blocks or breaks a session, and prints nothing
+    if args.command == "promote" and args.mode == "adapter":
+        from . import promote
+        return promote.main_adapter(describe=args.describe)
     if args.command == "prime":
         return prime.run(brief=args.brief, as_json=args.json, static=args.static, section=args.section)
     try:
@@ -143,6 +180,21 @@ def main(argv: list[str] | None = None) -> int:
             return _emit(memory.add_topic(args.name, args.alias), False)
         if args.command == "flush":
             return _emit(memory.flush(), False)
+        if args.command == "note":
+            from . import capture
+            return _emit(capture.note(args.text, kind=args.kind, about=args.about, source=args.source), args.json)
+        if args.command == "capture":
+            from . import capture
+            if args.capture_command != "flush":
+                ap.parse_args(["capture", "--help"])
+            return _emit(capture.flush(), False)
+        if args.command == "promote":
+            from . import promote
+            if args.event:
+                return _emit(promote.receive_event(json.load(sys.stdin)), args.json)
+            if args.pending:
+                return _emit(promote.list_blocked(), args.json)
+            return _emit(promote.run(session=args.session, retry_blocked=args.retry_blocked), args.json)
     except quipu.QuipuError as exc:
         print(f"camayoc: {exc}", file=sys.stderr)
         return 3

@@ -1,0 +1,24 @@
+# Chaski emitter: promote memory captures when they land (aegis-gshu.4).
+# docs/design/memory-capture.md. Reactive: chaski follows quipu's /changes
+# feed; the adapter runs only when a capture's kindHint or promotion marks
+# change, and PT24H is the catalogue reconciliation, not a scan per tick. No
+# agent is woken: the command sink runs `cy promote --event`, which is code.
+emitters:
+  - label: memory-capture-promotion
+    trigger: changes
+    schedule: PT24H
+    command: [cy, promote, adapter]
+    key: capture
+    event: memory.capture.pending
+    from: SETTLED
+    to: PENDING
+    baseline_emits: true   # a capture first seen pending must still be promoted
+    owner: camayoc
+    sink:
+      graph:
+        severity: info
+        action: promote
+        condition: "camayoc_cli.promote.adapter: kindHint and no promotedTo, duplicateOf or promotionBlocked"
+        comment: A captured ruling or cy call is waiting for promotion to a typed camayoc entity.
+      command:
+        argv: [cy, promote, --event]

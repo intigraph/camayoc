@@ -301,7 +301,10 @@ gshu.2 builds the following:
 ## 5. Capture and promotion (gshu.4)
 
 Capture is cheap and untyped. Promotion is the only path that has to pass
-the shapes.
+the shapes. Built in gshu.4; [memory-capture.md](memory-capture.md) settles
+the hook placement, the chaski trigger and one change to the shape below:
+captures carry no `rdf:type`, because a strict store refuses an unsanctioned
+class and a capture must never be refused.
 
 **Capture shape** (`aegis:MemoryCapture`, a `prov:Activity`, plane
 `crew:inferred`):
