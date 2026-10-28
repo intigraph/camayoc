@@ -133,8 +133,9 @@ When Quipu is unreachable, a record is queued under
 #### Memory-file redirect hook (off by default)
 
 `cy hook memory-redirect` is a `PreToolUse` hook for writes to
-`*/.claude/projects/*/memory/*`, every file in the directory, including
-`MEMORY.md`. Nothing enables it on install. Tambo wires it into Claude Code
+`~/.claude/projects/*/memory/*` (or `$CLAUDE_CONFIG_DIR/projects/*/memory/*`),
+every file in the directory, including `MEMORY.md`. A lookalike path anywhere
+else, such as a test fixture, is never touched. Nothing enables it on install. Tambo wires it into Claude Code
 (`Write|Edit|MultiEdit`) or Codex (`apply_patch`) only when you ask, and it
 never runs as part of the camayoc plugin's own hooks.
 

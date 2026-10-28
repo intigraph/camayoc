@@ -89,13 +89,22 @@ def write(path: str, content: str) -> dict:
 class PathAndParseTests(unittest.TestCase):
 
     def test_memory_paths_match_every_file_not_just_the_index(self):
+        env = {"HOME": "/Users/u"}
         for p in ("/Users/u/.claude/projects/-a-b/memory/MEMORY.md",
                   "/Users/u/.claude/projects/-a-b/memory/handoff-2026-10-27.md",
-                  "/home/u/.claude/projects/x/memory/sub/notes.txt"):
-            self.assertTrue(mr.is_memory_path(p), p)
+                  "/Users/u/.claude/projects/x/memory/sub/notes.txt",
+                  "/Users/u/.claude/projects/x/../x/memory/n.md"):
+            self.assertTrue(mr.is_memory_path(p, env), p)
         for p in ("/Users/u/.claude/projects/-a-b/transcript.jsonl", "/Users/u/.claude/memory/x.md",
-                  "/repo/docs/memory/x.md", "/Users/u/.claude/projects/-a-b/memory", ""):
-            self.assertFalse(mr.is_memory_path(p), p)
+                  "/repo/docs/memory/x.md", "/Users/u/.claude/projects/-a-b/memory", "",
+                  "/repo/fixtures/.claude/projects/p/memory/x.md",
+                  "/Users/other/.claude/projects/p/memory/x.md"):
+            self.assertFalse(mr.is_memory_path(p, env), p)
+
+    def test_claude_config_dir_is_honored(self):
+        env = {"HOME": "/Users/u", "CLAUDE_CONFIG_DIR": "/cfg/claude"}
+        self.assertTrue(mr.is_memory_path("/cfg/claude/projects/p/memory/x.md", env))
+        self.assertTrue(mr.is_memory_path("/Users/u/.claude/projects/p/memory/x.md", env))
 
     def test_frontmatter_subset(self):
         fm, body = mr.parse_frontmatter(fixture("push-policy.md"))
@@ -144,7 +153,8 @@ class PathAndParseTests(unittest.TestCase):
         self.assertEqual(("/h/.claude/projects/p/memory/new.md", "---\nname: n\n---\nbody\n", "add"), got[0])
         self.assertEqual(("/h/.claude/projects/p/memory/moved.md", None, "update"), got[1])
         self.assertEqual("delete", got[2][2])
-        ts = mr.targets({"tool_name": "apply_patch", "tool_input": {"command": patch}, "cwd": "/repo"})
+        ts = mr.targets({"tool_name": "apply_patch", "tool_input": {"command": patch}, "cwd": "/repo"},
+                        {"HOME": "/h"})
         self.assertEqual(3, len(ts))
 
 
@@ -159,7 +169,7 @@ class HookTests(unittest.TestCase):
 
     def test_non_memory_paths_and_garbage_pass_silently_in_every_mode(self):
         for mode in ("copy", "block"):
-            for payload in (write("/repo/README.md", "x"), {"tool_name": "Bash", "tool_input": {"command": "ls"}},
+            for payload in (write("/repo/README.md", "x"), write("/repo/t/.claude/projects/p/memory/a.md", "x"), {"tool_name": "Bash", "tool_input": {"command": "ls"}},
                             "not json", "", "[]", {"tool_name": "Write", "tool_input": "oops"}):
                 with self.subTest(mode=mode, payload=str(payload)[:30]):
                     code, out, err = hook(payload, "--mode", mode, env=self.env)
