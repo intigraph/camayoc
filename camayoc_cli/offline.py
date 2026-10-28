@@ -131,6 +131,11 @@ def capture_length(env=None):
 
 
 def backlog(env=None):
+    from . import capture_spool
     records, captures = queue_length(env), capture_length(env)
-    return dict(schema='camayoc-backlog/1', records=records, captures=captures,
+    try:
+        quarantined = len(capture_spool.quarantined(queue_path(env).with_name('capture-spool.jsonl')))
+    except (OSError, ValueError, TypeError, KeyError):
+        quarantined = None
+    return dict(schema='camayoc-backlog/1', records=records, captures=captures, quarantined_captures=quarantined,
                 queued=records + captures if records is not None and captures is not None else None)

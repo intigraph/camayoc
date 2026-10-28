@@ -30,27 +30,44 @@ installs the same three commands for Codex, whose Stop payload carries
 
 **Cost.** A hook durably appends one JSON line under a short local mutation
 lock, then starts a detached `cy capture flush` unless a replayer is running.
-No network runs under the mutation lock. The replay lock is nonblocking and
-separate, so a hook arriving during an RPC can still enqueue. Hooks exit zero
-and print nothing. `cy flush --hook` shares its record/time budget across typed
-writes and captures.
+Appending checks sizes and at most one tail byte; it never parses the pending
+spool. Replay rotates the active file into an older immutable prefix under
+that lock, then performs all scanning, acknowledgment rewrites and network work
+outside the hook's mutation lock. A torn append is separated from the next
+capture by a newline. Hooks exit zero and print nothing. `cy flush --hook`
+starts a detached bounded worker (20 visited records, 750 ms network budget),
+so SessionStart does not scan the spool either. Local worker failures do not
+block the harness.
 
-The FIFO confirms one ordered head before acknowledging it. Refusals, uncertain
-RPC results, corrupt/torn queues and acknowledgment errors keep the head and its
-tail. A new entry records its destination and origin without credentials;
-changing endpoints or planes refuses replay. Current credentials are used with
-the recorded origin. Files and locks are private; an existing directory is
-forced to `0700`.
+The capture FIFO acknowledges successful heads and quarantines refused,
+malformed/torn, destination-mismatched or unbound heads before continuing.
+Network failures and uncertain RPC results retain the head and its tail for
+ordered retry. Quarantine archival or acknowledgment errors also retain the
+head; a stable archive ID avoids duplicate archives after a local failure.
+Every visited record or malformed fragment counts against the replay budget.
+New entries record destination and origin without credentials; they never get
+sent to another endpoint or plane. Current credentials preserve recorded origin.
+Files and locks are private; the state directory is forced to `0700`.
 
-**Retention.** Existing captures do not expire or get evicted during an outage.
-The shared FIFO bounds each file to 16 MiB and each new entry to 1 MiB; reaching
-capacity refuses only the new entry. An older `capture-spool.inflight.jsonl` is
-an older queue prefix and is counted in backlog. It is drained before the new
-spool, without a destructive merge or rename. A pre-upgrade record with no
-frozen destination stays pending for operator reconciliation; the adapter
-never guesses which store should receive it. Stop old-version flushers before
-upgrading: concurrent writers from an older implementation do not honor the
-new mutation lock.
+**Retention.** Captures older than seven days are removed from pending replay
+into local quarantine, never sent as fresh captures. Expiry is checked by the
+bounded background replayer, including during an outage. Pending active and
+older-prefix files share a 16 MiB cap, with a 1 MiB limit per new entry; at
+capacity only the new entry is refused and maintenance is requested. Existing
+`capture-spool.inflight.jsonl` remains the older prefix. Stop old-version
+flushers before upgrading: they do not honor this version's rotation protocol.
+
+**Quarantine.** `cy capture quarantine --json` shows a count and entry IDs,
+reason categories and timestamps, without raw text or a network call.
+`cy backlog` includes `quarantined_captures` separately from pending `queued`.
+An unreadable archive gives an UNKNOWN count, not zero. Original bytes (even
+torn or invalid UTF-8 fragments) remain private in `capture-quarantine/` until
+the operator deliberately runs `cy capture quarantine --clear` to discard them.
+Quarantine has no automatic retry and is not successful graph delivery. Inspect
+and back up evidence before clearing it; retained quarantine can consume disk
+until cleared. Ordinary capture flush exits 1 while quarantine needs attention,
+even after valid later entries have replayed. The typed `cy record` FIFO keeps
+its existing stop-on-refusal policy; this quarantine policy is capture-only.
 
 **What is skipped.** Prompts under 20 characters, and harness-written prompts
 (`<task-notification>`, `<command-name>`, and the like). Text is cut to 4,000

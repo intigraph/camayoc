@@ -148,9 +148,9 @@ class OfflineBufferTests(unittest.TestCase):
     def test_flush_hook_always_exits_zero_even_on_buffer_exception(self):
         with mock.patch.object(memory, 'flush_all', side_effect=OSError('no disk')), \
              contextlib.redirect_stderr(io.StringIO()):
-            self.assertEqual(0, cli.main(['flush', '--hook']))
+            self.assertEqual(0, cli.main(['flush', '--hook-worker']))
         with mock.patch.object(memory, 'flush_all', return_value=memory.Outcome(1)) as flush:
-            self.assertEqual(0, cli.main(['flush', '--hook']))
+            self.assertEqual(0, cli.main(['flush', '--hook-worker']))
         flush.assert_called_once_with(limit=20, timeout=0.75)
 
     def test_backlog_cli_reports_unknown_and_is_read_only(self):

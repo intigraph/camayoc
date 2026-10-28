@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
+import subprocess
 import sys
 
 from . import __version__, definitions, memory, prime, quipu
@@ -70,7 +72,8 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--alias", action="append", default=[], help="another spelling; repeat")
 
     flush = sub.add_parser("flush", help="replay records queued while quipu was unreachable")
-    flush.add_argument("--hook", action="store_true", help="bounded hook replay; always exits 0")
+    flush.add_argument("--hook", action="store_true", help="start bounded detached replay; always exits 0")
+    flush.add_argument("--hook-worker", action="store_true", help=argparse.SUPPRESS)
     sub.add_parser("backlog", help="read the local queue count as JSON (unknown stays null)")
 
     note = sub.add_parser("note", help="capture a note now (untyped; promotion types it later)")
@@ -84,6 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     cap = sub.add_parser("capture", help="capture spool (written by the harness hooks)")
     cap_sub = cap.add_subparsers(dest="capture_command", metavar="<action>")
     cap_sub.add_parser("flush", help="write spooled captures to quipu")
+    quarantine = cap_sub.add_parser("quarantine", help="inspect local rejected/expired capture counts (no network)")
+    quarantine.add_argument("--clear", action="store_true", help="discard all quarantined captures locally")
+    quarantine.add_argument("--json", action="store_true")
 
 
     pro = sub.add_parser("promote", help="promote captured rulings and cy calls to typed entities")
@@ -140,9 +146,16 @@ def main(argv: list[str] | None = None) -> int:
         from . import offline
         print(json.dumps(offline.backlog()))
         return 0
-    if args.command == "flush" and args.hook:
+    if args.command == "flush" and (args.hook or args.hook_worker):
         try:
-            memory.flush_all(limit=20, timeout=0.75)
+            if args.hook_worker:
+                memory.flush_all(limit=20, timeout=0.75)
+            else:
+                # No count/scan or mutation lock on the harness thread.
+                subprocess.Popen([sys.executable, str(Path(__file__).with_name('__main__.py')),
+                                  'flush', '--hook-worker'], stdin=subprocess.DEVNULL,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 start_new_session=True)
         except Exception:  # hook failures must never block the harness
             print("camayoc: offline replay unavailable; backlog unconfirmed", file=sys.stderr)
         return 0
@@ -197,6 +210,8 @@ def main(argv: list[str] | None = None) -> int:
             return _emit(capture.note(args.text, kind=args.kind, about=args.about, source=args.source), args.json)
         if args.command == "capture":
             from . import capture
+            if args.capture_command == "quarantine":
+                return _emit(capture.quarantine(clear=args.clear), args.json)
             if args.capture_command != "flush":
                 ap.parse_args(["capture", "--help"])
             return _emit(capture.flush(), False)
