@@ -307,7 +307,26 @@ def _replay_entry(raw, env):
         return entry, 'malformed'
 
 
+def retention_note(totals):
+    if totals is None:
+        return 'quarantine retention totals UNKNOWN; inspect the local ledger'
+    pending = '; eviction pending' if totals.get('pending') else ''
+    return (f"quarantine retention since clear: expired={totals['expired']}, capacity={totals['capacity']}, "
+            f"orphaned={totals['orphaned']}, bytes={totals['bytes']}; "
+            f"last={totals['last_eviction_at'] or 'never'}{pending}")
+
+
 def quarantine(env=None, *, clear=False, requeue=False) -> memory.Outcome:
+    result = _quarantine(env, clear=clear, requeue=requeue)
+    totals = capture_spool.retention_totals(spool_path(env))
+    result.data['retention_totals'] = totals
+    result.lines.append(retention_note(totals))
+    if totals is None or totals.get('pending'):
+        result.code = 1
+    return result
+
+
+def _quarantine(env=None, *, clear=False, requeue=False) -> memory.Outcome:
     """Operator-only local inspection/discard, with no network or raw text output."""
     try:
         path = spool_path(env)
@@ -323,7 +342,7 @@ def quarantine(env=None, *, clear=False, requeue=False) -> memory.Outcome:
                 result = capture_spool.requeue(path, inflight_path(env), memory.iso(_now(env)), accept)
             return memory.Outcome(0 if result['quarantined'] == 0 else 1,
                 [f"requeued {result['requeued']}, {result['quarantined']} still quarantined; no network writes",
-                 f"retention discarded {result['retention']['expired']} expired and {result['retention']['capacity']} oldest archives",
+                 f"retention discarded {result['retention']['expired']} expired, {result['retention']['capacity']} oldest archives and {result['retention'].get('orphaned', 0)} orphaned staging files",
                  'restore the original endpoint/plane before retrying destination entries; expired/malformed entries cannot replay'], result)
         if clear:
             count = capture_spool.clear(path)
@@ -396,12 +415,14 @@ def flush(client: quipu.Client | None = None, env=None, *, limit=100, deadline=N
     held = quarantine(env).data['quarantined']
     lines.append(f'captured {done}, {rest if rest is not None else "UNKNOWN"} still spooled, '
                  f'{held if held is not None else "UNKNOWN"} quarantined')
-    if retention['expired'] or retention['capacity']:
-        lines.append(f"quarantine retention discarded {retention['expired']} expired and {retention['capacity']} oldest archives")
+    if retention['expired'] or retention['capacity'] or retention.get('orphaned'):
+        lines.append(f"quarantine retention discarded {retention['expired']} expired, {retention['capacity']} oldest archives and {retention.get('orphaned', 0)} orphaned staging files")
+    totals = capture_spool.retention_totals(path)
+    lines.append(retention_note(totals))
     if held:
         lines.append('inspect: cy capture quarantine; retry locally: --requeue; discard: --clear')
-    return memory.Outcome(0 if rest == 0 and held == 0 and not local_error else 1, lines,
-                          dict(written=done, spooled=rest, quarantined=held, quarantined_hashes=rejected, quarantine_retention=retention))
+    return memory.Outcome(0 if rest == 0 and held == 0 and not local_error and totals is not None and not totals.get('pending') else 1, lines,
+                          dict(written=done, spooled=rest, quarantined=held, quarantined_hashes=rejected, quarantine_retention=retention, retention_totals=totals))
 
 
 def flush_detached(env=None) -> None:

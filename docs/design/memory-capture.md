@@ -88,7 +88,14 @@ insertion also enforces size/count, evicting oldest archives first. Maintenance
 runs even when the typed FIFO is blocked or captures are otherwise empty.
 These are lazy bounds: an idle installation needs its next maintenance run to
 remove aged archives. Read-only inspection does not prune. Retention reports
-expired/capacity discard counts, and cleans interrupted private staging files.
+expired/capacity/orphaned discard counts and bytes, and cleans interrupted
+private staging files. Cumulative counts and the last eviction time persist in
+`capture-quarantine-retention.json` (0600, metadata only), so discarded worker
+output cannot hide data loss. `cy capture quarantine` shows these totals in
+text and JSON, and `cy backlog` includes the same `retention_totals`. Reads do
+not acknowledge them; `cy capture quarantine --clear` explicitly clears both
+archives and retention totals. A pending durable receipt survives interruption
+between unlink and counter commit; corrupt or changed receipt state is UNKNOWN.
 Back up evidence before it expires or reaches capacity. Requeue never refreshes
 the original capture's separate seven-day pending age.
 

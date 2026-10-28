@@ -4,6 +4,8 @@ import contextlib
 import io
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -202,3 +204,64 @@ class QuarantineTests(unittest.TestCase):
         result = capture_spool.prune(self.active, STAMP)
         self.assertEqual(1, result['expired'])
         self.assertFalse(archive.exists())
+
+    def test_silent_hook_eviction_is_visible_to_separate_cli_until_explicit_clear(self):
+        self.archive(b'old private prompt one', 'malformed', '2026-10-01T12:00:00Z')
+        self.archive(b'old private prompt two', 'malformed', '2026-10-01T12:00:00Z')
+        with mock.patch.object(memory, 'flush', return_value=memory.Outcome(1)), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(0, cli.main(['flush', '--hook-worker']))
+        ledger = capture_spool.retention_path(self.active)
+        self.assertEqual(0o600, ledger.stat().st_mode & 0o777)
+        self.assertNotIn(b'old private prompt', ledger.read_bytes())
+        before = (ledger.read_bytes(), ledger.stat().st_mtime_ns)
+        def read_cli(*args):
+            child = subprocess.run([sys.executable, '-m', 'camayoc_cli', *args],
+                cwd=Path(__file__).resolve().parents[1], env=dict(os.environ, **self.env),
+                capture_output=True, text=True, timeout=5, check=True)
+            return child.stdout
+        report = json.loads(read_cli('capture', 'quarantine', '--json'))
+        self.assertEqual(0, report['quarantined'])
+        self.assertEqual(2, report['retention_totals']['expired'])
+        self.assertEqual(STAMP, report['retention_totals']['last_eviction_at'])
+        backlog = json.loads(read_cli('backlog'))
+        self.assertEqual(2, backlog['retention_totals']['expired'])
+        self.assertIn('expired=2', read_cli('capture', 'quarantine'))
+        self.assertEqual(before, (ledger.read_bytes(), ledger.stat().st_mtime_ns))
+        cleared = json.loads(read_cli('capture', 'quarantine', '--clear', '--json'))
+        self.assertEqual(0, cleared['retention_totals']['expired'])
+        self.assertIsNone(cleared['retention_totals']['last_eviction_at'])
+        self.assertFalse(ledger.exists())
+
+    def test_counter_commit_failure_keeps_durable_eviction_receipt_without_double_count(self):
+        self.archive(b'expired private prompt', 'malformed', '2026-10-01T12:00:00Z')
+        write = capture_spool._write_retention
+        calls = 0
+        def fail_counter_commit(*args):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise OSError('fixture counter commit failed after unlink')
+            return write(*args)
+        with mock.patch.object(capture_spool, '_write_retention', side_effect=fail_counter_commit):
+            with self.assertRaises(OSError):
+                capture_spool.prune(self.active, STAMP)
+        self.assertEqual(1, capture_spool.retention_totals(self.active)['expired'])
+        self.assertEqual([], capture_spool.quarantined(self.active))
+        capture_spool.prune(self.active, STAMP)
+        self.assertEqual(1, capture_spool.retention_totals(self.active)['expired'])
+        self.assertIsNone(json.loads(capture_spool.retention_path(self.active).read_text())['pending'])
+
+    def test_unwritable_ledger_prevents_unreported_eviction(self):
+        self.archive(b'keep until eviction is recorded', 'malformed', '2026-10-01T12:00:00Z')
+        before = capture_spool.quarantined(self.active)
+        with mock.patch.object(capture_spool, '_write_retention', side_effect=OSError('fixture full disk')):
+            with self.assertRaises(OSError):
+                capture_spool.prune(self.active, STAMP)
+        self.assertEqual(before, capture_spool.quarantined(self.active))
+        self.assertEqual(0, capture_spool.retention_totals(self.active)['expired'])
+
+    def test_corrupt_retention_ledger_is_unknown_not_zero(self):
+        capture_spool.retention_path(self.active).write_bytes(b'{partial')
+        self.assertIsNone(capture.quarantine(self.env).data['retention_totals'])
+        self.assertIsNone(offline.backlog(self.env)['retention_totals'])

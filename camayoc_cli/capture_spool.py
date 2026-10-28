@@ -22,6 +22,125 @@ MAX_QUARANTINE_ENTRIES = 1024
 MAX_QUARANTINE_AGE_DAYS = 7
 
 
+def retention_path(active):
+    return active.with_name('capture-quarantine-retention.json')
+
+
+def _empty_retention():
+    return dict(schema=1, expired=0, capacity=0, orphaned=0, bytes=0,
+                last_eviction_at=None, pending=None)
+
+
+def _load_retention(active):
+    try:
+        fd = _open(retention_path(active), os.O_RDONLY)
+    except FileNotFoundError:
+        return _empty_retention()
+    with os.fdopen(fd, 'rb') as stream:
+        raw = stream.read(8193)
+    if len(raw) > 8192:
+        raise offline.QueueError('retention ledger exceeds bound')
+    value = json.loads(raw)
+    if not isinstance(value, dict) or value.get('schema') != 1:
+        raise offline.QueueError('unreadable retention ledger')
+    for key in ('expired', 'capacity', 'orphaned', 'bytes'):
+        if type(value.get(key)) is not int or value[key] < 0:
+            raise offline.QueueError('invalid retention counter')
+    stamp = value.get('last_eviction_at')
+    if stamp is not None:
+        _stamp(stamp)
+    pending = value.get('pending')
+    if pending is not None:
+        if (not isinstance(pending, dict) or pending.get('reason') not in ('expired', 'capacity', 'orphaned') or
+                not isinstance(pending.get('name'), str) or Path(pending['name']).name != pending['name'] or
+                pending['name'] in ('', '.', '..') or type(pending.get('bytes')) is not int or pending['bytes'] < 0 or
+                not isinstance(pending.get('identity'), list) or len(pending['identity']) != 4 or
+                any(type(n) is not int for n in pending['identity'])):
+            raise offline.QueueError('invalid pending retention receipt')
+        _stamp(pending['at'])
+    return value
+
+
+def _write_retention(active, ledger):
+    path = retention_path(active)
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix='.capture-retention-', mode='w', delete=False) as stream:
+            tmp = Path(stream.name)
+            os.fchmod(stream.fileno(), 0o600)
+            json.dump(ledger, stream, sort_keys=True)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp, path)
+        offline._sync_dir(path.parent)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
+def _identity(path):
+    meta = path.lstat()
+    if not stat.S_ISREG(meta.st_mode):
+        raise offline.QueueError('eviction target is not a regular file')
+    return [meta.st_dev, meta.st_ino, meta.st_size, meta.st_mtime_ns]
+
+
+def _pending_exists(active, pending):
+    path = quarantine_dir(active) / pending['name']
+    try:
+        identity = _identity(path)
+    except FileNotFoundError:
+        return False
+    if identity != pending['identity']:
+        raise offline.QueueError('pending eviction target changed; inspect local state')
+    return True
+
+
+def _count_eviction(ledger, pending):
+    ledger[pending['reason']] += 1
+    ledger['bytes'] += pending['bytes']
+    ledger['last_eviction_at'] = pending['at']
+    ledger['pending'] = None
+
+
+def retention_totals(active):
+    """Read-only totals, including a durable eviction awaiting counter commit.
+
+    Missing ledger means zero. Bad metadata remains UNKNOWN. A not-yet-deleted
+    target is reported as pending, never counted as already discarded.
+    """
+    try:
+        ledger = _load_retention(active)
+        pending = ledger.get('pending')
+        if pending is not None and not _pending_exists(active, pending):
+            _count_eviction(ledger, pending)
+        return {key: ledger[key] for key in ('schema', 'expired', 'capacity', 'orphaned', 'bytes', 'last_eviction_at')} | {
+            'pending': ledger.get('pending') is not None}
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        return None
+
+
+def _complete_eviction(active, ledger):
+    pending = ledger.get('pending')
+    if pending is None:
+        return None
+    if _pending_exists(active, pending):
+        (quarantine_dir(active) / pending['name']).unlink()
+    directory = quarantine_dir(active)
+    offline._sync_dir(directory if directory.exists() else active.parent)
+    _count_eviction(ledger, pending)
+    _write_retention(active, ledger)
+    return pending
+
+
+def _evict_recorded(active, ledger, path, reason, size, at):
+    # The durable intent precedes unlink. After a crash the reader can still
+    # distinguish completed removal from pending work; maintenance folds it once.
+    ledger['pending'] = dict(name=path.name, reason=reason, bytes=size, at=at, identity=_identity(path))
+    _write_retention(active, ledger)
+    _complete_eviction(active, ledger)
+
+
 def _open(path, flags, mode=0o600):
     fd = os.open(path, flags | os.O_NONBLOCK | os.O_NOFOLLOW, mode)
     if not stat.S_ISREG(os.fstat(fd).st_mode):
@@ -184,16 +303,21 @@ def quarantined(active):
 def clear(active):
     """Explicit local discard; excludes concurrent arrivals through shared lock."""
     with offline.locked(active.with_name('capture-quarantine.jsonl')):
+        _complete_eviction(active, _load_retention(active))
         values = quarantined(active)
         directory = quarantine_dir(active)
         for value in values:
             (directory / (value['id'] + '.json')).unlink()
         if directory.exists():
             offline._sync_dir(directory)
+        retention_path(active).unlink(missing_ok=True)
+        offline._sync_dir(active.parent)
         return len(values)
 
 
 def _stamp(text):
+    if not isinstance(text, str):
+        raise offline.QueueError('quarantine timestamp is not text')
     value = dt.datetime.fromisoformat(text.replace('Z', '+00:00'))
     if value.tzinfo is None:
         raise offline.QueueError('quarantine timestamp is not timezone-aware')
@@ -211,6 +335,8 @@ def _prune_locked(active, at, *, reserve_bytes=0, reserve_count=0, retention=Non
     directory = quarantine_dir(active)
     if directory.is_symlink():
         raise offline.QueueError('capture quarantine is a symlink')
+    ledger = _load_retention(active)
+    recovered = _complete_eviction(active, ledger)
     rows = []
     for path in directory.glob('*.json'):
         meta = path.lstat()
@@ -227,17 +353,20 @@ def _prune_locked(active, at, *, reserve_bytes=0, reserve_count=0, retention=Non
     remaining, total, changed = [], 0, False
     counts = retention if retention is not None else dict(expired=0, capacity=0, bytes=0)
     counts.setdefault('orphaned', 0)
+    if recovered is not None:
+        counts[recovered['reason']] += 1
+        counts['bytes'] += recovered['bytes']
     # Under this lock no current writer owns a staged file. Remove remnants of
     # interrupted writes so private payload cannot accumulate outside the cap.
     for path in directory.glob('.pending-*'):
         size = _size(path)
-        path.unlink()
+        _evict_recorded(active, ledger, path, 'orphaned', size, at)
         changed = True
         counts['orphaned'] += 1
         counts['bytes'] += size
     for path, size, stamp in rows:
         if stamp < now - dt.timedelta(days=MAX_QUARANTINE_AGE_DAYS):
-            path.unlink()
+            _evict_recorded(active, ledger, path, 'expired', size, at)
             changed = True
             counts['expired'] += 1
             counts['bytes'] += size
@@ -247,7 +376,7 @@ def _prune_locked(active, at, *, reserve_bytes=0, reserve_count=0, retention=Non
     while remaining and (total + reserve_bytes > MAX_QUARANTINE_BYTES or
                          len(remaining) + reserve_count > MAX_QUARANTINE_ENTRIES):
         path, size = remaining.pop(0)
-        path.unlink()
+        _evict_recorded(active, ledger, path, 'capacity', size, at)
         changed = True
         total -= size
         counts['capacity'] += 1

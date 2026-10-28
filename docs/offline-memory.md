@@ -84,7 +84,14 @@ and explicit requeue prune expired files; insertion also evicts oldest archives
 to meet capacity. Shared maintenance runs even if the typed FIFO is blocked.
 Age cleanup is lazy until the next maintenance run, never part of hook append
 or read-only inspection. Reported retention counts distinguish expiry from
-capacity eviction. Back up evidence before it expires. The separate capture
+capacity eviction and orphan cleanup. A private 0600 metadata-only ledger in
+`capture-quarantine-retention.json` preserves cumulative counts, discarded bytes
+and the last eviction time across silent background runs. Both
+`cy capture quarantine` (text/JSON) and `cy backlog` expose `retention_totals`.
+Inspection leaves the counters and their mtime unchanged; only explicit
+`cy capture quarantine --clear` acknowledges them and discards archives.
+Unreported eviction is refused if its durable receipt cannot be written;
+interrupted counter commits are recovered without counting a removal twice. Back up evidence before it expires. The separate capture
 pending-age limit is not reset by requeue.
 
 `cy capture quarantine --clear` deliberately discards all remaining archives;

@@ -522,12 +522,16 @@ def flush_all(env=None, *, limit=100, timeout=10.0) -> Outcome:
         retention = None
     out = flush(env=env, limit=limit, timeout=max(0.0, deadline - time.monotonic()))
     out.data['quarantine_retention'] = retention
+    out.data['retention_totals'] = (capture_spool.retention_totals(capture.spool_path(env))
+                                    if retention is not None else None)
+    out.lines.append(capture.retention_note(out.data['retention_totals']) if retention is not None
+                     else 'quarantine retention totals UNKNOWN; inspect the local ledger')
     if retention is None:
         out.code = 1
         out.lines.append('quarantine maintenance UNKNOWN; inspect local state before retrying')
         return out
-    if retention['expired'] or retention['capacity']:
-        out.lines.append(f"quarantine retention discarded {retention['expired']} expired and {retention['capacity']} oldest archives")
+    if retention['expired'] or retention['capacity'] or retention.get('orphaned'):
+        out.lines.append(f"quarantine retention discarded {retention['expired']} expired, {retention['capacity']} oldest archives and {retention.get('orphaned', 0)} orphaned staging files")
     if out.code:
         return out
     if offline.capture_length(env) == 0:
