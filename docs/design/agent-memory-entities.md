@@ -420,6 +420,17 @@ Built so far, for Decision, Directive, Preference, Handoff and Reference:
   table is tested in `tests/test_cy_cli.py` against a throwaway local
   `quipu-server`. The secret rules moved into `camayoc_cli/secret_rules.py`,
   and `scripts/memory_secret_rules.py` re-exports them.
+- `queries/mem_index_since.json` (generated) is the one paged query bobbin's
+  memory mirror consumes (gshu.2, bobbin #216). It is called with only
+  `since`; the plane graphs are optional parameters with defaults. It returns
+  `current` rows at their own `recordedAt` and `superseded` rows at the
+  `recordedAt` of the record that replaced them. status and cursor come from a
+  UNION of the two branches, never IF/COALESCE, which older quipu leaves
+  unbound. It returns 50 rows plus one overflow sentinel.
+- Review fixes: the secret check no longer scores URL locations or whole paths
+  as one token, and the false positives from review are pass tests. A record
+  whose key has more than one current version repairs the dangling
+  `supersededBy` before doing anything else.
 - The offline queue is minimal: an append-only JSONL file that `cy flush`
   replays in order. The full buffer, with its backlog line in bobbin's
   header, is gshu.7.

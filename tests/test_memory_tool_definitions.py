@@ -108,6 +108,8 @@ class DefinitionTests(unittest.TestCase):
     def test_recall_queries_carry_the_common_filters(self):
         _, queries = mt.build(self.shapes, self.sidecars)
         for name, manifest in queries.items():
+            if name == "mem_index_since.json":
+                continue  # the bobbin mirror feed; its own contract test is below
             with self.subTest(query=name):
                 template = manifest["template"]
                 self.assertIn("LIMIT 51", template)
@@ -116,6 +118,26 @@ class DefinitionTests(unittest.TestCase):
                     self.assertIn("FILTER NOT EXISTS { ?iri aegis:supersededBy ?newer }", template)
                     self.assertIn("aegis:expiresAt", template)
         self.assertIn("{fresh_since}", queries["mem_handoff.json"]["template"])
+
+    def test_index_since_matches_the_bobbin_contract(self):
+        """bobbin src/memory_recall.rs: called with only `since`; columns, UNION status, paging."""
+        _, queries = mt.build(self.shapes, self.sidecars)
+        q = queries["mem_index_since.json"]
+        params = {p["name"]: p for p in q["params"]}
+        self.assertEqual({"since", "declared", "records", "inferred"}, set(params))
+        self.assertTrue(all(p["required"] is False and "default" in p for p in params.values()))
+        self.assertEqual("", params["since"]["default"])
+        t = q["template"]
+        select = t.split("SELECT", 1)[1].split("FROM", 1)[0]
+        for col in ("?iri", "?naturalKey", "?kind", "?label", "AS ?body", "?sourceKind", "?recordedAt",
+                    "?reviewAfter", "?expiresAt", "?status", "?cursor"):
+            self.assertIn(col, select)
+        self.assertIn('BIND("current" AS ?status)', t)
+        self.assertIn('BIND("superseded" AS ?status)', t)
+        self.assertNotIn("IF(", t)
+        self.assertNotIn("COALESCE", t)
+        self.assertIn("FILTER(?cursor > '{since}')", t)
+        self.assertTrue(t.endswith("ORDER BY ?cursor ?iri LIMIT 51"))
 
 
 if __name__ == "__main__":

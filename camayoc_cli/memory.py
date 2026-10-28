@@ -205,6 +205,18 @@ def current_versions(client: quipu.Client, entity: dict, key: str) -> list[dict]
     return [{k: quipu.value(v) for k, v in r.items()} for r in rows]
 
 
+def repair(client: quipu.Client, current: list[dict], env=None) -> list[str]:
+    """Mark every current version but the newest as superseded by the newest."""
+    if len(current) < 2:
+        return []
+    newest, lines = current[0]["iri"], []
+    for stale in current[1:]:
+        back = f"{iri_ref(stale['iri'])} <{ns()}supersededBy> {iri_ref(newest)} .\n"
+        client.knot(back, planes.plane_for(stale["sourceKind"]), agent_name(env), "camayoc:cy repair supersession")
+        lines.append(f"repaired: {stale['iri']} marked superseded by {newest}")
+    return lines
+
+
 # ---- record ---------------------------------------------------------------------
 
 def record(entity_name: str, args: dict, *, supersede: str | None = None, flags: dict | None = None,
@@ -272,8 +284,14 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
 
         current = current_versions(client, entity, key)
         old = current[0] if current else None
+        # Repair first: more than one current version on a key means an earlier
+        # supersededBy back-link never landed (review of #183). Every older one
+        # is marked superseded by the newest before anything else happens, so a
+        # re-run finishes the job instead of reporting "unchanged" over two
+        # current records.
+        repaired = repair(client, current, env)
         if old and old["hash"] == content_hash:
-            return Outcome(0, [f"unchanged {old['iri']}"], {"iri": old["iri"], "status": "unchanged"})
+            return Outcome(0, repaired + [f"unchanged {old['iri']}"], {"iri": old["iri"], "status": "unchanged"})
         if old:
             if old["sourceKind"] == "declared" and source_kind == "inferred":
                 return Outcome(2, [f"Not recorded: an inferred record never overrides a human-declared one "
@@ -331,9 +349,9 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
             except quipu.QuipuError as exc:
                 return Outcome(1, [f"recorded {entity_name} {version}, but marking {old['iri']} superseded "
                                    f"failed: {exc}. Re-run the same command to finish."])
-            return Outcome(0, [f"superseded {old['iri']} -> {version}"],
+            return Outcome(0, repaired + [f"superseded {old['iri']} -> {version}"],
                            {"iri": version, "status": "superseded", "supersedes": old["iri"]})
-        return Outcome(0, [f"recorded {entity_name} {version}"], {"iri": version, "status": "recorded"})
+        return Outcome(0, repaired + [f"recorded {entity_name} {version}"], {"iri": version, "status": "recorded"})
     except quipu.Refused as exc:
         lines = list(exc.messages)
         paths = {str(i.get("path", "")) for i in exc.issues}

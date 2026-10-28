@@ -274,6 +274,9 @@ class LocalStoreTests(unittest.TestCase):
         seed = "".join(f"<{A}{n}> <http://www.w3.org/2000/01/rdf-schema#label> \"{n}\" .\n" for n in (
             "topic-public-launch", "repo-goldblum", "system-seeds-board", "hammond", "sattler", "host-vati"))
         seed += f"<{A}person-stiwi> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Stiwi\" .\n"
+        seed += f"<{A}person-robin> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Robin\" .\n"
+        seed += "".join(f"<{A}pager-{i:02d}> <http://www.w3.org/2000/01/rdf-schema#label> \"pager {i}\" .\n"
+                        for i in range(55))
         seed += f"<{A}person-ellie> a <{A}Person> ; <http://www.w3.org/2000/01/rdf-schema#label> \"Ellie\" .\n"
         cls.post("/knot", {"turtle": seed, "actor": "test"})
         cls.state = tempfile.TemporaryDirectory()
@@ -409,6 +412,68 @@ class LocalStoreTests(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertEqual("mem_preferences", json.loads(out)["query"])
         self.assertEqual(["Sign emails."], [r["body"] for r in json.loads(out)["rows"]])
+
+    def test_failed_backlink_is_repaired_on_rerun(self):
+        """Review of #183: a lost supersededBy must not leave two current records for one key."""
+        from camayoc_cli import quipu
+        base = ["record", "preference", "--person", "person-robin", "--context", "document", "--topic", "board-access"]
+        code, out, err = self.cy(*base, "--prefers", "Short documents.", now="2026-10-10T00:00:00Z")
+        self.assertEqual(0, code, err)
+        old = out.split()[-1]
+        real, calls = quipu.Client.knot, []
+
+        def flaky(client, *args, **kwargs):
+            calls.append(args)
+            if len(calls) == 2:  # the back-link write
+                raise quipu.QuipuError("injected failure")
+            return real(client, *args, **kwargs)
+
+        with mock.patch.object(quipu.Client, "knot", flaky):
+            code, out, err = self.cy(*base, "--prefers", "Shorter documents.", now="2026-10-11T00:00:00Z")
+        self.assertEqual(1, code)
+        self.assertIn("Re-run the same command to finish", err)
+        recall = ["recall", "preference", "--person", "person-robin", "--context", "document", "--json"]
+        keys = [r["naturalKey"] for r in json.loads(self.cy(*recall)[1])["rows"]]
+        self.assertEqual(2, keys.count(keys[0]), "precondition: the failure left two current records")
+        code, out, err = self.cy(*base, "--prefers", "Shorter documents.", now="2026-10-11T00:00:05Z")
+        self.assertEqual(0, code, err)
+        self.assertIn(f"repaired: {old} marked superseded by ", out)
+        self.assertIn("unchanged ", out)
+        rows = json.loads(self.cy(*recall)[1])["rows"]
+        self.assertEqual(["Shorter documents."], [r["body"] for r in rows])
+
+    def test_index_since_feeds_the_bobbin_mirror(self):
+        """bobbin gshu.2 contract: /ask with only `since`, pages of 50 + sentinel, superseded comes back once."""
+        self.post("/queries", json.loads((ROOT / "queries/mem_index_since.json").read_text()))
+        for i in range(55):
+            code, _, err = self.cy("record", "handoff", "--agent", f"pager-{i:02d}", "--next", f"step {i}",
+                                   now=f"2026-11-01T00:{i:02d}:00Z")
+            self.assertEqual(0, code, err)
+        code, out, _ = self.cy("record", "handoff", "--agent", "pager-00", "--next", "step again",
+                               now="2026-11-01T01:00:00Z")
+        old, new = out.split()[1], out.split()[3]
+        rows, pages = [], 0
+        since = "2026-10-31T23:59:59Z"  # only this test's records
+        while True:
+            page = self.post("/ask", {"name": "mem_index_since", "params": {"since": since}})["rows"]
+            pages += 1
+            rows += page[:50]
+            if len(page) <= 50:
+                break
+            since = page[49]["cursor"]
+        self.assertEqual(2, pages)
+        by_iri = {}
+        for r in rows:
+            by_iri.setdefault(r["iri"], []).append(r)
+        self.assertEqual(["superseded"], [r["status"] for r in by_iri[old]])
+        self.assertEqual("2026-11-01T01:00:00Z", by_iri[old][0]["cursor"])
+        self.assertEqual(["current"], [r["status"] for r in by_iri[new]])
+        self.assertEqual("step again", by_iri[new][0]["body"])
+        current = [r for r in rows if r["status"] == "current"]
+        self.assertEqual(55, len(current))
+        self.assertEqual(sorted((r["cursor"], r["iri"]) for r in rows), [(r["cursor"], r["iri"]) for r in rows])
+        for col in ("naturalKey", "kind", "label", "sourceKind", "recordedAt"):
+            self.assertTrue(all(r.get(col) for r in current), col)
 
     def test_prime_live_counts(self):
         with mock.patch.dict(os.environ, self.env):
