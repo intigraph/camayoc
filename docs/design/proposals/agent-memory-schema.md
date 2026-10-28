@@ -125,7 +125,7 @@ equivalents with the bearer. Stop at the first refusal.
      `agent-memory/SOURCE_SHA256` matches `shapes/agent-memory.shapes.ttl`.
    - Look for property collisions:
      `quipu_shapes` / `quipu_load_ontology {"action":"list"}` must not show an
-     `rdfs:domain` on any of the 25 properties in `01`. A domain would retype
+     `rdfs:domain` on any of the properties in `01` (26 since `supersededAt` was added). A domain would retype
      memory records, which is the `aegis:expiresAt` trap from design §7.
 1. **Vocabulary (01).**
    - Submit: `quipu_propose_schema_change` with the fields of `01-ontology.json`.
@@ -164,4 +164,8 @@ equivalents with the bearer. Stop at the first refusal.
 Rollback: shapes load by name, so
 `POST /shapes {"action":"remove","name":<target>}` removes one set without
 touching the others. `quipu_load_ontology {"action":"remove"}` does the same
-for the vocabulary. No live data is rewritten at any step.
+for the vocabulary. Stored queries are removed by name the same way, which
+leaves the shapes and the data alone:
+`for q in queries/mem_*.json; do n=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["name"])' "$q"); curl -sf -X POST "$QUIPU/queries" -H 'Content-Type: application/json' -H "Authorization: Bearer $T" -d "{\"action\":\"remove\",\"name\":\"$n\"}"; done`
+(MCP: `quipu_queries {"action":"remove","name":<name>}`). No live data is
+rewritten at any step.
