@@ -124,7 +124,8 @@ def acknowledge(path, expected):
 
 def capture_length(env=None):
     try:
-        return len(_read(queue_path(env).with_name('capture-spool.jsonl')))
+        return (len(_read(queue_path(env).with_name('capture-spool.inflight.jsonl'))) +
+                len(_read(queue_path(env).with_name('capture-spool.jsonl'))))
     except (OSError, QueueError):
         return None
 

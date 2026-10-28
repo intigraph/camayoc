@@ -13,17 +13,16 @@ there. Every hook path exits 0.
 from __future__ import annotations
 
 import datetime as _dt
-import fcntl
 import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from pathlib import Path
 
-from . import memory, planes, quipu
+from . import memory, offline, planes, quipu
 from .secret_rules import RULES, find_secrets
 
 PROV = "http://www.w3.org/ns/prov#"
@@ -212,18 +211,9 @@ def turtle(entry: dict) -> str:
 
 
 # ---- spool (the hook side) -------------------------------------------------------------
-# The hook appends one line with O_APPEND and takes no lock, so it can never
-# wait on a flush. `cy capture flush` holds its own lock (flush.lock) only to
-# keep two flushers apart: it renames the spool to an in-flight file and
-# writes from that, so new hook lines land in a fresh spool meanwhile.
-# Retention: entries older than MAX_AGE_DAYS are dropped, then the oldest
-# beyond MAX_ENTRIES / MAX_BYTES, so a long outage cannot pile captures up;
-# the hook itself drops a capture once the spool passes HARD_BYTES.
-
-MAX_AGE_DAYS = 7
-MAX_ENTRIES = 5000
-MAX_BYTES = 4 * 1024 * 1024
-HARD_BYTES = 2 * MAX_BYTES
+# New writers use the shared durable FIFO. Legacy in-flight work is a separate
+# older prefix; it is never discarded or merged by a destructive rename.
+OFFLINE_FIFO_V1 = True
 
 
 def state_dir(env=None) -> Path:
@@ -242,20 +232,8 @@ def inflight_path(env=None) -> Path:
 def _private_dir(env=None) -> Path:
     d = state_dir(env)
     d.mkdir(parents=True, exist_ok=True, mode=0o700)
-    try:
-        os.chmod(d, 0o700)  # an existing dir keeps its old mode otherwise
-    except OSError:
-        pass
+    os.chmod(d, 0o700)
     return d
-
-
-def _open_private(path: Path, flags: int) -> int:
-    fd = os.open(path, flags | os.O_CREAT, 0o600)
-    try:
-        os.fchmod(fd, 0o600)
-    except OSError:
-        pass
-    return fd
 
 
 def _line(entry: dict) -> bytes:
@@ -263,87 +241,40 @@ def _line(entry: dict) -> bytes:
 
 
 def spool(entry: dict, env=None) -> bool:
-    """Append one capture. No lock: one O_APPEND write. False when dropped
-    because the spool is past its hard ceiling."""
+    """Durable append; False refuses only the new entry at capacity.
+
+    Preserve the producer's boolean contract. Existing records never expire or
+    get evicted to make room. Hooks catch local errors and always exit zero.
+    """
     _private_dir(env)
+    context = memory._queued_context(env)
+    origin = dict(context['env'], QUIPU_AGENT=entry['agent'])
+    if entry.get('session'):
+        origin['QUIPU_SESSION'] = entry['session']
+    context['env'] = origin
     path = spool_path(env)
-    size = 0
-    for p in (path, inflight_path(env)):
-        try:
-            size += p.stat().st_size
-        except OSError:
-            pass
-    if size > HARD_BYTES:
-        return False
-    fd = _open_private(path, os.O_WRONLY | os.O_APPEND)
     try:
-        os.write(fd, _line(entry))
-    finally:
-        os.close(fd)
+        offline.enqueue(dict(entry, _offline_context=context), env, path=path)
+    except offline.QueueError:
+        return False
     return True
 
 
-def _read(path: Path) -> list[dict]:
-    try:
-        lines = path.read_bytes().decode("utf-8", errors="replace").splitlines()
-    except OSError:
-        return []
-    out = []
-    for line in lines:
-        try:
-            out.append(json.loads(line))
-        except ValueError:
-            continue  # a torn line from a crash is dropped, never retried forever
-    return out
-
-
 def spooled(env=None) -> list[dict]:
-    return _read(inflight_path(env)) + _read(spool_path(env))
-
-
-def retain(entries: list[dict], now: _dt.datetime) -> tuple[list[dict], int]:
-    """Entries kept by the retention bound (age, then count and bytes, oldest
-    dropped first), and how many were dropped."""
-    cutoff = memory.iso(now - _dt.timedelta(days=MAX_AGE_DAYS))
-    kept = [e for e in entries if str(e.get("at", "")) >= cutoff]
-    kept = kept[-MAX_ENTRIES:]
-    size, start = 0, len(kept)
-    for i in range(len(kept) - 1, -1, -1):
-        size += len(_line(kept[i]))
-        if size > MAX_BYTES:
-            break
-        start = i
-    kept = kept[start:]
-    return kept, len(entries) - len(kept)
-
-
-def _write_private(path: Path, entries: list[dict]) -> None:
-    tmp = path.with_name(path.name + f".tmp{os.getpid()}")
-    fd = _open_private(tmp, os.O_WRONLY | os.O_TRUNC)
-    try:
-        os.write(fd, b"".join(_line(e) for e in entries))
-    finally:
-        os.close(fd)
-    os.replace(tmp, path)
+    # Malformed, symlinked, over-capacity or incomplete files remain UNKNOWN.
+    return offline._read(inflight_path(env)) + offline._read(spool_path(env))
 
 
 @contextmanager
-def _flush_lock(env=None, wait: bool = False):
-    """Yields True when this process holds the flush lock, False when another
-    flush has it (never blocks unless wait=True)."""
-    fd = _open_private(_private_dir(env) / "flush.lock", os.O_WRONLY)
-    try:
+def _flush_lock(env=None):
+    _private_dir(env)
+    with ExitStack() as stack:
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX if wait else fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
+            stack.enter_context(offline.locked(spool_path(env), replay=True))
+        except BlockingIOError:
             yield False
             return
-        try:
-            yield True
-        finally:
-            fcntl.flock(fd, fcntl.LOCK_UN)
-    finally:
-        os.close(fd)
+        yield True
 
 
 def flush_running(env=None) -> bool:
@@ -351,76 +282,61 @@ def flush_running(env=None) -> bool:
         return not held
 
 
-def flush(client: quipu.Client | None = None, env=None) -> memory.Outcome:
-    """Write every spooled capture, BATCH per /knot, oldest first. Stops at the
-    first unreachable store and keeps the rest in the in-flight file."""
-    with _flush_lock(env) as held:
-        if not held:
-            n = len(spooled(env))
-            return memory.Outcome(1, ["another flush is running"], {"written": 0, "spooled": n})
-        return _flush(client or client_for(env, timeout=10.0), env)
+def flush(client: quipu.Client | None = None, env=None, *, limit=100, deadline=None) -> memory.Outcome:
+    """Confirm ordered heads within the shared replay budget, then acknowledge.
 
-
-def _flush(client: quipu.Client, env=None) -> memory.Outcome:
-    graph = planes.plane_for("inferred")
-    spool_file, inflight = spool_path(env), inflight_path(env)
-    if spool_file.exists():
-        if inflight.exists():  # a stopped flush left work: keep order, old first
-            _write_private(inflight, _read(inflight) + _read(spool_file))
-            spool_file.unlink()
-        else:
-            os.replace(spool_file, inflight)
+    Retain a refused/uncertain head and all later captures. Legacy entries
+    without a frozen destination require operator reconciliation, not guessing.
+    """
+    import time
+    env = os.environ if env is None else env
+    deadline = time.monotonic() + 10.0 if deadline is None else deadline
+    done, lines, local_error = 0, [], False
     try:
-        seen = inflight.stat().st_size
-    except OSError:
-        seen = 0
-    entries, dropped = retain(_read(inflight), _now(env))
-    lines = [f"retention dropped {dropped}"] if dropped else []
-    done = 0
-    while done < len(entries):
-        batch = entries[done:done + BATCH]
-        try:
-            client.knot("".join(turtle(e) for e in batch), graph, batch[0]["agent"], "camayoc:cy capture")
-        except quipu.Unreachable as exc:
-            lines.append(f"stopped: {exc}")
-            break
-        except quipu.QuipuError as exc:
-            # A refused batch is retried one entry at a time so one bad entry
-            # cannot hold the spool; a refused single entry is dropped with a
-            # line naming its hash (never its text).
-            lines.append(f"batch retried singly after: {str(exc)[:160]}")
-            stopped = False
-            for e in batch:
-                try:
-                    client.knot(turtle(e), graph, e["agent"], "camayoc:cy capture")
-                except quipu.Unreachable as down:
-                    lines.append(f"stopped: {down}")
-                    stopped = True
+        with _flush_lock(env) as held:
+            if not held:
+                return memory.Outcome(1, ['another capture flush is running'],
+                                      dict(written=0, spooled=offline.capture_length(env)))
+            while done < limit and time.monotonic() < deadline:
+                path = inflight_path(env)
+                entry = offline.head(path)
+                if entry is None:
+                    path = spool_path(env)
+                    entry = offline.head(path)
+                if entry is None:
                     break
-                except quipu.QuipuError as one:
-                    lines.append(f"dropped {e['hash'][:19]}: {str(one)[:160]}")
+                context = entry.get('_offline_context')
+                current = memory._queued_context(env)
+                if (not isinstance(context, dict) or not context.get('server') or
+                        not isinstance(context.get('env'), dict) or
+                        context.get('server') != current['server'] or
+                        context.get('plane_ns') != current['plane_ns']):
+                    lines.append('stopped: capture destination differs or is unknown; head retained')
+                    break
+                replay = client or quipu.Client(context['server'],
+                    timeout=max(0.001, deadline - time.monotonic()), deadline=deadline,
+                    provenance_env=context['env'])
+                if isinstance(replay, quipu.Client):
+                    if replay.base != context['server']:
+                        lines.append('stopped: client destination differs; capture head retained')
+                        break
+                    replay.provenance_env = context['env']
+                    replay.deadline = deadline
+                try:
+                    replay.knot(turtle(entry), context['plane_ns'] + planes.ROUTES['inferred'],
+                                entry['agent'], 'camayoc:cy capture')
+                except quipu.QuipuError as exc:
+                    lines.append(f'stopped: {type(exc).__name__}; capture head retained')
+                    break
+                offline.acknowledge(path, entry)
                 done += 1
-            if stopped:
-                break
-            continue
-        done += len(batch)
-    rest = entries[done:]
-    # A hook that opened the spool just before the rename appended to what is
-    # now the in-flight file; keep anything that arrived after it was read.
-    try:
-        with open(inflight, "rb") as f:
-            f.seek(seen)
-            late = [json.loads(ln) for ln in f.read().decode("utf-8", errors="replace").splitlines()
-                    if ln.strip().startswith("{")]
-    except (OSError, ValueError):
-        late = []
-    rest += late
-    if rest:
-        _write_private(inflight, rest)
-    else:
-        inflight.unlink(missing_ok=True)
-    lines.append(f"captured {done}, {len(rest) + len(_read(spool_file))} still spooled")
-    return memory.Outcome(0 if not rest else 1, lines, {"written": done, "spooled": len(rest)})
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        local_error = True
+        lines.append(f'stopped: capture buffer {type(exc).__name__}; inspect acknowledgment state')
+    rest = offline.capture_length(env)
+    lines.append(f'captured {done}, {rest if rest is not None else "UNKNOWN"} still spooled')
+    return memory.Outcome(0 if rest == 0 and not local_error else 1, lines,
+                          dict(written=done, spooled=rest))
 
 
 def flush_detached(env=None) -> None:
