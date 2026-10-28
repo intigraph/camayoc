@@ -525,6 +525,19 @@ COVERAGE_DD: dict[int, dict] = {
     8: {"query": None, "expressible": "Declared Tool records in catalog/delivery-emitters.json carry emitterTool, emitterStandard, emitterHow, emitterStatus and emitterDocs. The README renderer queries those exact catalog identities in a disposable local graph; this is source support, not runtime producer coverage."},
 }
 
+#: github-activity (aegis-c01c.3): GitHub entities and append-only activities.
+COVERAGE_GH: dict[int, dict] = {
+    # Every question needs the GitHub classes (shapes/github.shapes.ttl), which
+    # go through Quipu's governed schema path before a store accepts them.
+    # Until then nothing here is expressible against the loaded vocabulary.
+    1: {"query": None, "gap": "Needs GitHubPullRequest and GitHubActivity in the ontology; then the latest pull_request.* activity per PR answers it.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    2: {"query": None, "gap": "Needs GitHubReview and GitHubActivity (reviewState, commitSha) in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    3: {"query": None, "gap": "Needs GitHubActivity and GitHubWorkflowRun in the ontology; then a join of PR head, run conclusion and reviews.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    4: {"query": None, "gap": "Needs GitHubWorkflowRun and GitHubActivity (githubConclusion, githubBaseRef) in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    5: {"query": None, "gap": "Needs GitHubRelease, GitHubPush and GitHubActivity in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    6: {"query": None, "gap": "Needs GitHubActivity (githubActorLogin, githubMentions) and the thread entities in the ontology; participation is judged at read time, never stored.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+}
+
 COVERAGE_WB: dict[int, dict] = {
     1: {"query": "camayoc_work_item_burndown"},
     2: {"query": "camayoc_work_item_burndown"},
@@ -542,4 +555,5 @@ SLICES: dict[str, dict[int, dict]] = {
     "workflow-and-archive": COVERAGE_WA,
     "priority-inheritance": COVERAGE_PI,
     "delivery-and-dora": COVERAGE_DD,
+    "github-activity": COVERAGE_GH,
 }

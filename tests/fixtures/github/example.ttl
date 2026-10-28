@@ -1,0 +1,176 @@
+# Example GitHub records: what the producer writes for one small pull request
+# life (opened, CI green, approved, merged, released) plus an issue thread.
+# Identifiers are synthetic (example/widget); shapes/github.shapes.ttl must
+# accept this file with zero violations (tests/test_github_shapes.py).
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+aegis:github.R_kgDOExample1 a aegis:GitHubRepository ;
+    rdfs:label "github.R_kgDOExample1" ;
+    aegis:githubNodeId "R_kgDOExample1" ;
+    aegis:githubDatabaseId 700000001 ;
+    aegis:githubFullName "example/widget" ;
+    aegis:githubUrl "https://github.com/example/widget" .
+
+aegis:github.PR_kwDOExample42 a aegis:GitHubPullRequest ;
+    rdfs:label "github.PR_kwDOExample42" ;
+    aegis:githubNodeId "PR_kwDOExample42" ;
+    aegis:githubNumber 42 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubUrl "https://github.com/example/widget/pull/42" ;
+    aegis:githubAuthorLogin "alice" ;
+    aegis:githubCreatedAt "2026-10-20T14:00:00Z" .
+
+aegis:github.PRR_kwDOExample7 a aegis:GitHubReview ;
+    rdfs:label "github.PRR_kwDOExample7" ;
+    aegis:githubNodeId "PRR_kwDOExample7" ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:onGitHubThread aegis:github.PR_kwDOExample42 ;
+    aegis:githubAuthorLogin "bob" .
+
+aegis:github.I_kwDOExample9 a aegis:GitHubIssue ;
+    rdfs:label "github.I_kwDOExample9" ;
+    aegis:githubNodeId "I_kwDOExample9" ;
+    aegis:githubNumber 9 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubAuthorLogin "carol" .
+
+aegis:github.IC_kwDOExample3 a aegis:GitHubComment ;
+    rdfs:label "github.IC_kwDOExample3" ;
+    aegis:githubNodeId "IC_kwDOExample3" ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:onGitHubThread aegis:github.I_kwDOExample9 ;
+    aegis:githubAuthorLogin "carol" .
+
+aegis:github.WFR_kwLOExample5 a aegis:GitHubWorkflowRun ;
+    rdfs:label "github.WFR_kwLOExample5" ;
+    aegis:githubNodeId "WFR_kwLOExample5" ;
+    aegis:githubDatabaseId 9100000005 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubName "CI" ;
+    aegis:commitSha "1111111111111111111111111111111111111111" .
+
+aegis:github.CR_kwDOExample6 a aegis:GitHubCheckRun ;
+    rdfs:label "github.CR_kwDOExample6" ;
+    aegis:githubNodeId "CR_kwDOExample6" ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubName "test" ;
+    aegis:commitSha "1111111111111111111111111111111111111111" .
+
+aegis:github.RE_kwDOExample8 a aegis:GitHubRelease ;
+    rdfs:label "github.RE_kwDOExample8" ;
+    aegis:githubNodeId "RE_kwDOExample8" ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubTagName "v1.2.0" .
+
+aegis:github.push.0d3c a aegis:GitHubPush ;
+    rdfs:label "github.push.0d3c" ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubRef "refs/heads/main" ;
+    aegis:githubBeforeSha "0000000000000000000000000000000000000000" ;
+    aegis:githubAfterSha "2222222222222222222222222222222222222222" ;
+    aegis:githubForced false .
+
+aegis:github.activity.a1 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a1" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "pull_request.opened" ;
+    aegis:githubActivityKey "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1" ;
+    aegis:occurredAt "2026-10-20T14:00:00Z" ;
+    aegis:aboutGitHubEntity aegis:github.PR_kwDOExample42 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubActorLogin "alice" ;
+    aegis:commitSha "1111111111111111111111111111111111111111" ;
+    aegis:githubState "open" ;
+    aegis:githubMerged false ;
+    aegis:githubDraft false ;
+    aegis:githubBaseRef "main" ;
+    aegis:githubMentions "bob" .
+
+aegis:github.activity.a2 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a2" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "workflow_run.completed" ;
+    aegis:githubActivityKey "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2" ;
+    aegis:occurredAt "2026-10-20T14:06:10Z" ;
+    aegis:aboutGitHubEntity aegis:github.WFR_kwLOExample5 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubActorLogin "alice" ;
+    aegis:commitSha "1111111111111111111111111111111111111111" ;
+    aegis:githubBaseRef "feature/widget" ;
+    aegis:githubStatus "completed" ;
+    aegis:githubConclusion "success" ;
+    aegis:githubRunAttempt 1 .
+
+aegis:github.activity.a3 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a3" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "pull_request_review.submitted" ;
+    aegis:githubActivityKey "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3" ;
+    aegis:occurredAt "2026-10-20T15:00:00Z" ;
+    aegis:aboutGitHubEntity aegis:github.PRR_kwDOExample7 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubActorLogin "bob" ;
+    aegis:commitSha "1111111111111111111111111111111111111111" ;
+    aegis:reviewState "approved" .
+
+aegis:github.activity.a4 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a4" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "pull_request.closed" ;
+    aegis:githubActivityKey "a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4" ;
+    aegis:occurredAt "2026-10-20T15:20:00Z" ;
+    aegis:aboutGitHubEntity aegis:github.PR_kwDOExample42 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubActorLogin "alice" ;
+    aegis:commitSha "1111111111111111111111111111111111111111" ;
+    aegis:githubState "closed" ;
+    aegis:githubMerged true ;
+    aegis:githubMergeCommitSha "2222222222222222222222222222222222222222" ;
+    aegis:githubDraft false ;
+    aegis:githubBaseRef "main" .
+
+aegis:github.activity.a5 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a5" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "push" ;
+    aegis:githubActivityKey "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5" ;
+    aegis:occurredAt "2026-10-20T15:20:01Z" ;
+    aegis:aboutGitHubEntity aegis:github.push.0d3c ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubActorLogin "alice" ;
+    aegis:commitSha "2222222222222222222222222222222222222222" .
+
+aegis:github.activity.a6 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a6" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "check_run.completed" ;
+    aegis:githubActivityKey "a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6" ;
+    aegis:occurredAt "2026-10-20T14:05:00Z" ;
+    aegis:aboutGitHubEntity aegis:github.CR_kwDOExample6 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:commitSha "1111111111111111111111111111111111111111" ;
+    aegis:githubStatus "completed" ;
+    aegis:githubConclusion "success" .
+
+aegis:github.activity.a7 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a7" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "release.published" ;
+    aegis:githubActivityKey "a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7" ;
+    aegis:occurredAt "2026-10-20T16:00:00Z" ;
+    aegis:aboutGitHubEntity aegis:github.RE_kwDOExample8 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubActorLogin "alice" ;
+    aegis:githubPrerelease false .
+
+aegis:github.activity.a8 a aegis:GitHubActivity ;
+    rdfs:label "github.activity.a8" ;
+    aegis:sourceKind "observed" ;
+    aegis:githubEventKind "issue_comment.created" ;
+    aegis:githubActivityKey "a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8" ;
+    aegis:occurredAt "2026-10-21T09:00:00Z" ;
+    aegis:aboutGitHubEntity aegis:github.IC_kwDOExample3 ;
+    aegis:inGitHubRepository aegis:github.R_kgDOExample1 ;
+    aegis:githubActorLogin "carol" ;
+    aegis:githubMentions "alice", "dave" .
