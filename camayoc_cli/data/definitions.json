@@ -984,6 +984,20 @@
       "required": true
     },
     {
+      "datatype": "xsd:dateTime",
+      "description": "UTC instant the supersededBy link was written; the cursor bobbin's feed uses to drop the record.",
+      "enum": null,
+      "flag": "--superseded-at",
+      "kind": "text",
+      "maxCount": 1,
+      "message": "Not recorded: a record is superseded once, at one UTC instant.",
+      "name": "supersededAt",
+      "path": "aegis:supersededAt",
+      "pattern": null,
+      "repeatable": false,
+      "required": false
+    },
+    {
       "datatype": null,
       "description": "The earlier version this record replaces; filled by the tool on the same natural key.",
       "enum": null,

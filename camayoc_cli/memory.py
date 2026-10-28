@@ -23,6 +23,15 @@ CREW = "crew"
 TOPIC_NS = "mem/topic/"
 
 
+class BadInput(ValueError):
+    """A caller value that cannot become an IRI or a query parameter."""
+
+
+_IRI = re.compile(r"^(?:[a-z][a-z0-9+.-]*://|urn:)[^\s<>\"{}|\\^`\x00-\x1f\x7f]+$", re.I)
+_LOCAL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._~-]{0,199}$")
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
 @dataclass
 class Outcome:
     """What a record/recall call did. `code` is the process exit status."""
@@ -54,18 +63,33 @@ def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.strip().lower()).strip("-")
 
 
-def to_iri(value: str) -> str:
-    """'crew', a full IRI, an aegis: CURIE or a bare local name -> IRI."""
-    value = value.strip()
+def to_iri(value) -> str:
+    """'crew', a full IRI, an aegis: CURIE or a bare local name -> IRI.
+
+    Raises BadInput for anything else (spaces, brackets, quotes, control
+    characters), so no caller value ever reaches Turtle or SPARQL unchecked.
+    """
+    value = str(value).strip()
     if value == CREW:
         return ns() + CREW
-    if re.match(r"^[a-z][a-z0-9+.-]*://", value) or value.startswith("urn:"):
+    if re.match(r"^[a-z][a-z0-9+.-]*://", value, re.I) or value.startswith("urn:"):
+        if not _IRI.match(value):
+            raise BadInput(value)
         return value
     prefix, sep, rest = value.partition(":")
     prefixes = definitions.load()["prefixes"]
     if sep and prefix in prefixes:
+        if not _LOCAL.match(rest):
+            raise BadInput(value)
         return prefixes[prefix] + rest
+    if not _LOCAL.match(value):
+        raise BadInput(value)
     return ns() + value
+
+
+def _shown(value) -> str:
+    text = _CONTROL.sub("?", str(value))
+    return repr(text if len(text) <= 60 else text[:57] + "...")
 
 
 def agent_name(env=None) -> str:
@@ -96,8 +120,8 @@ def lit(text: str) -> str:
 
 
 def iri_ref(iri: str) -> str:
-    if re.search(r'[\s<>"{}|\\^`]', iri):
-        raise ValueError(f"not a usable IRI: {iri!r}")
+    if re.search(r'[\s<>"{}|\\^`\x00-\x1f\x7f]', iri):
+        raise BadInput(iri)
     return f"<{iri}>"
 
 
@@ -130,6 +154,20 @@ def precheck(entity: dict, args: dict) -> list[str]:
             continue
         if not vals:
             continue
+        if any(_CONTROL.search(v) for v in vals):
+            out.append(f"Not recorded: {f['flag']} contains control characters.")
+            continue
+        if f["kind"] == "iri" and (f["name"] != "topic" or any(":" in v for v in vals)):
+            bad = []
+            for v in vals:
+                try:
+                    to_iri(v)
+                except BadInput:
+                    bad.append(v)
+            if bad:
+                what = "a topic name or IRI" if f["name"] == "topic" else "an entity IRI or local name"
+                out.append(f"Not recorded: {f['flag']} {_shown(bad[0])} is not {what}.")
+                continue
         if f["maxCount"] is not None and len(vals) > f["maxCount"]:
             out.append(f["message"])
         elif f["enum"] and any(v not in f["enum"] for v in vals):
@@ -205,13 +243,22 @@ def current_versions(client: quipu.Client, entity: dict, key: str) -> list[dict]
     return [{k: quipu.value(v) for k, v in r.items()} for r in rows]
 
 
+def supersession_turtle(old: str, new: str) -> str:
+    """The back-link, stamped with when it was written (wall clock, not the new
+    version's recordedAt), so a late repair still lands after bobbin's cursor."""
+    stamp = iso(_dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)) if not os.environ.get("CAMAYOC_NOW") \
+        else iso(now())
+    return (f"{iri_ref(old)} <{ns()}supersededBy> {iri_ref(new)} ;\n"
+            f'    <{ns()}supersededAt> "{stamp}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n')
+
+
 def repair(client: quipu.Client, current: list[dict], env=None) -> list[str]:
     """Mark every current version but the newest as superseded by the newest."""
     if len(current) < 2:
         return []
     newest, lines = current[0]["iri"], []
     for stale in current[1:]:
-        back = f"{iri_ref(stale['iri'])} <{ns()}supersededBy> {iri_ref(newest)} .\n"
+        back = supersession_turtle(stale["iri"], newest)
         client.knot(back, planes.plane_for(stale["sourceKind"]), agent_name(env), "camayoc:cy repair supersession")
         lines.append(f"repaired: {stale['iri']} marked superseded by {newest}")
     return lines
@@ -244,7 +291,11 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
             out = []
             for v in vals:
                 if f["name"] == "topic":
-                    t = find_topic(client, v)
+                    try:
+                        t = find_topic(client, v)
+                    except BadInput:
+                        unknown.append(f"Not recorded: {f['flag']} {_shown(v)} is not a topic name or IRI.")
+                        continue
                     if t is None:
                         near = near_topics(client, v)
                         hint = f" Nearest: {', '.join(near)}." if near else ""
@@ -253,7 +304,11 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
                         continue
                     out.append(t)
                     continue
-                iri = to_iri(v)
+                try:
+                    iri = to_iri(v)
+                except BadInput:
+                    unknown.append(f"Not recorded: {f['flag']} {_shown(v)} is not an entity IRI or local name.")
+                    continue
                 if iri != ns() + CREW and not entity_exists(client, iri):
                     near = nearest(client, local_name(iri))
                     hint = f" Nearest: {', '.join(near)}." if near else ""
@@ -343,7 +398,7 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
         source = f"camayoc:cy record {entity_name}"
         client.knot(turtle, graph, actor, source)
         if old:
-            back = f"{iri_ref(old['iri'])} <{a}supersededBy> {iri_ref(version)} .\n"
+            back = supersession_turtle(old["iri"], version)
             try:
                 client.knot(back, planes.plane_for(old["sourceKind"]), actor, source)
             except quipu.QuipuError as exc:
@@ -352,6 +407,8 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
             return Outcome(0, repaired + [f"superseded {old['iri']} -> {version}"],
                            {"iri": version, "status": "superseded", "supersedes": old["iri"]})
         return Outcome(0, repaired + [f"recorded {entity_name} {version}"], {"iri": version, "status": "recorded"})
+    except BadInput as exc:
+        return Outcome(2, [f"Not recorded: {_shown(exc.args[0] if exc.args else '')} cannot be used in an IRI."])
     except quipu.Refused as exc:
         lines = list(exc.messages)
         paths = {str(i.get("path", "")) for i in exc.issues}
@@ -359,6 +416,21 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
             lines.append("This store still applies quipu's governance Decision shape to aegis:Decision; "
                          "record_decision needs the GateApproval migration (design §1.3).")
         return Outcome(2, lines)
+
+
+def record_or_queue(entity_name: str, args: dict, *, supersede: str | None = None,
+                    flags: dict | None = None, env=None) -> Outcome:
+    """record(), but an unreachable store queues the call (§3: exit 0, `queued <n>`)."""
+    try:
+        return record(entity_name, args, supersede=supersede, flags=flags, env=env)
+    except quipu.Unreachable as exc:
+        entity = definitions.load()["entities"][entity_name]
+        pre = precheck(entity, args)
+        if pre:
+            return Outcome(2, pre)
+        n = enqueue({"entity": entity_name, "args": args, "supersede": supersede, "flags": flags or {}}, env)
+        return Outcome(0, [f"queued {n} ({exc}); run `cy flush` once quipu is back"],
+                       {"status": "queued", "queued": n})
 
 
 # ---- offline queue (minimal; gshu.7 owns the full buffer) -----------------------
@@ -410,7 +482,9 @@ def flush(client: quipu.Client | None = None, env=None) -> Outcome:
 # ---- topics ---------------------------------------------------------------------
 
 def add_topic(name: str, aliases: list[str], client: quipu.Client | None = None, env=None) -> Outcome:
-    s = slug(name)
+    s = slug(str(name))
+    if _CONTROL.search(str(name)) or any(_CONTROL.search(str(a)) for a in aliases):
+        return Outcome(2, ["Not recorded: a topic name or alias contains control characters."])
     if not s:
         return Outcome(2, ["Not recorded: a topic needs a name of letters or digits (cy topic add <name>)."])
     problems = secret_refusals({"topic": name, **{f"alias{i}": a for i, a in enumerate(aliases)}})
@@ -452,6 +526,15 @@ def render(template: str, params: list[dict], values: dict) -> str:
 
 def recall(entity_name: str, filters: dict, *, history: str | None = None,
            client: quipu.Client | None = None) -> Outcome:
+    try:
+        return _recall(entity_name, filters, history=history, client=client)
+    except BadInput as exc:
+        return Outcome(2, [f"Not recalled: {_shown(exc.args[0] if exc.args else '')} is not an entity IRI, "
+                           "local name or key path."])
+
+
+def _recall(entity_name: str, filters: dict, *, history: str | None = None,
+            client: quipu.Client | None = None) -> Outcome:
     defs = definitions.load()
     entity = defs["entities"][entity_name]
     queries = entity["recall"]
@@ -469,7 +552,13 @@ def recall(entity_name: str, filters: dict, *, history: str | None = None,
             prefix = h.partition(":")[0]
             explicit = re.match(r"^[a-z][a-z0-9+.-]*://", h) or h.startswith("urn:") or \
                 (":" in h and prefix in definitions.load()["prefixes"])
-            values[name] = to_iri(h) if explicit else f"{ns()}mem/{entity_name}/{h.strip('/')}"
+            if explicit:
+                values[name] = to_iri(h)
+            else:
+                parts = [x for x in h.strip("/").split("/")]
+                if not parts or not all(_LOCAL.match(x) for x in parts):
+                    raise BadInput(h)
+                values[name] = f"{ns()}mem/{entity_name}/{'/'.join(parts)}"
         elif name == "now":
             values[name] = iso(t)
         elif name == "fresh_since":
@@ -478,7 +567,10 @@ def recall(entity_name: str, filters: dict, *, history: str | None = None,
             values[name] = iso(t - _dt.timedelta(days=days))
         else:
             raw = filters.get(name)
+            raw = None if raw is None else str(raw)
             field_def = next(f for f in entity["fields"] if f["name"] == name)
+            if raw and _CONTROL.search(raw):
+                raise BadInput(raw)
             if not raw:
                 values[name] = ""
             elif field_def["kind"] == "iri":

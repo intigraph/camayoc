@@ -37,6 +37,9 @@ POSITIVE = {
     "npm-token": j("np", "m_", R[:36]),
     "huggingface-token": j("h", "f_", R[:34]),
     "gitlab-token": j("gl", "pat-", R[:20]),
+    "discord-webhook": j("https://discord.com/api/web", "hooks/", "112233445566778899/", R[:34], R[:34]),
+    "discord-bot-token": j("MT", "A", R[:23], ".", "Gh4kQz", ".", R[:30]),
+    "telegram-bot-token": j("https://api.telegram.org/bot", "123456789:", "AA", R[:33], "/getMe"),
     "high-entropy-string": R,
     "base64-blob": j(R[:20], "+", R[20:39], "Q="),
 }
@@ -56,6 +59,8 @@ CLEAN = [
     "https://claude.ai/code/session_" + "018sJJsAdbcAyJnsCtDy2C1g",
     "http://aegis.gastown.local/ontology/mem/decision/repo-goldblum/push-policy/20261028T080313Z",
     "/Users/Steve/Library/Application Support/Claude/claude_desktop_config.json",
+    "https://discord.com/channels/112233445566778899/998877665544332211",
+    "https://t.me/stackwatch and call 5551234567 at 10:30",
     "https://raw.githubusercontent.com/intigraph/bobbin/0123456789abcdefABCDEF0123456789abcdefAB/docs/X.md",
 ]
 
@@ -85,6 +90,8 @@ BATTERY = {
     "url with password": POSITIVE["url-userinfo-password"],
     "token in a url query": j("https://svc.example/api?k=", R[:40]),
     "token in a plain path": j("~/notes/", R),
+    "discord webhook in a url path": POSITIVE["discord-webhook"],
+    "telegram token in a url path": POSITIVE["telegram-bot-token"],
 }
 
 

@@ -70,6 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--alias", action="append", default=[], help="another spelling; repeat")
 
     sub.add_parser("flush", help="replay records queued while quipu was unreachable")
+    sub.add_parser("mcp", help="serve the generated record_*/recall_* MCP tools on stdio")
 
     pr = sub.add_parser("prime", help="agent primer and live state (stack-prime/1)")
     pr.add_argument("--brief", action="store_true")
@@ -95,6 +96,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         ap.print_help()
         return 2
+    if args.command == "mcp":
+        from . import mcp
+        return mcp.serve()
     if args.command == "prime":
         return prime.run(brief=args.brief, as_json=args.json, static=args.static, section=args.section)
     try:
@@ -104,19 +108,10 @@ def main(argv: list[str] | None = None) -> int:
             entity = definitions.load()["entities"][args.entity]
             values = {f["name"]: getattr(args, f["name"]) for f in entity["fields"]}
             flags = {k: getattr(args, k) for k in (entity["sourceKind"].get("flags") or {})}
-            try:
-                out = memory.record(args.entity, values, supersede=args.supersede, flags=flags,
-                                    dry_run=args.dry_run)
-            except quipu.Unreachable as exc:
-                if args.dry_run:
-                    raise
-                pre = memory.precheck(entity, values)
-                if pre:
-                    return _emit(memory.Outcome(2, pre), args.json)
-                n = memory.enqueue({"entity": args.entity, "args": values, "supersede": args.supersede,
-                                    "flags": flags})
-                out = memory.Outcome(0, [f"queued {n} ({exc}); run `cy flush` once quipu is back"],
-                                     {"status": "queued", "queued": n})
+            if args.dry_run:
+                out = memory.record(args.entity, values, supersede=args.supersede, flags=flags, dry_run=True)
+            else:
+                out = memory.record_or_queue(args.entity, values, supersede=args.supersede, flags=flags)
             return _emit(out, args.json)
         if args.command == "recall":
             if not args.entity:
@@ -133,6 +128,14 @@ def main(argv: list[str] | None = None) -> int:
             return _emit(memory.flush(), False)
     except quipu.QuipuError as exc:
         print(f"camayoc: {exc}", file=sys.stderr)
+        return 3
+    except memory.BadInput:
+        print("Not recorded: a value cannot be used in an IRI or query (spaces, brackets, quotes or "
+              "control characters).", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001 - plain words, never a traceback
+        print(f"camayoc: unexpected {type(exc).__name__}; nothing was written. Report it with the command you ran.",
+              file=sys.stderr)
         return 3
     return 2
 
