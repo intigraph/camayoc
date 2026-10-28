@@ -182,12 +182,14 @@ class SuiteTotalTests(unittest.TestCase):
         # Priority adds seven questions: one stored, four unwritten, two gaps.
         # Delivery (aegis-rb3) adds seven gaps, all waiting on the proposed
         # aegis:DeploymentEvent class (Quipu proposal 31).
+        # GitHub activity (aegis-c01c.3) adds six gaps, all waiting on the
+        # GitHub classes passing Quipu's schema path.
         figures = coverage.totals()
-        self.assertEqual(9, figures["slices"])
-        self.assertEqual(110, figures["total"])
+        self.assertEqual(10, figures["slices"])
+        self.assertEqual(116, figures["total"])
         self.assertEqual(44, figures["covered"])
         self.assertEqual(28, figures["unwritten"])
-        self.assertEqual(38, figures["gaps"])
+        self.assertEqual(44, figures["gaps"])
 
     def test_the_three_states_account_for_every_question(self):
         """No question falls between the states. If one ever does it is
