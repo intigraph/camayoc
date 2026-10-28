@@ -28,12 +28,22 @@ point (`cy hook <event>`). No new hook system and no new binary. tambo
 installs the same three commands for Codex, whose Stop payload carries
 `last_assistant_message` and is read first (gshu.9).
 
-**Cost.** A hook only appends one JSON line to
-`$XDG_STATE_HOME/camayoc/capture-spool.jsonl`, then starts a detached
-`cy capture flush` and exits 0. It prints nothing, because UserPromptSubmit
-stdout would land in the context. The flush writes up to 25 captures per
-`/knot`. When quipu is down the spool keeps them, and the next hook or
-`cy capture flush` writes them.
+**Cost.** A hook appends one JSON line to
+`$XDG_STATE_HOME/camayoc/capture-spool.jsonl` with a single `O_APPEND`
+write and takes no lock, so it never waits on a flush. It then starts a
+detached `cy capture flush`, unless a flush is already running, and exits 0.
+It prints nothing, because UserPromptSubmit stdout would land in the context.
+
+The flush holds its own `flush.lock` only to keep two flushers apart. It
+renames the spool to an in-flight file and writes from there, up to 25
+captures per `/knot`, so a hook firing mid-network appends to a fresh spool.
+When quipu is down the in-flight file keeps the rest. Spool, in-flight and
+lock files are created `0600` and the directory is forced to `0700`, even
+when it already existed.
+
+**Retention.** A long outage cannot pile captures up. Each flush drops
+entries older than 7 days, then the oldest past 5,000 entries or 4 MB. A hook
+drops its capture once the spool and in-flight files together pass 8 MB.
 
 **What is skipped.** Prompts under 20 characters, and harness-written prompts
 (`<task-notification>`, `<command-name>`, and the like). Text is cut to 4,000
@@ -71,7 +81,24 @@ here depends on it.
 
 **Kind hints are regex, not judgement.** Only a capture with a hint is a
 promotion candidate. A plain prompt or answer stays evidence, at one write
-and no follow-up.
+and no follow-up. Only words the person wrote promote:
+
+- **Relayed prompts never promote.** A prompt that opens with a relay
+  envelope is evidence only, whatever `DECIDED:` or `Stiwi:` lines it quotes:
+  - shantytown's `[from <agent>]` signature, including `[from st fleet tend]`
+  - `[job ...]`, `[st ...]` and similar headers
+  - `<agent-message>`, `<tool_result>` and `<function_results>` blocks
+  - `from <agent>:`
+
+  Promotion refuses one too, even with `prompt_author` set.
+- **For a prompt, a marker or issuer prefix counts only on its first
+  line.** A marker further down is quoted text, such as a pasted handoff or
+  a memory line. A `cy record` line counts anywhere in the person's own
+  prompt.
+- **An `answer` is never a candidate.** The agent quoting a ruling does not
+  make it one.
+- **Explicit notes and producers are scanned whole.** An agent or producer
+  chose to file them.
 
 | Hint | Rule |
 |---|---|

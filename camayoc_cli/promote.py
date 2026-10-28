@@ -192,16 +192,23 @@ def fill_marker(cap: dict, config: dict) -> tuple[str, dict, dict, str | None]:
     entity = definitions.load()["entities"][kind]
     issuers = config.get("issuers") or {}
     issuer_iri = None
-    m = capture.MARKER.search(text)
-    if m:
-        rest = text[m.end():]
+    if cap.get("src") == "answer" or (cap.get("src") == "prompt" and capture.is_relayed(text)):
+        raise Unfillable(["Not promoted: an agent answer or a relayed message is not a ruling."], kind)
+    if cap.get("src") == "prompt":
+        text = text[text.index(capture.first_line(text)):] if capture.first_line(text) else text
+    names = sorted(issuers, key=len, reverse=True)
+    marker = capture.MARKER.search(text)
+    prefix = re.search(capture._ISSUER_PREFIX.format(names="|".join(re.escape(n) for n in names)), text) \
+        if names else None
+    # The earliest one wins: `Stiwi: ...` opening a note is the ruling even
+    # when a quoted DECIDED line follows it, and vice versa.
+    if prefix and (not marker or prefix.start() < marker.start()):
+        issuer_iri = issuers[prefix.group(1)]
+        rest = text[prefix.end():]
+    elif marker:
+        rest = text[marker.end():]
     else:
-        names = sorted(issuers, key=len, reverse=True)
-        m = re.search(capture._ISSUER_PREFIX.format(names="|".join(re.escape(n) for n in names)), text) if names else None
-        if not m:
-            raise Unfillable([f"Not promoted: no {kind} marker found."], kind)
-        issuer_iri = issuers[m.group(1)]
-        rest = text[m.end():]
+        raise Unfillable([f"Not promoted: no {kind} marker found."], kind)
     params, rest = _marker_params(rest)
     body = re.split(r"\n\s*\n", rest.lstrip(" :\t-—").strip(), maxsplit=1)[0].strip()
     by_flag = {f["flag"].lstrip("-"): f["name"] for f in entity["fields"]}
@@ -366,7 +373,7 @@ def run(*, session: str | None = None, retry_blocked: bool = False, only: list[s
 
 
 def list_blocked(client: quipu.Client | None = None) -> memory.Outcome:
-    client = client or quipu.Client()
+    client = client or capture.client_for()
     rows = pending(client, blocked_only=True, limit=200)
     lines = []
     for r in rows:
@@ -393,7 +400,7 @@ def adapter(describe: bool, request: dict | None, client: quipu.Client | None = 
         return {"version": 1, "graphs": [planes.plane_for("inferred")], "types": [],
                 "attributes": [a + p for p in ("kindHint", "promotedTo", "promotionBlocked", "duplicateOf")]}
     request = request or {}
-    client = client or quipu.Client()
+    client = client or capture.client_for()
     if request.get("discover"):
         return {"version": 1, "items": [r["c"] for r in pending(client, limit=10000)]}
     if "route" in request:

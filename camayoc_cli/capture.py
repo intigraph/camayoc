@@ -49,11 +49,48 @@ _ISSUER_PREFIX = r"(?m)^\s*({names})\s*(?:\([^)\n]{{0,40}}\))?\s*:"
 _ALWAYS = re.compile(r"(?i)\b(?:never|always|must not|do not|don't)\b")
 
 
-def kind_hint(text: str, issuers: dict | None = None) -> str | None:
-    """`cy:<entity>`, `directive`, `decision`, or None. Regex only, no model."""
-    m = CY_LINE.search(text)
-    if m:
-        return f"cy:{m.group(1)}"
+# A prompt that is a relayed crew or harness message, not the person's own
+# words: shantytown's `[from <agent>] ` signature (attribution.py), scheduled
+# job and fleet envelopes, agent-message and tool-output blocks. Such a prompt
+# is captured as evidence but is never a promotion candidate, whatever
+# DECIDED:/Stiwi: lines it quotes.
+RELAY = re.compile(r"^\s*(?:\[(?:from|job|st|shanty|relay|fwd)\b[^\]\n]*\]|"
+                   r"<(?:agent-message|agent_message|inbox|message|tool_result|tool-result|function_results|"
+                   r"tool_output|subagent|teammate-message)\b|(?:from|relayed from|forwarded from)\s+\S+\s*:)",
+                   re.I)
+
+
+def is_relayed(text: str) -> bool:
+    return bool(RELAY.match(text or ""))
+
+
+def first_line(text: str) -> str:
+    return next((ln for ln in (text or "").splitlines() if ln.strip()), "")
+
+
+def kind_hint(text: str, issuers: dict | None = None, source: str = "explicit") -> str | None:
+    """`cy:<entity>`, `directive`, `decision`, or None. Regex only, no model.
+
+    Only words a person wrote promote. An `answer` is the agent talking (it may
+    quote a ruling, which does not make it one): never a candidate. A `prompt`
+    is a candidate only when it is not a relayed message and the marker or
+    issuer prefix opens it; a marker further down is quoted text (a pasted
+    handoff, a memory line). Explicit notes and producers (redirect, import,
+    stop-check) are scanned whole: an agent or producer chose to file them.
+    """
+    if source == "answer":
+        return None
+    if source == "prompt":
+        if is_relayed(text):
+            return None
+        m = CY_LINE.search(text)
+        if m:
+            return f"cy:{m.group(1)}"
+        text = first_line(text)
+    else:
+        m = CY_LINE.search(text)
+        if m:
+            return f"cy:{m.group(1)}"
     m = MARKER.search(text)
     if m:
         return "directive" if m.group(1) == "DIRECTIVE" else "decision"
@@ -125,7 +162,7 @@ def build(text: str, source: str, *, session: str | None = None, agent: str | No
     h = content_hash(text)
     entry = {"text": text, "source": source, "hash": h, "at": memory.iso(t),
              "agent": agent or memory.agent_name(env), "session": session}
-    hint = kind or kind_hint(text, load_config(env).get("issuers"))
+    hint = kind or kind_hint(text, load_config(env).get("issuers"), source)
     if hint:
         entry["kind"] = hint
     if about:
@@ -175,6 +212,19 @@ def turtle(entry: dict) -> str:
 
 
 # ---- spool (the hook side) -------------------------------------------------------------
+# The hook appends one line with O_APPEND and takes no lock, so it can never
+# wait on a flush. `cy capture flush` holds its own lock (flush.lock) only to
+# keep two flushers apart: it renames the spool to an in-flight file and
+# writes from that, so new hook lines land in a fresh spool meanwhile.
+# Retention: entries older than MAX_AGE_DAYS are dropped, then the oldest
+# beyond MAX_ENTRIES / MAX_BYTES, so a long outage cannot pile captures up;
+# the hook itself drops a capture once the spool passes HARD_BYTES.
+
+MAX_AGE_DAYS = 7
+MAX_ENTRIES = 5000
+MAX_BYTES = 4 * 1024 * 1024
+HARD_BYTES = 2 * MAX_BYTES
+
 
 def state_dir(env=None) -> Path:
     env = os.environ if env is None else env
@@ -185,27 +235,57 @@ def spool_path(env=None) -> Path:
     return state_dir(env) / "capture-spool.jsonl"
 
 
-@contextmanager
-def _locked(env=None):
+def inflight_path(env=None) -> Path:
+    return state_dir(env) / "capture-spool.inflight.jsonl"
+
+
+def _private_dir(env=None) -> Path:
     d = state_dir(env)
     d.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with open(d / "capture.lock", "a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
-
-
-def spool(entry: dict, env=None) -> None:
-    with _locked(env):
-        with spool_path(env).open("a", encoding="utf-8") as out:
-            out.write(json.dumps(entry, sort_keys=True, ensure_ascii=False) + "\n")
-
-
-def spooled(env=None) -> list[dict]:
     try:
-        lines = spool_path(env).read_text(encoding="utf-8").splitlines()
+        os.chmod(d, 0o700)  # an existing dir keeps its old mode otherwise
+    except OSError:
+        pass
+    return d
+
+
+def _open_private(path: Path, flags: int) -> int:
+    fd = os.open(path, flags | os.O_CREAT, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+    except OSError:
+        pass
+    return fd
+
+
+def _line(entry: dict) -> bytes:
+    return (json.dumps(entry, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def spool(entry: dict, env=None) -> bool:
+    """Append one capture. No lock: one O_APPEND write. False when dropped
+    because the spool is past its hard ceiling."""
+    _private_dir(env)
+    path = spool_path(env)
+    size = 0
+    for p in (path, inflight_path(env)):
+        try:
+            size += p.stat().st_size
+        except OSError:
+            pass
+    if size > HARD_BYTES:
+        return False
+    fd = _open_private(path, os.O_WRONLY | os.O_APPEND)
+    try:
+        os.write(fd, _line(entry))
+    finally:
+        os.close(fd)
+    return True
+
+
+def _read(path: Path) -> list[dict]:
+    try:
+        lines = path.read_bytes().decode("utf-8", errors="replace").splitlines()
     except OSError:
         return []
     out = []
@@ -217,46 +297,115 @@ def spooled(env=None) -> list[dict]:
     return out
 
 
+def spooled(env=None) -> list[dict]:
+    return _read(inflight_path(env)) + _read(spool_path(env))
+
+
+def retain(entries: list[dict], now: _dt.datetime) -> tuple[list[dict], int]:
+    """Entries kept by the retention bound (age, then count and bytes, oldest
+    dropped first), and how many were dropped."""
+    cutoff = memory.iso(now - _dt.timedelta(days=MAX_AGE_DAYS))
+    kept = [e for e in entries if str(e.get("at", "")) >= cutoff]
+    kept = kept[-MAX_ENTRIES:]
+    size, start = 0, len(kept)
+    for i in range(len(kept) - 1, -1, -1):
+        size += len(_line(kept[i]))
+        if size > MAX_BYTES:
+            break
+        start = i
+    kept = kept[start:]
+    return kept, len(entries) - len(kept)
+
+
+def _write_private(path: Path, entries: list[dict]) -> None:
+    tmp = path.with_name(path.name + f".tmp{os.getpid()}")
+    fd = _open_private(tmp, os.O_WRONLY | os.O_TRUNC)
+    try:
+        os.write(fd, b"".join(_line(e) for e in entries))
+    finally:
+        os.close(fd)
+    os.replace(tmp, path)
+
+
+@contextmanager
+def _flush_lock(env=None, wait: bool = False):
+    """Yields True when this process holds the flush lock, False when another
+    flush has it (never blocks unless wait=True)."""
+    fd = _open_private(_private_dir(env) / "flush.lock", os.O_WRONLY)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX if wait else fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+
+
+def flush_running(env=None) -> bool:
+    with _flush_lock(env) as held:
+        return not held
+
+
 def flush(client: quipu.Client | None = None, env=None) -> memory.Outcome:
-    """Write every spooled capture, BATCH per /knot, in order. Stops at the
-    first unreachable store and keeps the rest."""
-    client = client or client_for(env, timeout=10.0)
+    """Write every spooled capture, BATCH per /knot, oldest first. Stops at the
+    first unreachable store and keeps the rest in the in-flight file."""
+    with _flush_lock(env) as held:
+        if not held:
+            n = len(spooled(env))
+            return memory.Outcome(1, ["another flush is running"], {"written": 0, "spooled": n})
+        return _flush(client or client_for(env, timeout=10.0), env)
+
+
+def _flush(client: quipu.Client, env=None) -> memory.Outcome:
     graph = planes.plane_for("inferred")
-    with _locked(env):
-        entries = spooled(env)
-        done, lines = 0, []
-        while done < len(entries):
-            batch = entries[done:done + BATCH]
-            try:
-                client.knot("".join(turtle(e) for e in batch), graph, batch[0]["agent"], "camayoc:cy capture")
-            except quipu.Unreachable as exc:
-                lines.append(f"stopped: {exc}")
-                break
-            except quipu.QuipuError as exc:
-                # A refused batch is retried one entry at a time so one bad
-                # entry cannot hold the spool; a refused single entry is dropped
-                # with a line naming its hash (never its text).
-                lines.append(f"batch retried singly after: {str(exc)[:160]}")
-                stopped = False
-                for e in batch:
-                    try:
-                        client.knot(turtle(e), graph, e["agent"], "camayoc:cy capture")
-                    except quipu.Unreachable as down:
-                        lines.append(f"stopped: {down}")
-                        stopped = True
-                        break
-                    except quipu.QuipuError as one:
-                        lines.append(f"dropped {e['hash'][:19]}: {str(one)[:160]}")
-                    done += 1
-                if stopped:
+    spool_file, inflight = spool_path(env), inflight_path(env)
+    if spool_file.exists():
+        if inflight.exists():  # a stopped flush left work: keep order, old first
+            _write_private(inflight, _read(inflight) + _read(spool_file))
+            spool_file.unlink()
+        else:
+            os.replace(spool_file, inflight)
+    entries, dropped = retain(_read(inflight), _now(env))
+    lines = [f"retention dropped {dropped}"] if dropped else []
+    done = 0
+    while done < len(entries):
+        batch = entries[done:done + BATCH]
+        try:
+            client.knot("".join(turtle(e) for e in batch), graph, batch[0]["agent"], "camayoc:cy capture")
+        except quipu.Unreachable as exc:
+            lines.append(f"stopped: {exc}")
+            break
+        except quipu.QuipuError as exc:
+            # A refused batch is retried one entry at a time so one bad entry
+            # cannot hold the spool; a refused single entry is dropped with a
+            # line naming its hash (never its text).
+            lines.append(f"batch retried singly after: {str(exc)[:160]}")
+            stopped = False
+            for e in batch:
+                try:
+                    client.knot(turtle(e), graph, e["agent"], "camayoc:cy capture")
+                except quipu.Unreachable as down:
+                    lines.append(f"stopped: {down}")
+                    stopped = True
                     break
-                continue
-            done += len(batch)
-        rest = entries[done:]
-        spool_path(env).parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        spool_path(env).write_text("".join(json.dumps(e, sort_keys=True, ensure_ascii=False) + "\n"
-                                           for e in rest), encoding="utf-8")
-    lines.append(f"captured {done}, {len(rest)} still spooled")
+                except quipu.QuipuError as one:
+                    lines.append(f"dropped {e['hash'][:19]}: {str(one)[:160]}")
+                done += 1
+            if stopped:
+                break
+            continue
+        done += len(batch)
+    rest = entries[done:]
+    if rest:
+        _write_private(inflight, rest)
+    else:
+        inflight.unlink(missing_ok=True)
+    lines.append(f"captured {done}, {len(rest) + len(_read(spool_file))} still spooled")
     return memory.Outcome(0 if not rest else 1, lines, {"written": done, "spooled": len(rest)})
 
 
@@ -265,6 +414,8 @@ def flush_detached(env=None) -> None:
     if (env or os.environ).get("CAMAYOC_CAPTURE_SYNC") == "1":  # tests
         flush(env=env)
         return
+    if flush_running(env):
+        return  # the running flush, or the next hook, writes this entry
     main = Path(__file__).resolve().parent / "__main__.py"
     try:
         subprocess.Popen([sys.executable, str(main), "capture", "flush"], stdin=subprocess.DEVNULL,
@@ -333,7 +484,8 @@ def hook(event: str, payload: dict, env=None) -> memory.Outcome:
             return memory.Outcome(0, [f"unknown hook event {event}"])
         if entry is None:
             return memory.Outcome(0, ["nothing kept"])
-        spool(entry, env)
+        if not spool(entry, env):
+            return memory.Outcome(0, ["spool full; capture dropped"])
         flush_detached(env)
         return memory.Outcome(0, ["spooled"])
     except Exception as exc:  # noqa: BLE001 - a hook never breaks a session
@@ -364,7 +516,8 @@ def note(text: str, *, kind: str | None = None, about: str | None = None, env=No
     entry = build(text, source, session=_session_id(env), kind=kind, about=about, env=env)
     if entry is None:
         return memory.Outcome(2, ["Not captured: the note is empty or holds a secret that cannot be redacted."])
-    spool(entry, env)
+    if not spool(entry, env):
+        return memory.Outcome(3, ["Not captured: the capture spool is full; run `cy capture flush` once quipu is back."])
     out = flush(client=client, env=env)
     iri = capture_iri(entry)
     dropped = [ln for ln in out.lines if ln.startswith(("dropped", "batch retried"))]
