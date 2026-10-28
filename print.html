@@ -3095,6 +3095,390 @@ competency question have a stored query that answers it — and stays with
 <code>query_coverage.py</code>. The verdict's <code>coverage: Empty|Partial|Full</code> field keeps
 its pre-Jev name (camayoc-b6h) because other tools read it; read it as "how
 well the asked question maps".</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="design-agent-memory-entities"><a class="header" href="#design-agent-memory-entities">Design: agent-memory entities</a></h1>
+<p>Status: DESIGN, for review by the quipu lead. Tracked as aegis-gshu.11 under
+the epic aegis-gshu. This is the contract that the bobbin recall work
+(gshu.2), capture and promotion (gshu.4), the generated tools (gshu.10), the
+memory-file redirect (gshu.1) and the auto-memory switch (gshu.8) build on.</p>
+<p>Quipu exists to give memory the structure that Claude's file memory lacks.
+Memory files are easy to write, and that is the problem: they pile up, go
+stale and start to contradict each other. This design replaces them with a
+small set of typed camayoc entities. Each entity has one purpose-built create
+tool, and recall comes back through bobbin's per-prompt injection. Code does
+the capture, promotion through shapes adds the structure, and supersession
+replaces pile-up. Once all of that is verified, Claude auto-memory is turned
+off.</p>
+<p>This repository is public. The measurements below are counts and kinds only,
+and no memory-file content appears here.</p>
+<h2 id="1-what-real-usage-looks-like-measured-2026-10-28"><a class="header" href="#1-what-real-usage-looks-like-measured-2026-10-28">1. What real usage looks like (measured 2026-10-28)</a></h2>
+<h3 id="11-claude-memory-files"><a class="header" href="#11-claude-memory-files">1.1 Claude memory files</a></h3>
+<p>Source: <code>~/.claude/projects/*/memory/*.md</code> on the operator's Mac. The type
+comes from the frontmatter <code>metadata.type</code>. "Kind" is a manual classification
+of each file by what it records.</p>
+<div class="table-wrapper"><table><thead><tr><th>Project</th><th style="text-align: right">Files</th><th style="text-align: right">feedback</th><th style="text-align: right">project</th><th style="text-align: right">reference</th><th style="text-align: right">user</th></tr></thead><tbody>
+<tr><td>administrator workspace</td><td style="text-align: right">136</td><td style="text-align: right">59</td><td style="text-align: right">55</td><td style="text-align: right">16</td><td style="text-align: right">6</td></tr>
+<tr><td>personal project</td><td style="text-align: right">19</td><td style="text-align: right">15</td><td style="text-align: right">3</td><td style="text-align: right">0</td><td style="text-align: right">1</td></tr>
+<tr><td>gascity city</td><td style="text-align: right">6</td><td style="text-align: right">2</td><td style="text-align: right">3</td><td style="text-align: right">0</td><td style="text-align: right">1</td></tr>
+<tr><td>workspace root</td><td style="text-align: right">3</td><td style="text-align: right">2</td><td style="text-align: right">1</td><td style="text-align: right">0</td><td style="text-align: right">0</td></tr>
+<tr><td><strong>Total</strong></td><td style="text-align: right"><strong>164</strong></td><td style="text-align: right"><strong>78</strong></td><td style="text-align: right"><strong>62</strong></td><td style="text-align: right"><strong>16</strong></td><td style="text-align: right"><strong>8</strong></td></tr>
+</tbody></table>
+</div>
+<p>Five more projects keep a <code>MEMORY.md</code> index with no topic files, 145 lines in
+total. The four projects above add 4 more <code>MEMORY.md</code> indexes, so there are 9
+indexes in all. The administrator's index alone is 134 lines and 23 KB, which
+comes to about 6k tokens loaded into every session whether or not any of it
+is relevant.</p>
+<div class="table-wrapper"><table><thead><tr><th>Recurring kind</th><th style="text-align: right">Files</th><th style="text-align: right">Bytes</th><th>Frontmatter types it hides under</th><th>Entity</th></tr></thead><tbody>
+<tr><td>Standing order or standing task</td><td style="text-align: right">49</td><td style="text-align: right">63 KB</td><td>feedback 44, project 5</td><td>Directive</td></tr>
+<tr><td>Dated handoff</td><td style="text-align: right">27</td><td style="text-align: right">169 KB</td><td>project 27</td><td>Handoff</td></tr>
+<tr><td>Writing, format or channel convention of a person</td><td style="text-align: right">24</td><td style="text-align: right">28 KB</td><td>feedback 18, user 6</td><td>Preference</td></tr>
+<tr><td>One ruling on a scoped question</td><td style="text-align: right">17</td><td style="text-align: right">22 KB</td><td>feedback 10, project 5, user 1, reference 1</td><td>Decision</td></tr>
+<tr><td>Where a system lives and how to reach it</td><td style="text-align: right">16</td><td style="text-align: right">31 KB</td><td>reference 9, project 7</td><td>Reference</td></tr>
+<tr><td>Tool limit, gotcha or term meaning</td><td style="text-align: right">16</td><td style="text-align: right">21 KB</td><td>feedback 6, reference 5, project 4, user 1</td><td>Lesson</td></tr>
+<tr><td>Current setup of a system</td><td style="text-align: right">14</td><td style="text-align: right">30 KB</td><td>project 14</td><td>split: Decision 2, Reference 7, board item or retired 5</td></tr>
+<tr><td>Who's who</td><td style="text-align: right">1</td><td style="text-align: right">2 KB</td><td>reference 1</td><td>Person</td></tr>
+</tbody></table>
+</div>
+<p>Findings that drive the design:</p>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>Measurement</th><th>Consequence</th></tr></thead><tbody>
+<tr><td>F1</td><td>The four frontmatter types do not predict the kind. "feedback" holds four of the kinds.</td><td>Type by kind, with one create tool per kind. Never derive a kind from the file type.</td></tr>
+<tr><td>F2</td><td>Handoffs are 16% of the files and 46% of the bytes (169 of 367 KB). Only the newest one is ever read. Their 539 bullets are mostly item states that duplicate the work board.</td><td>Keep one current Handoff per agent that supersedes the last one, and keep item state on the board.</td></tr>
+<tr><td>F3</td><td>12 files retire an earlier rule in prose, and the old file stays live. There are 3 live contradictions across projects: 2 compensation rules and 1 disclosure rule. An outbound send guard tripped on one of them on 10/26.</td><td>Supersession has to be an edge on a controlled natural key, and recall must drop superseded records.</td></tr>
+<tr><td>F4</td><td>85 of 164 files (52%) were older than 21 days by file mtime at 2026-10-28T05:00Z; the median age was 22 days. A re-run hours later counted 83, because mtimes move.</td><td>Every entity gets a review age, and the existing <code>review_due.py</code> reactor fires on it.</td></tr>
+<tr><td>F5</td><td>26 of the 137 non-handoff files match the case-insensitive regex <code>&lt;secret-store product name&gt;|api.key|_KEY|token|password|passkey|credential|keychain</code>. A narrower regex (<code>&lt;secret-store product name&gt;|token|passkey|api key|password|secret</code>) matches 24.</td><td>A Reference stores a location and a key name only, and the tool refuses anything that looks like a secret (section 3).</td></tr>
+</tbody></table>
+</div>
+<h3 id="12-what-is-already-in-quipu"><a class="header" href="#12-what-is-already-in-quipu">1.2 What is already in quipu</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Measurement</th><th>Value</th><th>Consequence</th></tr></thead><tbody>
+<tr><td><code>aegis:Directive</code> nodes</td><td>923, all with label and comment. 159 have <code>derived_from</code>, 8 <code>supersedes</code>, 5 <code>sourceKind</code>, and there are 70+ ad hoc predicates</td><td>The class exists. Its fields are free-for-all, so the shape must name the fields.</td></tr>
+<tr><td><code>aegis:OperationalRule</code> (crew rules, <code>crew_process_rules</code>)</td><td>137 (58 in <code>aegis-crew-process-rules</code>)</td><td>Keep these as is. Directive recall unions them in.</td></tr>
+<tr><td><code>aegis:Incident</code></td><td>78 (label and comment; <code>affects</code> 21, <code>caused_by</code> 13)</td><td>The class exists, with no lifecycle fields yet.</td></tr>
+<tr><td><code>aegis:Decision</code></td><td>50: 1 with <code>chose</code>, 0 with <code>outcome</code>, 49 with neither</td><td>Today's Decision records pass neither Decision shape. No governance decision exists in the graph yet.</td></tr>
+<tr><td>Untyped ruling episodes (<code>prov:Activity</code>, label <code>stiwi-ruling*</code>/<code>stiwi-directive*</code>)</td><td>34, from 2026-09-02 to 2026-10-27</td><td>This is the de facto capture tier, so promotion starts here.</td></tr>
+<tr><td><code>aegis:Person</code></td><td>3</td><td>Keep Person minimal.</td></tr>
+<tr><td>Stored and compiled <code>/ask</code> catalog</td><td>81 entries</td><td>None of them recalls a memory entity. <code>crew_process_rules</code>, <code>camayoc_lapsed_directives</code> and <code>daily_brief_ask*</code> are adjacent but are not recall.</td></tr>
+</tbody></table>
+</div>
+<h3 id="13-why-the-1027-decision-write-was-refused"><a class="header" href="#13-why-the-1027-decision-write-was-refused">1.3 Why the 10/27 Decision write was refused</a></h3>
+<p>An administrator agent tried to record a human ruling and failed twice. The
+first attempt was refused with <code>unknown rdf:type a:Rule</code>: no Rule class
+exists. The second attempt, as <code>aegis:Decision</code>, drew 25 violations, because
+two loaded shape graphs claim <code>aegis:Decision</code> with different meanings:</p>
+<div class="table-wrapper"><table><thead><tr><th>Owner</th><th>Shape</th><th>Required fields</th><th>Meaning</th></tr></thead><tbody>
+<tr><td>camayoc <code>shapes/core.shapes.ttl</code> (loaded as <code>camayoc-core</code>)</td><td><code>CamayocDecisionShape</code></td><td><code>sourceKind</code>, <code>rdfs:label</code>, <code>chose</code>, each with an <code>sh:message</code></td><td>A choice made during work (<code>ontology/core.ttl</code>)</td></tr>
+<tr><td><strong>quipu</strong> <code>shapes/governance.ttl:740</code> (loaded as <code>governance</code>)</td><td><code>DecisionShape</code></td><td><strong><code>outcome</code> (approve, reject or changes), <code>by</code>, <code>evidenceHash</code>, each minCount 1 with no <code>sh:message</code></strong></td><td>A signed gate approval, sealed by content hash</td></tr>
+</tbody></table>
+</div>
+<p>The quipu shape's three minCount fields are the "unnamed" ones: they carry no
+message, so the refusal could not say in plain words what was missing. No
+agent can satisfy both shapes honestly. Camayoc's own <code>governance/shapes.ttl</code>
+targets <code>quechua:Decision</code> and is not involved.</p>
+<p><strong>Ruling: split the class in quipu, by a named migration.</strong> The memory
+Decision keeps <code>aegis:Decision</code>: it is camayoc's term, it is the older one,
+and <code>decidedIn</code>, <code>chose</code>, <code>over</code>, <code>rationale</code> and <code>supersededBy</code> already hang
+on it. The quipu governance meaning moves to <code>aegis:GateApproval</code>. The
+migration, owned by the quipu lead:</p>
+<ol>
+<li>
+<p>Add <code>aegis:GateApproval rdfs:subClassOf aegis:DecisionRecord</code>. Move
+<code>governance.ttl:50</code> (<code>aegis:Decision rdfs:subClassOf aegis:DecisionRecord</code>)
+to GateApproval. The memory Decision stops being an ADR and a Document.</p>
+</li>
+<li>
+<p>Retarget <code>DecisionShape</code> to <code>aegis:GateApproval</code>, and give <code>outcome</code>, <code>by</code>
+and <code>evidenceHash</code> an <code>sh:message</code> each.</p>
+</li>
+<li>
+<p><strong>Writers emit only GateApproval:</strong></p>
+<ul>
+<li><code>src/store/decision_deck/admission.rs:175</code>, which types the receipt.</li>
+<li>The remedy strings in <code>src/governance/guard.rs:586</code> and <code>:607</code> and in
+<code>src/governance/router.rs:130</code>, which tell deciders what to sign.</li>
+</ul>
+</li>
+<li>
+<p><strong>Readers accept both classes for one release:</strong></p>
+<ul>
+<li><code>src/governance/router.rs:201</code> and <code>src/governance/precedent.rs:108</code>,
+which add <code>a:GateApproval</code> beside <code>a:Decision</code>, still requiring
+<code>evidenceHash</code>, <code>outcome</code> and <code>by</code>.</li>
+<li>The Decision Deck stored query in <code>src/store/decision_deck.rs:35</code>.</li>
+<li><code>src/rule_answers/judgment_read.rs:52</code>, which checks the type.</li>
+</ul>
+<p>After that release, the <code>a:Decision</code> branch is dropped.</p>
+</li>
+<li>
+<p><strong>Never retype a sealed record.</strong> <code>src/governance/decision_seal.rs</code> digests
+every fact except <code>signature</code> and <code>prov:wasGeneratedBy</code>, so <code>rdf:type</code> is
+inside the seal. Retyping would void the verdict under <code>verify_recorded</code>.
+The live graph holds 0 nodes with <code>evidenceHash</code> plus <code>outcome</code>, so nothing
+needs retyping today. Any created before the migration release stay
+<code>aegis:Decision</code> and are read through the dual-class path for as long as
+they exist.</p>
+</li>
+<li>
+<p><strong>Tests touched:</strong></p>
+<ul>
+<li><code>src/governance/router_tests.rs</code></li>
+<li><code>src/governance/guard_golden_tests.rs</code> (remedy goldens)</li>
+<li><code>src/governance_tests.rs</code></li>
+<li><code>src/rule_answers/judgment_tests.rs</code></li>
+</ul>
+<p>Add a test that a pre-migration sealed <code>aegis:Decision</code> still verifies and
+still satisfies its request.</p>
+</li>
+</ol>
+<p>SHACL <code>targetClass</code> has no plane scope, so there is no interim workaround.
+<code>record_decision</code> ships after the quipu migration release. Until then,
+rulings are captured untyped (section 5), which is never refused, and
+promoted once the release lands.</p>
+<h2 id="2-entities"><a class="header" href="#2-entities">2. Entities</a></h2>
+<p>Keep 9 entities, merge 3 and drop 1:</p>
+<ul>
+<li><strong>Merged:</strong> Rule and Directive are one entity. Constraint folds into Lesson
+(3 files are environment limits). Feedback folds into Lesson or Preference
+by content (F1).</li>
+<li><strong>Dropped:</strong> Role. CrewRole (17 nodes) and a domain graph's Role class
+already exist.</li>
+<li><strong>Kept with no memory files behind them:</strong> Incident (78 graph nodes; outages
+sit inside handoffs today) and Finding (watch and study output).</li>
+</ul>
+<h3 id="21-natural-keys-that-dedupe"><a class="header" href="#21-natural-keys-that-dedupe">2.1 Natural keys that dedupe</a></h3>
+<p>A natural key is built only from IRIs and registered terms, never from free
+text a caller makes up:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key part</th><th>Source</th><th>Unknown value</th></tr></thead><tbody>
+<tr><td><code>about</code>, <code>subject</code>, <code>appliesTo</code>, <code>person</code></td><td>An existing entity IRI (host, repo, service, CrewRole, agent, Person). The literal <code>crew</code> is short for the crew-wide scope IRI</td><td>Refused, with the 3 nearest IRIs from <code>quipu_resolve_entity</code></td></tr>
+<tr><td><code>topic</code></td><td>A registered <code>aegis:MemoryTopic</code> term (label plus aliases; <code>cy topic add</code> registers one). Free text resolves through an exact label or alias match</td><td>Refused, with the 3 nearest terms and the <code>cy topic add</code> call</td></tr>
+<tr><td><code>context</code> (Preference)</td><td>A closed list: email, chat, code-review, document, artifact, form, travel</td><td>Refused</td></tr>
+<tr><td><code>startedAt</code> (Incident)</td><td>UTC, truncated to the minute</td><td>n/a</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>Every record carries <code>aegis:naturalKey</code>, the key IRI:
+<code>aegis:mem/&lt;kind&gt;/&lt;scope-local-name&gt;/&lt;topic-local-name&gt;</code>.</li>
+<li>Each version's own IRI is the key IRI plus <code>/&lt;recordedAt as yyyymmddThhmmssZ&gt;</code>,
+so versions never collide and supersession links two IRIs.</li>
+<li>If a new record has the same <code>about</code> or scope as a current record, a
+different topic, and a label similarity of 0.8 or more, it is written but
+also listed by <code>mem_conflicts()</code>. It never silently becomes a fresh key.</li>
+</ul>
+<h3 id="22-fields-lifecycle-recall"><a class="header" href="#22-fields-lifecycle-recall">2.2 Fields, lifecycle, recall</a></h3>
+<p>Shared fields are filled on every entity by the tool, never by the caller:
+<code>rdfs:label</code>, <code>aegis:naturalKey</code>, <code>aegis:sourceKind</code>, <code>aegis:recordedAt</code>,
+<code>aegis:recordedBy</code> (agent), <code>prov:wasAssociatedWith</code> (session),
+<code>aegis:contentHash</code>, and the plane via <code>planes.plane_for(sourceKind)</code>.
+Lifecycle uses terms that are already modeled: <code>aegis:supersedes</code>,
+<code>aegis:supersededBy</code>, <code>aegis:reviewAfter</code>, <code>aegis:maxAge</code>, <code>aegis:expiresAt</code>
+(aegis-kxjack).</p>
+<div class="table-wrapper"><table><thead><tr><th>Entity (class)</th><th>Required (caller)</th><th>Optional</th><th>Natural key</th><th>sourceKind / plane</th><th>Lifecycle default</th><th>Recall queries</th></tr></thead><tbody>
+<tr><td><strong>Decision</strong> (<code>aegis:Decision</code>)</td><td><code>chose</code>, <code>by</code> (who ruled), <code>about</code>, <code>topic</code></td><td><code>over</code> (alternatives), <code>rationale</code>, <code>decidedIn</code> (board item or session), <code>verbatim</code></td><td><code>about</code> + <code>topic</code></td><td>declared if <code>by</code> is a human; otherwise inferred</td><td>Same key supersedes. <code>reviewAfter</code> +90d</td><td><code>mem_decisions_current(about?, topic?)</code>, <code>mem_decision_history(key)</code></td></tr>
+<tr><td><strong>Directive</strong> (<code>aegis:Directive</code>)</td><td><code>rule</code> (imperative, one sentence), <code>issuedBy</code>, <code>appliesTo</code> (agent, CrewRole, repo or <code>crew</code>), <code>topic</code></td><td><code>issuedOn</code>, <code>verbatim</code>, <code>why</code>, <code>expiresAt</code></td><td><code>appliesTo</code> + <code>topic</code></td><td>declared</td><td>Same key supersedes; a different issuer needs <code>--supersede</code> (section 3). <code>reviewAfter</code> +90d</td><td><code>mem_directives_for(agent)</code> (unions <code>crew_process_rules</code>), <code>mem_directives_lapsed()</code> (wraps <code>camayoc_lapsed_directives</code>)</td></tr>
+<tr><td><strong>Preference</strong> (<code>aegis:Preference</code>)</td><td><code>person</code>, <code>prefers</code> (one sentence), <code>context</code>, <code>topic</code></td><td><code>notWhen</code>, <code>example</code>, <code>verbatim</code></td><td><code>person</code> + <code>context</code> + <code>topic</code></td><td>declared (the person said it) or inferred (an agent noticed it)</td><td>Same key supersedes. <code>reviewAfter</code> +180d</td><td><code>mem_preferences(person, context?)</code></td></tr>
+<tr><td><strong>Lesson</strong> (<code>aegis:Lesson</code>)</td><td><code>lesson</code> (one sentence), <code>subject</code>, <code>topic</code>, <code>learnedFrom</code> (incident, board item, session or URL)</td><td><code>remedy</code>, <code>appliesTo</code></td><td><code>subject</code> + <code>topic</code></td><td>inferred; promotes to declared when a human confirms</td><td>Same key supersedes. <code>reviewAfter</code> +60d</td><td><code>mem_lessons(subject?, topic?)</code></td></tr>
+<tr><td><strong>Reference</strong> (<code>aegis:Reference</code>)</td><td><code>subject</code>, <code>topic</code> (purpose), <code>locator</code> (URL, path, command or graph IRI)</td><td><code>secretRef</code> (secret-store key name; never a value), <code>access</code> (how to authenticate)</td><td><code>subject</code> + <code>topic</code></td><td>observed when probed; otherwise declared</td><td>Same key supersedes. <code>reviewAfter</code> +60d</td><td><code>mem_reference(subject?, topic?)</code></td></tr>
+<tr><td><strong>Handoff</strong> (<code>aegis:Handoff</code>)</td><td><code>agent</code>, <code>next</code> (1 to 7 next-step lines, each pointing at a board item, PR or entity)</td><td><code>waitingOn</code> (per item), <code>context</code> (3 lines max)</td><td><code>agent</code></td><td>observed</td><td>Each write supersedes the last. <code>maxAge</code> P2D</td><td><code>mem_handoff(agent)</code></td></tr>
+<tr><td><strong>Incident</strong> (<code>aegis:Incident</code>)</td><td><code>subject</code>, <code>symptom</code>, <code>startedAt</code></td><td><code>cause</code>, <code>fix</code>, <code>resolvedAt</code>, <code>lesson</code> (links a Lesson)</td><td><code>subject</code> + <code>startedAt</code> (minute)</td><td>observed</td><td>A later write on the same key updates the record (adding <code>resolvedAt</code>, <code>cause</code>). Open until <code>resolvedAt</code>; <code>reviewAfter</code> +7d while open</td><td><code>mem_incidents_open(subject?)</code>, <code>mem_incidents_for(subject)</code></td></tr>
+<tr><td><strong>Finding</strong> (<code>aegis:Finding</code>)</td><td><code>claim</code> (one sentence), <code>evidence</code> (URL, commit, query or board item), <code>about</code>, <code>topic</code> (the question)</td><td><code>run</code> (the watch or patrol that produced it), <code>implication</code></td><td><code>about</code> + <code>topic</code></td><td>observed (measured) or inferred (read or summarized)</td><td>A revised claim on the same question supersedes. <code>reviewAfter</code> +30d</td><td><code>mem_findings(about?, since?)</code> (subsumes <code>daily_brief_watch_semweb_v1</code>)</td></tr>
+<tr><td><strong>Person</strong> (<code>aegis:Person</code>)</td><td><code>name</code>, <code>handle</code> (one stable public handle)</td><td><code>role</code>, <code>org</code>, <code>stance</code>, <code>seenIn</code></td><td><code>handle</code></td><td>declared</td><td><code>reviewAfter</code> +180d</td><td><code>mem_person(handle?)</code></td></tr>
+</tbody></table>
+</div>
+<p>Two queries span every entity: <code>mem_index_since(tx)</code> feeds bobbin's mirror
+(section 4), and <code>mem_due()</code> lists entities past <code>reviewAfter</code>, built on
+<code>review_due.py</code>. <code>mem_conflicts()</code> lists the near-match pairs from 2.1 and
+the contradictions from section 5.</p>
+<p>Every recall query has the same filters:</p>
+<ul>
+<li>It drops anything with <code>supersededBy</code>, anything past <code>expiresAt</code>, and any
+Handoff past <code>maxAge</code>.</li>
+<li>It returns <code>iri</code>, <code>naturalKey</code>, <code>kind</code>, <code>label</code>, <code>body</code>, <code>sourceKind</code>,
+<code>recordedAt</code> and <code>supersedes</code>.</li>
+<li>It ranks <code>crew:declared</code> ahead of <code>crew:records</code>, ahead of <code>crew:inferred</code>.</li>
+<li>At most 50 rows; the 51st row is an overflow sentinel.</li>
+</ul>
+<h2 id="3-create-tool-contract-gshu10"><a class="header" href="#3-create-tool-contract-gshu10">3. Create-tool contract (gshu.10)</a></h2>
+<p>The shape is the single source of truth for each tool.</p>
+<ul>
+<li><strong>Shape (source of truth for fields).</strong>
+<code>shapes/agent-memory.shapes.ttl</code> holds one NodeShape per entity. Every
+property carries <code>sh:name</code> (the argument name), <code>sh:description</code> (help
+text) and <code>sh:message</code> (the plain-word refusal). A lint fails the build on
+any minCount without an <code>sh:message</code>, which is the 10/27 bug class.</li>
+<li><strong>Sidecar (tool-only facts).</strong> <code>tools/memory/&lt;entity&gt;.tool.json</code> holds the
+verb (<code>record_decision</code>), the CLI noun (<code>cy decision</code>), the natural-key
+parts, the default lifecycle, the sourceKind rule, and one worked example.
+It holds no field definitions.</li>
+<li><strong>Generators.</strong> One generator per surface, all reading the shape and the
+sidecar:
+<ul>
+<li>CLI: <code>camayoc &lt;noun&gt;</code> with the <code>cy</code> alias. It is a Python entry point,
+installed by tambo with <code>uv tool install</code>.</li>
+<li>MCP tools: <code>record_&lt;entity&gt;</code> and <code>recall_&lt;entity&gt;</code>.</li>
+<li>Harness tools: a Claude skill with slash commands, and the Codex
+equivalent.</li>
+<li>Man pages and <code>--help</code>, plus <code>cy prime</code>.</li>
+</ul>
+</li>
+<li><strong>Drift gate.</strong> CI regenerates every surface and fails on any diff.</li>
+</ul>
+<p>Defaults the tool fills: the natural key and the version IRI (2.1),
+sourceKind (by rule), plane, <code>recordedAt</code>, <code>recordedBy</code> (<code>$SHANTY_AGENT</code>, or
+the harness agent id), session, <code>contentHash</code>, the lifecycle defaults, and
+<code>decidedIn</code> (the current board item, when the agent has one claimed).</p>
+<p><strong>Secret refusal.</strong> <code>scripts/memory_secret_rules.py</code> checks every
+caller-supplied field before the write, and its diagnostics name the field
+and the rule, never the value. It has 12 named rules:</p>
+<ul>
+<li>GitHub classic and fine-grained tokens</li>
+<li><code>sk-</code> model API keys</li>
+<li>Stripe live keys</li>
+<li>Slack <code>xox*</code> tokens</li>
+<li>AWS access key ids</li>
+<li>Google API keys</li>
+<li>JWTs</li>
+<li>PEM private-key blocks</li>
+<li>Bearer credentials</li>
+<li>Passwords in URL userinfo</li>
+<li>Labeled <code>password=</code>/<code>token:</code>/<code>api_key=</code> assignments</li>
+</ul>
+<p>A 13th rule catches high-entropy strings: unlabeled tokens of 32 characters
+or more that mix upper case, lower case and digits, with at least 4.2 bits of
+entropy per character. Hex digests and git SHAs do not trip it. <code>secretRef</code>
+must be a key name (<code>^[A-Za-z][A-Za-z0-9_./-]{1,127}$</code>).
+<code>tests/test_memory_secret_rules.py</code> checks that:</p>
+<ul>
+<li>each rule refuses its fixture, without echoing the value;</li>
+<li>IRIs, URLs, digests and SHAs pass;</li>
+<li>a <code>secretRef</code> key name passes;</li>
+<li>a <code>secretRef</code> that holds a value is refused.</li>
+</ul>
+<p>Fixtures are assembled at runtime, so no credential-shaped literal sits in the
+repository.</p>
+<p>Behavior:</p>
+<div class="table-wrapper"><table><thead><tr><th>Situation</th><th>Tool response</th><th>Exit</th></tr></thead><tbody>
+<tr><td>Fields complete, new key</td><td>Writes. Prints <code>recorded &lt;kind&gt; &lt;iri&gt;</code></td><td>0</td></tr>
+<tr><td>Same natural key exists, same body</td><td>No-op. Prints <code>unchanged &lt;iri&gt;</code></td><td>0</td></tr>
+<tr><td>Same key, different body</td><td>Writes the new version with <code>supersedes</code> on it and <code>supersededBy</code> on the old one, closing the old interval (never a delete). Prints <code>superseded &lt;old&gt; -&gt; &lt;new&gt;</code></td><td>0</td></tr>
+<tr><td>A new declared record would supersede a declared one with a different <code>by</code>/<code>issuedBy</code></td><td>Refuses: <code>Not recorded: this replaces a ruling by &lt;who&gt; (&lt;iri&gt;); pass --supersede &lt;iri&gt; to confirm.</code></td><td>2</td></tr>
+<tr><td>An inferred record would supersede a declared one</td><td>Refuses. Inferred never overrides human-declared</td><td>2</td></tr>
+<tr><td>Missing field, or an unknown key part (2.1)</td><td>One line per field from <code>sh:message</code>, e.g. <code>Not recorded: a decision needs what was chosen (--chose).</code>, then the example</td><td>2</td></tr>
+<tr><td>A field matches a secret rule</td><td><code>Not recorded: &lt;field&gt; looks like a secret (&lt;rule&gt;); store the secret's key name in --secret-ref instead.</code></td><td>2</td></tr>
+<tr><td>Quipu unreachable</td><td>Queues to the offline buffer (gshu.7). Prints <code>queued &lt;n&gt;</code></td><td>0</td></tr>
+</tbody></table>
+</div>
+<h2 id="4-recall-contract-for-bobbin-gshu2"><a class="header" href="#4-recall-contract-for-bobbin-gshu2">4. Recall contract for bobbin (gshu.2)</a></h2>
+<p>Bobbin recalls memory through its existing UserPromptSubmit injection. There
+is no second hook, but the memory lane is <strong>new bobbin work</strong>.</p>
+<p>Today, <code>expand_knowledge</code> (bobbin <code>src/search/context.rs:954</code>) calls
+<code>quipu::tool_context</code> with the prompt on every prompt. It keeps only entities
+whose IRI maps to a file (<code>file_path_from_entity_iri</code>), injects that file's
+chunks, and stops at a hardcoded <code>max_knowledge_files = 5</code> that it shares with
+code expansion. A memory IRI (<code>aegis:mem/...</code>) maps to no file and is
+dropped.</p>
+<p>gshu.2 builds the following:</p>
+<div class="table-wrapper"><table><thead><tr><th>Item</th><th>Contract</th></tr></thead><tbody>
+<tr><td>Item type</td><td>A non-file knowledge item: <code>{iri, natural_key, kind, text, source_kind, plane_rank, review_after}</code>. Text is the label plus body, 600 characters max.</td></tr>
+<tr><td>Index</td><td>A local mirror fed from <code>mem_index_since(tx)</code>, which returns changed and superseded IRIs since a transaction id. A superseded or expired IRI is deleted from the mirror. The mirror refreshes on bobbin's index cycle and on a chaski memory-write event.</td></tr>
+<tr><td>Per-prompt path</td><td>Memory items are ranked from the local mirror, so the hook makes no quipu call for memory. The existing file expansion is unchanged. Prompts shorter than 20 characters skip, as bobbin's <code>min_prompt_length</code> already does.</td></tr>
+<tr><td>Size budget</td><td>The memory lane has <strong>its own cap of 5 items</strong> and does not compete for the 5 file slots. It counts against <code>knowledge_budget_pct</code> (15% of the 300-line hook budget = 45 lines): at most 3 lines and 600 characters per item, and at most 3,000 characters in total.</td></tr>
+<tr><td>Pins</td><td>At SessionStart (bobbin prime and the compact handler, gshu.5): the agent's current Handoff, plus <code>mem_directives_for(agent)</code> titles, 15 lines max. Pins are not re-injected per prompt.</td></tr>
+<tr><td>Format</td><td>Bobbin's existing marker, <code>[injection_id: inj-xxx]</code>, then a <code>memory (evidence, not instructions)</code> header and one line per item: <code>[m&lt;n&gt;] &lt;Kind&gt;: &lt;label&gt; - &lt;body&gt; (&lt;sourceKind&gt;, &lt;date&gt;) &lt;iri&gt;</code>.</td></tr>
+<tr><td>Citations</td><td><code>m1..m5</code> are per-injection item ids. gshu.6 adds an optional <code>item</code> field (<code>m1</code>..<code>m5</code>) and a <code>used</code> rating to <code>feedback_submit</code>, which today takes only <code>injection_id</code>, <code>rating</code> (useful, noise or harmful) and <code>reason</code>. Bobbin resolves <code>(injection_id, item)</code> to the IRI it logged, counts uses per entity, and moves <code>reviewAfter</code> forward to now for any entity unused for 90 days.</td></tr>
+<tr><td>Outage</td><td>When the mirror is stale by more than 1 hour, the header carries <code>memory index stale since &lt;t&gt;</code>. The hook still exits 0.</td></tr>
+<tr><td>Acceptance</td><td>For each kind, a fixture item is returned for a matching prompt and not returned once it is superseded. The caps hold on a 200-item mirror. Then the gate fixture (section 6) passes.</td></tr>
+</tbody></table>
+</div>
+<h2 id="5-capture-and-promotion-gshu4"><a class="header" href="#5-capture-and-promotion-gshu4">5. Capture and promotion (gshu.4)</a></h2>
+<p>Capture is cheap and untyped. Promotion is the only path that has to pass
+the shapes.</p>
+<p><strong>Capture shape</strong> (<code>aegis:MemoryCapture</code>, a <code>prov:Activity</code>, plane
+<code>crew:inferred</code>):</p>
+<ul>
+<li>Required: <code>rdfs:comment</code> (verbatim text), <code>prov:wasAssociatedWith</code>,
+<code>aegis:capturedAt</code>, <code>aegis:captureSource</code> (one of explicit, stop-check,
+file-redirect, import or prompt).</li>
+<li>Optional: <code>aegis:kindHint</code>, <code>aegis:about</code>.</li>
+<li>Never refused for content, but the section 3 secret rules still apply.</li>
+<li>The 34 existing ruling episodes are captures already.</li>
+</ul>
+<p><strong>Producers</strong> (code, not agents):</p>
+<div class="table-wrapper"><table><thead><tr><th>Producer</th><th>Writes</th></tr></thead><tbody>
+<tr><td>Memory-file redirect (gshu.1)</td><td>The blocked write's text, plus <code>kindHint</code> from frontmatter</td></tr>
+<tr><td>Stop check (gshu.3)</td><td>A detected ruling with no write</td></tr>
+<tr><td><code>cy note "&lt;text&gt;"</code></td><td>An explicit capture</td></tr>
+<tr><td><code>cy import-memory</code></td><td>Migration (section 6)</td></tr>
+</tbody></table>
+</div>
+<p><strong>Promotion</strong> runs in camayoc as <code>cy promote</code>. Chaski runs it on each capture
+event (debounced 5 minutes), at SessionEnd and every 150 tool calls, and it
+can be run on demand.</p>
+<ol>
+<li><strong>Dedupe.</strong> The same <code>contentHash</code> within 30 days becomes one capture.</li>
+<li><strong>Classify.</strong> Deterministic cues come first: a directive marker, or
+"never"/"always" plus a named issuer, gives Directive. A dated
+human-ruling marker with a choice gives Decision. A <code>handoff-</code> file gives
+Handoff. The frontmatter type alone is never used (F1). Model
+classification may only <em>suggest</em>. Its output stays <code>inferred</code> and lands
+in <code>crew:inferred</code>.</li>
+<li><strong>Fill.</strong> Map the cues to fields, resolve the key parts (2.1), then call
+the entity's create tool. The shapes gate this, exactly as for a direct
+call.</li>
+<li><strong>Promotion succeeds:</strong> the typed entity gets <code>prov:wasDerivedFrom</code> the
+capture, and the capture gets <code>aegis:promotedTo</code>.</li>
+<li><strong>Promotion is refused:</strong> the capture keeps <code>aegis:promotionBlocked</code> with
+the plain-word missing fields. <code>cy promote --pending</code> lists these, and the
+stop check shows the exact <code>cy</code> call that would finish the record.</li>
+<li><strong>Supersession:</strong> the same natural key supersedes (section 3).</li>
+<li><strong>Conflicts:</strong> the same <code>about</code> or scope with a contradicting
+<code>chose</code>/<code>rule</code> under a different key is never auto-superseded. It is
+listed by <code>mem_conflicts()</code>, and a decision item is filed for the issuer
+(F3).</li>
+</ol>
+<h2 id="6-migration-and-the-auto-memory-gate-gshu8"><a class="header" href="#6-migration-and-the-auto-memory-gate-gshu8">6. Migration and the auto-memory gate (gshu.8)</a></h2>
+<p><code>cy import-memory &lt;dir&gt; --dry-run</code> turns each file into a capture plus a
+proposed typed record, then prints a per-file report with the kind, key,
+missing fields and conflicts. A second run without <code>--dry-run</code> writes the
+records. Each source file moves to <code>memory/archive/</code>, and nothing is deleted.
+The MEMORY.md index becomes a 3-line pointer to <code>cy recall</code>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Source</th><th style="text-align: right">Count</th><th>Target</th></tr></thead><tbody>
+<tr><td>Directive files</td><td style="text-align: right">49</td><td>49 Directive</td></tr>
+<tr><td>Preference files</td><td style="text-align: right">24</td><td>24 Preference</td></tr>
+<tr><td>Decision files</td><td style="text-align: right">17</td><td>17 Decision (the 3 F3 contradictions resolved by the issuer first)</td></tr>
+<tr><td>Reference files</td><td style="text-align: right">16</td><td>16 Reference (key names only, F5)</td></tr>
+<tr><td>Lesson files</td><td style="text-align: right">16</td><td>16 Lesson</td></tr>
+<tr><td>Current-setup notes</td><td style="text-align: right">14</td><td>2 Decision, 7 Reference, 5 to board items or retired</td></tr>
+<tr><td>Who's-who file</td><td style="text-align: right">1</td><td>1 Person plus 1 Reference</td></tr>
+<tr><td>Handoff files</td><td style="text-align: right">27</td><td>1 Handoff per agent (newest); 26 archived as files</td></tr>
+<tr><td><code>MEMORY.md</code> indexes</td><td style="text-align: right">9</td><td>Replaced by the pointer. Lines with no topic file (145, in 5 projects) are imported as captures</td></tr>
+<tr><td>Quipu ruling episodes</td><td style="text-align: right">34</td><td>Promoted through section 5</td></tr>
+<tr><td>Quipu <code>aegis:Decision</code> without <code>chose</code></td><td style="text-align: right">49</td><td>Untouched. Their producer owns them; listed for the quipu lead</td></tr>
+</tbody></table>
+</div>
+<p>Expected result: about 130 typed entities from 164 files, plus 34 promoted
+episodes.</p>
+<p><strong>Gate for <code>autoMemoryEnabled:false</code>.</strong> This was decided on 10/28, and tambo
+flips the setting. All five checks must hold:</p>
+<ol>
+<li><strong>Migration complete.</strong> Every non-handoff file is either typed or
+explicitly retired, <code>mem_conflicts()</code> is empty, and <code>cy promote --pending</code>
+is empty for the imported captures.</li>
+<li><strong>Recall verified.</strong> The 20 replay prompts in
+<code>tests/fixtures/agent-memory/gate-prompts.json</code> must pass, at least 18 of
+20. Each prompt is 20 characters or more and names one expected natural
+key, and <code>tests/test_agent_memory_gate_prompts.py</code> holds the fixture to
+that. A prompt passes when bobbin's injection carries a current record
+with that key, within the section 4 caps. The fixture's superseded
+version must never appear.</li>
+<li><strong>Capture live.</strong> tambo verify proves that the redirect hook fires on a
+write under <code>*/.claude/projects/*/memory/*</code>, and that the stop check
+fires. A test ruling must become a typed entity within 10 minutes of
+capture, wall clock, through the event-triggered promotion. This holds for
+Claude and Codex (gshu.9).</li>
+<li><strong>Pins live.</strong> A fresh session shows the agent's Handoff and Directive
+titles at SessionStart.</li>
+<li><strong>Reversible.</strong> tambo writes <code>autoMemoryEnabled:false</code> with a marker,
+never overrides a value the user set, and <code>tambo memory restore</code> reverts
+the switch.</li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-camayoc--yupana-thesis-boundary"><a class="header" href="#the-camayoc--yupana-thesis-boundary">The camayoc / yupana thesis boundary</a></h1>
 <blockquote>
 <p><strong>Implementation status (2026-08-17):</strong> ✅ <strong>Proposed and written down on both
