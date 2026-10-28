@@ -24,3 +24,7 @@ book-out/
 
 # Runtime signing identities are private per-installation state.
 **/.quipu/*.pk8
+
+# Python packaging output for the camayoc CLI (pyproject.toml).
+build/
+*.egg-info/

@@ -28,6 +28,7 @@ SHAPES = ROOT / "shapes" / "agent-memory.shapes.ttl"
 SIDECARS = ROOT / "tools" / "memory"
 DEFINITIONS = ROOT / "camayoc_cli" / "data" / "definitions.json"
 QUERIES = ROOT / "queries"
+PRIMER = ROOT / "camayoc_cli" / "primer.md"
 
 AEGIS = "http://aegis.gastown.local/ontology/"
 SH = "http://www.w3.org/ns/shacl#"
@@ -252,6 +253,29 @@ def build(shapes: dict[str, dict], sidecars: dict[str, dict]) -> tuple[dict, dic
     return doc, queries
 
 
+def replace_region(text: str, name: str, body: str) -> str:
+    """Rewrite the `<!-- BEGIN generated NAME -->` region of a hand-written file."""
+    begin, end = f"<!-- BEGIN generated {name} -->", f"<!-- END generated {name} -->"
+    if begin not in text or end not in text:
+        raise DefinitionError(f"generated region '{name}' markers missing")
+    head, rest = text.split(begin, 1)
+    _, tail = rest.split(end, 1)
+    return f"{head}{begin}\n{body.rstrip()}\n{end}{tail}"
+
+
+def primer_entities(doc: dict) -> str:
+    rows = ["| Entity | Record | Required flags | Natural key | Recall |", "| --- | --- | --- | --- | --- |"]
+    for name, e in doc["entities"].items():
+        required = " ".join(f"`{f['flag']}`" for f in e["fields"] if f["required"])
+        flags = {f["name"]: f["flag"] for f in e["fields"]}
+        key = " + ".join(flags[k].lstrip("-") for k in e["key"])
+        recall = "; ".join(f"`cy recall {name}" + (" --history <key>`" if r.get("history") else
+                           "".join(f" [{flags[x]}]" for x in r.get("filters", [])) + "`")
+                           for r in e["recall"])
+        rows.append(f"| {name} | `cy record {name}` | {required} | {key} | {recall} |")
+    return "\n".join(rows)
+
+
 def render_json(obj) -> str:
     return json.dumps(obj, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
@@ -267,6 +291,8 @@ def outputs(shapes: dict | None = None, sidecars: dict | None = None) -> dict[Pa
     files = {DEFINITIONS: render_json(doc)}
     for name, manifest in queries.items():
         files[QUERIES / name] = render_json(manifest)
+    if PRIMER.exists():
+        files[PRIMER] = replace_region(PRIMER.read_text(), "entities", primer_entities(doc))
     return files
 
 
