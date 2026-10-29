@@ -1,0 +1,9 @@
+$ python3 preview-event.py deployed.json
+Mapped class: DeploymentEvent
+Outcome: succeeded
+Artifact: pkg:github/example/example-svc@3392682256648f3ec088dd768b270a0097089a7a
+Preview only: no graph or event was written.
+[exit 0]
+$ python3 preview-event.py unmapped-type.json
+Quarantined: no mapping for CDEvents type 'dev.cdevents.incident.detected'
+[exit 2]

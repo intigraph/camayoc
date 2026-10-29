@@ -17,6 +17,10 @@ plain scripts any agent that speaks HTTP can use.
 The *quipucamayoc* was the Inca official who kept the quipus and certified what
 was read back out of them.
 
+<p align="center"><img src="docs/demos/terminal/demo.svg" width="1000" alt="Check an event before admitting it: native commands and their complete output."/></p>
+
+This 20-second recording calls the existing adapter source API with two public synthetic CloudEvents. A deployment maps to DeploymentEvent; an unknown type is quarantined with exit 2. The documentation helper prints selected mapped fields without posting an episode or contacting Quipu. [Reproduce the recording](docs/demos/terminal.md).
+
 ## Install
 
 ```sh
