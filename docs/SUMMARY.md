@@ -27,6 +27,7 @@
 - [GitHub ingress](design/github-ingress.md)
 - [Jev: typed decisions](design/jev-typed-decisions.md)
 - [Agent-memory entities](design/agent-memory-entities.md)
+- [Agent-memory contract review and stages](design/agent-memory-contract-review.md)
 - [The camayoc / yupana thesis boundary](design/thesis-boundary.md)
 - [Paper plan](design/paper.md)
 - [The implemented set (historical)](design/implemented-set.md)
