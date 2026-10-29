@@ -90,6 +90,33 @@ class Tick(unittest.TestCase):
         self.post=bad_control
         result=self.tick();self.assertEqual(result['status'],'UNKNOWN')
         self.assertIsNotNone(self.j.next()[2]);self.assertEqual(self.writes,1)
+    def test_control_shapes_remain_unknown_and_payload_free_without_resend(self):
+        cases=[({'result':False},'object','false','absent'),
+               ({},'object','missing','absent'),
+               ({'result':1},'object','nonboolean','absent'),
+               ({'result':True,'truncated':True},'object','true','true'),
+               ({'result':True,'truncated':'must-not-appear'},'object','true','nonboolean'),
+               ([{'result':True}],'array','missing','absent')]
+        original=self.post
+        body=None
+        for control,shape,result,truncated in cases:
+            with self.subTest(control=control):
+                def post(endpoint,request):
+                    if request.get('query','').startswith('ASK '):return control
+                    return original(endpoint,request)
+                self.post=post
+                receipt=self.tick()
+                self.assertEqual(receipt['status'],'UNKNOWN',receipt)
+                self.assertEqual(receipt['error'],'CustodyUnknown')
+                self.assertNotIn('must-not-appear',json.dumps(receipt))
+                self.assertEqual(receipt['attempted_item'],ID)
+                self.assertEqual(receipt['control'],dict(shape=shape,result=result,truncated=truncated))
+                current=self.j.next()[2]
+                if body is None:body=current
+                self.assertEqual(current,body)
+                self.assertEqual(self.writes,1)
+                self.assertEqual(self.j.cursor,10)
+
     def test_bad_native_identity_does_not_prepare_or_write(self):
         def wrong(endpoint,body):return {'rows':rows(**{nw.SCHEMA+'identifier':'demo-wrong'}),'truncated':False}
         self.post=wrong;result=self.tick();self.assertEqual(result['status'],'UNKNOWN')
@@ -154,6 +181,24 @@ class SerialTicks(unittest.TestCase):
         self.assertEqual((result['status'],result['verified'],result['writes']),('UNKNOWN',1,2))  # 2nd sent, response lost
         self.assertEqual(self.writes,[first,second])  # no third item after the doubt
         self.assertIsNone(self.j.db.execute('SELECT 1 FROM pending WHERE id=?',(first,)).fetchone())
+        self.assertIsNotNone(self.j.db.execute('SELECT body FROM pending WHERE id=?',(second,)).fetchone()[0])
+        self.assertEqual(self.backlog(),4)
+
+    def test_control_doubt_names_attempted_item_without_losing_prior_success(self):
+        first,second=self.ITEMS[:2]
+        original=self.post
+        def post(endpoint,body):
+            result=original(endpoint,body)
+            if body.get('query','').startswith('ASK ') and self.item_of(body['query'])==second:
+                return {'result':False,'private-response':'must-not-appear'}
+            return result
+        self.post=post
+        result=self.tick()
+        self.assertEqual((result['status'],result['item'],result['attempted_item']),('UNKNOWN',first,second))
+        self.assertEqual(result['control'],{'shape':'object','result':'false','truncated':'absent'})
+        self.assertNotIn('must-not-appear',json.dumps(result))
+        self.assertEqual((result['requests'],result['writes'],result['verified']),(8,2,1))
+        self.assertEqual(self.writes,[first,second])
         self.assertIsNotNone(self.j.db.execute('SELECT body FROM pending WHERE id=?',(second,)).fetchone()[0])
         self.assertEqual(self.backlog(),4)
 

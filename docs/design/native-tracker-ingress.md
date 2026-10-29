@@ -17,9 +17,12 @@ satisfy them. A failed native read remains UNKNOWN even if an older observation
 would resolve the obligation.
 
 `sync_work_items.py --native-authority-stdin` consumes the selection as bounded
-JSON on stdin. It requires a separate `.sqlite3` state, and retains the existing
-one-record/60-second budget. It performs at most five calls and one projection
-write per tick. It does not modify cost attribution or budget policy.
+JSON on stdin. It requires a separate `.sqlite3` state and retains the existing
+60-second cadence. The bounded serial tick admits up to four deliveries and
+17 requests (one feed read plus four calls per item), with at most four projection
+writes. A read over 2.5 seconds stops further deliveries after the item in flight
+finishes. These are the existing source limits, not permission to enlarge the
+scheduled budget. Cost attribution remains separate.
 
 A new custody database requires an explicitly reviewed `--initial-tx`. The
 schedule supplies no initializer. Deciding that cursor, the treatment of the
@@ -45,6 +48,21 @@ source-owned links while preserving other sources' claims. Legacy exact-ID links
 remain enrichment; they do not override native status. Comments are not indexed
 by this projection. No Observation, verification, idle deadline, DreamLane
 periodic policy or expiration policy is fabricated by the metadata writer.
+
+The native receipt is `seeds-state.receipt.json` beside `seeds-state.sqlite3`.
+Its `item` remains the last successfully verified item; `attempted_item` identifies
+the current attempt even when a later control fails. `control` contains only fixed
+classifications of the answered ASK: response shape (`object`, `array`, `other`),
+result (`true`, `false`, `missing`, `nonboolean`), and optional partial marker
+(`absent`, `true`, `false`, `nonboolean`). It contains no response payload or
+credential. It is cleared before each attempt, so a transport or local-validation
+failure cannot inherit another item's control evidence.
+
+The control predicate, acknowledgement checks, request/write limits and cadence
+are unchanged. These fields classify the observed response; they do not decide
+whether a control or description is proved. An unknown result retains exact
+pending custody. The diagnostics never authorize an acknowledgement or resend,
+and do not establish the cause or resolution of a recurring ingress failure.
 
 Source merge alone does not enroll the producer. Adoption requires reviewed
 source and configuration, compatible installed versions, explicit custody

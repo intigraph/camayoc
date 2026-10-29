@@ -13,6 +13,21 @@ import seed_metadata_projection as projection
 import seed_work_items as native
 
 
+def control_summary(response):
+    """Fixed classifications only: never response bytes, values, auth or URLs."""
+    if not isinstance(response,dict):
+        return {'shape':'array' if isinstance(response,list) else 'other',
+                'result':'missing','truncated':'absent'}
+    def marker(key):
+        if key not in response:return 'absent'
+        if response[key] is True:return 'true'
+        if response[key] is False:return 'false'
+        return 'nonboolean'
+    result=marker('result')
+    return {'shape':'object','result':'missing' if result=='absent' else result,
+            'truncated':marker('truncated')}
+
+
 def verify(post,envelope,item):
     request=envelope['request'];graph=request['graph'];subject=projection.A+item
     # Match the exact type on the server: SELECT bindings may compact its IRI
@@ -111,7 +126,10 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
         nonlocal requests
         requests+=1
         if requests>TICK_REQUESTS:raise custody.CustodyUnknown('tick request budget exhausted')
-        return timed(post,endpoint,body)
+        response=timed(post,endpoint,body)
+        if endpoint=='/query' and body.get('query','').startswith('ASK '):
+            receipt['control']=control_summary(response)
+        return response
     def timed(function,*args,**kwargs):
         nonlocal slowest,last
         started=clock()
@@ -147,6 +165,15 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
                and pending[0] not in seen and requests+ITEM_REQUESTS<=TICK_REQUESTS
                and (not seen or slowest<=READ_BUDGET_SECONDS)):
             seen.add(pending[0])
+            # `item` remains the last verified success for compatibility.
+            # Attribute this attempt separately, even if its control fails.
+            receipt.pop('attempted_item',None)
+            receipt.pop('control',None)
+            last=None
+            # Diagnostic validation must not alter delivery or custody decisions.
+            try:reader.board.subject(pending[0])
+            except native.NativeUnknown:pass
+            else:receipt['attempted_item']=pending[0]
             receipt['status']='UNKNOWN'
             version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote)
             receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)
