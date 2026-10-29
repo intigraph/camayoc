@@ -156,7 +156,12 @@ class Journal:
         except Exception:self.db.execute('ROLLBACK');raise
 
     def next(self):
-        return self.db.execute('SELECT id,tx,body FROM pending ORDER BY last_attempt,tx,id LIMIT 1').fetchone()
+        # A newer feed candidate can advance tx while an older exact effect is
+        # retained. Read back and acknowledge that effect before the new work.
+        row=self.db.execute('SELECT id,CASE WHEN body IS NOT NULL THEN effect_tx ELSE tx END,body '
+                            'FROM pending ORDER BY last_attempt,tx,id LIMIT 1').fetchone()
+        if row is not None:integer(row[1])
+        return row
 
     def mark_attempt(self,item,now):
         import math

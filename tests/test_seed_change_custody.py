@@ -87,6 +87,7 @@ class Custody(unittest.TestCase):
     def test_new_candidate_during_pending_does_not_erase_body(self):
         self.j.retain(page());self.j.prepare(ID,10,{'old':3})
         self.j.retain(page(11));self.assertEqual(json.loads(self.j.next()[2]),{'old':3})
+        self.assertEqual(self.j.next()[1],10)
         with self.assertRaises(sc.CustodyUnknown):self.j.acknowledge(ID,11,4)
         self.j.acknowledge(ID,10,3)
         self.assertEqual(self.j.next(),(ID,11,None))
@@ -95,6 +96,14 @@ class Custody(unittest.TestCase):
         with self.assertRaises(sc.CustodyUnknown):self.j.retain(page())
         self.assertEqual(self.j.cursor,9)
         self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],sc.MAX_PENDING)
+    def test_unproved_pending_effect_transaction_refuses_without_losing_body(self):
+        self.j.retain(page());self.j.prepare(ID,10,{'old':3})
+        stored=self.j.next()[2]
+        for bad in (None,-1,'unproved'):
+            with self.subTest(effect_tx=bad):
+                self.j.db.execute('UPDATE pending SET effect_tx=? WHERE id=?',(bad,ID))
+                with self.assertRaises(sc.CustodyUnknown):self.j.next()
+                self.assertEqual(self.j.db.execute('SELECT body FROM pending WHERE id=?',(ID,)).fetchone()[0],stored)
     def test_unknown_item_does_not_starve_other_candidates(self):
         self.j.retain(page())
         self.j.mark_attempt(ID,100)
