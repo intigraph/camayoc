@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/thread-workshop/camayoc.png" width="704" alt="camayoc: Loose strands pass through a checked gate. Original pixel art in the Thread Workshop style."/></p>
+
 <p align="center">
   <img src="assets/logo.svg" width="200" alt="Camayoc logo — loose gray strands enter from the left, the keeper's yupana counting board hangs from the main cord at center, and ordered, colored, knotted quipu pendants emerge on the right"/>
 </p>
