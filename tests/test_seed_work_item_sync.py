@@ -59,6 +59,28 @@ class Tick(unittest.TestCase):
         self.assertEqual((result['status'],result['writes'],result['verified']),('OK',0,1))
         self.assertEqual(self.writes,1)
 
+    def test_new_feed_transaction_keeps_lost_response_effect_custody(self):
+        self.drop=True
+        self.assertEqual(self.tick()['status'],'UNKNOWN')
+        self.j.retain(page(11))
+        original_body=self.j.next()[2]
+        self.j.db.close()
+        self.j=sc.Journal(self.path,self.reader.board,server='https://peer-one.example.test')
+        self.drop=False
+        self.unavailable=True
+        self.assertEqual(self.tick()['status'],'UNKNOWN')
+        self.assertEqual(self.j.next()[2],original_body)
+        self.assertEqual(self.writes,1)
+        self.unavailable=False
+        result=self.tick()
+        self.assertEqual((result['status'],result['writes'],result['verified']),('OK',0,1))
+        # The old effect was read back, not resent; the newer candidate survives.
+        self.assertEqual(self.j.next(),(ID,11,None))
+        self.assertEqual(self.writes,1)
+        self.assertEqual(self.tick()['verified'],1)
+        self.assertIsNone(self.j.next())
+        self.assertEqual(self.writes,1)
+
     def test_unproven_control_never_acknowledges(self):
         original=self.post
         def bad_control(endpoint,body):
