@@ -1,0 +1,9 @@
+Script started on 2026-10-29 04:20:22-04:00 [COMMAND="python3 docs/demos/native-control-attribution/probe.py" <not executed on terminal>]
+Synthetic library fixture: first item verifies; second ASK returns false.
+Base: 727e025666a3a979c8f20ebe5c0b555bc7089465
+Candidate sync SHA256: d56e630f213133df9f2fdced853182b6c4d905e56751cda1506343324a73320f
+BEFORE: {"backlog": 4, "item": "demo-a", "requests": 8, "status": "UNKNOWN", "verified": 1, "writes": 2}
+AFTER: {"attempted_item": "demo-b", "backlog": 4, "control": {"result": "false", "shape": "object", "truncated": "absent"}, "item": "demo-a", "requests": 8, "status": "UNKNOWN", "verified": 1, "writes": 2}
+Both retain the failed pending envelope. No live server; original incident remains OPEN.
+
+Script done on 2026-10-29 04:20:23-04:00 [COMMAND_EXIT_CODE="0"]
