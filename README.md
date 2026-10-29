@@ -21,6 +21,14 @@ was read back out of them.
 
 This 20-second recording calls the existing adapter source API with two public synthetic CloudEvents. A deployment maps to DeploymentEvent; an unknown type is quarantined with exit 2. The documentation helper prints selected mapped fields without posting an episode or contacting Quipu. [Reproduce the recording](docs/demos/terminal.md).
 
+## Why you would want it
+
+- **Keep decisions between sessions:** give agents shared knowledge they can read back.
+- **Check how a fact was learned:** admit records with explicit provenance.
+- **Normalize event input:** map supported events and quarantine unknown types.
+
+[The Camayoc book](https://intigraph.github.io/camayoc/) explains memory, vocabulary and ingress.
+
 ## Install
 
 ```sh
@@ -38,7 +46,7 @@ Set `STACK_INSTALL_ROOT` on the receiving shell for another prefix.
 Pinned releases, alternatives, configuration and removal are in the
 [installation and usage reference](docs/installation-reference.md).
 
-## Try it
+## First success in three commands
 
 From an empty directory, bootstrap a governed memory and watch it prove its gate:
 
@@ -61,7 +69,37 @@ Decision with no provenance tag. The store refused it. That refusal is the
 guarantee everything else rests on. Stop the server with
 `kill "$(cat .quipu/server.pid)"`; the full log is in `bootstrap.log`.
 
-## Next steps
+## On your own data
+
+Choose a vocabulary and profile before admitting records. The
+[installation reference](docs/installation-reference.md) covers agent memory;
+the [ingress design](docs/design/ingress.md) covers event normalization.
+The terminal fixture maps a supported deployment event and refuses an unknown
+type without posting either to a server.
+
+## Wire it into your agent
+
+Start with the [Camayoc skill](skills/camayoc/SKILL.md) and
+[agent setup reference](docs/installation-reference.md). Configure the graph
+endpoint and credentials through your deployment. Query existing knowledge
+before adding facts; record provenance when writing. Installing source files
+does not enroll an agent or activate a producer.
+
+## Before you start
+
+The source installer needs Python 3.9+, curl and a Linux or macOS shell.
+The bootstrap example starts a local Quipu server and writes vocabulary and
+shapes; run it in a disposable directory and stop its server afterward.
+Agent-memory CLI installation is separate from the source package. Review
+write rules and event coverage before connecting live producers.
+
+## What's next
+
+- [The Camayoc book](https://intigraph.github.io/camayoc/): concepts and setup.
+- [Installation reference](docs/installation-reference.md): choose the required components.
+- [Ingress design](docs/design/ingress.md): event mapping and quarantine.
+
+### Related tools and repository knowledge
 
 - [Tambo](https://github.com/intigraph/tambo): guided installation of the complete stack.
 - [Detailed examples and agent setup](docs/installation-reference.md).
@@ -93,7 +131,7 @@ Missing change or deployment history is not a measured zero.
 <!-- catalog-source-sha256: ea2627bd96ba33263f3c3cc89dd0e64cfbb14788f6a14411df92448ec48aef14 -->
 <!-- delivery-catalog:end -->
 
-## The stack
+## 🧺 The stack
 
 <!-- stack-table:start -->
 
@@ -118,5 +156,11 @@ when.
 | [shuttle](https://github.com/scbrown/shuttle) | runs signed agent workflows and keeps their records in Quipu |
 
 <!-- stack-table:end -->
+
+## Contributing
+
+Run `just check` and `just test` before submitting changes.
+
+## 📜 License
 
 [License](LICENSE).
