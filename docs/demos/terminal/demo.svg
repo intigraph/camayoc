@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
+<title id="title">Camayoc: check an event before admitting it</title>
+<desc id="desc">Actual adapter source API compiles public synthetic CloudEvents; unknown type is quarantined. Preview prints selected mapped fields and performs no post. The animation repeats. The adjacent transcript provides a static alternative.</desc>
+<rect width="100%" height="100%" rx="16" fill="#101827"/>
+<path d="M0 54H1000" stroke="#334155"/>
+<circle cx="28" cy="27" r="7" fill="#fb7185"/>
+<circle cx="52" cy="27" r="7" fill="#fbbf24"/>
+<circle cx="76" cy="27" r="7" fill="#34d399"/>
+<text x="110" y="34" fill="#e2e8f0" font-family="monospace" font-size="20">Camayoc: check an event before admitting it</text>
+<g id="frame0" visibility="hidden" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="visible;hidden;hidden" keyTimes="0.000000;0.500000;1.000000" dur="20.000s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ python3 preview-event.py deployed.json</text>
+<text x="28" y="126" fill="#f1f5f9" xml:space="preserve">Mapped class: DeploymentEvent</text>
+<text x="28" y="158" fill="#f1f5f9" xml:space="preserve">Outcome: succeeded</text>
+<text x="28" y="190" fill="#f1f5f9" xml:space="preserve">Artifact: pkg:github/example/example-</text>
+<text x="28" y="222" fill="#f1f5f9" xml:space="preserve">svc@3392682256648f3ec088dd768b270a0097089a7a</text>
+<text x="28" y="254" fill="#f1f5f9" xml:space="preserve">Preview only: no graph or event was written.</text>
+</g>
+<g id="frame1" visibility="visible" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="hidden;visible;visible" keyTimes="0.000000;0.500000;1.000000" dur="20.000s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ python3 preview-event.py unmapped-type.json</text>
+<text x="28" y="126" fill="#f1f5f9" xml:space="preserve">Quarantined: no mapping for CDEvents type </text>
+<text x="28" y="158" fill="#f1f5f9" xml:space="preserve">&#x27;dev.cdevents.incident.detected&#x27;</text>
+</g>
+</svg>
