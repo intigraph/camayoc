@@ -44,3 +44,13 @@ existing service entity (`aegis:deployedService`), not a new kind.
    `emitterHow`, `emitterStatus` and `emitterDocs`. The README renderer queries
    the exact catalog identities through Quipu; source support does not prove
    an installed or armed producer, or coverage of a deployment window.
+
+## Publications and merges
+
+9. Which artifacts were published in a time window, in which repository,
+   at which resolved commit and by which forge principal? A `ReleaseEvent`
+   records `artifactId`, `changeRepository`, `commitSha`, `releaseTag`,
+   `eventActor` and `occurredAt`. Its identity is the CloudEvent source + id.
+10. Who merged each change in that window? `eventActor` on a `ChangeEvent`
+    is the acting forge principal, distinct from the ingress episode's actor.
+    Older merge records without that fact remain actor-unknown.

@@ -14,6 +14,7 @@ APPROVED_LEDGER_SHA256 = 'b8223fa1af79495547e5032c1e58edd3c46665dd920401cb81384f
 # Stage two disposes the 39 retained terms plus 8 NodeShapes the stage-one guard
 # could not see (aegis-m5s.1.1). Its pairs are accepted but not yet published.
 APPROVED_STAGE_TWO_SHA256 = '5a3007a3b28300d85decec78b8e3629c1f33d1b9ea07d97521bf48b3016a0d71'
+PUBLICATIONS_SHA256 = 'bff6ae22b1266fd93db2d1ed6327ea90c65d905297c6b0a620aa1e1b45b65a8e'
 LEGACY_NAMESPACES = ('http://aegis.gastown.local/ontology/', 'https://camayoc.local/ontology/')
 # Every named declaration kind a stable file can carry, shapes included.
 DECLARATION_KINDS = (RDF.Property, RDFS.Class, OWL.Class, OWL.ObjectProperty,
@@ -98,16 +99,41 @@ def stage_two_ledger(path, base):
     return ledger
 
 
+def publication_ledger(root, existing):
+    """The separate, unpublished mp5 disposition; frozen stages stay unchanged."""
+    raw = (Path(root)/'namespaces/intigraph/publications.json').read_bytes()
+    if hashlib.sha256(raw).hexdigest() != PUBLICATIONS_SHA256:
+        raise ValueError('publication mapping differs from the pinned snapshot')
+    data = json.loads(raw)
+    rows = data['pairs']
+    if (data.get('format') != 'intigraph-namespace-map/publications-v1'
+            or data.get('published') is not False or len(rows) != 4):
+        raise ValueError('invalid publication disposition')
+    old, new = {r['old'] for r in rows}, {r['new'] for r in rows}
+    if (len(old) != 4 or len(new) != 4 or old & {r['old'] for r in existing}
+            or new & {r['new'] for r in existing}):
+        raise ValueError('publication mapping collides')
+    for row in rows:
+        if (row['old'] != LEGACY_NAMESPACES[0] + row['new'].rsplit('#',1)[-1]
+                or not row['new'].startswith('https://w3id.org/intigraph/camayoc/delivery/ns#')
+                or not set(row['roles']) <= {'class', 'property'}):
+            raise ValueError('invalid publication semantic disposition')
+    return rows
+
+
 def combined_ledger(root, ledger_path=None, stage_two_path=None):
     """Stage one plus stage two, with the unpublished stage-two pairs named."""
     root = Path(root)
     base = mapping_ledger(ledger_path or root / 'namespaces/intigraph/mapping.json')
     stage_two = stage_two_ledger(stage_two_path or root / 'namespaces/intigraph/stage-two.json',
                                  base)
+    additions = publication_ledger(root, base['pairs'] + stage_two['pairs'])
+    added = [row['old'] for row in additions]
     moved = [row['old'] for row in stage_two['pairs']]
-    return {'pairs': base['pairs'] + stage_two['pairs'],
+    return {'pairs': base['pairs'] + stage_two['pairs'] + additions,
             'retained_legacy': stage_two['retained_legacy'],
-            'stage_two': moved, 'unpublished': [] if stage_two['published'] else moved}
+            'stage_two': moved, 'publications': added,
+            'unpublished': added + ([] if stage_two['published'] else moved)}
 
 
 def remap_graph(graph, mapping):
@@ -206,6 +232,8 @@ def stable_bundle(root, ledger_path=None, stage_two_path=None):
     # A stage-two pair must name something these sources actually declare.
     if not set(ledger['stage_two']) <= subjects:
         raise ValueError('stage-two pair names no declared source term')
+    if not set(ledger['publications']) <= subjects:
+        raise ValueError('publication pair names no declared source term')
     artifacts['compatibility/aliases.ttl'] = canonical_bytes(alias_graph(ledger))
     for record in records:
         data = artifacts[record['path']]
@@ -213,6 +241,7 @@ def stable_bundle(root, ledger_path=None, stage_two_path=None):
     manifest = {
         'format': 'intigraph-stable-source/v1', 'automatic_load': False,
         'mapping_sha256': hashlib.sha256(ledger_path.read_bytes()).hexdigest(),
+        'publications_sha256': PUBLICATIONS_SHA256,
         'stage_two_sha256': hashlib.sha256(stage_two_path.read_bytes()).hexdigest(),
         'pair_count': len(mapping), 'retained_legacy': ledger['retained_legacy'],
         'unpublished_pairs': len(ledger['unpublished']),

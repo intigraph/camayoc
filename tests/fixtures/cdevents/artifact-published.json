@@ -1,0 +1,32 @@
+{
+  "specversion": "1.0",
+  "id": "example/tool/release/42/published",
+  "source": "https://github.com/example/tool",
+  "type": "dev.cdevents.artifact.published.0.2.0",
+  "time": "2026-10-29T23:42:17Z",
+  "data": {
+    "context": {
+      "version": "0.4.1",
+      "id": "example/tool/release/42/published",
+      "source": "https://github.com/example/tool",
+      "type": "dev.cdevents.artifact.published.0.2.0",
+      "timestamp": "2026-10-29T23:42:17Z"
+    },
+    "subject": {
+      "id": "pkg:generic/example/tool@v1.2.0",
+      "source": "https://github.com/example/tool",
+      "type": "artifact",
+      "content": {
+        "user": "publisher"
+      }
+    },
+    "customData": {
+      "commitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "changeRepository": "example/tool",
+      "releaseTag": "v1.2.0",
+      "eventActor": "publisher"
+    },
+    "customDataContentType": "application/json"
+  },
+  "datacontenttype": "application/json"
+}

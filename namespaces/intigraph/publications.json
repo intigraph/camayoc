@@ -1,0 +1,33 @@
+{
+  "format": "intigraph-namespace-map/publications-v1",
+  "decision": "aegis-mp5",
+  "published": false,
+  "pairs": [
+    {
+      "old": "http://aegis.gastown.local/ontology/ReleaseEvent",
+      "new": "https://w3id.org/intigraph/camayoc/delivery/ns#ReleaseEvent",
+      "roles": [
+        "class"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/ReleaseEventShape",
+      "new": "https://w3id.org/intigraph/camayoc/delivery/ns#ReleaseEventShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/eventActor",
+      "new": "https://w3id.org/intigraph/camayoc/delivery/ns#eventActor",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/releaseTag",
+      "new": "https://w3id.org/intigraph/camayoc/delivery/ns#releaseTag",
+      "roles": [
+        "property"
+      ]
+    }
+  ]
+}
