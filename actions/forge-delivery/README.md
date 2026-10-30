@@ -21,7 +21,7 @@ The CLI is portable to a compatible Forgejo payload:
 
 ```sh
 python3 emitters/github/delivery.py release payload.json \
-  --forge forge.example --release-commit 0123456789abcdef0123456789abcdef01234567
+  --forge http://forge.example:3000 --release-commit 0123456789abcdef0123456789abcdef01234567
 ```
 
 It prints a CloudEvent, or nothing for a delivery that is not a publication or

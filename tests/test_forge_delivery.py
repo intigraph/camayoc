@@ -83,3 +83,12 @@ class ForgeDelivery(unittest.TestCase):
         payload["sender"]["login"] = " "
         with self.assertRaises(ValueError):
             self.event(payload)
+
+    def test_forgejo_origin_retains_scheme_and_port_without_credentials(self):
+        event = emitter.event_for("release", publication(), release_commit=SHA,
+                                  forge="http://forge.example:3000")
+        self.assertEqual(event["source"], "http://forge.example:3000/example/tool")
+        for forge in ("https://user:password@forge.example", "https://forge.example/path",
+                      "file://forge.example", "http://forge.example:0", "forge.example:99999"):
+            with self.subTest(forge=forge), self.assertRaises(ValueError):
+                emitter.event_for("release", publication(), release_commit=SHA, forge=forge)

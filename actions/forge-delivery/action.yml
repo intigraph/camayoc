@@ -19,9 +19,8 @@ runs:
         CAMAYOC_ROOT: ${{ github.action_path }}/../..
       run: |
         set -euo pipefail
-        forge_host=${FORGE_SERVER_URL#*://}
         event=$(python3 "$CAMAYOC_ROOT/emitters/github/delivery.py" "$GITHUB_EVENT_NAME" \
-          "$GITHUB_EVENT_PATH" --release-commit "$GITHUB_SHA" --forge "$forge_host")
+          "$GITHUB_EVENT_PATH" --release-commit "$GITHUB_SHA" --forge "$FORGE_SERVER_URL")
         if [ -n "$event" ]; then
           printf '%s' "$event" | python3 "$CAMAYOC_ROOT/scripts/ingest_cdevents.py" --actor forge-actions --post
         fi

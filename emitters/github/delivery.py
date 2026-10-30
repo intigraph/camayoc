@@ -11,17 +11,23 @@ import argparse
 import json
 import re
 import sys
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 
 def event_for(kind: str, payload: dict, *, release_commit: str = "",
               forge: str = "github.com") -> dict | None:
-    if not re.fullmatch(r"[A-Za-z0-9.-]+", forge):
-        raise ValueError("forge must be a hostname")
+    origin = forge if "://" in forge else "https://" + forge
+    parsed = urlsplit(origin)
+    if (parsed.scheme not in ("http", "https") or not parsed.hostname
+            or not re.fullmatch(r"[A-Za-z0-9.-]+", parsed.hostname)
+            or parsed.username is not None or parsed.password is not None
+            or parsed.path or parsed.query or parsed.fragment
+            or parsed.netloc.endswith(":") or parsed.port == 0):
+        raise ValueError("forge must be an HTTP(S) origin, without credentials or a path")
     repo = payload["repository"]["full_name"]
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("invalid repository")
-    source = f"https://{forge}/{repo}"
+    source = f"{origin}/{repo}"
     if kind == "pull_request":
         pr = payload["pull_request"]
         if payload.get("action") != "closed" or pr.get("merged") is not True:
