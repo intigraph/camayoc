@@ -5,6 +5,7 @@ The reviewed producer supplies the canonical Reader and durable custody.
 """
 from __future__ import annotations
 import json
+import hashlib
 import re
 import sqlite3
 import time
@@ -78,7 +79,21 @@ def failure_reason(exc):
     return 'unclassified'
 
 
-def deliver(reader,journal,call,pending,*,plane,actor,wrote):
+def envelope_witness(witness,request):
+    """Diagnostic only; hash the JSON bytes used by planes._post, never retain them."""
+    if witness is None:return
+    try:
+        graph=request['graph']
+        projection.safe_iri(graph)
+        if len(graph)<=2048 and all(32<ord(c)<127 for c in graph):
+            witness['graph']=graph
+    except (KeyError,TypeError,ValueError,native.NativeUnknown):pass
+    try:
+        witness['body_sha256']=hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest()
+    except (TypeError,ValueError,UnicodeError):pass
+
+
+def deliver(reader,journal,call,pending,*,plane,actor,wrote,witness=None):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
@@ -87,7 +102,9 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
     item,tx,stored=pending
     journal.mark_attempt(item,time.time())
     if stored:
+        if witness is not None:witness['branch']='stored-readback'
         envelope=json.loads(stored)
+        envelope_witness(witness,envelope['request'])
         if not verify(call,envelope,item):
             raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
         journal.acknowledge(item,tx,envelope['version'])
@@ -100,17 +117,22 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
     request=projection.body(canonical,plane=plane,actor=actor)
     description=projection.description(canonical)
     envelope={'request':request,'version':canonical.version,'description':description}
+    envelope_witness(witness,request)
     if previous and canonical.version==previous[0]:
+        if witness is not None:witness['branch']='same-version'
         if not verify(call,envelope,item):
             raise custody.CustodyUnknown('same native version lost projection; no automatic repair/replay')
         journal.prepare(item,tx,envelope)
     else:
+        if witness is not None:witness['branch']='new-write'
         journal.prepare(item,tx,envelope)
         wrote()
+        if witness is not None:witness['own_write']='attempted'
         response=call('/knot',request)
         if (not isinstance(response,dict) or response.get('conforms') is False
             or not response.get('replaced') or type(response.get('tx_id')) is not int):
             raise custody.CustodyUnknown('projection write outcome unproved; preserve exact pending effect')
+        if witness is not None:witness['own_write']='proved'
         if not verify(call,envelope,item):
             raise custody.CustodyUnknown('projection effect not readable; preserve exact pending effect')
     journal.acknowledge(item,tx,envelope['version'])
@@ -142,6 +164,11 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
             # read-back this is the read-back itself (aegis-wu1s9ti4d).
             last={'endpoint':args[0] if args else '/changes','seconds':round(elapsed,3)}
     receipt={'status':'UNKNOWN','writes':0,'requests':0,'verified':0}
+    def reset_witness():
+        receipt['envelope_witness']={'schema':'native-envelope-witness-v1',
+            'body_encoding':'planes-json-sort-keys-v1','graph':'UNKNOWN',
+            'body_sha256':'UNKNOWN','branch':'UNKNOWN','own_write':'not-attempted'}
+    reset_witness()
     try:
         pending=journal.next()
         feed_error=None
@@ -169,13 +196,15 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
             # Attribute this attempt separately, even if its control fails.
             receipt.pop('attempted_item',None)
             receipt.pop('control',None)
+            reset_witness()
             last=None
             # Diagnostic validation must not alter delivery or custody decisions.
             try:reader.board.subject(pending[0])
             except native.NativeUnknown:pass
             else:receipt['attempted_item']=pending[0]
             receipt['status']='UNKNOWN'
-            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote)
+            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,
+                            witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None)
             receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)
             pending=journal.next()
         if feed_error:
