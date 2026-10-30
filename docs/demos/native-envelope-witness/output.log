@@ -1,0 +1,41 @@
+Script started on 2026-10-30 10:18:19-04:00 [COMMAND="python3 docs/demos/native-envelope-witness/probe.py --compare" <not executed on terminal>]
+Synthetic fixture: first target succeeds, second control fails.
+BEFORE: base 4b1607c
+{
+  "attempted_item": "demo-b",
+  "control": {
+    "result": "false",
+    "shape": "object",
+    "truncated": "absent"
+  },
+  "envelope_witness": "ABSENT",
+  "item": "demo-a",
+  "requests": 8,
+  "status": "UNKNOWN",
+  "verified": 1,
+  "writes": 2
+}
+AFTER: candidate native-envelope-witness-v1
+{
+  "attempted_item": "demo-b",
+  "control": {
+    "result": "false",
+    "shape": "object",
+    "truncated": "absent"
+  },
+  "envelope_witness": {
+    "body_encoding": "planes-json-sort-keys-v1",
+    "body_sha256": "c21875dc9974d66d18eded2eb25704d3f4ebf49c198a66be77bfe79b205098ea",
+    "branch": "new-write",
+    "graph": "urn:private:knowledge",
+    "own_write": "proved",
+    "schema": "native-envelope-witness-v1"
+  },
+  "item": "demo-a",
+  "requests": 8,
+  "status": "UNKNOWN",
+  "verified": 1,
+  "writes": 2
+}
+
+Script done on 2026-10-30 10:18:20-04:00 [COMMAND_EXIT_CODE="0"]
