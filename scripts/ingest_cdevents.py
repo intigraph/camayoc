@@ -182,6 +182,22 @@ def episode_for(payload: object, *, actor: str, mapping: dict | None = None,
             raise Quarantined(f"{name} {values[name]!r} is not a package URL")
     if rule["class"] == "ChangeEvent":
         return _change_episode(rule, attrs, cdevent, values, month, actor=actor, mapping_sha=mapping_sha)
+    if rule["class"] == "ReleaseEvent":
+        key = hashlib.sha256(f"{attrs['source']}\0{attrs['id']}".encode()).hexdigest()[:16]
+        return {
+            "name": f"cdevent:{key}",
+            "graph": windows.window_iri(rule["window"], month),
+            "episode_body": f"CDEvent {attrs['type']} for {values['artifactId']}",
+            "source": f"cdevents:mapping={mapping_sha[:16]}:{attrs['source']}#{attrs['id']}",
+            "actor": actor,
+            "nodes": [{"name": f"release-event-{key}", "type": "ReleaseEvent",
+                       "description": f"{values['changeRepository']} published {values['releaseTag']}",
+                       "properties": {"sourceKind": SOURCE_KIND, "occurredAt": attrs["time"],
+                                      "cdeventsType": attrs["type"],
+                                      "cloudEventSource": attrs["source"],
+                                      "cloudEventId": attrs["id"], **values}}],
+            "edges": [],
+        }
 
     outcome = rule.get("outcome")
     source = rule.get("outcomeFrom")
