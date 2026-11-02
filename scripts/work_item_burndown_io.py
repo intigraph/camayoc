@@ -55,10 +55,17 @@ class Transport:
 
 def opening_query(scope):
     # Exact assignee + priority indexed cohort only; no whole-board fallback.
+    # The two cohort constants come FIRST, priority before owner: Quipu
+    # evaluates a basic graph pattern that has a type triple in written
+    # order, so leading with `?s a schema:Action` scanned every work item
+    # before narrowing (aegis-efa: 6.9s cold, HTTP 408 at 10s on the live
+    # board). Measured on a board copy, priority-first is never slower than
+    # the old order (busy owner at P2: 0.6s both) while small cohorts drop to
+    # tens of ms; owner-first tripled the busiest owner's P2 read.
     owner = n.PRINCIPAL+scope.owner
     return (f'SELECT ?s ?identifier ?status ?priority ?owner ?created ?modified ?version WHERE {{ GRAPH {b.iri(scope.board.graph)} {{ '
-            f'?s a {b.iri(n.SCHEMA+"Action")} ; {b.iri(n.SCHEMA+"agent")} {b.iri(owner)} ; '
-            f'{b.iri(n.SEEDS+"priority")} {scope.priority} ; '
+            f'?s {b.iri(n.SEEDS+"priority")} {scope.priority} ; '
+            f'{b.iri(n.SCHEMA+"agent")} {b.iri(owner)} ; a {b.iri(n.SCHEMA+"Action")} ; '
             f'{b.iri(n.SCHEMA+"identifier")} ?identifier ; {b.iri(n.SEEDS+"status")} ?status ; '
             f'{b.iri(n.SEEDS+"priority")} ?priority ; {b.iri(n.SCHEMA+"agent")} ?owner ; '
             f'{b.iri(n.SCHEMA+"dateCreated")} ?created ; {b.iri(n.SCHEMA+"dateModified")} ?modified ; '
