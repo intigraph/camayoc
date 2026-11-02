@@ -230,7 +230,9 @@ def _directive(kind, post, request, instant, now):
             # UNKNOWN. One PROPOSED record made every incremental run UNKNOWN
             # (3212 runs, none ok; aegis-df7h). A proposal awaiting promotion is
             # still untraced in ROOT, and the proposer treats it as a noop.
-            r = {**r, "verdict": de.UNTRACED}
+            # Same event identity judge() gives an UNTRACED record: chaski refuses
+            # an UNTRACED verdict without an event_id (emitter ProtocolError).
+            r = {**r, "verdict": de.UNTRACED, "event_id": de.event_id(name)}
         records.append(r)
     return {"version": 1, "scope": None if full else scope, "records": records,
             "next_checks": {r["entity"]: next_check(post, kind, r, now) for r in records}}
