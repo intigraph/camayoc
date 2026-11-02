@@ -225,6 +225,14 @@ def _directive(kind, post, request, instant, now):
         r = de.judge(post, name, instant)
         if kind == "directive-lapse":
             r = {**r, "verdict": r["lapse"], "event_id": r["lapse_event_id"]}
+        elif r["verdict"] == de.PROPOSED:
+            # chaski's directive-untraced emitter admits only TRACED/UNTRACED/
+            # UNKNOWN. One PROPOSED record made every incremental run UNKNOWN
+            # (3212 runs, none ok; aegis-df7h). A proposal awaiting promotion is
+            # still untraced in ROOT, and the proposer treats it as a noop.
+            # Same event identity judge() gives an UNTRACED record: chaski refuses
+            # an UNTRACED verdict without an event_id (emitter ProtocolError).
+            r = {**r, "verdict": de.UNTRACED, "event_id": de.event_id(name)}
         records.append(r)
     return {"version": 1, "scope": None if full else scope, "records": records,
             "next_checks": {r["entity"]: next_check(post, kind, r, now) for r in records}}
