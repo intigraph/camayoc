@@ -377,3 +377,16 @@ class QuechuaDualRead(unittest.TestCase):
         store = Store(item("work", "open") + item("dep", "open") + [("work", "x:blockedOn", "dep")])
         self.assertEqual(run(store), {})  # a third namespace is no blocker
         self.assertEqual(run(Store(item("work", "open"))), {})  # absent: nothing blocks
+
+
+class CompactIriPrefixes(unittest.TestCase):
+    def test_known_aliases_and_full_iris(self):
+        for prefix in ("a:", "aegis:", bb.A):
+            with self.subTest(prefix=prefix):
+                self.assertEqual(bb._iri(prefix + "example"), bb.A + "example")
+                self.assertEqual(bb.item_iri(prefix + "example"), bb.A + "example")
+
+    def test_other_namespaces_are_not_rewritten(self):
+        self.assertEqual(bb._iri("schema:name"), bb.SCHEMA + "name")
+        self.assertEqual(bb._iri("unknown:example"), "unknown:example")
+        self.assertEqual(bb._iri("https://example.test/item"), "https://example.test/item")

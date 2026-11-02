@@ -74,9 +74,8 @@ def _rows(post, query: str, graph: str | None = None) -> list[dict]:
 
 
 def _iri(term: str) -> str:
-    """quipu returns aegis: terms prefixed; anything else comes back whole."""
-    term = str(term)
-    return bb.A + term[len("aegis:"):] if term.startswith("aegis:") else term
+    """Expand Quipu compact IRIs using the shared reader contract."""
+    return bb._iri(str(term))
 
 
 def _has(post, entity: str, prop: str, graphs) -> bool:
