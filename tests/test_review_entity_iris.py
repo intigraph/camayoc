@@ -69,6 +69,26 @@ class ReviewEntityIris(unittest.TestCase):
         self.assertEqual(due["records"][0]["verdict"], "DUE")
         self.assertEqual(due["records"][0]["event_id"], read(NOW.timestamp() + 11)["records"][0]["event_id"])
 
+    def test_change_scoped_path_gives_a_heartbeat_not_due(self):
+        hb = "owned-work-" + "b" * 64
+        store = Store([(hb, "reviewAfter", "2026-10-19T00:00:00Z"), (hb, "ownedBy", "aegis:tim"),
+                       (hb, "sourceKind", "observed"), (hb, "source", "urn:shantytown:owned-work:abc")])
+        scoped = ca.evaluate("review", store.post, {"changes": [changed(bb.A + hb, "reviewAfter")],
+                                                     "now": NOW.timestamp()})
+        self.assertEqual([r["verdict"] for r in scoped["records"]], ["NOT_DUE"])
+        self.assertNotIn("event_id", scoped["records"][0])
+        self.assertIsNone(scoped["next_checks"][scoped["records"][0]["entity"]])
+        items = ca.evaluate("review", store.post, {"items": [hb], "now": NOW.timestamp()})
+        self.assertEqual([r["verdict"] for r in items["records"]], ["NOT_DUE"])
+        full = ca.evaluate("review", store.post, {"full": True, "now": NOW.timestamp()})
+        self.assertEqual([r["verdict"] for r in full["records"]], ["NOT_DUE"])
+
+    def test_change_scoped_path_keeps_an_ordinary_lapse_due(self):
+        store = Store([(ENTITY, "reviewAfter", "2026-10-19T00:00:00Z"), (ENTITY, "ownedBy", "aegis:wu")])
+        scoped = ca.evaluate("review", store.post, {"changes": [changed(ENTITY, "reviewAfter")],
+                                                     "now": NOW.timestamp()})
+        self.assertEqual([r["verdict"] for r in scoped["records"]], ["DUE"])
+
     def test_external_verification_resets_clock_and_later_expiry_gets_new_id(self):
         store = Store([(ENTITY, "maxAge", "PT1M"), (ENTITY, "ownedBy", "aegis:wu"),
                        (VERIFICATION, "verifies", ENTITY),

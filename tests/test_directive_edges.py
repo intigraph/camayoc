@@ -278,6 +278,25 @@ class AdapterProtocol(unittest.TestCase):
         self.assertEqual(verdicts["new"], (de.UNTRACED, de.event_id("new")))
         self.assertEqual(verdicts["old"], (de.TRACED, None))
 
+    def test_untraced_view_reports_a_proposal_as_untraced(self):
+        # aegis-df7h: chaski admits only TRACED/UNTRACED/UNKNOWN for this view.
+        q = board()
+        q.add(A + "new", A + "governedBy", POLICY, de.INFERRED)
+        q.add(A + "new", A + "trackedBy", TRACKER, de.INFERRED)
+        self.assertEqual(de.judge(q, "new", NOW)["verdict"], de.PROPOSED)
+        out = self.ca.evaluate("directive", q, {"now": self.now, "items": ["new", "old"]})
+        verdicts = {r["entity"]: r["verdict"] for r in out["records"]}
+        self.assertEqual(verdicts, {"new": de.UNTRACED, "old": de.TRACED})
+        # wu review: chaski refuses UNTRACED without an event_id; it must equal the
+        # identity a plain UNTRACED record carries, so emitter state stays keyed alike.
+        events = {r["entity"]: r["event_id"] for r in out["records"]}
+        self.assertEqual(events["new"], de.event_id("new"))
+        self.assertIsNone(events["old"])
+        for r in out["records"]:
+            if r["verdict"] == de.UNTRACED:
+                self.assertTrue(r["event_id"], "UNTRACED without event_id")
+        self.assertTrue(set(verdicts.values()) <= {de.TRACED, de.UNTRACED, "UNKNOWN"})
+
     def test_lapse_view_stores_the_grace_deadline_then_lapses(self):
         out = self.ca.evaluate("directive-lapse", board(), {"now": self.now, "items": ["new"]})
         (r,) = out["records"]

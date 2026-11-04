@@ -155,7 +155,47 @@ def _native_id(post, entity: str, reader=None) -> str | None:
     return None
 
 
+#: Shantytown publishes each agent's lifecycle as an immutable observation, one
+#: IRI per revision. Until shantytown 3f29f257 each one also carried
+#: reviewAfter = observed + lease. That deadline is a liveness lease on a
+#: heartbeat nobody re-verifies, not an owner's review obligation, so every
+#: superseded revision went DUE forever. They are recognised by their exact
+#: producer, never by name alone.
+HEARTBEAT_SOURCE = "urn:shantytown:owned-work:"
+
+
+def _literal(raw: str) -> str:
+    return raw.split("^^")[0].strip('"')
+
+
+def lifecycle_heartbeat(post, entity: str) -> bool:
+    """True only for a shantytown owned-work lifecycle observation: the local
+    name, an observed source kind and the producer's source prefix must all agree."""
+    if not entity.startswith("owned-work-"):
+        return False
+    if [_literal(v) for v in _values(post, entity, "sourceKind")] != ["observed"]:
+        return False
+    sources = [_literal(v) for v in _values(post, entity, "source")]
+    return len(sources) == 1 and sources[0].startswith(HEARTBEAT_SOURCE)
+
+
+def heartbeat_verdict(entity: str) -> dict:
+    """NOT_DUE, so an event already raised for it resolves through the emitter's
+    ordinary DUE -> NOT_DUE transition rather than by hand."""
+    basis = [{"age": "lifecycle-lease", "value": HEARTBEAT_SOURCE, "due_at": None,
+              "why": "shantytown owned-work lifecycle observation: a liveness lease, not a review obligation",
+              "resolved": True}]
+    ident = json.dumps([entity, "lifecycle-lease"], separators=(",", ":"))
+    return {"entity": entity, "verdict": NOT_DUE, "due_at": None,
+            "evidence": "sha256:" + hashlib.sha256(ident.encode()).hexdigest(),
+            "owner": None, "basis": basis}
+
+
 def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
+    # Every caller, the full evaluation and the change-scoped one alike, comes
+    # through here, so the lifecycle-lease guard lives here and nowhere else.
+    if lifecycle_heartbeat(post, entity):
+        return heartbeat_verdict(entity)
     basis = []
     native_record=None
     native_failed=False
