@@ -141,4 +141,11 @@ def retrieve(params):
     attributed.sort(key=lambda r: (r["harness"], r["session"], r["at"], r["id"]))
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     payload["receipt"] = hashlib.sha256(canonical.encode()).hexdigest()
+    # Repricing is a projection, not new token evidence or a closure-receipt
+    # identity. A broken/missing price catalogue cannot erase measured groups.
+    from work_cost_prices import project
+    try:
+        payload['costs'] = project(attributed)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        payload['costs'] = {'coverage': 'UNKNOWN', 'reason': 'price projection unavailable: '+type(exc).__name__}
     return payload
