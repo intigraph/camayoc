@@ -25,7 +25,8 @@ WorkItems first. No separate bead twins or new session predicate are introduced.
 
 The optional breakdown shapes travel with the producer's write. They extend
 UsageRecord; no new entity class is needed. Reads store no metric sample. USD is
-not estimated without a governed applicable price record.
+a read-time projection over the versioned, cited price catalogue described below;
+it is never stored as observed token evidence.
 
 Rollback disables the scheduled projection and retains evidence. It does not
 rewrite tracker close reasons or silently delete prior cost observations.
@@ -229,3 +230,42 @@ alerts can then distinguish repeated failed attempts from missing reports.
 `camayoc_cost_projection_unknown{reason="source_selection"}` identifies the
 no-source path. Status-only calls neither read transcripts nor write graph data.
 Deploy this publisher interface before a scheduler that invokes it.
+
+## API-equivalent dollar projection
+
+`work_cost.py` adds a separate `costs` object without changing token groups or
+including repricing in the closure receipt. `data/model-prices.json` pins a
+retrieval date, exact model IDs, first-party source URLs and USD rates per million
+tokens. Results include the catalogue SHA-256 so a later rate revision is visible.
+This is current API-equivalent consumption, not an invoice or a reconstruction
+of historical subscription charges.
+
+The projection prices each request before grouping: uncached input, cache reads,
+cache writes split by measured lifetime, and output. Reasoning output is already
+included in output and is not charged twice. Published whole-request long-context,
+fast-mode and regional modifiers apply only when the required request metadata
+is explicitly present. Missing category counts, cache-write lifetimes, model IDs
+or modifiers produce an unknown reason. Unsupported service tiers and unpublished
+aliases stay unknown. The dated Gemini promotional entry expires rather than
+silently continuing at its old rate. No provider API calls are made by pricing.
+
+Declared, inferred-held and unattributed totals remain separate. `usd` is null
+when any contributing request is unpriced; `known_usd` is explicitly a partial
+subtotal. Priced-token share and reasons expose coverage. Empty inputs are not a
+zero-dollar observation. A missing or invalid catalogue leaves existing token
+accounting available and reports unknown pricing. Pricing metadata becomes part
+of the retained request evidence; changing a price table alone does not change
+the token receipt.
+
+`plan_share_usd` remains null until an independently measured account window and
+plan allocation are supplied. No plan charge or allocation denominator is
+invented from transcript token counts. Existing readers do not supply reported
+Claude Code dollar totals; those cannot be represented as observed figures by
+this projection. The catalogue uses the
+[Anthropic](https://platform.claude.com/docs/en/about-claude/pricing),
+[OpenAI](https://developers.openai.com/api/docs/pricing), and
+[Gemini](https://aistudio.google.com/docs/pricing) price publications.
+
+The metrics publisher recognizes inferred-token and API-equivalent metric names
+as parser-session samples. Install that companion publisher before enabling new
+rendered samples; recognition does not itself emit prices or establish a scrape.

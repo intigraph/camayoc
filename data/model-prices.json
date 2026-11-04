@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "currency": "USD",
+  "retrieved_at": "2026-11-04",
+  "basis": "Current first-party API-equivalent token charges; not an invoice or historical bill.",
+  "models": {
+    "claude-opus-5-5": {
+      "provider": "anthropic",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "usd_per_million": {
+        "input": "4",
+        "output": "20",
+        "cache_read": "0.20",
+        "cache_write_short": "5",
+        "cache_write_long": "8"
+      },
+      "fast_multiplier": "2",
+      "long_context": null
+    },
+    "claude-sonnet-5-5": {
+      "provider": "anthropic",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "usd_per_million": {
+        "input": "2",
+        "output": "10",
+        "cache_read": "0.10",
+        "cache_write_short": "2.50",
+        "cache_write_long": "4"
+      },
+      "fast_multiplier": null,
+      "long_context": null
+    },
+    "claude-haiku-5-5": {
+      "provider": "anthropic",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "usd_per_million": {
+        "input": "0.10",
+        "output": "0.50",
+        "cache_read": "0.01",
+        "cache_write_short": "0.125",
+        "cache_write_long": "0.20"
+      },
+      "fast_multiplier": null,
+      "long_context": {
+        "threshold": 100000,
+        "input_multiplier": "5",
+        "output_multiplier": "5"
+      }
+    },
+    "claude-fable-5-1": {
+      "provider": "anthropic",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "usd_per_million": {
+        "input": "10",
+        "output": "50",
+        "cache_read": "0.25",
+        "cache_write_short": "12.50",
+        "cache_write_long": "20"
+      },
+      "fast_multiplier": null,
+      "long_context": null
+    },
+    "gpt-6-astra": {
+      "provider": "openai",
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "model_source": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+      "usd_per_million": {
+        "input": "10",
+        "output": "50",
+        "cache_read": "1",
+        "cache_write_short": "12.50",
+        "cache_write_long": "25"
+      },
+      "fast_multiplier": "2",
+      "long_context": {
+        "threshold": 272000,
+        "input_multiplier": "2",
+        "output_multiplier": "1.5"
+      }
+    },
+    "gpt-6.1-sol": {
+      "provider": "openai",
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "model_source": "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+      "usd_per_million": {
+        "input": "2",
+        "output": "10",
+        "cache_read": "0.10",
+        "cache_write_short": "2.50",
+        "cache_write_long": "5"
+      },
+      "fast_multiplier": "2",
+      "long_context": {
+        "threshold": 272000,
+        "input_multiplier": "2",
+        "output_multiplier": "1.5"
+      }
+    },
+    "gpt-6.1-terra": {
+      "provider": "openai",
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "model_source": "https://developers.openai.com/api/docs/models/gpt-6.1-terra",
+      "usd_per_million": {
+        "input": "1",
+        "output": "5",
+        "cache_read": "0.05",
+        "cache_write_short": "1.25",
+        "cache_write_long": "2.50"
+      },
+      "fast_multiplier": "2",
+      "long_context": {
+        "threshold": 272000,
+        "input_multiplier": "2",
+        "output_multiplier": "1.5"
+      }
+    },
+    "gpt-6-luna": {
+      "provider": "openai",
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "model_source": "https://developers.openai.com/api/docs/models/gpt-6-luna",
+      "usd_per_million": {
+        "input": "0.10",
+        "output": "0.50",
+        "cache_read": "0.01",
+        "cache_write_short": "0.125",
+        "cache_write_long": "0.25"
+      },
+      "fast_multiplier": "2",
+      "long_context": {
+        "threshold": 272000,
+        "input_multiplier": "2",
+        "output_multiplier": "1.5"
+      }
+    },
+    "gemini-4-argon": {
+      "provider": "google",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing",
+      "valid_through": "2026-11-30",
+      "usd_per_million": {
+        "input": "2",
+        "output": "10",
+        "cache_read": "0.10",
+        "cache_write_short": null,
+        "cache_write_long": null
+      },
+      "fast_multiplier": null,
+      "long_context": null
+    }
+  }
+}

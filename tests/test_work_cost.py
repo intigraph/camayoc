@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from ingest_session_usage import read_codex, read_claude
@@ -33,6 +34,32 @@ class CostTests(unittest.TestCase):
     def binding(self, bead, start, end):
         return {'schema_version': 1, 'rig': 'project', 'bead': bead,
                 'agent': 'worker', 'session': 's', 'start': start, 'end': end}
+
+    def test_pricing_failure_preserves_counts_and_receipt(self):
+        self.write([response('a', 5)])
+        method = self.method([self.binding('x', 0, 10)])
+        normal = execute(method)['result']
+        with mock.patch('work_cost_prices.project', side_effect=ValueError('bad catalogue')):
+            broken = execute(method)['result']
+        self.assertEqual(normal['groups'], broken['groups'])
+        self.assertEqual(normal['records'], broken['records'])
+        self.assertEqual(normal['receipt'], broken['receipt'])
+        self.assertEqual(broken['costs']['coverage'], 'UNKNOWN')
+
+    def test_readers_retain_only_explicit_pricing_modifiers(self):
+        row = response('a', 5)
+        row['payload']['usage'].update(speed='fast', service_tier='standard', inference_geo='us')
+        self.write([row])
+        detail = read_codex(self.path)[1][0]['detail']
+        self.assertEqual(detail['pricing'], dict(speed='fast', service_tier='standard', inference_geo='us'))
+        self.write([response('a', 5)])
+        self.assertNotIn('pricing', read_codex(self.path)[1][0]['detail'])
+        self.write([{'sessionId': 's', 'requestId': 'a', 'timestamp': 5,
+                    'message': {'model': 'claude-opus-5-5', 'usage': {
+                        'input_tokens': 1, 'output_tokens': 2,
+                        'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0,
+                        'speed': 'standard', 'service_tier': 'standard', 'inference_geo': 'global'}}}])
+        self.assertEqual(read_claude(self.path)[1][0]['detail']['pricing']['speed'], 'standard')
 
     def test_compaction_is_counted_and_legacy_snapshots_are_not(self):
         self.write([{'type': 'turn_context', 'payload': {'model': 'model-a'}},
