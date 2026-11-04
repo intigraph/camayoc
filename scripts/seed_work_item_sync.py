@@ -46,6 +46,26 @@ def verify(post,envelope,item):
     return sum(native.lexical(row.get('v'))==expected for row in rows)==1
 
 
+def prove_absent(post,item):
+    """True only when the server holds NO triple about the WorkItem subject.
+
+    Both every named graph and the default graph are asked. Anything other than
+    an exact, untruncated `false` from both (true, missing, truncated, a
+    non-object or an error) is not proof of absence and returns False.
+    """
+    subject=projection.A+item
+    projection.safe_iri(subject)
+    for query in (f'ASK {{ GRAPH ?g {{ <{subject}> ?p ?o }} }}',f'ASK {{ <{subject}> ?p ?o }}'):
+        try:
+            response=post('/query',{'query':query})
+        except (ValueError,OSError,RuntimeError,TypeError,KeyError):
+            return False
+        if (not isinstance(response,dict) or response.get('truncated')
+                or response.get('result') is not False):
+            return False
+    return True
+
+
 #: Serial deliveries per tick (wu ACK, aegis-ksd): one feed read plus at most four
 #: requests per item (native read, /knot, two-pattern verify) stays within 20.
 MAX_DELIVERIES=4

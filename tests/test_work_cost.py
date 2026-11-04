@@ -58,6 +58,42 @@ class CostTests(unittest.TestCase):
         self.assertEqual(groups['unattributed']['tokens'], 107)
         self.assertEqual(result, execute(method)['result'])
 
+    def test_declared_focus_outranks_inferred_held_item(self):
+        # aegis-59jx step 2a: inferred-held is used only where no declared focus covers.
+        self.write([{'type': 'turn_context', 'payload': {'model': 'model-a'}},
+                    response('a', 5), response('b', 15), response('c', 25)])
+        held = {**self.binding('held', 0, 30), 'basis': 'inferred-held'}
+        result = execute(self.method([self.binding('declared', 10, 20), held]))['result']
+        by = {r['id']: (r['bead'], r['attribution']) for r in result['records']}
+        self.assertEqual(by, {'a': ('held', 'inferred held item'), 'b': ('declared', 'attributed'),
+                              'c': ('held', 'inferred held item')})
+        groups = {g['bead']: g for g in result['groups']}
+        self.assertEqual((groups['held']['basis'], groups['held']['coverage']), ('inferred-held', 'inferred'))
+        self.assertNotIn('basis', groups['declared'])
+        self.assertEqual(groups['declared']['coverage'], 'observed')
+        self.assertEqual(result['coverage'], 'UNKNOWN')
+        self.assertEqual(result['binding_bases'], ['declared', 'inferred-held'])
+
+    def test_declared_groups_are_unchanged_by_the_basis_field(self):
+        self.write([{'type': 'turn_context', 'payload': {'model': 'model-a'}}, response('a', 5)])
+        plain = execute(self.method([self.binding('x', 0, 10)]))['result']
+        explicit = execute(self.method([{**self.binding('x', 0, 10), 'basis': 'declared'}]))['result']
+        self.assertEqual(plain['groups'], explicit['groups'])
+        self.assertEqual(sorted(plain['groups'][0]), ['agent', 'bead', 'counts', 'coverage', 'harness',
+                                                     'model', 'requests', 'rig', 'sessions', 'tokens'])
+
+    def test_two_inferred_items_overlapping_are_unattributed(self):
+        self.write([response('a', 5)])
+        one, two = ({**self.binding(b, 0, 10), 'basis': 'inferred-held'} for b in ('p', 'q'))
+        result = execute(self.method([one, two]))['result']
+        self.assertEqual(result['records'][0]['attribution'], 'overlapping focus')
+
+    def test_unknown_basis_is_refused(self):
+        self.write([response('a', 5)])
+        out = execute(self.method([{**self.binding('x', 0, 10), 'basis': 'guessed'}]))
+        self.assertEqual(out['status'], 'invalid')
+        self.assertIn('binding basis', out['error'])
+
     def test_overlapping_different_tasks_are_unattributed(self):
         self.write([response('a', 9)])
         result = execute(self.method([self.binding('a', 0, 20), self.binding('b', 1, 30)]))['result']
