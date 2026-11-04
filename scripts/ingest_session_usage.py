@@ -118,6 +118,11 @@ def _total(usage):
     return result[1] if result else None
 
 
+def pricing_metadata(usage):
+    """Retain explicit modifiers; missing fields must not become cheap defaults."""
+    return {key: usage[key] for key in ('speed', 'service_tier', 'inference_geo') if key in usage}
+
+
 def _rows(path):
     # A partial trailing write is unknown evidence; it is counted by each reader.
     for line in path.read_text(errors="replace").splitlines():
@@ -174,6 +179,7 @@ def read_claude(path):
              "counts": parsed[0], "model": message.get("model"),
              "model_source": "message.model", "harness": "claude",
              "detail": {"cache_creation": usage.get("cache_creation"),
+                        **({'pricing': pricing_metadata(usage)} if pricing_metadata(usage) else {}),
                         "reasoning_output": (usage.get("output_tokens_details") or {}).get("thinking_tokens")}})
     if not session_id:
         return None
@@ -217,7 +223,8 @@ def read_codex(path):
             _put(requests, conflicts, {"id": key, "tokens": parsed[1], "at": stamp,
                  "counts": parsed[0], "model": model,
                  "model_source": "turn_context.model (declared)", "harness": "codex",
-                 "detail": {"reasoning_output": payload["usage"].get("reasoning_output_tokens")}})
+                 "detail": {"reasoning_output": payload["usage"].get("reasoning_output_tokens"),
+                            **({'pricing': pricing_metadata(payload['usage'])} if pricing_metadata(payload['usage']) else {})}})
     if not session_id:
         return None
     return session_id, sorted(requests.values(), key=lambda r: (r["at"], r["id"])), abstained + len(conflicts) + int(legacy and not requests)
