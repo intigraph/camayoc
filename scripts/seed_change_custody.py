@@ -181,6 +181,29 @@ class Journal:
             self.db.execute('COMMIT')
         except Exception:self.db.execute('ROLLBACK');raise
 
+    def release_unconfirmed(self,item,expected_body):
+        """Operator release of ONE pending effect whose write was never confirmed.
+
+        Only for an effect the operator has just proved absent on the server (see
+        seed_work_item_sync.prove_absent). The row returns to a fresh candidate
+        (body/effect_tx NULL, tx kept), so the next normal delivery reads the
+        native item, prepares a new exact effect and writes once. Nothing is
+        resent here. Refuses a missing, verified, unprepared or changed row.
+        """
+        if not isinstance(expected_body,str) or not expected_body:
+            raise CustodyUnknown('release needs the exact stored effect')
+        self.db.execute('BEGIN IMMEDIATE')
+        try:
+            row=self.db.execute('SELECT tx,body FROM pending WHERE id=?',(item,)).fetchone()
+            if row is None or row[1] is None:raise CustodyUnknown('no stored pending effect to release')
+            if row[1]!=expected_body:raise CustodyUnknown('stored effect changed since it was proved absent')
+            if self.db.execute('SELECT 1 FROM verified WHERE id=?',(item,)).fetchone():
+                raise CustodyUnknown('item already verified; nothing unconfirmed to release')
+            self.db.execute('UPDATE pending SET body=NULL,effect_tx=NULL WHERE id=? AND body=?',(item,expected_body))
+            self.db.execute('COMMIT')
+        except Exception:self.db.execute('ROLLBACK');raise
+        return integer(row[0])
+
     def acknowledge(self,item,tx,version):
         """Caller may ack only after independently controlled effect readback."""
         version=integer(version)
