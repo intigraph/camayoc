@@ -436,12 +436,35 @@ class Throughput(unittest.TestCase):
             self.tick(changes)
         self.assertEqual(self.feed_calls,1)
 
-    def test_cursor_age_is_reported_and_unproved_is_omitted_not_zero(self):
+    def test_cursor_age_is_zero_only_when_the_feed_proves_caught_up(self):
+        # aegis-etv review (arnold): the cursor only advances on board records,
+        # so a caught-up lane on a quiet board has an OLD cursor transaction.
+        # Reading time(cursor) there would age forever and false-fire the alarm.
+        old=lambda tx:1000.0
         with mock.patch.object(sync,'MAX_DELIVERIES',0):
-            result=self.tick(self.feed(head=9),cursor_time=lambda tx:1000.0,wall=lambda:4600.0)
+            # Caught up: the journal is at 9 and the feed has nothing newer.
+            result=self.tick(self.feed(head=9),cursor_time=old,wall=lambda:4600.0)
+        self.assertEqual(result['cursor_age_seconds'],0)
+        # The production shape: a graph-filtered empty page answers next_tx == since
+        # while watermark_tx is GLOBAL and far ahead (other graphs kept writing).
+        quiet=lambda **a:{'records':[],'next_tx':a['since'],'watermark_tx':a['since']+5000,
+                          'capture':'new_values'}
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            result=self.tick(quiet,cursor_time=old,wall=lambda:4600.0)
+        self.assertEqual(result['cursor_age_seconds'],0)
+    def test_cursor_age_is_reported_while_lagging_and_omitted_when_unproved(self):
+        # Lagging: more board transactions than one tick's pages can read.
+        with mock.patch.object(sync,'MAX_DELIVERIES',0),mock.patch.object(sync,'MAX_FEED_PAGES',1):
+            result=self.tick(self.feed(head=200),cursor_time=lambda tx:1000.0,wall=lambda:4600.0)
         self.assertEqual(result['cursor_age_seconds'],3600)
         def broken(tx):raise ValueError('cursor transaction not found')
-        with mock.patch.object(sync,'MAX_DELIVERIES',0):
-            result=self.tick(self.feed(head=9),cursor_time=broken,wall=lambda:4600.0)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0),mock.patch.object(sync,'MAX_FEED_PAGES',1):
+            result=self.tick(self.feed(head=200),cursor_time=broken,wall=lambda:4600.0)
         self.assertNotIn('cursor_age_seconds',result)
         self.assertEqual(result['cursor_age_error'],'ValueError')
+    def test_cursor_age_is_never_zero_after_a_feed_error(self):
+        # A failed feed proves nothing about being caught up: no 0, ever.
+        def failing(**a):raise OSError('feed unreachable')
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            result=self.tick(failing,cursor_time=lambda tx:1000.0,wall=lambda:4600.0)
+        self.assertNotEqual(result.get('cursor_age_seconds'),0)

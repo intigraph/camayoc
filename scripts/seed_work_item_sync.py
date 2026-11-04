@@ -178,6 +178,9 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             # read-back this is the read-back itself (aegis-wu1s9ti4d).
             last={'endpoint':args[0] if args else '/changes','seconds':round(elapsed,3)}
     receipt={'status':'UNKNOWN','writes':0,'requests':0,'verified':0}
+    # Set only by a page that proves the lane holds nothing newer for this
+    # graph: an empty valid page, or one read through the watermark.
+    caught_up=False
     try:
         pending=journal.next()
         feed_error=None
@@ -194,9 +197,15 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
                 requests+=1
                 before=journal.cursor
                 try:
+                    caught_up=False
                     page=timed(changes,since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
                                  capture='new_values',graph=reader.board.graph)
                     journal.retain(page)
+                    # The feed is graph-filtered while watermark_tx is global, so a
+                    # quiet board answers an empty page with next_tx == since, far
+                    # below the watermark. That empty page is the caught-up proof.
+                    caught_up=(isinstance(page,dict) and (page.get('records')==[] or
+                               integer_or_none(page.get('next_tx'))==integer_or_none(page.get('watermark_tx'))))
                 except custody.CustodyFull:
                     if page_number:break
                     if pending is None:raise
@@ -242,7 +251,12 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
     # Cursor age (aegis-etv): how far behind the feed position is, in wall clock.
     # Exit status and backlog cannot see this: a lane 15 days behind read OK.
     # A failed read omits the field (UNKNOWN to the alarm), never guesses 0.
-    if cursor_time is not None and requests<TICK_REQUESTS:
+    # Caught up: no board record is newer than the cursor, so the lane is not
+    # behind however old the cursor transaction is (a quiet board). Reported
+    # as 0 only on that proof; a feed error never yields 0.
+    if cursor_time is not None and caught_up and not feed_error and 'error' not in receipt:
+        receipt['cursor_age_seconds']=0
+    elif cursor_time is not None and requests<TICK_REQUESTS:
         requests+=1
         try:
             stamp=cursor_time(journal.cursor)
