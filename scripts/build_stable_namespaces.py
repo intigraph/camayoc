@@ -14,6 +14,7 @@ APPROVED_LEDGER_SHA256 = 'b8223fa1af79495547e5032c1e58edd3c46665dd920401cb81384f
 # Stage two disposes the 39 retained terms plus 8 NodeShapes the stage-one guard
 # could not see (aegis-m5s.1.1). Its pairs are accepted but not yet published.
 APPROVED_STAGE_TWO_SHA256 = '5a3007a3b28300d85decec78b8e3629c1f33d1b9ea07d97521bf48b3016a0d71'
+AGENT_MEMORY_SHA256 = 'e5f4f169823f4f25b1115eef919183bf6914d448568e300c42bc685770737f06'
 PUBLICATIONS_SHA256 = 'bff6ae22b1266fd93db2d1ed6327ea90c65d905297c6b0a620aa1e1b45b65a8e'
 LEGACY_NAMESPACES = ('http://aegis.gastown.local/ontology/', 'https://camayoc.local/ontology/')
 # Every named declaration kind a stable file can carry, shapes included.
@@ -21,7 +22,7 @@ DECLARATION_KINDS = (RDF.Property, RDFS.Class, OWL.Class, OWL.ObjectProperty,
                      OWL.DatatypeProperty, SH.NodeShape)
 
 SOURCES = {
-    'core': ('shapes/core.shapes.ttl',),
+    'core': ('shapes/core.shapes.ttl', 'shapes/agent-memory-scoped.shapes.ttl', 'ontology/agent-memory.ttl'),
     'delivery': ('shapes/delivery.shapes.ttl',),
     'code-entities': ('shapes/code-entities.ttl',),
     'session-transcript': ('shapes/session-transcript.shapes.ttl',),
@@ -121,6 +122,24 @@ def publication_ledger(root, existing):
     return rows
 
 
+def agent_memory_ledger(root, existing):
+    """Add memory terms to the shared ledger without changing frozen stages."""
+    raw = (Path(root)/'namespaces/intigraph/agent-memory.json').read_bytes()
+    if hashlib.sha256(raw).hexdigest() != AGENT_MEMORY_SHA256:
+        raise ValueError('agent-memory mapping differs from the pinned snapshot')
+    data = json.loads(raw)
+    rows = data['pairs']
+    if data.get('format') != 'intigraph-namespace-map/agent-memory-v1' or data.get('published') is not False:
+        raise ValueError('invalid agent-memory disposition')
+    old, new = {r['old'] for r in rows}, {r['new'] for r in rows}
+    if len(old) != len(rows) or len(new) != len(rows) or old & {r['old'] for r in existing} or new & {r['new'] for r in existing}:
+        raise ValueError('agent-memory mapping collides')
+    for row in rows:
+        if row['new'] != 'https://w3id.org/intigraph/camayoc/core/ns#' + row['old'].removeprefix(LEGACY_NAMESPACES[0]) or not row['old'].startswith(LEGACY_NAMESPACES[0]) or not set(row['roles']) <= {'class', 'property'}:
+            raise ValueError('invalid agent-memory semantic disposition')
+    return rows
+
+
 def combined_ledger(root, ledger_path=None, stage_two_path=None):
     """Stage one plus stage two, with the unpublished stage-two pairs named."""
     root = Path(root)
@@ -128,12 +147,14 @@ def combined_ledger(root, ledger_path=None, stage_two_path=None):
     stage_two = stage_two_ledger(stage_two_path or root / 'namespaces/intigraph/stage-two.json',
                                  base)
     additions = publication_ledger(root, base['pairs'] + stage_two['pairs'])
+    memory = agent_memory_ledger(root, base['pairs'] + stage_two['pairs'] + additions)
+    memory_names = [row['old'] for row in memory]
     added = [row['old'] for row in additions]
     moved = [row['old'] for row in stage_two['pairs']]
-    return {'pairs': base['pairs'] + stage_two['pairs'] + additions,
+    return {'pairs': base['pairs'] + stage_two['pairs'] + additions + memory,
             'retained_legacy': stage_two['retained_legacy'],
-            'stage_two': moved, 'publications': added,
-            'unpublished': added + ([] if stage_two['published'] else moved)}
+            'stage_two': moved, 'publications': added, 'agent_memory': memory_names,
+            'unpublished': added + memory_names + ([] if stage_two['published'] else moved)}
 
 
 def remap_graph(graph, mapping):
@@ -190,7 +211,8 @@ def stable_bundle(root, ledger_path=None, stage_two_path=None):
     inverse = {new: old for old, new in mapping.items()}
     artifacts, records, subjects = {}, [], set()
     # Ontology facts and SHACL gates retain distinct loading roles.
-    groups = {'camayoc/core/ontology.ttl': ('ontology/core.ttl',)}
+    groups = {'camayoc/core/ontology.ttl': ('ontology/core.ttl',),
+              'camayoc/core/agent-memory-vocabulary.ttl': ('ontology/agent-memory.ttl',)}
     groups.update({f'camayoc/{pack}/ns.ttl': files for pack, files in SOURCES.items()})
     # Keep debt in its own file, matching the existing reject/emit separation.
     groups['camayoc/core/observation-debt.ttl'] = ('shapes/observation-debt.shapes.ttl',)
@@ -242,6 +264,7 @@ def stable_bundle(root, ledger_path=None, stage_two_path=None):
         'format': 'intigraph-stable-source/v1', 'automatic_load': False,
         'mapping_sha256': hashlib.sha256(ledger_path.read_bytes()).hexdigest(),
         'publications_sha256': PUBLICATIONS_SHA256,
+        'agent_memory_sha256': AGENT_MEMORY_SHA256,
         'stage_two_sha256': hashlib.sha256(stage_two_path.read_bytes()).hexdigest(),
         'pair_count': len(mapping), 'retained_legacy': ledger['retained_legacy'],
         'unpublished_pairs': len(ledger['unpublished']),
