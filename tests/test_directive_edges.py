@@ -122,6 +122,24 @@ class Judge(unittest.TestCase):
         self.assertEqual(past["lapse"], de.LAPSED)
         self.assertTrue(past["lapse_event_id"])
 
+    def test_compact_episode_prefixes_preserve_capture_grace(self):
+        for prefix in ("a:", "aegis:", A):
+            with self.subTest(prefix=prefix):
+                q = board()
+
+                def compact(endpoint, body):
+                    out = q(endpoint, body)
+                    if "wasGeneratedBy" in body.get("query", ""):
+                        out["rows"] = [{"e": prefix + "episode_new"}]
+                    return out
+
+                fresh = de.judge(compact, "new", NOW)
+                self.assertEqual(fresh["verdict"], de.UNTRACED)
+                self.assertEqual(fresh["lapse"], de.NOT_LAPSED)
+                self.assertEqual(fresh["due_at"], "2026-10-09T21:00:00+00:00")
+                self.assertEqual(de.judge(compact, "new", NOW + de.GRACE)["lapse"],
+                                 de.LAPSED)
+
     def test_proposed_lapses_from_inferredAt_not_capture(self):
         q = board()
         q.add(A + "new", A + "governedBy", POLICY, de.INFERRED)
