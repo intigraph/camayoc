@@ -4,10 +4,10 @@
 Design: docs/design/jev-typed-decisions.md §8.1 (aegis-4hhqoe.1). A stdio MCP
 server over `scripts/jev.py`, which stays the ONLY client — camayoc owns Jev
 ingress and the discipline that every Jev answer is `inferred`. This module
-adds a protocol surface and NOTHING else: it builds no requests of its own,
-keeps no model of what a good answer is, and never retries.
+adds the protocol surface and a bounded scheduled-work advisory adapter.
+All inference uses the sole client and existing usage accountant; no call retries.
 
-Four tools, mirroring JevClient argument-for-argument:
+Six tools, using the sole JevClient and existing usage accountant:
 
     jev_noul(state, instructions, true?, false?)      -> yes/no probability
     jev_choice(state, instructions, criteria, ...)    -> winner + per-option probs
@@ -15,6 +15,7 @@ Four tools, mirroring JevClient argument-for-argument:
     jev_dry_run(kind, ...same args)                   -> the request, sent nowhere
     map_question(question)                            -> competency id + stored query,
                                                          or abstained / human_reads
+    check_scheduled_work(title, body)                  -> advisory proposed seed label
 
 The guardrails are BAKED IN rather than documented, because a guardrail an
 agent has to remember is one the fleet will discover it forgot:
@@ -47,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import competency  # noqa: E402
 import jev  # noqa: E402
+import seed_schedule  # noqa: E402
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "jev"
@@ -147,6 +149,10 @@ def _state_of(args: dict):
 def call_tool(name: str, args: dict, client_factory=jev.JevClient, env: dict | None = None) -> dict:
     """Run one tool. Returns the verdict dict; raises ValueError for a bad
     request and jev.JevError for anything the service did."""
+    if name == "check_scheduled_work":
+        verdict = seed_schedule.classify(args.get("title"), args.get("body", ""), client_factory())
+        record_usage(name, verdict, env)
+        return verdict
     if name == "jev_dry_run":
         kind = args.get("kind")
         if kind not in ("noul", "choice", "score"):
@@ -188,6 +194,18 @@ def call_tool(name: str, args: dict, client_factory=jev.JevClient, env: dict | N
 
 
 TOOLS = [
+    {
+        "name": "check_scheduled_work",
+        "description": (
+            "Advisory seed create/update preflight. Ask two atomic Jev questions: "
+            "scheduled operational work and explicit Chaski/Quipu trigger. "
+            "Returns a proposed needs-chaski label, probabilities and request; "
+            "never writes a tracker, refuses a write or promotes model facts. "
+            "Paid call; invoke only within the caller's admitted budget."),
+        "inputSchema": {"type": "object", "properties": {
+            "title": {"type": "string"}, "body": {"type": "string"}},
+            "required": ["title", "body"]},
+    },
     {
         "name": "jev_noul",
         "description": (

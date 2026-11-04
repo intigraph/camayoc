@@ -1,0 +1,2 @@
+# Preserve terminal recording bytes for scriptreplay.
+bench/scheduled-work/output.log -text -whitespace
