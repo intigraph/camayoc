@@ -45,8 +45,8 @@ class StableNamespaces(unittest.TestCase):
         manifest = json.loads(self.artifacts['manifest.json'])
         self.assertFalse(manifest['automatic_load'])
         self.assertEqual(set(manifest['retained_legacy']), KEPT)
-        self.assertEqual(manifest['pair_count'], 1254 + 45 + 4)
-        self.assertEqual(manifest['unpublished_pairs'], 49)
+        self.assertEqual(manifest['pair_count'], 1254 + 45 + 4 + 37)
+        self.assertEqual(manifest['unpublished_pairs'], 49 + 37)
         self.assertFalse(set(manifest['retained_legacy']) & self.mapping.keys())
         self.assertEqual(set(SOURCES), {'core', 'delivery', 'code-entities',
                          'session-transcript', 'usage-breakdown', 'homelab-infra',
@@ -64,7 +64,7 @@ class StableNamespaces(unittest.TestCase):
 
     def test_every_property_has_a_real_property_equivalence_bridge(self):
         graph = Graph().parse(data=self.artifacts['compatibility/aliases.ttl'], format='turtle')
-        self.assertEqual(len(list(graph.triples((None, OWL.sameAs, None)))), 1254 + 45 + 4)
+        self.assertEqual(len(list(graph.triples((None, OWL.sameAs, None)))), 1254 + 45 + 4 + 37)
         for row in self.ledger['pairs']:
             pair = URIRef(row['old']), URIRef(row['new'])
             self.assertIn((pair[0], OWL.sameAs, pair[1]), graph)
@@ -140,7 +140,7 @@ class StableNamespaces(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             for file in ('ontology/core.ttl', *SOURCES['core'], 'namespaces/intigraph/mapping.json',
-                         'namespaces/intigraph/stage-two.json', 'namespaces/intigraph/publications.json'):
+                         'namespaces/intigraph/stage-two.json', 'namespaces/intigraph/publications.json', 'namespaces/intigraph/agent-memory.json'):
                 path = root/file
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes((ROOT/file).read_bytes())
@@ -155,7 +155,7 @@ class StableNamespaces(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             for file in ('ontology/core.ttl', 'namespaces/intigraph/mapping.json',
-                         'namespaces/intigraph/stage-two.json', 'namespaces/intigraph/publications.json'):
+                         'namespaces/intigraph/stage-two.json', 'namespaces/intigraph/publications.json', 'namespaces/intigraph/agent-memory.json'):
                 path = root/file
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes((ROOT/file).read_bytes())
@@ -166,7 +166,7 @@ class StableNamespaces(unittest.TestCase):
                 stable_bundle(root)
 
     def test_publication_dispositions_remain_pinned_and_disjoint(self):
-        additions = self.ledger['pairs'][1254+45:]
+        additions = self.ledger['pairs'][1254+45:1254+45+4]
         self.assertEqual({r['old'] for r in additions}, {AEGIS+k for k in ("ReleaseEvent", "ReleaseEventShape", "eventActor", "releaseTag")})
         self.assertTrue(set(self.ledger['publications']) <= set(self.ledger['unpublished']))
         with tempfile.TemporaryDirectory() as tmp:
