@@ -1,4 +1,8 @@
-"""Exercise the actual post-state writer, not only standalone validation."""
+"""Exercise the pinned post-state writer, not only standalone validation.
+
+The old-profile hazard is a characterization of this baseline, not a promise
+that every past or future Quipu release must reproduce the same engine defect.
+"""
 from contextlib import contextmanager
 import json
 import os
@@ -11,7 +15,7 @@ import unittest
 import urllib.error
 import urllib.request
 
-from quipu_bin_guard import QUIPU_SERVER, requires_quipu_server
+from quipu_bin_guard import QUIPU_MEMORY_SERVER, requires_quipu_memory_server
 
 ROOT = Path(__file__).resolve().parents[1]
 A = 'http://aegis.gastown.local/ontology/'
@@ -34,7 +38,7 @@ def lab():
         base = f'http://127.0.0.1:{port}'
         env = {k: v for k, v in os.environ.items() if not k.startswith('QUIPU_')}
         with (root / 'server.log').open('w+') as log:
-            proc = subprocess.Popen([QUIPU_SERVER, '--db', str(root/'store.db'),
+            proc = subprocess.Popen([QUIPU_MEMORY_SERVER, '--db', str(root/'store.db'),
                                      '--bind', f'127.0.0.1:{port}'], cwd=root,
                                     env=env, stdout=log, stderr=log)
 
@@ -81,7 +85,7 @@ def record(name, family=A, rule=True):
     return '\n'.join(triples)
 
 
-@requires_quipu_server
+@requires_quipu_memory_server
 class MemoryWritePlan(unittest.TestCase):
     def test_old_alternative_cardinality_blocks_an_unrelated_write(self):
         with lab() as post:

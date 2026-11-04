@@ -8,9 +8,9 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tests'))
 import test_memory_write_safe_profiles as fixture
 
-if not fixture.QUIPU_SERVER:
-    raise SystemExit('A quipu-server binary is required; this demo cannot skip.')
-subprocess.run([fixture.QUIPU_SERVER, '--version'], check=True)
+if not fixture.QUIPU_MEMORY_SERVER:
+    raise SystemExit('QUIPU_MEMORY_SERVER_BIN is required; this demo cannot skip.')
+subprocess.run([fixture.QUIPU_MEMORY_SERVER, '--version'], check=True)
 original = fixture.lab
 
 
