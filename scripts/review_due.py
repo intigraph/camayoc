@@ -252,13 +252,50 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
             **({'native_authority':'UNKNOWN'} if native_failed else {})}
 
 
+#: Shantytown publishes each agent's lifecycle as an immutable observation, one
+#: IRI per revision. Until shantytown 3f29f257 each one also carried
+#: reviewAfter = observed + lease. That deadline is a liveness lease on a
+#: heartbeat nobody re-verifies, not an owner's review obligation, so every
+#: superseded revision went DUE forever. They are recognised by their exact
+#: producer, never by name alone.
+HEARTBEAT_SOURCE = "urn:shantytown:owned-work:"
+
+
+def _literal(raw: str) -> str:
+    return raw.split("^^")[0].strip('"')
+
+
+def lifecycle_heartbeat(post, entity: str) -> bool:
+    """True only for a shantytown owned-work lifecycle observation: the local
+    name, an observed source kind and the producer's source prefix must all agree."""
+    if not entity.startswith("owned-work-"):
+        return False
+    if [_literal(v) for v in _values(post, entity, "sourceKind")] != ["observed"]:
+        return False
+    sources = [_literal(v) for v in _values(post, entity, "source")]
+    return len(sources) == 1 and sources[0].startswith(HEARTBEAT_SOURCE)
+
+
+def heartbeat_verdict(entity: str) -> dict:
+    """NOT_DUE, so an event already raised for it resolves through the emitter's
+    ordinary DUE -> NOT_DUE transition rather than by hand."""
+    basis = [{"age": "lifecycle-lease", "value": HEARTBEAT_SOURCE, "due_at": None,
+              "why": "shantytown owned-work lifecycle observation: a liveness lease, not a review obligation",
+              "resolved": True}]
+    ident = json.dumps([entity, "lifecycle-lease"], separators=(",", ":"))
+    return {"entity": entity, "verdict": NOT_DUE, "due_at": None,
+            "evidence": "sha256:" + hashlib.sha256(ident.encode()).hexdigest(),
+            "owner": None, "basis": basis}
+
+
 def evaluate(post, *, now: dt.datetime | None = None) -> list[dict]:
     now = now or dt.datetime.now(dt.timezone.utc)
     aged = set()
     for prop in ("reviewAfter", "maxAge", "idleLimit"):
         for row in select(post, f"SELECT ?s WHERE {{ {pattern('?s', prop, '?v')} }}"):
             aged.add(_local(row["s"]))
-    return [judge(post, e, now) for e in sorted(aged)]
+    return [heartbeat_verdict(e) if lifecycle_heartbeat(post, e) else judge(post, e, now)
+            for e in sorted(aged)]
 
 
 def main(argv=None) -> int:
