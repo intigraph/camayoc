@@ -57,6 +57,17 @@ class PartitionedPublication(unittest.TestCase):
                                           'harness':'codex', 'session':'one'}.items()))]
         self.assertIn('st_bead_cost_source_last_success_timestamp_seconds 100', source)
 
+    def test_inferred_and_dollar_samples_follow_the_parser_session(self):
+        extra = ('st_bead_tokens_inferred_total{bead="task-a"} 30\n'
+                 'st_bead_api_equivalent_usd{bead="task-a"} 0.5\n'
+                 'st_bead_api_equivalent_known_usd{bead="task-a"} 0.5\n'
+                 'st_bead_priced_token_share{bead="task-a"} 1\n')
+        self.assertTrue(m.publish(body('one')+extra, 'project')[0])
+        source = next(v for key, v in self.groups.items() if ('session', 'one') in key)
+        self.assertIn(extra, source)
+        self.assertNotIn('st_bead_tokens_inferred_total', self.groups[(('rig', 'project'),)])
+        self.assertNotIn('st_bead_api_equivalent_usd', self.groups[(('rig', 'project'),)])
+
     def test_legacy_single_rig_payload_is_unchanged(self):
         text = 'st_bead_tokens_total{bead="task-a"} 10\n'
         self.assertTrue(m.publish(text, 'project')[0])
