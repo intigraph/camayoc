@@ -90,8 +90,8 @@ jobs:
           set -euo pipefail
           tag="$QUIPU_TAG"
           asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
-          curl -fsSL --retry 3 -o "$asset" \
-            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          curl -fsSL --retry 3 --retry-all-errors -o "$asset" \
+            "https://github.com/intigraph/quipu/releases/download/${tag}/${asset}"
           echo "${QUIPU_SHA256}  $asset" | sha256sum -c -
           tar -xzf "$asset"
           echo "QUIPU_SERVER_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu-server" >> "$GITHUB_ENV"
@@ -112,8 +112,8 @@ jobs:
           tag="$QUIPU_TAG"
           asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
           mkdir -p report-cli
-          curl -fsSL --retry 3 -o "report-cli/$asset" \
-            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          curl -fsSL --retry 3 --retry-all-errors -o "report-cli/$asset" \
+            "https://github.com/intigraph/quipu/releases/download/${tag}/${asset}"
           echo "${QUIPU_SHA256}  report-cli/$asset" | sha256sum -c -
           tar -xzf "report-cli/$asset" -C report-cli
           echo "QUIPU_REPORT_BIN=$PWD/report-cli/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
@@ -157,8 +157,8 @@ jobs:
           set -euo pipefail
           tag="$QUIPU_TAG"
           asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
-          curl -fsSL --retry 3 -o "$asset" \
-            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          curl -fsSL --retry 3 --retry-all-errors -o "$asset" \
+            "https://github.com/intigraph/quipu/releases/download/${tag}/${asset}"
           echo "${QUIPU_SHA256}  $asset" | sha256sum -c -
           tar -xzf "$asset"
           echo "QUIPU_REPORT_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
@@ -197,8 +197,8 @@ jobs:
           set -euo pipefail
           tag="$QUIPU_TAG"
           asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
-          curl -fsSL --retry 3 -o "$asset" \
-            "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          curl -fsSL --retry 3 --retry-all-errors -o "$asset" \
+            "https://github.com/intigraph/quipu/releases/download/${tag}/${asset}"
           echo "${QUIPU_SHA256}  $asset" | sha256sum -c -
           tar -xzf "$asset"
           echo "QUIPU_SERVER_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu-server" >> "$GITHUB_ENV"
