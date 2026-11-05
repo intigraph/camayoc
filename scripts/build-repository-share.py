@@ -280,6 +280,10 @@ def build(revision, source, tooling, binary, bobbin, output):
     provider_contract = importlib.util.module_from_spec(provider_spec)
     provider_spec.loader.exec_module(provider_contract)
     expected_provider = provider_contract.configure(private)
+    # A full release graph exceeds the interactive query default. Keep this
+    # bounded budget in the private build project; never alter host settings.
+    with (private / ".bobbin/config.toml").open("a") as config:
+        config.write("\n[quipu.search]\nquery_timeout_ms = 180000\n")
 
 
     def run(args, *, env=None):
