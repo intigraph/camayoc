@@ -1,0 +1,7 @@
+Script started on 2026-11-05 03:01:10-05:00 [COMMAND="python3 run.py" <not executed on terminal>]
+Private query-only fixture; no publication or live graph
+engine_sha256=411e835c7c33d69fd955a3176435deeed8ae572d62640848c813d6bc2c944e5c
+BEFORE {"seconds": 30.413, "exit": 2, "query_sha256": "53fc0c3311eb4497d376c2ecaa99e81c68a485edf0387ff51de4f7d542e7a90d", "query_timeout": true, "triples": null}
+AFTER {"seconds": 24.757, "exit": 0, "query_sha256": "761da6a107c921b173c7f622ab2ff57b32d6a36dff4780b699f7b8da142e5e22", "query_timeout": false, "triples": 96530}
+
+Script done on 2026-11-05 03:02:05-05:00 [COMMAND_EXIT_CODE="0"]
