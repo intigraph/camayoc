@@ -24,3 +24,16 @@ packages = ["camayoc_cli"]
 
 [tool.setuptools.package-data]
 camayoc_cli = ["data/*.json", "primer.md"]
+
+[dependency-groups]
+review = [
+    "boto3>=1.43.111",
+    "cryptography>=50.0.2",
+    "pyshacl>=0.40.1",
+    "pytest>=9.1.1",
+    "pyyaml>=6.0.3",
+    "rdflib>=7.6.0",
+]
+
+[tool.uv.dependency-groups]
+review = {requires-python = ">=3.11"}
