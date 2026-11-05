@@ -1,0 +1,26 @@
+Script started on 2026-11-04 18:28:56-05:00 [COMMAND="bash docs/demos/inferred-memory-review/run.sh" <not executed on terminal>]
+Before: base088c403, overdue inferred memory plus non-memory control
+{
+  "full": [],
+  "incremental": [],
+  "nonmemory_excluded": true
+}
+
+After: candidate, identical isolated fixture
+{
+  "full": [
+    [
+      "memory",
+      "DUE"
+    ]
+  ],
+  "incremental": [
+    [
+      "memory",
+      "DUE"
+    ]
+  ],
+  "nonmemory_excluded": true
+}
+
+Script done on 2026-11-04 18:28:57-05:00 [COMMAND_EXIT_CODE="0"]
