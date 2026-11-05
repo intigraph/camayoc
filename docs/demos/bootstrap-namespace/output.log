@@ -1,0 +1,7 @@
+Script started on 2026-11-05 08:15:21-05:00 [COMMAND="python3 demo.py" <not executed on terminal>]
+BASE: fresh disposable bootstrap; tracker/Observation admission and negative controls
+HTTP 400: unknown rdf:type IRIs: Observation (expected baseline failure)
+CANDIDATE: fresh disposable bootstrap; tracker/Observation admission and negative controls
+PASS: Observation admitted with exact class; unknown type writes zero facts; invalid provenance refused
+
+Script done on 2026-11-05 08:15:27-05:00 [COMMAND_EXIT_CODE="0"]
