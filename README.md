@@ -115,7 +115,6 @@ when.
 
 [License](LICENSE).
 
-
 ### Repository pendant provider
 
 Repository pendant builders require explicitly pinned model and tokenizer bytes
