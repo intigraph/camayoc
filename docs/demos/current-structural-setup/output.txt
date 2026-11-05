@@ -1,0 +1,8 @@
+Script started on 2026-11-04 23:07:18-05:00 [COMMAND="sh docs/demos/current-structural-setup/run.sh" <not executed on terminal>]
+yupana: binary ready (/tmp/structural-setup-demo.LDYeuK/bin/yupana)
+mcp: added 'yupana' (yupana serve) to .mcp.json
+yupana: done — structural code facts (defs/refs/call graph) available via MCP.
+yupana: optional — wire 'yupana hook post-edit' into a PostToolUse hook for edit-reactive freshness.
+{"mcpServers": {"yupana": {"args": ["serve"], "command": "yupana"}}}
+
+Script done on 2026-11-04 23:07:18-05:00 [COMMAND_EXIT_CODE="0"]

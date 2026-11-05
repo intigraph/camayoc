@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # camayoc component setup — optional siblings, one per invocation:
 #   setup_component.sh bobbin   # code search/context (MCP: bobbin serve)
-#   setup_component.sh hank     # code structure engine (MCP: hank serve)
+#   setup_component.sh yupana     # code structure engine (MCP: yupana serve)
 #   setup_component.sh st       # shantytown crew harness (CLI: st)
 #
 # Idempotent; honest about what it did, skipped, and what remains manual.
@@ -47,17 +47,17 @@ setup_bobbin() {
   say "bobbin: done — semantic search + context bundles available to agents via MCP."
 }
 
-setup_hank() {
-  if ! command -v hank >/dev/null 2>&1; then
-    command -v cargo >/dev/null 2>&1 || { say "hank: needs cargo (install Rust first) — skipped"; return 1; }
-    say "hank: installing from git (cargo install --git ... — takes several minutes)..."
-    cargo install --git https://github.com/scbrown/hank --locked --features "mcp langs-extra" --quiet \
-      || { say "hank: cargo install FAILED (hank is pre-release; building from a clone may be needed)"; return 1; }
+setup_yupana() {
+  if ! command -v yupana >/dev/null 2>&1; then
+    command -v cargo >/dev/null 2>&1 || { say "yupana: needs cargo (install Rust first) — skipped"; return 1; }
+    say "yupana: installing from git (cargo install --git ... — takes several minutes)..."
+    cargo install --git https://github.com/intigraph/yupana --locked --features "mcp langs-extra" --quiet \
+      || { say "yupana: cargo install FAILED (yupana is pre-release; building from a clone may be needed)"; return 1; }
   fi
-  say "hank: binary ready ($(command -v hank))"
-  merge_mcp hank hank serve
-  say "hank: done — structural code facts (defs/refs/call graph) available via MCP."
-  say "hank: optional — wire 'hank hook post-edit' into a PostToolUse hook for edit-reactive freshness."
+  say "yupana: binary ready ($(command -v yupana))"
+  merge_mcp yupana yupana serve
+  say "yupana: done — structural code facts (defs/refs/call graph) available via MCP."
+  say "yupana: optional — wire 'yupana hook post-edit' into a PostToolUse hook for edit-reactive freshness."
 }
 
 setup_st() {
@@ -108,8 +108,8 @@ setup_beads() {
 
 case "${1:-}" in
   bobbin) setup_bobbin ;;
-  hank)   setup_hank ;;
+  yupana|hank) setup_yupana ;; # Deliberate former component argument compatibility.
   st)     setup_st ;;
   beads)  setup_beads ;;
-  *) say "usage: setup_component.sh bobbin|hank|st|beads"; exit 64 ;;
+  *) say "usage: setup_component.sh bobbin|yupana|st|beads"; exit 64 ;;
 esac

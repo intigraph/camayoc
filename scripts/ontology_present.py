@@ -8,7 +8,7 @@ Exit 1: some are missing (prints "M/N").
 Exit 2: CANNOT TELL -- the file declared nothing, or the store did not answer.
         Never read 2 as either of the others.
 
-Why this exists: bootstrap must be re-runnable (caboodle's resume re-runs it as
+Why this exists: bootstrap must be re-runnable (tambo's resume re-runs it as
 its functional verification). Quipu's vocabulary gate is inactive until shapes
 are loaded, so the FIRST run's ontology load succeeds; bootstrap then loads
 shapes, and every later load of the same file is refused with HTTP 400
