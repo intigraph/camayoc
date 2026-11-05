@@ -46,11 +46,41 @@ def verify(post,envelope,item):
     return sum(native.lexical(row.get('v'))==expected for row in rows)==1
 
 
-#: Serial deliveries per tick (wu ACK, aegis-ksd): one feed read plus at most four
-#: requests per item (native read, /knot, two-pattern verify) stays within 20.
-MAX_DELIVERIES=4
+def prove_absent(post,item):
+    """True only when the server holds NO triple about the WorkItem subject.
+
+    Both every named graph and the default graph are asked. Anything other than
+    an exact, untruncated `false` from both (true, missing, truncated, a
+    non-object or an error) is not proof of absence and returns False.
+    """
+    subject=projection.A+item
+    projection.safe_iri(subject)
+    for query in (f'ASK {{ GRAPH ?g {{ <{subject}> ?p ?o }} }}',f'ASK {{ <{subject}> ?p ?o }}'):
+        try:
+            response=post('/query',{'query':query})
+        except (ValueError,OSError,RuntimeError,TypeError,KeyError):
+            return False
+        if (not isinstance(response,dict) or response.get('truncated')
+                or response.get('result') is not False):
+            return False
+    return True
+
+
+#: Serial deliveries per tick. aegis-ksd (wu ACK) set four deliveries and one feed
+#: read inside 20 requests. aegis-etv (wu GO 2026-11-04) raised it: that budget
+#: capped the lane at 4 seeds transactions/min (MAX_TRANSACTIONS per page, one page
+#: per tick) and 240 items/h, while the seeds graph measured 10.0 tx/min and about
+#: 307 distinct items/h (10:55-11:45Z). The cursor fell 15 days behind and every
+#: item changed after it went unprojected. A tick now reads up to MAX_FEED_PAGES
+#: pages and delivers up to MAX_DELIVERIES items (32 tx/min, 720 items/h), all
+#: inside TICK_SECONDS of wall clock so it never overlaps the 60 s schedule. The
+#: slow-read stop below still degrades a slow store to one item per tick.
+MAX_DELIVERIES=12
 ITEM_REQUESTS=4
-TICK_REQUESTS=1+MAX_DELIVERIES*ITEM_REQUESTS
+MAX_FEED_PAGES=8
+#: Feed pages, one cursor-age read, and the per-item requests.
+TICK_REQUESTS=MAX_FEED_PAGES+1+MAX_DELIVERIES*ITEM_REQUESTS
+TICK_SECONDS=40.0
 #: A request slower than this ends the tick after the item in flight (sattler,
 #: aegis-ksd): a slow store degrades to one item per tick instead of exposing
 #: four items' verify reads to it. The item in flight always finishes, so the
@@ -60,6 +90,10 @@ TICK_REQUESTS=1+MAX_DELIVERIES*ITEM_REQUESTS
 #: p90 0.97s, so a 1.0s budget stopped nearly every tick after one item. Incident reads
 #: (2-8s) still stop the tick.
 READ_BUDGET_SECONDS=2.5
+
+
+def integer_or_none(value):
+    return value if type(value) is int else None
 
 
 def failure_reason(exc):
@@ -117,8 +151,10 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
     return envelope['version']
 
 
-def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
+def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
+         cursor_time=None,wall=time.time):
     requests=0;writes=0;slowest=0.0;last=None
+    tick_started=clock()
     def wrote():
         nonlocal writes
         writes+=1
@@ -142,19 +178,45 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
             # read-back this is the read-back itself (aegis-wu1s9ti4d).
             last={'endpoint':args[0] if args else '/changes','seconds':round(elapsed,3)}
     receipt={'status':'UNKNOWN','writes':0,'requests':0,'verified':0}
+    # Set only by a page that proves the lane holds nothing newer for this
+    # graph: an empty valid page, or one read through the watermark.
+    caught_up=False
     try:
         pending=journal.next()
         feed_error=None
         backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
         if backlog < custody.MAX_PENDING and changes is not None:
-            requests+=1
-            try:
-                page=timed(changes,since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
-                             capture='new_values',graph=reader.board.graph)
-                journal.retain(page)
-            except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
-                if pending is None:raise
-                feed_error=type(exc).__name__
+            # Up to MAX_FEED_PAGES pages (aegis-etv). The first page keeps the
+            # original contract exactly. A later page stops feeding quietly when
+            # custody is full, the feed is caught up, or half the tick's wall clock
+            # is spent; the retained pages and the cursor they advanced stand.
+            for page_number in range(MAX_FEED_PAGES):
+                if page_number and (backlog>=custody.MAX_PENDING
+                                    or clock()-tick_started>TICK_SECONDS/2):
+                    break
+                requests+=1
+                before=journal.cursor
+                try:
+                    caught_up=False
+                    page=timed(changes,since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
+                                 capture='new_values',graph=reader.board.graph)
+                    journal.retain(page)
+                    # The feed is graph-filtered while watermark_tx is global, so a
+                    # quiet board answers an empty page with next_tx == since, far
+                    # below the watermark. That empty page is the caught-up proof.
+                    caught_up=(isinstance(page,dict) and (page.get('records')==[] or
+                               integer_or_none(page.get('next_tx'))==integer_or_none(page.get('watermark_tx'))))
+                except custody.CustodyFull:
+                    if page_number:break
+                    if pending is None:raise
+                    feed_error='CustodyFull';break
+                except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
+                    if page_number==0 and pending is None:raise
+                    feed_error=type(exc).__name__;break
+                backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
+                if (journal.cursor==before or not isinstance(page,dict)
+                        or integer_or_none(page.get('next_tx'))==integer_or_none(page.get('watermark_tx'))):
+                    break
             pending=journal.next()
         elif backlog >= custody.MAX_PENDING:
             feed_error='PendingCapacityReached'
@@ -163,7 +225,8 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
         # Serial: the first doubt stops the tick; earlier items stay acknowledged.
         while (pending is not None and len(seen)<MAX_DELIVERIES
                and pending[0] not in seen and requests+ITEM_REQUESTS<=TICK_REQUESTS
-               and (not seen or slowest<=READ_BUDGET_SECONDS)):
+               and (not seen or slowest<=READ_BUDGET_SECONDS)
+               and (not seen or clock()-tick_started<=TICK_SECONDS)):
             seen.add(pending[0])
             # `item` remains the last verified success for compatibility.
             # Attribute this attempt separately, even if its control fails.
@@ -185,6 +248,24 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic):
         reason=failure_reason(exc)
         if reason:receipt['reason']=reason
         if last:receipt['last_request']=last
+    # Cursor age (aegis-etv): how far behind the feed position is, in wall clock.
+    # Exit status and backlog cannot see this: a lane 15 days behind read OK.
+    # A failed read omits the field (UNKNOWN to the alarm), never guesses 0.
+    # Caught up: no board record is newer than the cursor, so the lane is not
+    # behind however old the cursor transaction is (a quiet board). Reported
+    # as 0 only on that proof; a feed error never yields 0.
+    if cursor_time is not None and caught_up and not feed_error and 'error' not in receipt:
+        receipt['cursor_age_seconds']=0
+    elif cursor_time is not None and requests<TICK_REQUESTS:
+        requests+=1
+        try:
+            stamp=cursor_time(journal.cursor)
+            if isinstance(stamp,(int,float)) and not isinstance(stamp,bool):
+                receipt['cursor_age_seconds']=max(0,round(wall()-stamp))
+            else:
+                receipt['cursor_age_error']='unproved'
+        except (ValueError,OSError,RuntimeError,TypeError,KeyError) as exc:
+            receipt['cursor_age_error']=type(exc).__name__
     if slowest>READ_BUDGET_SECONDS:
         receipt['slow_read']=round(slowest,3)
     receipt['slowest_read']=round(slowest,3)

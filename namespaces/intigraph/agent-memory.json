@@ -1,0 +1,251 @@
+{
+  "format": "intigraph-namespace-map/agent-memory-v1",
+  "published": false,
+  "pairs": [
+    {
+      "old": "http://aegis.gastown.local/ontology/Handoff",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#Handoff",
+      "roles": [
+        "class"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryDecisionBodyShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryDecisionBodyShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryDecisionShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryDecisionShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryDirectiveBodyShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryDirectiveBodyShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryDirectiveShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryDirectiveShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryHandoffShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryHandoffShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryPreferenceShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryPreferenceShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryRecordShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryRecordShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryReferenceShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryReferenceShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryTopic",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryTopic",
+      "roles": [
+        "class"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/MemoryTopicShape",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#MemoryTopicShape",
+      "roles": []
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/Preference",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#Preference",
+      "roles": [
+        "class"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/Reference",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#Reference",
+      "roles": [
+        "class"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/access",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#access",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/agent",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#agent",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/alias",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#alias",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/context",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#context",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/example",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#example",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/handoffContext",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#handoffContext",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/issuedOn",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#issuedOn",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/locator",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#locator",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/naturalKey",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#naturalKey",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/next",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#next",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/notWhen",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#notWhen",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/person",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#person",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/prefers",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#prefers",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/recordedAt",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#recordedAt",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/recordedBy",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#recordedBy",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/rule",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#rule",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/secretRef",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#secretRef",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/subject",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#subject",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/supersededAt",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#supersededAt",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/supersedes",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#supersedes",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/topic",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#topic",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/verbatim",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#verbatim",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/waitingOn",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#waitingOn",
+      "roles": [
+        "property"
+      ]
+    },
+    {
+      "old": "http://aegis.gastown.local/ontology/why",
+      "new": "https://w3id.org/intigraph/camayoc/core/ns#why",
+      "roles": [
+        "property"
+      ]
+    }
+  ],
+  "reserved_unloaded": [
+    "http://aegis.gastown.local/ontology/MemoryDecisionShape",
+    "http://aegis.gastown.local/ontology/MemoryDecisionBodyShape"
+  ]
+}

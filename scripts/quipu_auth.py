@@ -9,7 +9,7 @@ import sys
 import urllib.parse
 
 HELP = ('Configure QUIPU_AUTH_TOKEN > QUIPU_AUTH_TOKEN_FILE > ~/.config/quipu/token; '
-        'ask the Quipu administrator for an accepted credential and run caboodle doctor.')
+        'ask the Quipu administrator for an accepted credential and run tambo doctor.')
 _disabled: set[str] = set()
 
 

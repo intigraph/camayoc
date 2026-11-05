@@ -56,3 +56,11 @@ loaded set, prove old/new queries, positive and negative validation, actual
 producer admission timing and the rollback on the intended consumer. Keep old
 sets and files until that proof is accepted. Source equivalence is not runtime
 acceptance.
+
+## Publication vocabulary candidate
+
+publications.json is a separate, pinned mp5 disposition for four additional
+delivery terms. It preserves both frozen mapping snapshots and marks all four
+unpublished. The builder checks collisions, roles and declared source terms;
+the manifest records its hash. This is a source proposal, not publication,
+schema admission or permission to arm an emitter.

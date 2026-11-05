@@ -9,6 +9,13 @@ from pathlib import Path
 
 from ingest_session_usage import KINDS, READERS
 
+# Binding bases (aegis-59jx step 2a). DECLARED is a paired task declaration.
+# INFERRED_HELD is the item the agent held across the request, inferred by the
+# caller from its own state; it never outranks a declared focus and never counts
+# as observed coverage.
+DECLARED, INFERRED_HELD = "declared", "inferred-held"
+BASES = (DECLARED, INFERRED_HELD)
+
 
 def epoch(value):
     if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -37,10 +44,12 @@ def retrieve(params):
     for b in bindings:
         if b.get("schema_version") != 1 or not all(b.get(k) for k in ("rig", "bead", "session", "agent")):
             raise ValueError("binding requires schema_version=1 and rig/bead/session/agent")
+        if b.get("basis", DECLARED) not in BASES:
+            raise ValueError("binding basis must be one of " + ", ".join(BASES))
         start, end = epoch(b["start"]), epoch(b["end"]) if b.get("end") is not None else None
         if end is not None and end < start:
             raise ValueError("focus end precedes start")
-        intervals.append({**b, "start": start, "end": end})
+        intervals.append({**b, "start": start, "end": end, "basis": b.get("basis", DECLARED)})
     records, errors, seen_sources = {}, [], set()
     for source in sources:
         fmt = source.get("harness")
@@ -87,16 +96,26 @@ def retrieve(params):
                    and b.get("harness", record["harness"]) == record["harness"]
                    and b["start"] <= stamp
                    and (b["end"] is None or stamp < b["end"])]
+        # A declared focus always wins: an inferred binding is consulted only
+        # when no declared binding covers the request (aegis-59jx step 2a).
+        declared = [b for b in matches if b["basis"] == DECLARED]
+        chosen = declared or matches
         # Identical replayed bindings do not introduce ambiguity.
-        unique = {(b["rig"], b["bead"], b["start"], b["end"]) for b in matches}
-        binding = matches[0] if len(unique) == 1 else None
-        reason = "attributed" if binding else "overlapping focus" if matches else "no proven focus"
+        unique = {(b["rig"], b["bead"], b["start"], b["end"]) for b in chosen}
+        binding = chosen[0] if len(unique) == 1 else None
+        inferred = binding is not None and binding["basis"] == INFERRED_HELD
+        reason = ("inferred held item" if inferred else "attributed" if binding
+                  else "overlapping focus" if chosen else "no proven focus")
         rig, bead = (binding["rig"], binding["bead"]) if binding else ("unknown", "unattributed")
-        key = (rig, bead, record["agent"], record["harness"], record["model"])
+        key = (rig, bead, record["agent"], record["harness"], record["model"], inferred)
         group = groups.setdefault(key, {"rig": rig, "bead": bead, "agent": record["agent"],
              "harness": record["harness"], "model": record["model"],
              "counts": dict.fromkeys(KINDS, 0), "tokens": 0, "requests": 0, "sessions": set(),
              "coverage": "observed"})
+        if inferred and "basis" not in group:
+            # Only inferred groups carry these keys, so declared and unattributed
+            # groups (and every receipt digest built from them) keep their shape.
+            group.update(basis=INFERRED_HELD, coverage="inferred")
         for kind, value in record["counts"].items():
             if value is None:
                 group["counts"][kind] = None
@@ -116,9 +135,17 @@ def retrieve(params):
         result.append(group)
     result.sort(key=lambda x: (x["rig"], x["bead"], x["agent"], x["harness"], x["model"] or ""))
     payload = {"schema_version": 1, "scope": "supplied transcript sources and explicit focus intervals; not lifetime cost",
-               "coverage": "UNKNOWN" if errors or not result or any(g["coverage"] == "UNKNOWN" for g in result) else "observed",
-               "groups": result, "errors": errors, "records": attributed}
+               "coverage": "UNKNOWN" if errors or not result or any(g["coverage"] != "observed" for g in result) else "observed",
+               "groups": result, "errors": errors, "records": attributed,
+               "binding_bases": list(BASES)}
     attributed.sort(key=lambda r: (r["harness"], r["session"], r["at"], r["id"]))
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     payload["receipt"] = hashlib.sha256(canonical.encode()).hexdigest()
+    # Repricing is a projection, not new token evidence or a closure-receipt
+    # identity. A broken/missing price catalogue cannot erase measured groups.
+    from work_cost_prices import project
+    try:
+        payload['costs'] = project(attributed)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        payload['costs'] = {'coverage': 'UNKNOWN', 'reason': 'price projection unavailable: '+type(exc).__name__}
     return payload

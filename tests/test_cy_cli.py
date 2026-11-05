@@ -21,6 +21,7 @@ import threading
 import time
 import tomllib
 import unittest
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -630,6 +631,125 @@ class LocalStoreTests(unittest.TestCase):
         self.assertIn("current_records", state["summary"])
         self.assertEqual("absent", state["summary"]["credential"])
 
+
+
+@requires_quipu_server
+class LegacyDirectiveRecallTests(unittest.TestCase):
+    """gshu.15: mem_index_since also returns legacy aegis:Directive nodes in ROOT.
+
+    A store WITHOUT the agent-memory shapes, like production today: legacy
+    directives are not memory records and would not conform to them.
+    """
+
+    A = "http://aegis.gastown.local/ontology/"
+    RECORDS = "https://camayoc.local/plane/crew/records"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory()
+        port = free_port()
+        cls.base = f"http://127.0.0.1:{port}"
+        cls.proc = subprocess.Popen([QUIPU_SERVER_BIN, "--db", str(Path(cls.temp.name) / "store.db"),
+                                     "--bind", f"127.0.0.1:{port}"], cwd=cls.temp.name,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for _ in range(50):
+            try:
+                cls.post("/health")
+                break
+            except OSError:
+                time.sleep(0.1)
+        else:
+            raise RuntimeError("ephemeral quipu-server did not start")
+        cls.post("/queries", json.loads((ROOT / "queries/mem_index_since.json").read_text()))
+        cls.post("/graph/create", {"graph": cls.RECORDS})
+        a, x = cls.A, "http://www.w3.org/2001/XMLSchema#"
+        cls.record = f"{a}mem/handoff/legacy-twin/20260801T000000Z"
+        head = (f"@prefix aegis: <{a}> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+                "@prefix prov: <http://www.w3.org/ns/prov#> . @prefix owl: <http://www.w3.org/2002/07/owl#> .\n")
+        out = cls.post("/knot", {"actor": "test", "graph": cls.RECORDS, "turtle": head + f"""
+        <{cls.record}> a aegis:Handoff ; aegis:naturalKey "legacy-twin" ; rdfs:label "legacy-twin" ;
+            aegis:recordedAt "2026-08-01T00:00:00Z" ; aegis:next "promoted copy" .
+        """})
+        assert out.get("conforms") is not False, out
+        out = cls.post("/knot", {"actor": "test", "turtle": head + f"""
+        aegis:lgcy-timed a aegis:Directive ; rdfs:label "lgcy-timed" ; rdfs:comment "act on reversible things" ;
+            prov:wasGeneratedBy aegis:lgcy-ep1 , aegis:lgcy-ep2 .
+        aegis:lgcy-ep1 prov:generatedAtTime "2026-09-01T00:00:00Z"^^<{x}dateTime> .
+        aegis:lgcy-ep2 prov:generatedAtTime "2026-09-02T00:00:00Z"^^<{x}dateTime> .
+        aegis:lgcy-untimed a aegis:Directive ; rdfs:label "lgcy-untimed" ; rdfs:comment "no episode" .
+        aegis:lgcy-old a aegis:Directive ; rdfs:label "lgcy-old" .
+        aegis:lgcy-new a aegis:Directive ; rdfs:label "lgcy-new" ; aegis:supersedes aegis:lgcy-old .
+        aegis:lgcy-pair-a a aegis:Directive ; rdfs:label "lgcy-pair-a" ; owl:sameAs aegis:lgcy-pair-b .
+        aegis:lgcy-pair-b a aegis:Directive ; rdfs:label "lgcy-pair-b" .
+        aegis:lgcy-twin a aegis:Directive ; rdfs:label "lgcy-twin" ; owl:sameAs <{cls.record}> .
+        """})
+        assert out.get("conforms") is not False, out
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.proc.terminate()
+        cls.proc.wait(timeout=10)
+        cls.temp.cleanup()
+
+    @classmethod
+    def post(cls, path, payload=None):
+        req = urllib.request.Request(cls.base + path, data=None if payload is None else json.dumps(payload).encode(),
+                                     headers={"Content-Type": "application/json"},
+                                     method="GET" if payload is None else "POST")
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.load(resp)
+        except urllib.error.HTTPError as exc:
+            raise AssertionError(f"{path}: HTTP {exc.code}: {exc.read().decode()[:800]}") from exc
+
+    def pages(self, since=""):
+        rows = []
+        while True:
+            page = self.post("/ask", {"name": "mem_index_since", "params": {"since": since}})["rows"]
+            rows += page[:50]
+            if len(page) <= 50:
+                return rows
+            since = page[49]["cursor"]
+
+    def by_name(self, rows):
+        a = self.A
+        full = lambda i: a + i[2:] if i.startswith("a:") else i  # quipu compacts IRIs in rows
+        out = {}
+        for r in rows:
+            iri = full(r["iri"])
+            out.setdefault("record" if iri == self.record else iri.removeprefix(a), []).append(r)
+        return out
+
+    def test_legacy_directives_are_recall_items(self):
+        rows = self.pages()
+        self.assertEqual(sorted(r["cursor"] for r in rows), [r["cursor"] for r in rows])
+        got = self.by_name(rows)
+        a = self.A
+        timed = got["lgcy-timed"][0]
+        self.assertEqual(("current", f"2026-09-02T00:00:00Z|{a}lgcy-timed"), (timed["status"], timed["cursor"]))
+        self.assertEqual("act on reversible things", timed["body"])
+        self.assertEqual("lgcy-timed", timed["label"])
+        self.assertTrue(timed["kind"].endswith("Directive"))
+        self.assertEqual(f"1970-01-01T00:00:00Z|{a}lgcy-untimed", got["lgcy-untimed"][0]["cursor"])
+        self.assertNotIn("lgcy-old", got, "a superseded legacy directive is not recalled")
+        self.assertIn("lgcy-new", got)
+
+    def test_sameas_cluster_is_one_item(self):
+        got = self.by_name(self.pages())
+        a = self.A
+        self.assertIn("lgcy-pair-a", got)
+        self.assertNotIn("lgcy-pair-b", got, "a legacy sameAs pair is one item: the smallest IRI")
+        self.assertEqual(["superseded"], [r["status"] for r in got["lgcy-twin"]],
+                         "a legacy node sameAs a memory record leaves the mirror")
+        self.assertEqual(f"2026-08-01T00:00:00Z|{a}lgcy-twin", got["lgcy-twin"][0]["cursor"])
+        self.assertEqual(["current"], [r["status"] for r in got["record"]])
+        self.assertEqual("promoted copy", got["record"][0]["body"])
+
+    def test_incremental_pull_skips_epoch_rows(self):
+        got = self.by_name(self.pages(since="2026-09-01T12:00:00Z"))
+        self.assertIn("lgcy-timed", got)
+        self.assertNotIn("lgcy-untimed", got)
+        self.assertNotIn("lgcy-twin", got)
 
 if __name__ == "__main__":
     unittest.main()

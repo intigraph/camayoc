@@ -8,6 +8,9 @@ production proposal cannot drift from the shapes the create tools use.
     python3 scripts/memory_schema_proposal.py --check   # fail if stale
 """
 import hashlib, json, pathlib, re, sys, tempfile
+from rdflib import Graph, URIRef
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from build_stable_namespaces import combined_ledger, remap_graph, shape_bytes, alias_graph
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SHAPES = ROOT / "shapes/agent-memory.shapes.ttl"
@@ -20,7 +23,8 @@ PROPS = ["naturalKey", "recordedAt", "recordedBy", "topic", "rule", "issuedBy", 
 IRI_PROPS = {"naturalKey", "topic", "issuedBy", "appliesTo", "person", "agent", "subject", "supersedes"}
 
 #: Properties the shapes use that quipu.svc already declares (read-only check,
-#: 2026-10-28, camayoc#185 review), so 01 must not redeclare them.
+#: 2026-10-28, camayoc#185 review). Canonical aliases are declared only as
+#: rdf:Property, preserving their existing object/datatype classification.
 ALREADY_SANCTIONED_LIVE = {"about", "chose", "contentHash", "decidedBy", "decidedIn", "over",
                            "rationale", "sourceKind", "supersededBy"}
 
@@ -33,6 +37,56 @@ def shape_paths(text: str) -> set[str]:
 def vocabulary_gaps(text: str) -> list[str]:
     """Shape properties that neither 01 declares nor quipu.svc already sanctions."""
     return sorted(shape_paths(text) - set(PROPS) - ALREADY_SANCTIONED_LIVE)
+
+
+def stable_profile(text: str, compatibility: bool = False) -> str:
+    """Canonical vocabulary, plus explicit legacy validation while reasoning is off.
+
+    Only RDF IRIs change. Literals, individual IRIs and frozen ledgers stay put.
+    Compatibility shapes have stable names and explicit alternative paths; no writer
+    flip or reactive-materialization assumption is needed for legacy cy records.
+    """
+    ledger = combined_ledger(ROOT)
+    mapping = {r['old']: r['new'] for r in ledger['pairs']}
+    source = Graph().parse(data=text, format='turtle')
+    result = remap_graph(source, mapping)
+    if compatibility:
+        from rdflib import BNode, RDF, SH
+        from rdflib.collection import Collection
+        inverse = {new: old for old, new in mapping.items()}
+        # One constraint counts BOTH spellings, including mixed records. Two
+        # independent profiles would let a canonical class with legacy fields
+        # evade the scoped Directive requirement (or vice versa).
+        for shape, pred, value in list(result):
+            old = inverse.get(str(value)) if isinstance(value, URIRef) else None
+            if not old:
+                continue
+            legacy = URIRef(old)
+            if pred in (SH.targetClass, SH.targetSubjectsOf):
+                result.add((shape, pred, legacy))
+            elif pred == SH.path:
+                path, choices = BNode(), BNode()
+                Collection(result, choices, [value, legacy])
+                result.remove((shape, pred, value))
+                result.add((shape, pred, path))
+                result.add((path, SH.alternativePath, choices))
+            elif pred == SH['class']:
+                choices, left, right = BNode(), BNode(), BNode()
+                result.remove((shape, pred, value))
+                result.add((shape, SH['or'], choices))
+                Collection(result, choices, [left, right])
+                result.add((left, SH['class'], value))
+                result.add((right, SH['class'], legacy))
+    else:
+        used = {str(x) for triple in source for x in triple if isinstance(x, URIRef)}
+        result += alias_graph({'pairs': [r for r in ledger['pairs'] if r['old'] in used]})
+        # Explicit compatibility declarations keep legacy cy writes governed
+        # even when the store does not restate new ontology equivalences.
+        from rdflib import RDF, RDFS, OWL
+        for subject, kind in source.subject_objects(RDF.type):
+            if kind in (RDF.Property, RDFS.Class, OWL.Class, OWL.ObjectProperty, OWL.DatatypeProperty):
+                result.add((subject, RDF.type, kind))
+    return shape_bytes(result, ledger).decode()
 
 
 def main() -> None:
@@ -57,7 +111,7 @@ def main() -> None:
     assert not missing, missing
 
     TRIGGER = "aegis-gshu.12"
-    PROPOSER = "aegis/crew/hammond"
+    PROPOSER = "aegis/crew/ian"
     HDR = f"# Generated from shapes/agent-memory.shapes.ttl sha256:{sha}\n# by scripts/memory_schema_proposal.py (aegis-gshu.12). Do not hand-edit.\n"
 
     classes = {
@@ -70,11 +124,13 @@ def main() -> None:
             "# No rdfs:domain on any property: a domain would type every subject that uses\n"
             "# the property (the aegis:expiresAt trap, design §7). Shapes carry the per-class\n"
             "# constraints instead.\n\n"]
+    classes["Directive"] = "A directive, including legacy Directive individuals, scoped separately for memory records."
     for c, d in classes.items():
         onto.append(f"aegis:{c} a rdfs:Class , owl:Class ;\n    rdfs:label \"{c}\" ;\n    rdfs:comment \"{d}\" .\n\n")
-    for p in PROPS:
+    for p in sorted(set(PROPS) | ALREADY_SANCTIONED_LIVE):
         kind = "owl:ObjectProperty" if p in IRI_PROPS else "owl:DatatypeProperty"
-        onto.append(f"aegis:{p} a rdf:Property , {kind} ;\n    rdfs:label \"{p}\" ;\n"
+        kinds = "rdf:Property" if p in ALREADY_SANCTIONED_LIVE else "rdf:Property , " + kind
+        onto.append(f"aegis:{p} a {kinds} ;\n    rdfs:label \"{p}\" ;\n"
                     f"    rdfs:comment \"camayoc agent-memory field; see shapes/agent-memory.shapes.ttl.\" .\n\n")
     onto_ttl = "".join(onto).replace(prefixes, prefixes + "@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n", 1)
 
@@ -98,8 +154,26 @@ def main() -> None:
     dec_ttl = HDR + prefixes + "\n" + scoped("aegis:MemoryDecisionShape", "aegis:Decision",
         "--chose, --decided-by, --about and --topic, each exactly once") + "\n"
 
+    # Publish only the approved scoped profiles in the core namespace. The
+    # complete tool-source file also contains the held Decision class-wide gate.
+    scoped_source = ROOT / "shapes/agent-memory-scoped.shapes.ttl"
+    scoped_text = new_ttl + "\n" + dir_ttl
+    if CHECK:
+        if not scoped_source.exists() or scoped_source.read_text() != scoped_text:
+            sys.exit("stale scoped memory source; regenerate proposal bodies")
+    else:
+        scoped_source.write_text(scoped_text)
+
+    # Legacy source is retained for the additive namespace builder, never loaded.
+    legacy_ontology = ROOT / "ontology/agent-memory.ttl"
+    if CHECK:
+        if not legacy_ontology.exists() or legacy_ontology.read_text() != onto_ttl:
+            sys.exit("stale ontology/agent-memory.ttl; regenerate proposal bodies")
+    else:
+        legacy_ontology.write_text(onto_ttl)
+
     def write(fname, kind, target, diff, rationale):
-        (out / fname).write_text(json.dumps({"kind": kind, "target": target, "diff": diff,
+        (out / fname).write_text(json.dumps({"kind": kind, "target": target, "diff": stable_profile(diff, kind == "shape"),
             "proposer": PROPOSER, "rationale": rationale, "trigger_ref": TRIGGER}, indent=2) + "\n")
 
     write("01-ontology.json", "ontology", "camayoc-agent-memory-vocabulary", onto_ttl,

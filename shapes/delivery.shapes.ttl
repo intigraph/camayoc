@@ -159,6 +159,7 @@ aegis:ChangeEventShape a sh:NodeShape ;
     sh:property [ sh:path aegis:changeAction ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("created" "reviewed" "merged" "abandoned" "ci-passed" "ci-failed") ] ;
     sh:property [ sh:path aegis:commitSha ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
     sh:property [ sh:path aegis:reviewState ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:eventActor ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
     sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
                   sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] ;
     sh:property [ sh:path aegis:cdeventsType ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^dev\\.cdevents\\." ] ;
@@ -170,3 +171,33 @@ aegis:ChangeEventShape a sh:NodeShape ;
         [ sh:not [ sh:property [ sh:path aegis:changeAction ; sh:hasValue "merged" ] ] ]
         [ sh:property [ sh:path aegis:commitSha ; sh:minCount 1 ] ]
     ) .
+
+# Competency delivery-and-dora.md questions 9–10. Source support is separate
+# from schema admission and producer activation.
+aegis:eventActor a rdf:Property ;
+    rdfs:label "acting event principal" ;
+    rdfs:comment "The forge principal that performed the merge or publication, not the ingress writer." ;
+    rdfs:range xsd:string .
+
+aegis:releaseTag a rdf:Property ;
+    rdfs:label "release tag" ;
+    rdfs:range xsd:string .
+
+aegis:ReleaseEvent a rdfs:Class ;
+    rdfs:label "artifact publication event" ;
+    rdfs:comment "An artifact.published CDEvent, identified by CloudEvent source and id, with the resolved release commit." .
+
+aegis:ReleaseEventShape a sh:NodeShape ;
+    sh:targetClass aegis:ReleaseEvent ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:artifactId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^pkg:[a-z][a-z0-9.+-]*/[^\\s]+@[^\\s]+$" ] ;
+    sh:property [ sh:path aegis:changeRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" ] ;
+    sh:property [ sh:path aegis:commitSha ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:releaseTag ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:eventActor ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] ;
+    sh:property [ sh:path aegis:cdeventsType ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^dev\\.cdevents\\.artifact\\.published\\." ] ;
+    sh:property [ sh:path aegis:cloudEventSource ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:cloudEventId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] .

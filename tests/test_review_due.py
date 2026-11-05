@@ -167,6 +167,48 @@ class ShapeAndReaderAgree(unittest.TestCase):
             self.assertEqual(bool(shape.match(text)), rd.parse_duration(text) is not None, text)
 
 
+class LifecycleHeartbeat(unittest.TestCase):
+    """Shantytown owned-work lifecycle observations carry a liveness lease, not a review age."""
+
+    HB = "owned-work-" + "a" * 64
+    LAPSED = '"2026-09-20T00:00:00Z"'
+
+    def facts(self, entity, kind='"observed"', source='"urn:shantytown:owned-work:abc"'):
+        triples = [(entity, "reviewAfter", self.LAPSED), (entity, "ownedBy", "tim")]
+        if kind:
+            triples.append((entity, "sourceKind", kind))
+        if source:
+            triples.append((entity, "source", source))
+        return triples
+
+    def test_a_heartbeat_with_a_lapsed_lease_is_not_due(self):
+        r = run(self.facts(self.HB))[self.HB]
+        self.assertEqual(r["verdict"], "NOT_DUE")
+        self.assertNotIn("event_id", r)
+        self.assertEqual(r["basis"][0]["age"], "lifecycle-lease")
+
+    def test_the_same_lapsed_instant_elsewhere_stays_due(self):
+        r = run([("f", "reviewAfter", self.LAPSED), ("f", "ownedBy", "tim")])["f"]
+        self.assertEqual(r["verdict"], "DUE")
+        self.assertIn("event_id", r)
+
+    def test_the_name_alone_is_not_enough(self):
+        for kind, source in (('"observed"', '"urn:other:producer"'),
+                             ('"declared"', '"urn:shantytown:owned-work:abc"'),
+                             (None, '"urn:shantytown:owned-work:abc"'),
+                             ('"observed"', None)):
+            with self.subTest(kind=kind, source=source):
+                self.assertEqual(run(self.facts(self.HB, kind, source))[self.HB]["verdict"], "DUE")
+
+    def test_a_matching_producer_on_another_name_is_judged_normally(self):
+        r = run(self.facts("other-fact"))["other-fact"]
+        self.assertEqual(r["verdict"], "DUE")
+
+    def test_two_sources_are_not_a_heartbeat(self):
+        triples = self.facts(self.HB) + [(self.HB, "source", '"urn:other:producer"')]
+        self.assertEqual(run(triples)[self.HB]["verdict"], "DUE")
+
+
 if __name__ == "__main__":
     unittest.main()
 

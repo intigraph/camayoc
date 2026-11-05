@@ -39,7 +39,7 @@ Three claims, each already proven once in this stack:
 ## The first domain: the crew itself
 
 Agentic coding with shantytown is the right first domain because the loop
-closes entirely within the stack: shantytown emits the work, hank observes the
+closes entirely within the stack: shantytown emits the work, yupana observes the
 code, camayoc governs activity into quipu, bobbin serves it back into the next
 agent's context. Memory for the crew, with provenance instead of vibes.
 

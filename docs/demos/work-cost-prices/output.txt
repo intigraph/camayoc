@@ -1,0 +1,8 @@
+Script started on 2026-11-04 02:47:46-05:00 [COMMAND="python3 docs/demos/work-cost-prices/demo.py" <not executed on terminal>]
+BASE 63f200d18671179827a05fd6b717a23f4a8e078c
+{"costs": null, "tokens": 7100}
+CANDIDATE pricing source
+{"known_usd": "0.0088", "plan_share_usd": null, "priced_tokens": 3550, "tokens": 7100, "unpriced_models": ["unpublished-model"], "usd": null}
+PASS: same measured tokens; partial prices remain explicitly incomplete
+
+Script done on 2026-11-04 02:47:46-05:00 [COMMAND_EXIT_CODE="0"]

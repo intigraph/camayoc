@@ -90,6 +90,11 @@ def graph_rows(catalog, binary):
              'a:emitterStatus ?status ; a:emitterDocs ?docs ; a:emitterOrder ?order . } '
              'LIMIT ' + str(len(names) + 1))
     with tempfile.TemporaryDirectory(prefix='camayoc-catalog-') as folder:
+        # The catalog's node names and query use NS. Configure that same
+        # namespace on this fresh private server; Quipu has no implicit one.
+        config = Path(folder) / '.bobbin/config.toml'
+        config.parent.mkdir(mode=0o700)
+        config.write_text('[quipu]\nbase_ns = ' + json.dumps(NS) + '\n')
         store = Path(folder) / 'catalog.db'
         _loaded, answer = native_call(Path(binary), store,
             [('quipu_episode', catalog), ('quipu_query', {'query': query})])

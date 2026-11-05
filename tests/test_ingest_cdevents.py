@@ -268,6 +268,12 @@ class CDEventsIngressTests(unittest.TestCase):
                     self.assertTrue(rule["fields"]["changeId"]["required"])
                     ingest.windows.window_iri(rule["window"], "2026-10")
                     continue
+                if rule["class"] == "ReleaseEvent":
+                    self.assertEqual(base, "dev.cdevents.artifact.published")
+                    for field in ("artifactId", "changeRepository", "commitSha", "eventActor", "releaseTag"):
+                        self.assertTrue(rule["fields"][field]["required"])
+                    ingest.windows.window_iri(rule["window"], "2026-10")
+                    continue
                 self.assertEqual("DeploymentEvent", rule["class"])
                 outcomes = ({rule["outcome"]} if "outcome" in rule
                             else set(rule["outcomeFrom"]["map"].values()))

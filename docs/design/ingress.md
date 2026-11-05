@@ -5,7 +5,7 @@
 > present. Bootstrap proves both an untagged-write refusal and a falsifier-less
 > Verification refusal. Execution-path inventory is now produced by the scheduled,
 > ownership-neutral aegis source and the Quipu coverage query reports `Empty`,
-> `Partial`, or `Full` rather than a bare count. Hank now emits a falsifier-gated
+> `Partial`, or `Full` rather than a bare count. Yupana now emits a falsifier-gated
 > `Verification` and a `built` `Blocker` for each signed unsatisfied verdict. Its
 > source change is merged, but it is not yet an installed/runtime producer: the
 > sanctioned installer consumes release artifacts and no verdict-drain schedule is
@@ -80,7 +80,7 @@
 8. **Blockers name their evidence strength.** A `Blocker` is exactly one of
    `stated` (a claim in a ticket/report) or `built` (a demonstrated failing
    case). When a built blocker links `demonstratedBy`, it must link a
-   falsifier-gated `Verification`; Hank emits that link for signed unsatisfied
+   falsifier-gated `Verification`; Yupana emits that link for signed unsatisfied
    verdicts. A reader can therefore keep a stated blocker visible without
    presenting it as a measurement. Absence of such a record remains a producer
    coverage question, not a claim that no blocker exists.
@@ -95,7 +95,7 @@ mapped onto quipu named graphs with lattice labels:
 | `crew:records` | task lifecycle, decisions, outcomes (skill-recorded or parser-backfilled) | per-event | `observed` / `declared` | high |
 | `crew:declared` | conventions, directives, standing decisions a human stated | occasional | `declared` | high (human root) |
 | `crew:inferred` | model-written summaries, diagnoses, lessons | per-session | `inferred` | low, promotable |
-| `code:*` | hank-promoted structure (already governed upstream) | per-commit | `observed` | per hank tier |
+| `code:*` | yupana-promoted structure (already governed upstream) | per-commit | `observed` | per yupana tier |
 
 ### 2.1 Implementation status: routed and labelled (camayoc-s0h)
 
@@ -505,7 +505,7 @@ disable later writes for that server/session. A private marker under the Camayoc
 state directory carries this state across hook processes when a harness session
 ID is available. The diagnostic names process-only suppression when no session
 ID exists or persistence fails. Public reads remain available. Obtain an accepted
-credential from the service administrator, verify it with `caboodle doctor`, and
+credential from the service administrator, verify it with `tambo doctor`, and
 start a new session after repairing a refused credential.
 
 ### Replacing one promoted fact

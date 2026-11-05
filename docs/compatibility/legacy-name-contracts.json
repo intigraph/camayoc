@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "scope": "Exact retained compatibility and historical fixture lines; current product references use current names.",
+  "entries": [
+    {
+      "path": "docs/agents.md",
+      "line": 48,
+      "line_sha256": "02a1457b041e7741fcc2c7b77714845b291f9cb118055d87cc5a23f45e05e39a",
+      "reason": "Deliberate former component argument compatibility, its regression control, or explicit alias documentation; new setup emits the current executable and server name."
+    },
+    {
+      "path": "docs/why-camayoc.md",
+      "line": 26,
+      "line_sha256": "79c168621433d851ec0d51b181f85b024a5f938b05be4c0ed258aa28f6e78399",
+      "reason": "Deliberate former component argument compatibility, its regression control, or explicit alias documentation; new setup emits the current executable and server name."
+    },
+    {
+      "path": "scripts/setup_component.sh",
+      "line": 111,
+      "line_sha256": "8f6eef8b563629beb32d41a002327f4e60b5bb9cfd202d3c771f7414856a92ef",
+      "reason": "Deliberate former component argument compatibility, its regression control, or explicit alias documentation; new setup emits the current executable and server name."
+    },
+    {
+      "path": "tests/fixtures/aegis-upstream/legacy-compatibility.shapes.ttl",
+      "line": 1963,
+      "line_sha256": "de69f534f2994e2fd87e1a8a196ab69dbb74451242e6ac21ef72f4e4b303ae6f",
+      "reason": "Immutable original upstream fixture in checksum-pinned compatibility tests; preserve the recorded source bytes."
+    },
+    {
+      "path": "tests/fixtures/aegis-upstream/original-aegis-ontology.ttl",
+      "line": 1963,
+      "line_sha256": "de69f534f2994e2fd87e1a8a196ab69dbb74451242e6ac21ef72f4e4b303ae6f",
+      "reason": "Immutable original upstream fixture in checksum-pinned compatibility tests; preserve the recorded source bytes."
+    },
+    {
+      "path": "tests/test_setup_component.py",
+      "line": 36,
+      "line_sha256": "00ea6c8ce9c63e6582b596b2b9c2870024c37789293039924d8e947627aed2ae",
+      "reason": "Deliberate former component argument compatibility, its regression control, or explicit alias documentation; new setup emits the current executable and server name."
+    }
+  ]
+}

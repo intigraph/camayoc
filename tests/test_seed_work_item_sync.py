@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 from test_seed_work_items import GRAPH,ID,rows
 from test_seed_change_custody import page
 import seed_work_items as nw
@@ -126,7 +127,12 @@ class Tick(unittest.TestCase):
 class SerialTicks(unittest.TestCase):
     """Up to MAX_DELIVERIES items per tick, inside one 20-request budget (aegis-ksd)."""
     ITEMS=['demo-a','demo-b','demo-c','demo-d','demo-e']
+    #: These serial-semantics tests keep the aegis-ksd budget (one page, four
+    #: deliveries, 17 requests) so their expectations stay meaningful. The raised
+    #: aegis-etv defaults are tested by Throughput below.
+    LEGACY={'MAX_DELIVERIES':4,'MAX_FEED_PAGES':1,'TICK_REQUESTS':1+4*4}
     def setUp(self):
+        patcher=mock.patch.multiple(sync,**self.LEGACY);patcher.start();self.addCleanup(patcher.stop)
         self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'journal.db'
         self.reader=nw.Reader(lambda *args:None,nw.Board(GRAPH,'demo'))
         self.j=sc.Journal(self.path,self.reader.board,server='https://peer-one.example.test',initial_tx=9)
@@ -159,9 +165,8 @@ class SerialTicks(unittest.TestCase):
         return sync.tick(self.reader,self.j,self.post,changes=idle,plane='urn:private:knowledge',actor='fixture')
     def backlog(self):return self.j.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
 
-    def test_budget_constant_stays_within_the_acknowledged_ceiling(self):
-        self.assertEqual(sync.TICK_REQUESTS,1+sync.MAX_DELIVERIES*sync.ITEM_REQUESTS)
-        self.assertLessEqual(sync.TICK_REQUESTS,20)
+    def test_legacy_budget_is_pinned_for_these_serial_tests(self):
+        self.assertEqual((sync.MAX_DELIVERIES,sync.MAX_FEED_PAGES,sync.TICK_REQUESTS),(4,1,17))
 
     def test_one_tick_delivers_four_serially_then_the_rest_next_tick(self):
         result=self.tick()
@@ -353,3 +358,113 @@ class ExactTypeControl(unittest.TestCase):
                         with self.assertRaises(sc.CustodyUnknown):sync.verify(post,self.envelope(),ID)
                         self.assertEqual(len(calls),1)
                 finally:data.close()
+
+
+class Throughput(unittest.TestCase):
+    """aegis-etv: the raised defaults (pages, deliveries, wall clock, cursor age)."""
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'journal.db'
+        self.reader=nw.Reader(lambda *args:None,nw.Board(GRAPH,'demo'))
+        self.j=sc.Journal(self.path,self.reader.board,server='https://peer-one.example.test',initial_tx=9)
+        self.now=0.0;self.feed_calls=0
+    def tearDown(self):self.j.db.close();self.tmp.cleanup()
+    def clock(self):return self.now
+    def feed(self,head,per_page=4,full_at=None):
+        """A feed with transactions 10..head, one item per transaction."""
+        def changes(**args):
+            self.feed_calls+=1;since=args['since']
+            if full_at is not None and self.feed_calls==full_at:
+                return {'records':[{'graph':GRAPH,'tx':tx,'sequence':1,'entity':nw.ITEM+'demo-%d'%tx,
+                                    'attribute':nw.SCHEMA+'name','op':'assert'}
+                                   for tx in range(since+1,since+1+per_page)],
+                        'next_tx':since+per_page,'watermark_tx':head,'capture':'new_values','_full':True}
+            end=min(head,since+per_page)
+            records=[{'graph':GRAPH,'tx':tx,'sequence':1,'entity':nw.ITEM+'demo-%d'%tx,
+                      'attribute':nw.SCHEMA+'name','op':'assert'} for tx in range(since+1,end+1)]
+            return {'records':records,'next_tx':end,'watermark_tx':head,'capture':'new_values'}
+        return changes
+    def tick(self,changes,**kw):
+        # No deliveries: posts are never reached when pending items cannot resolve,
+        # so these tests measure the feed alone; deliveries are covered above.
+        return sync.tick(self.reader,self.j,lambda *a:(_ for _ in ()).throw(AssertionError('no post')),
+                         changes=changes,plane='urn:private:knowledge',actor='fixture',clock=self.clock,**kw)
+
+    def test_budget_formula_and_ceiling(self):
+        self.assertEqual(sync.TICK_REQUESTS,sync.MAX_FEED_PAGES+1+sync.MAX_DELIVERIES*sync.ITEM_REQUESTS)
+        self.assertLessEqual(sync.TICK_REQUESTS,60)
+        self.assertLess(sync.TICK_SECONDS,60)
+
+    def test_measured_inflow_is_below_capacity_so_lag_shrinks(self):
+        # aegis-etv measurement, seeds graph, 10:55-11:45Z 2026-11-04: 10.0 tx/min
+        # and 256 distinct items in 50 min (about 307/h). A one-minute tick must
+        # out-run both, or the cursor falls behind without bound (it was 15 days).
+        self.assertGreater(sync.MAX_FEED_PAGES*sc.MAX_TRANSACTIONS,10.0*2)
+        self.assertGreater(sync.MAX_DELIVERIES*60,307*2)
+
+    def test_reads_several_pages_and_advances_the_cursor(self):
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            result=self.tick(self.feed(head=9+4*20))
+        self.assertEqual(self.feed_calls,sync.MAX_FEED_PAGES)
+        self.assertEqual(self.j.cursor,9+4*sync.MAX_FEED_PAGES)
+        # Absolute, not relative to the constant: one tick must drain several pages.
+        self.assertGreaterEqual(self.feed_calls,4)
+        self.assertNotIn('feed_error',result)
+
+    def test_stops_when_caught_up(self):
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            self.tick(self.feed(head=9+4*2+2))
+        self.assertEqual(self.j.cursor,9+4*2+2)
+        self.assertEqual(self.feed_calls,3)
+
+    def test_later_page_custody_full_stops_quietly_keeping_earlier_pages(self):
+        first=self.feed(head=9+4*20)
+        def changes(**args):
+            if self.feed_calls==2:
+                self.feed_calls+=1;raise sc.CustodyFull('pending custody is full; keep prior cursor')
+            return first(**args)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            result=self.tick(changes)
+        self.assertEqual(self.j.cursor,9+4*2)
+        self.assertNotIn('feed_error',result)
+        self.assertEqual(result['status'],'OK')
+
+    def test_feed_stops_after_half_the_wall_clock_budget(self):
+        base=self.feed(head=9+4*20)
+        def changes(**args):
+            self.now+=sync.TICK_SECONDS/2+1;return base(**args)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            self.tick(changes)
+        self.assertEqual(self.feed_calls,1)
+
+    def test_cursor_age_is_zero_only_when_the_feed_proves_caught_up(self):
+        # aegis-etv review (arnold): the cursor only advances on board records,
+        # so a caught-up lane on a quiet board has an OLD cursor transaction.
+        # Reading time(cursor) there would age forever and false-fire the alarm.
+        old=lambda tx:1000.0
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            # Caught up: the journal is at 9 and the feed has nothing newer.
+            result=self.tick(self.feed(head=9),cursor_time=old,wall=lambda:4600.0)
+        self.assertEqual(result['cursor_age_seconds'],0)
+        # The production shape: a graph-filtered empty page answers next_tx == since
+        # while watermark_tx is GLOBAL and far ahead (other graphs kept writing).
+        quiet=lambda **a:{'records':[],'next_tx':a['since'],'watermark_tx':a['since']+5000,
+                          'capture':'new_values'}
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            result=self.tick(quiet,cursor_time=old,wall=lambda:4600.0)
+        self.assertEqual(result['cursor_age_seconds'],0)
+    def test_cursor_age_is_reported_while_lagging_and_omitted_when_unproved(self):
+        # Lagging: more board transactions than one tick's pages can read.
+        with mock.patch.object(sync,'MAX_DELIVERIES',0),mock.patch.object(sync,'MAX_FEED_PAGES',1):
+            result=self.tick(self.feed(head=200),cursor_time=lambda tx:1000.0,wall=lambda:4600.0)
+        self.assertEqual(result['cursor_age_seconds'],3600)
+        def broken(tx):raise ValueError('cursor transaction not found')
+        with mock.patch.object(sync,'MAX_DELIVERIES',0),mock.patch.object(sync,'MAX_FEED_PAGES',1):
+            result=self.tick(self.feed(head=200),cursor_time=broken,wall=lambda:4600.0)
+        self.assertNotIn('cursor_age_seconds',result)
+        self.assertEqual(result['cursor_age_error'],'ValueError')
+    def test_cursor_age_is_never_zero_after_a_feed_error(self):
+        # A failed feed proves nothing about being caught up: no 0, ever.
+        def failing(**a):raise OSError('feed unreachable')
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):
+            result=self.tick(failing,cursor_time=lambda tx:1000.0,wall=lambda:4600.0)
+        self.assertNotEqual(result.get('cursor_age_seconds'),0)
