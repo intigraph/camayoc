@@ -27,7 +27,7 @@ def verify(folder, tag, revision):
     proof = json.loads(archive.with_name(archive.name + ".provenance.json").read_text())
     expected = {
         "schema": "quipu.repository-share-producer/v1",
-        "source_repository": "scbrown/camayoc",
+        "source_repository": publisher.repository_identity(),
         "source_revision": revision,
         "release_tag": tag,
         "archive_sha256": sha,
@@ -58,6 +58,7 @@ def verify(folder, tag, revision):
 def wait(tag, revision, attempts=80, pause=time.sleep, run=subprocess.run):
     if not re.fullmatch(r"v\d+\.\d+\.\d+(?:[.-][A-Za-z0-9.-]+)?", tag) or not re.fullmatch("[0-9a-f]{40}", revision):
         raise ValueError("invalid release identity before lookup")
+    repository = publisher.repository_identity()
     stem = "camayoc-" + tag + "-repository.pendant.tar.gz"
     last_read = "not attempted"
     for number in range(attempts):
@@ -71,7 +72,7 @@ def wait(tag, revision, attempts=80, pause=time.sleep, run=subprocess.run):
                         "download",
                         tag,
                         "--repo",
-                        "scbrown/camayoc",
+                        repository,
                         "--dir",
                         temp,
                         "--pattern",

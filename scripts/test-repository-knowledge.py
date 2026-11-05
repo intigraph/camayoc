@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("knowledge", ROOT / "scripts/build-repository-knowledge.py")
@@ -118,6 +119,12 @@ class Knowledge(unittest.TestCase):
         self.assertNotIn("/content>", text)
         self.assertNotIn("owl#sameAs", text)
         self.assertIn("glossaryTerm> <https://scbrown.github.io/quechua/ns#Decision>", text)
+
+    def test_source_links_follow_hosted_repository_context(self):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "release-owner/source-fixture"}):
+            text = self.render()
+        self.assertIn("https://github.com/release-owner/source-fixture/blob/" + "1" * 40, text)
+        self.assertNotIn("https://github.com/scbrown/camayoc/blob/", text)
 
     def test_absent_or_ambiguous_index_pointer_refuses(self):
         for value in (None, False, ""):

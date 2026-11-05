@@ -6,7 +6,10 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 from urllib.parse import quote
+
+repository_identity = runpy.run_path(str(Path(__file__).with_name("repository_identity.py")))["repository"]
 
 A = "http://aegis.gastown.local/ontology/"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -19,6 +22,7 @@ PROPERTIES = {"interfaceKind", "publicName", "status", "supersessionStatus", "st
 
 def render(source, revision, lookup):
     source = Path(source)
+    repository = repository_identity()
     if not re.fullmatch("[0-9a-f]{40}", revision):
         raise ValueError("release revision must be explicit")
     registry = json.loads((source / "docs/knowledge/repository-knowledge.json").read_text())
@@ -87,7 +91,7 @@ def render(source, revision, lookup):
         fact(
             subject,
             PROV + "wasDerivedFrom",
-            "https://github.com/scbrown/camayoc/blob/" + revision + "/" + path,
+            "https://github.com/" + repository + "/blob/" + revision + "/" + path,
             iri=True,
         )
         for key, value in record.get("properties", {}).items():
