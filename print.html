@@ -216,7 +216,7 @@ attachable, hash-verified file. Camayoc is the <em>producer</em> of those packs.
 </ol>
 <h2 id="the-first-domain-the-crew-itself"><a class="header" href="#the-first-domain-the-crew-itself">The first domain: the crew itself</a></h2>
 <p>Agentic coding with shantytown is the right first domain because the loop
-closes entirely within the stack: shantytown emits the work, hank observes the
+closes entirely within the stack: shantytown emits the work, yupana observes the
 code, camayoc governs activity into quipu, bobbin serves it back into the next
 agent's context. Memory for the crew, with provenance instead of vibes.</p>
 <p>The first vertical slice is the task lifecycle with decisions attached —
@@ -436,7 +436,7 @@ this source change.</p>
 <p>The long form that used to open the README: its place in the stack, what this
 repository owns, what runs today, what it deliberately is not, and the name.
 The README now leads with a three-command first success
-(<a href="https://github.com/scbrown/caboodle/blob/main/docs/stack/README-STANDARD.md">the caboodle-stack README standard</a>).</p>
+(<a href="https://github.com/intigraph/tambo/blob/main/docs/stack/README-STANDARD.md">the Tambo-stack README standard</a>).</p>
 <h2 id="role-in-the-stack"><a class="header" href="#role-in-the-stack">Role in the stack</a></h2>
 <pre><code class="language-text">shantytown / git / yupana / sessions        (activity: raw fiber)
         │
@@ -698,7 +698,7 @@ what the knots mean and how knowledge earns its way into the graph.</p>
 <li><a href="https://github.com/scbrown/bobbin">bobbin</a> serves knowledge back into agent context.</li>
 <li><a href="https://github.com/scbrown/yupana">yupana</a> observes code structure.</li>
 <li><a href="https://github.com/scbrown/desire-path">desire-path</a> records the tool calls agents get wrong.</li>
-<li><a href="https://github.com/scbrown/caboodle">caboodle</a> installs all of them together and proves each one works.</li>
+<li><a href="https://github.com/intigraph/tambo">tambo</a> installs all of them together and proves each one works.</li>
 </ul>
 <p>The diagram and the division of labour are on <a href="why-camayoc.html#role-in-the-stack">Why camayoc</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="metrics-functional-counters-without-a-server"><a class="header" href="#metrics-functional-counters-without-a-server">Metrics: functional counters without a server</a></h1>
@@ -784,7 +784,7 @@ Decision, Verification, ExecutionPath, and Blocker provenance/validation shapes 
 present. Bootstrap proves both an untagged-write refusal and a falsifier-less
 Verification refusal. Execution-path inventory is now produced by the scheduled,
 ownership-neutral aegis source and the Quipu coverage query reports <code>Empty</code>,
-<code>Partial</code>, or <code>Full</code> rather than a bare count. Hank now emits a falsifier-gated
+<code>Partial</code>, or <code>Full</code> rather than a bare count. Yupana now emits a falsifier-gated
 <code>Verification</code> and a <code>built</code> <code>Blocker</code> for each signed unsatisfied verdict. Its
 source change is merged, but it is not yet an installed/runtime producer: the
 sanctioned installer consumes release artifacts and no verdict-drain schedule is
@@ -871,7 +871,7 @@ stale fact it claims to detect.</p>
 <p><strong>Blockers name their evidence strength.</strong> A <code>Blocker</code> is exactly one of
 <code>stated</code> (a claim in a ticket/report) or <code>built</code> (a demonstrated failing
 case). When a built blocker links <code>demonstratedBy</code>, it must link a
-falsifier-gated <code>Verification</code>; Hank emits that link for signed unsatisfied
+falsifier-gated <code>Verification</code>; Yupana emits that link for signed unsatisfied
 verdicts. A reader can therefore keep a stated blocker visible without
 presenting it as a measurement. Absence of such a record remains a producer
 coverage question, not a claim that no blocker exists.</p>
@@ -884,7 +884,7 @@ mapped onto quipu named graphs with lattice labels:</p>
 <tr><td><code>crew:records</code></td><td>task lifecycle, decisions, outcomes (skill-recorded or parser-backfilled)</td><td>per-event</td><td><code>observed</code> / <code>declared</code></td><td>high</td></tr>
 <tr><td><code>crew:declared</code></td><td>conventions, directives, standing decisions a human stated</td><td>occasional</td><td><code>declared</code></td><td>high (human root)</td></tr>
 <tr><td><code>crew:inferred</code></td><td>model-written summaries, diagnoses, lessons</td><td>per-session</td><td><code>inferred</code></td><td>low, promotable</td></tr>
-<tr><td><code>code:*</code></td><td>hank-promoted structure (already governed upstream)</td><td>per-commit</td><td><code>observed</code></td><td>per hank tier</td></tr>
+<tr><td><code>code:*</code></td><td>yupana-promoted structure (already governed upstream)</td><td>per-commit</td><td><code>observed</code></td><td>per yupana tier</td></tr>
 </tbody></table>
 </div>
 <h3 id="21-implementation-status-routed-and-labelled-camayoc-s0h"><a class="header" href="#21-implementation-status-routed-and-labelled-camayoc-s0h">2.1 Implementation status: routed and labelled (camayoc-s0h)</a></h3>
@@ -1243,7 +1243,7 @@ disable later writes for that server/session. A private marker under the Camayoc
 state directory carries this state across hook processes when a harness session
 ID is available. The diagnostic names process-only suppression when no session
 ID exists or persistence fails. Public reads remain available. Obtain an accepted
-credential from the service administrator, verify it with <code>caboodle doctor</code>, and
+credential from the service administrator, verify it with <code>tambo doctor</code>, and
 start a new session after repairing a refused credential.</p>
 <h3 id="replacing-one-promoted-fact"><a class="header" href="#replacing-one-promoted-fact">Replacing one promoted fact</a></h3>
 <p>Use <code>promote_plane.py --triples-file replacement.nt --supersedes old.nt --to crew:declared --by &lt;authorized-reviewer&gt; --authored-by &lt;different-author&gt; --reason &lt;evidence&gt;</code> to supersede one exact target fact. Both files contain one
@@ -2119,7 +2119,7 @@ result with provenance naming the mapping IRI.</li>
 <blockquote>
 <p><strong>Implementation status (2026-08-31):</strong> ✅ <strong>Implemented as
 <code>scripts/extract_entities.py</code></strong> (camayoc-0c8, gap G4 of the txtai
-comparison, caboodle <code>docs/design/txtai-gap-analysis.md</code>).
+comparison, tambo <code>docs/design/txtai-gap-analysis.md</code>).
 <code>tests/test_extract_entities.py</code> pins the promises below.</p>
 </blockquote>
 <p>txtai ships NER pipelines; camayoc's ingress rule 4 already defines the slot —
@@ -4159,7 +4159,7 @@ who finds one unbuilt claim stops believing the built ones.</p>
 <tr><td>2b</td><td>Windowed operational ingress + the move rule</td><td>✅ <strong>Built</strong> (2026-08-24)</td><td>Routing is 2-D: <code>plane_for(source_kind, data_kind)</code> refuses <code>operational</code> toward the static planes; <code>scripts/windows.py</code> creates-and-labels month windows (<code>operational</code>/<code>fresh</code>/<code>soleRecord</code>) for deep freeze; the same change landed the promotion move rule, which is now carried by aspect 3's row rather than duplicated here. Pinned by <code>tests/test_planes_2d.py</code> (16 tests). See <code>docs/design/workflow-and-archive.md</code>.</td></tr>
 <tr><td>3</td><td>Governed promotion</td><td>✅ <strong>Built</strong> (camayoc-mip 2026-08-18; the move half, camayoc-913, 2026-08-24)</td><td><code>scripts/promote_plane.py</code>: authority-gated (fails closed on a missing <code>config/plane-authority.json</code>), refuses self-promotion, refuses non-upward moves, refuses promoting what is not in the source plane; records <code>camayoc:planePromotion</code> with full provenance. 15 tests in <code>tests/test_promote_plane.py</code>, almost all refusals, plus the happy-path control. It is now a graph <strong>move</strong>, not a copy-up: <code>promote()</code> returns <code>(assert, close)</code> and <code>main</code> commits assert → <code>POST /episode/retract</code> on <code>--source-episode</code> (<code>on_orphan: preserve</code>) → record. The retraction is a <strong>bitemporal interval close, never a delete</strong>, which is what answered the governance question that held this row open: valid-time replay still shows the fact where and when it lived (competency/workflow-and-archive.md Q13). Commit order is load-bearing and tested both ways — a failed close leaves the fact readable in two planes at different trust (exit 4, stated out loud with the exact retry body), where close-then-failed-assert would lose it outright. Absent <code>--source-episode</code> the record carries <code>camayoc:sourceLeftOpen true</code> rather than implying a close that never happened. Pinned by <code>tests/test_planes_2d.py</code> <code>MoveRuleTests</code> + <code>MoveRuleCommitOrderTests</code> (8 tests).</td></tr>
 <tr><td>4</td><td>Falsifier-gated verification</td><td>✅ <strong>Built</strong></td><td><code>shapes/core.shapes.ttl:89-95</code> — <code>aegis:falsifier</code>, <code>sh:minCount 1</code> on <code>Verification</code>, with the refusal message. Probed by <code>scripts/gate_probe.sh</code>; the probe's own discrimination is <code>camayoc-104</code>.</td></tr>
-<tr><td>5</td><td>Liveness by deliberate absence</td><td>🟡 <strong>Partial — and the partiality is the point</strong></td><td>The <em>vocabulary</em> exists (<code>ontology/core.ttl:34, :120</code> — <code>aegis:ExecutionPath</code>, <code>aegis:ownedBy</code>; the 2026-08-17 row cited two term names that do not appear in the file), and the deliberate absence is explicit at <code>shapes/core.shapes.ttl:130</code>: liveness "belongs with hank/quipu, not a made-up write-time liveness rule". What does <strong>not</strong> exist is the read-time side: the liveness-join questions (verification-and-liveness #6, #8, #9) have <strong>no stored queries</strong> — #10 gained one (<code>camayoc_blockers_by_evidence_kind</code>) with <code>camayoc-102</code>, and #7 gained <code>camayoc_blocked_on_closed_dependency</code> with <code>camayoc-89e</code> (2026-08-22; not a liveness join — it needs only <code>blockedOn</code> and the already-modelled <code>closedAt</code>). See §2.</td></tr>
+<tr><td>5</td><td>Liveness by deliberate absence</td><td>🟡 <strong>Partial — and the partiality is the point</strong></td><td>The <em>vocabulary</em> exists (<code>ontology/core.ttl:34, :120</code> — <code>aegis:ExecutionPath</code>, <code>aegis:ownedBy</code>; the 2026-08-17 row cited two term names that do not appear in the file), and the deliberate absence is explicit at <code>shapes/core.shapes.ttl:130</code>: liveness "belongs with yupana/quipu, not a made-up write-time liveness rule". What does <strong>not</strong> exist is the read-time side: the liveness-join questions (verification-and-liveness #6, #8, #9) have <strong>no stored queries</strong> — #10 gained one (<code>camayoc_blockers_by_evidence_kind</code>) with <code>camayoc-102</code>, and #7 gained <code>camayoc_blocked_on_closed_dependency</code> with <code>camayoc-89e</code> (2026-08-22; not a liveness join — it needs only <code>blockedOn</code> and the already-modelled <code>closedAt</code>). See §2.</td></tr>
 <tr><td>6</td><td>Installation-time gate proof</td><td>✅ <strong>Built, and now independence-proven</strong></td><td><code>scripts/gate_probe.sh</code> with <code>tests/test_gate_probe.py</code> holding the probes to being able to fail. <code>camayoc-104</code> closed the remaining gap: each probe is shown to omit exactly one required property (parsed from the shapes, not hardcoded), and a store enforcing one shape at a time proves only its own arm. Claimable as stated.</td></tr>
 <tr><td>7</td><td>Tier-honest serving</td><td>🟡 <strong>Partial</strong></td><td><code>aegis:tier</code> is carried on policies (<code>shapes/policies/edit-grounding.ttl:49, :71, :78</code>) and the tier vocabulary is in <code>ontology/core.ttl:54</code>. But camayoc does not <em>serve</em> facts — yupana does. What camayoc owns is the tag's definition and its mandatory-ness, not the serving. <strong>Claim the vocabulary; do not claim the serving.</strong></td></tr>
 <tr><td>8</td><td>Typed non-answers</td><td>🟡 <strong>Partial, one instance</strong></td><td>Fully realised in exactly one place: <code>scripts/competency.py</code> returns <code>Empty | Partial | Full</code> with a <code>NO COVERAGE</code> verdict, method/threshold/watermark carried, 18 tests. That is a real instance of the discipline. It is <strong>one</strong> instance, on the ontology's own coverage, not a general non-answer taxonomy across camayoc's surfaces.</td></tr>
