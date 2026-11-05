@@ -1,0 +1,3 @@
+{"version": 2, "width": 65, "height": 14, "title": "Camayoc: check an event before admitting it", "env": {"TERM": "dumb"}}
+[0.0, "o", "\u001b[2J\u001b[H$ python3 preview-event.py deployed.json\r\nMapped class: DeploymentEvent\r\nOutcome: succeeded\r\nArtifact: pkg:github/example/example-\r\nsvc@3392682256648f3ec088dd768b270a0097089a7a\r\nPreview only: no graph or event was written.\r\n"]
+[10.0, "o", "\u001b[2J\u001b[H$ python3 preview-event.py unmapped-type.json\r\nQuarantined: no mapping for CDEvents type \r\n'dev.cdevents.incident.detected'\r\n"]
