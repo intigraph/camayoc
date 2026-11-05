@@ -13,10 +13,21 @@ import seed_work_item_sync as sync
 class Reconciliation(unittest.TestCase):
     setUp = fixture.Tick.setUp
     tearDown = fixture.Tick.tearDown
-    tick = fixture.Tick.tick
+    def tick(self):
+        return sync.tick(self.reader, self.j, self.post,
+                         changes=lambda **args: page() if args['since'] < 10 else
+                         page(records=[], next_tx=args['since'], watermark_tx=args['since']),
+                         plane='urn:private:knowledge', actor='fixture', completion=True)
 
-    def post(self, endpoint, body):
+    def post(self, endpoint, body, **kwargs):
+        if endpoint == '/knot/status':
+            stored = json.loads(self.j.next()[2])
+            self.assertEqual(body, {'write_id': stored['write_id'], 'request': stored['request']})
+            return getattr(self, 'completion_answer', {
+                'contract': 'quipu.knot-completion/v1', 'write_id': body['write_id'],
+                'state': getattr(self, 'completion_state', 'stopped')})
         if endpoint == '/knot':
+            self.assertEqual(kwargs.get('write_id'), json.loads(self.j.next()[2])['write_id'])
             self.writes += 1
             self.last_envelope = json.loads(self.j.next()[2])
             lost = getattr(self, 'timeout_once', False)
@@ -135,8 +146,10 @@ class Reconciliation(unittest.TestCase):
         self.fail_write()
         # A failed v4 snapshot never deletes the previously committed v3.
         self.assertEqual(self.description, previous)
+        self.completion_state = 'running'
         with mock.patch.object(sync.time, 'time', return_value=1000):
             self.tick()
+        self.completion_state = 'stopped'
         with mock.patch.object(sync.time, 'time', return_value=4600):
             self.tick()
             receipt = self.tick()
@@ -146,6 +159,7 @@ class Reconciliation(unittest.TestCase):
 
     def test_first_absence_read_cannot_release_custody_immediately(self):
         stored = self.fail_write()
+        self.completion_state = 'running'
         with mock.patch.object(sync.time, 'time', return_value=1000):
             self.tick()
         self.assertEqual(self.j.next()[2], stored)
@@ -153,6 +167,7 @@ class Reconciliation(unittest.TestCase):
 
     def test_delayed_commit_between_reads_is_verified_without_duplicate(self):
         stored = self.fail_write()
+        self.completion_state = 'running'
         with mock.patch.object(sync.time, 'time', return_value=1000):
             self.tick()
         # The original server operation completes after the first read.
@@ -163,6 +178,64 @@ class Reconciliation(unittest.TestCase):
         self.assertEqual((receipt['status'], receipt['verified']), ('OK', 1))
         self.assertIsNone(self.j.next())
         self.assertEqual((self.writes, self.commits), (1, 1))
+
+    def test_missing_or_untrusted_completion_never_releases(self):
+        stored = self.fail_write()
+        write_id = json.loads(stored)['write_id']
+        for answer in ({}, {'state': 'stopped'},
+                       {'contract': 'quipu.knot-completion/v0', 'write_id': write_id, 'state': 'stopped'},
+                       {'contract': 'quipu.knot-completion/v1', 'write_id': '0'*64, 'state': 'stopped'},
+                       *({'contract': 'quipu.knot-completion/v1', 'write_id': write_id, 'state': state}
+                         for state in ('queued', 'running', 'unknown', 'finished')),
+                       {'contract': 'quipu.knot-completion/v1', 'write_id': write_id,
+                        'state': 'stopped', 'truncated': 0}):
+            with self.subTest(answer=answer):
+                self.completion_answer = answer
+                self.assertEqual(self.tick()['status'], 'UNKNOWN')
+                self.assertEqual(self.j.next()[2], stored)
+                self.assertEqual(self.writes, 1)
+
+    def test_legacy_pending_body_cannot_gain_retroactive_completion(self):
+        stored = json.loads(self.fail_write())
+        del stored['write_id']
+        legacy = json.dumps(stored, sort_keys=True, separators=(',', ':'))
+        self.j.db.execute('UPDATE pending SET body=?', (legacy,))
+        for _ in range(2):
+            self.assertEqual(self.tick()['status'], 'UNKNOWN')
+            self.assertEqual(self.j.next()[2], legacy)
+            self.assertEqual(self.writes, 1)
+
+    def test_retry_allocates_new_identity_and_preserves_original(self):
+        first = json.loads(self.fail_write())['write_id']
+        self.assertEqual(self.tick()['status'], 'OK')
+        self.assertEqual(self.tick()['verified'], 1)
+        self.assertNotEqual(self.last_envelope['write_id'], first)
+        self.assertEqual(len(self.last_envelope['write_id']), 64)
+
+    def test_previous_version_absence_query_uses_real_rdf_constraints(self):
+        from rdflib import Dataset, URIRef, RDF
+        self.assertEqual(self.tick()['verified'], 1)
+        prior = self.last_envelope
+        self.j.retain(page(11))
+        self.native_version = 4
+        envelope = json.loads(self.fail_write())
+        dataset = Dataset()
+        graph = dataset.graph(URIRef(prior['request']['graph']))
+        graph.parse(data=prior['request']['turtle'], format='turtle')
+        def post(endpoint, body):
+            if endpoint == '/knot/status':
+                return {'contract': 'quipu.knot-completion/v1',
+                        'write_id': body['write_id'], 'state': 'stopped'}
+            result = dataset.query(body['query'])
+            return {'rows': [{'v': str(row.v)} for row in result], 'truncated': False}
+        self.assertTrue(sync.completed_without_effect(post, self.j, envelope, ID))
+        subject = URIRef(sync.projection.A + ID)
+        triple = (subject, RDF.type, URIRef(sync.projection.A + 'WorkItem'))
+        graph.remove(triple)
+        self.assertFalse(sync.completed_without_effect(post, self.j, envelope, ID))
+        graph.add(triple)
+        graph.parse(data=envelope['request']['turtle'], format='turtle')
+        self.assertFalse(sync.completed_without_effect(post, self.j, envelope, ID))
 
     def test_same_verified_version_cannot_be_automatically_repaired(self):
         self.assertEqual(self.tick()['verified'], 1)

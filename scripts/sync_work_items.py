@@ -521,8 +521,8 @@ def native_main(args):
                     raise custody.CustodyUnknown('last native tick timestamp unproved')
                 if started<previous_time+INTERVAL:
                     print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
-            def post(endpoint,body):
-                return planes._post(endpoint,body,client='camayoc-ingress')
+            def post(endpoint,body,**kwargs):
+                return planes._post(endpoint,body,client='camayoc-ingress',**kwargs)
             def changes(**params):
                 # /changes is GET, with an explicit graph and whole-tx cursor.
                 request=urllib.request.Request(planes.SERVER+'/changes?'+urllib.parse.urlencode(params),
@@ -544,7 +544,7 @@ def native_main(args):
                 from datetime import datetime
                 return datetime.fromisoformat(str(rows[0]['timestamp']).replace('Z','+00:00')).timestamp()
             receipt=native_sync.tick(reader,journal,post,changes=changes,
-                    plane=planes.plane_for('observed'),actor=args.actor,cursor_time=cursor_time)
+                    plane=planes.plane_for('observed'),actor=args.actor,cursor_time=cursor_time,completion=True)
         except Exception as exc:
             receipt['error']=type(exc).__name__  # never log auth or payloads
         finally:

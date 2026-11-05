@@ -6,6 +6,7 @@ The reviewed producer supplies the canonical Reader and durable custody.
 from __future__ import annotations
 import json
 import re
+import secrets
 import sqlite3
 import time
 import seed_change_custody as custody
@@ -32,7 +33,7 @@ def verify(post,envelope,item,*,pending=False):
     """Strict readback; a pending effect may distinguish an exact missing type.
 
     False never verifies an effect. Pending reconciliation must independently
-    prove complete subject absence before releasing custody for a fresh write.
+    prove native completion and exact pending-effect absence before release.
     """
     request=envelope['request'];graph=request['graph'];subject=projection.A+item
     # Match the exact type on the server: SELECT bindings may compact its IRI
@@ -72,6 +73,45 @@ def prove_absent(post,item):
                 or response.get('result') is not False):
             return False
     return True
+
+
+def completed_without_effect(post, journal, envelope, item):
+    """A retained native fence plus exact effect absence, never elapsed time.
+
+    Old journals, evicted receipts and unavailable capabilities stay UNKNOWN.
+    A stopped worker may have committed: readback must still prove absence.
+    """
+    write_id = envelope.get('write_id')
+    if not isinstance(write_id, str) or not re.fullmatch('[0-9a-f]{64}', write_id):
+        return False
+    status = post('/knot/status', {'write_id': write_id, 'request': envelope['request']})
+    if (not isinstance(status, dict) or status.get('contract') != 'quipu.knot-completion/v1'
+            or status.get('write_id') != write_id or status.get('truncated', False) is not False
+            or status.get('state') not in ('not_started', 'stopped')):
+        return False
+    previous = journal.db.execute('SELECT version FROM verified WHERE id=?', (item,)).fetchone()
+    if previous is None:
+        return prove_absent(post, item)
+    if type(envelope.get('version')) is not int or envelope['version'] <= previous[0]:
+        return False
+    # An update does not erase its previously verified snapshot on failure.
+    # Permit that exact older version's canonical metadata, not arbitrary facts
+    # or a conflicting/newer version, and never require the entire subject gone.
+    graph = projection.safe_iri(envelope['request']['graph'])
+    subject = projection.safe_iri(projection.A + item)
+    found = post('/query', {'query': f'SELECT ?v WHERE {{ GRAPH {graph} {{ {subject} a <{projection.A}WorkItem> ; <{native.SCHEMA}version> \"{previous[0]}\"^^<http://www.w3.org/2001/XMLSchema#integer> ; <{native.RDFS}comment> ?v }} }} LIMIT 129'})
+    if (not isinstance(found, dict) or found.get('truncated') is not False
+            or not isinstance(found.get('rows'), list) or len(found['rows']) != 1):
+        return False
+    try:
+        prior = json.loads(native.lexical(found['rows'][0].get('v')))
+        expected = json.loads(envelope['description'])
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return (isinstance(prior, dict) and set(prior) == set(expected)
+            and type(prior.get('source_version')) is int
+            and prior['source_version'] == previous[0]
+            and all(prior.get(k) == expected.get(k) for k in ('id', 'source_graph', 'native_action')))
 
 
 #: Serial deliveries per tick. aegis-ksd (wu ACK) set four deliveries and one feed
@@ -120,7 +160,7 @@ def failure_reason(exc):
     return 'unclassified'
 
 
-def deliver(reader,journal,call,pending,*,plane,actor,wrote):
+def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
@@ -135,8 +175,9 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
             journal.acknowledge(item,tx,envelope['version'])
             return envelope['version']
         # A negative readback alone is not absence: partial or conflicting
-        # facts keep the exact effect frozen. Reuse the operator release proof.
-        if not prove_absent(call,item):
+        # facts keep the exact effect frozen. Native completion must precede
+        # a fresh absence proof; HTTP timeout never proves worker termination.
+        if not completed_without_effect(call,journal,envelope,item):
             raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
         journal.release_unconfirmed(item,stored)
         return None
@@ -148,6 +189,8 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
     request=projection.body(canonical,plane=plane,actor=actor)
     description=projection.description(canonical)
     envelope={'request':request,'version':canonical.version,'description':description}
+    if completion:
+        envelope['write_id']=secrets.token_hex(32)
     if previous and canonical.version==previous[0]:
         if not verify(call,envelope,item):
             raise custody.CustodyUnknown('same native version lost projection; no automatic repair/replay')
@@ -155,7 +198,7 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
     else:
         journal.prepare(item,tx,envelope)
         wrote()
-        response=call('/knot',request)
+        response=call('/knot',request,**({'write_id':envelope['write_id']} if completion else {}))
         if (not isinstance(response,dict) or response.get('conforms') is False
             or not response.get('replaced') or type(response.get('tx_id')) is not int):
             raise custody.CustodyUnknown('projection write outcome unproved; preserve exact pending effect')
@@ -166,17 +209,17 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
 
 
 def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
-         cursor_time=None,wall=time.time):
+         cursor_time=None,wall=time.time,completion=False):
     requests=0;writes=0;slowest=0.0;last=None
     tick_started=clock()
     def wrote():
         nonlocal writes
         writes+=1
-    def call(endpoint,body):
+    def call(endpoint,body,**kwargs):
         nonlocal requests
         requests+=1
         if requests>TICK_REQUESTS:raise custody.CustodyUnknown('tick request budget exhausted')
-        response=timed(post,endpoint,body)
+        response=timed(post,endpoint,body,**kwargs)
         if endpoint=='/query' and body.get('query','').startswith('ASK '):
             receipt['control']=control_summary(response)
         return response
@@ -252,7 +295,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             except native.NativeUnknown:pass
             else:receipt['attempted_item']=pending[0]
             receipt['status']='UNKNOWN'
-            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote)
+            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,completion=completion)
             if version is None:
                 receipt.update(status='OK',reconciled=receipt.get('reconciled',0)+1)
             else:

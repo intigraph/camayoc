@@ -58,6 +58,35 @@ class PostFailureTests(unittest.TestCase):
         self.assertIn("unreachable", str(c.exception))
 
 
+class CompletionBindingTests(unittest.TestCase):
+    def test_real_transport_preserves_write_identity_and_body(self):
+        import io
+        from unittest import mock
+        seen = []
+        def receive(request, **_kwargs):
+            seen.append(request)
+            return io.BytesIO(b'{"tx_id": 1}')
+        body = {'graph': 'urn:test:isolated', 'turtle': ''}
+        with mock.patch.object(planes, 'AUTH', 'isolated-test-fixture'), \
+             mock.patch.object(planes.quipu_auth, '_disabled', set()), \
+             mock.patch.object(planes.urllib.request, 'urlopen', side_effect=receive):
+            planes._post('/knot', body, client='test', write_id='a'*64)
+        self.assertEqual(seen[0].get_header('X-quipu-write-id'), 'a'*64)
+        self.assertEqual(json.loads(seen[0].data), body)
+        self.assertTrue(seen[0].get_header('Authorization'))
+
+    def test_malformed_or_wrong_route_binding_refuses_before_http(self):
+        from unittest import mock
+        with mock.patch.object(planes.urllib.request, 'urlopen') as send:
+            for route, write_id in (('/query', 'a'*64), ('/knot', ''),
+                                    ('/knot', 'a'*63), ('/knot', 'A'*64),
+                                    ('/knot', 5), ('/knot', 'a'*64+'\n')):
+                with self.subTest(route=route, write_id=write_id):
+                    with self.assertRaises(planes.PlaneError):
+                        planes._post(route, {}, client='test', write_id=write_id)
+            send.assert_not_called()
+
+
 class RoutingTests(unittest.TestCase):
     """The routing table, which is pure and is where a mistake would be silent."""
 

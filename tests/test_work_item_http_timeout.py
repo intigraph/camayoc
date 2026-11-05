@@ -35,6 +35,8 @@ class HttpTimeout(unittest.TestCase):
                     body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
                     try:
                         if self.path == '/knot':
+                            if self.headers.get('X-Quipu-Write-Id') != owner.pending_envelope['write_id']:
+                                raise AssertionError('write ID missing from HTTP request')
                             if body != owner.pending_envelope['request']:
                                 raise AssertionError('HTTP body differs from durable custody')
                             owner.model.writes += 1
@@ -47,6 +49,13 @@ class HttpTimeout(unittest.TestCase):
                             if lost:
                                 raise TimeoutError('withhold response')
                             result = {'replaced': True, 'tx_id': 99, 'conforms': True}
+                        elif self.path == '/knot/status':
+                            if body != {'write_id': owner.pending_envelope['write_id'],
+                                        'request': owner.pending_envelope['request']}:
+                                raise AssertionError('status binding differs from original')
+                            result = {'contract': 'quipu.knot-completion/v1',
+                                      'write_id': body['write_id'],
+                                      'state': 'stopped' if owner.writer_stopped.is_set() else 'running'}
                         else:
                             result = owner.route(self.path, body)
                     except TimeoutError:
@@ -87,7 +96,7 @@ class HttpTimeout(unittest.TestCase):
         self.assertFalse(self.thread.is_alive())
         self.assertEqual(self.handler_errors, [])
 
-    def post(self, endpoint, body):
+    def post(self, endpoint, body, **kwargs):
         if endpoint == '/knot':
             # Read producer custody on its owning thread. The remote peer only
             # receives the immutable request/envelope captured before send.
@@ -95,7 +104,8 @@ class HttpTimeout(unittest.TestCase):
         request = urllib.request.Request(
             'http://127.0.0.1:' + str(self.server.server_port) + endpoint,
             data=json.dumps(body).encode(),
-            headers={'Content-Type': 'application/json'}, method='POST')
+            headers={'Content-Type': 'application/json',
+                     **({'X-Quipu-Write-Id': kwargs['write_id']} if 'write_id' in kwargs else {})}, method='POST')
         # Only the deliberately lost response has a short deadline; ordinary
         # reads/writes have ample time and do not depend on scheduling speed.
         lost = endpoint == '/knot' and self.model.timeout_once

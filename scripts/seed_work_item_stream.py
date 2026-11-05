@@ -72,8 +72,8 @@ def run(args):
                 headers['Authorization'] = 'Bearer ' + token
             stream = seed_change_stream.Subscription(planes.SERVER, reader.board.graph,
                                                     journal.cursor, identity, headers)
-            def post(endpoint, body):
-                return planes._post(endpoint, body, client='camayoc-ingress')
+            def post(endpoint, body, **kwargs):
+                return planes._post(endpoint, body, client='camayoc-ingress', **kwargs)
             while True:
                 # Commit candidates without waiting for the next effect tick.
                 # Backpressure remains one complete transaction and MAX_PENDING:
@@ -85,7 +85,7 @@ def run(args):
                     continue
                 if stream.connected and stream.source_verified:
                     receipt = sync.tick(reader, journal, post, changes=None,
-                                        plane=planes.plane_for('observed'), actor=args.actor)
+                                        plane=planes.plane_for('observed'), actor=args.actor, completion=True)
                 else:
                     receipt = {'status': 'UNKNOWN', 'writes': 0, 'requests': 0, 'verified': 0,
                                'cursor': journal.cursor,
