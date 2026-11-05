@@ -54,7 +54,7 @@
 # The SARC constraint object (arXiv:2605.07728 §3.1):
 #   c = ⟨src, class, pred, verif, resp⟩ + operating point θ
 # Each property below is one field of that tuple. The tuple's own prose is in
-# hank docs/book/src/design/sarc-conformance.md.
+# yupana docs/book/src/design/sarc-conformance.md.
 # ═══════════════════════════════════════════════════════════════════
 
 aegis:constraintClass a owl:DatatypeProperty ;
@@ -381,7 +381,7 @@ aegis:language a owl:DatatypeProperty ;
     rdfs:label "language" ;
     rdfs:domain aegis:Selector ;
     rdfs:range xsd:string ;
-    rdfs:comment "The programming language whose grammar this selector's query is written against. A selector without one cannot be matched to a file, and hank skips it rather than guessing from an extension." .
+    rdfs:comment "The programming language whose grammar this selector's query is written against. A selector without one cannot be matched to a file, and yupana skips it rather than guessing from an extension." .
 
 aegis:matchType a owl:DatatypeProperty ;
     rdfs:label "match type" ;

@@ -1,5 +1,5 @@
 ---
-description: Bootstrap governed memory from nothing — install/start quipu if needed, write the gate config, load the camayoc ontology + shapes, prove the SHACL gate, then offer the optional stack (bobbin, hank, shantytown).
+description: Bootstrap governed memory from nothing — install/start quipu if needed, write the gate config, load the camayoc ontology + shapes, prove the SHACL gate, then offer the optional stack (bobbin, yupana, shantytown).
 ---
 
 ## Step 1 — core: quipu + ontology + gate
@@ -40,7 +40,7 @@ to set up, briefly describing each:
 
 - **bobbin** — semantic code search + task-aware context bundles, exposed to
   agents over MCP (`cargo install bobbin-ai`, indexes this project).
-- **hank** — structural code facts: defs/refs, call graph, blast radius,
+- **yupana** — structural code facts: defs/refs, call graph, blast radius,
   over MCP (pre-release; installs from git, can take minutes).
 - **beads (bd)** — the agent-first work-item tracker (graph-based,
   git-backed, JSON out). Two roles here: shantytown's first-class tracker
@@ -53,7 +53,7 @@ to set up, briefly describing each:
 For each selected component run, one at a time, reporting output faithfully:
 
 ```text
-${CLAUDE_PLUGIN_ROOT}/scripts/setup_component.sh <bobbin|hank|beads|st>
+${CLAUDE_PLUGIN_ROOT}/scripts/setup_component.sh <bobbin|yupana|beads|st>
 ```
 
 If the user picks both beads and st, run beads first so st finds bd and
