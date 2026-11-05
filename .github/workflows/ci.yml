@@ -117,6 +117,22 @@ jobs:
           echo "${QUIPU_SHA256}  report-cli/$asset" | sha256sum -c -
           tar -xzf "report-cli/$asset" -C report-cli
           echo "QUIPU_REPORT_BIN=$PWD/report-cli/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
+      # Keep the legacy server for compatibility tests. The post-state memory
+      # comparison needs its own baseline; retain its assertions and zero skips.
+      - name: Fetch memory write-plan server
+        env:
+          QUIPU_TAG: quipu-ai-v0.16.6
+          QUIPU_SHA256: 18c31265c540b4db9434484e58ea91ac64afb68bb1dcceb244e1e79623377d24
+        run: |
+          set -euo pipefail
+          tag="$QUIPU_TAG"
+          asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
+          mkdir -p memory-server
+          curl -fsSL --retry 3 -o "memory-server/$asset" \
+            "https://github.com/intigraph/quipu/releases/download/${tag}/${asset}"
+          echo "${QUIPU_SHA256}  memory-server/$asset" | sha256sum -c -
+          tar -xzf "memory-server/$asset" -C memory-server
+          echo "QUIPU_MEMORY_SERVER_BIN=$PWD/memory-server/quipu-${tag}-x86_64-unknown-linux-gnu/quipu-server" >> "$GITHUB_ENV"
       - name: Install just
         uses: ./.github/actions/install-just
       # Captured rather than merely printed. `unittest` exits 0 when every test

@@ -57,10 +57,14 @@ class MemoryNaming(unittest.TestCase):
         self.assertFalse(list(g.triples((None, SH.targetClass, URIRef(A+'Decision')))))
         published = Graph().parse(ROOT/'shapes/agent-memory-scoped.shapes.ttl')
         self.assertFalse(list(published.triples((None, SH.targetClass, URIRef(A+'Decision')))))
-        # One property shape sees both aliases, so maxCount applies to their union.
-        alternatives = [set(Collection(g, choices)) for choices in g.objects(None, SH.alternativePath)]
-        self.assertIn({URIRef(A+'rule'), URIRef(C+'rule')}, alternatives)
-        self.assertIn({URIRef(A+'issuedBy'), URIRef(Q+'issuedBy')}, alternatives)
+        # Every cardinality guard has a literal predicate the write planner
+        # can verify; required/type constraints live in per-field branches.
+        self.assertFalse(list(g.triples((None, SH.alternativePath, None))))
+        for prop in g.subjects(SH.maxCount, None):
+            self.assertIsInstance(g.value(prop, SH.path), URIRef)
+        paths = set(g.objects(None, SH.path))
+        self.assertTrue({URIRef(A+'rule'), URIRef(C+'rule'),
+                         URIRef(A+'issuedBy'), URIRef(Q+'issuedBy')} <= paths)
         # Every named profile is stable; legacy IRIs occur only as compatibility references.
         for shape in g.subjects(RDF.type, SH.NodeShape):
             self.assertTrue(str(shape).startswith(C), shape)
