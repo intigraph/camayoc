@@ -20,7 +20,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: docs-pages
+  # Isolate PR builds; all publishing events still share the Pages lock.
+  group: docs-${{ github.event_name == 'pull_request' && github.ref || 'pages' }}
   cancel-in-progress: false
 
 jobs:
