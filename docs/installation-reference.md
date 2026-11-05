@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/intigraph/camayoc/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"/></a>
   <a href="https://github.com/intigraph/camayoc/actions/workflows/ci.yml"><img src="https://github.com/intigraph/camayoc/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
-  <a href="https://github.com/scbrown/caboodle"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the caboodle stack"/></a>
+  <a href="https://github.com/intigraph/tambo"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the tambo stack"/></a>
 </p>
 
 [Watch the 90-second native bootstrap recording](https://github.com/intigraph/camayoc/blob/main/docs/demos/bootstrap-v0.1.2/README.md).
@@ -243,7 +243,7 @@ accepted a record it must refuse, and 3 if no verdict could be reached. See
 
 ## 🧺 The stack
 
-Caboodle installs these together and proves each one works; every tool also stands alone.
+Tambo installs these together and proves each one works; every tool also stands alone.
 
 ## Contributing
 

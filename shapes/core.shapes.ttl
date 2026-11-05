@@ -161,7 +161,7 @@ aegis:CamayocExecutionPathShape a sh:NodeShape ;
 # The type-level distinction is deliberately mandatory. A stated ticket claim
 # can be useful, but it must never read as a built reproduction. The optional
 # demonstration link is type-checked when present; the producer integration
-# that emits it belongs with hank/quipu, not a made-up write-time liveness rule.
+# that emits it belongs with yupana/quipu, not a made-up write-time liveness rule.
 aegis:CamayocBlockerShape a sh:NodeShape ;
     sh:targetClass aegis:Blocker ;
     sh:property [

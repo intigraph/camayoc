@@ -1,0 +1,4 @@
+# SHA-256 of pinned provider/tokenizer.json, recorded in the qualification manifest; not a credential.
+af2eb07f5480aa610d5666865f357b863d434f1a:docs/demos/bounded-construct/qualification.json:generic-api-key:23
+# Same tokenizer_sha256 digest as above, at its squash-merge commit on main (camayoc #220).
+9e57da10ac7ac0ace3abc07fb4e7ea9f20ce740a:docs/demos/bounded-construct/qualification.json:generic-api-key:23

@@ -1,0 +1,112 @@
+{
+  "behavior_revision": "e21e76cf3aa4d95efd59a117c7052f4c0b4a7f63",
+  "baseline_revision": "b3b80b1ac93dac0069cce4a47496598bbec4d6da",
+  "query_timeout_ms": 30000,
+  "whole_bound_seconds": 900,
+  "fresh_build_seconds": 733.1116118690697,
+  "accepted_triples": 96542,
+  "positive_file": "README.md",
+  "source_graph_equivalence": {
+    "triples": 96530,
+    "missing": 0,
+    "extra": 0
+  },
+  "pins": {
+    "engine_source_revision": "ad8de357521acdbd9f7a0175a37b7c20d3a21f5c",
+    "quipu_sha256": "411e835c7c33d69fd955a3176435deeed8ae572d62640848c813d6bc2c944e5c",
+    "quipu-server_sha256": "9896b72e0345fbb709bc6414e1511f4c3e70e0621b9370f5bd4c848fb2e454e2",
+    "bobbin_sha256": "94ee2a6e95b9f43e5a422e8416a2ef5eb0cd85cf2d274237238d10ec9e3e0922",
+    "model_manifest": {
+      "dimension": 384,
+      "model": "model.onnx",
+      "model_sha256": "afdb6f1a0e45b715d0bb9b11772f032c399babd23bfc31fed1c170afc848bdb1",
+      "tokenizer_sha256": "da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0"
+    }
+  },
+  "phases": [
+    {
+      "phase": "index",
+      "start_monotonic": 628587.260869872,
+      "end_monotonic": 628846.01522848,
+      "seconds": 258.7543586079264,
+      "exit": 0,
+      "argv_sha256": "379d783418eaac1e0f6f69401d0be2b4851c99da2686feef569a6d5ff75d02b0"
+    },
+    {
+      "phase": "share",
+      "start_monotonic": 628850.679167026,
+      "end_monotonic": 628902.116770214,
+      "seconds": 51.437603188096546,
+      "exit": 0,
+      "argv_sha256": "e05eab144cbb546028394fd01fb66118c5817175806451977b0d3d132b5d61f6"
+    },
+    {
+      "phase": "import",
+      "start_monotonic": 628902.64955493,
+      "end_monotonic": 629094.042603141,
+      "seconds": 191.39304821100086,
+      "exit": 0,
+      "argv_sha256": "787b481aff7a49d5a154eb7f0bbaa4ad89603ff7475f192db2bb76575fe13f2f"
+    },
+    {
+      "phase": "promote",
+      "start_monotonic": 629094.043557793,
+      "end_monotonic": 629100.023116855,
+      "seconds": 5.9795590619323775,
+      "exit": 0,
+      "argv_sha256": "2d0db6e692381122691f4762d071165ee11b6a20796e042da122ed52c518d128"
+    },
+    {
+      "phase": "share",
+      "start_monotonic": 629104.273159005,
+      "end_monotonic": 629105.171017632,
+      "seconds": 0.8978586270241067,
+      "exit": 0,
+      "argv_sha256": "fa09c326cd1e47bef2fa06b26c42884fa5512904d35dbb31332d751960cd8903"
+    },
+    {
+      "phase": "import",
+      "start_monotonic": 629105.621348082,
+      "end_monotonic": 629311.650679358,
+      "seconds": 206.02933127607685,
+      "exit": 0,
+      "argv_sha256": "6e339059cff1f35203d9a29bfe97f6eafa2a7f36ea3fac19514526bc1eedc341"
+    },
+    {
+      "phase": "promote",
+      "start_monotonic": 629311.652623387,
+      "end_monotonic": 629316.894935803,
+      "seconds": 5.242312415968627,
+      "exit": 0,
+      "argv_sha256": "d427c4b2e21aa671e5af152c3a184a77c4281c721072bb6e8b6c82005ceb7640"
+    },
+    {
+      "phase": "share",
+      "start_monotonic": 629317.872517523,
+      "end_monotonic": 629318.004487747,
+      "seconds": 0.13197022397071123,
+      "exit": 2,
+      "argv_sha256": "acb27cbc5300c55e5529548984541aa4e5404e81d1830eceb1da374c4d38591f"
+    },
+    {
+      "phase": "share",
+      "start_monotonic": 629318.78044505,
+      "end_monotonic": 629319.628837538,
+      "seconds": 0.8483924879692495,
+      "exit": 1,
+      "argv_sha256": "3b54041049ccac316b38d6ec518a5c710f6d3bd54dbf000e980da092c0964a26"
+    },
+    {
+      "phase": "receiver-verifier",
+      "start_monotonic": 629100.030302385,
+      "end_monotonic": 629320.148945392,
+      "seconds": 220.11864300700836,
+      "exit": 0,
+      "argv_sha256": "5723ff69a195b657cba44d6dc8c736426dcb90c5217365e57eabc7ac17048247"
+    }
+  ],
+  "source_sha256": {
+    "queries/repository-share-camayoc.rq": "761da6a107c921b173c7f622ab2ff57b32d6a36dff4780b699f7b8da142e5e22",
+    "scripts/test-repository-share-query.py": "044cf506529bf3b49634de9ab20f2ee432652b755540aa808584e51a78f0ce01"
+  }
+}

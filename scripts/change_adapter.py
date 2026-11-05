@@ -35,9 +35,15 @@ def description(kind, *, native_reader=None):
                 "graphs": ["ROOT", de.DECLARED, de.INFERRED],
                 "types": [bb.A + "Directive"]}
     props = WORK | OBS | BLOCKER if kind == "blocked" else REVIEW | REVIEW_ACTIVITY
+    extra_attributes = set()
+    graphs = bb.graphs()
+    if kind == "review":
+        import review_due as rd
+        graphs = list(dict.fromkeys([*graphs, planes.plane_for("inferred")]))
+        extra_attributes = {rd.TYPE} | {iri for iris in rd.MEMORY_PROPERTIES.values() for iri in iris}
     seed_props = {bb.SEED_STATUS, bb.SCHEMA + "dateModified", bb.SCHEMA + "agent", bb.SCHEMA + "version"}
-    return {"version": 1, "attributes": sorted({iri for p in props for iri in bb.term_iris(p)} | seed_props),
-            "graphs": [g or "ROOT" for g in bb.graphs()],
+    return {"version": 1, "attributes": sorted({iri for p in props for iri in bb.term_iris(p)} | seed_props | extra_attributes),
+            "graphs": [g or "ROOT" for g in graphs],
             "types": bb.term_iris("WorkItem") + bb.term_iris("Blocker") + [bb.SCHEMA + "Action"] if kind == "blocked" else []}
 
 
@@ -168,8 +174,7 @@ def evaluate(kind, post, request):
         return _directive(kind, post, request, instant, now)
     if request.get("discover"):
         if kind == "review":
-            names = {bb._local(r["s"]) for prop in ("reviewAfter", "maxAge", "idleLimit")
-                     for r in bb.select(post, f"SELECT ?s WHERE {{ {bb.pattern('?s', prop, '?v')} }}")}
+            names = set(rd.discover(post))
         else:
             names = {bb._local(r["w"]) for r in bb.select(post,
                      f"SELECT ?w WHERE {{ {bb.pattern('?w', 'blockedOn', '?d')} }}")}

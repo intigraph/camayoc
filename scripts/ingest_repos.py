@@ -9,7 +9,7 @@ Produces CodeModule / CodeSymbol / Document / Section instances for the
 `shapes/code-entities.ttl` shapes, so the ingest is SHACL-validated on load:
 if this walker emits something malformed, Quipu rejects it.
 
-    ./scripts/ingest-repos.py ../quipu ../hank > /tmp/code.ttl
+    ./scripts/ingest-repos.py ../quipu ../yupana > /tmp/code.ttl
     quipu knot /tmp/code.ttl --shapes code-entities
 
 Predicate choice is constrained by shapes that fire on ANY subject
