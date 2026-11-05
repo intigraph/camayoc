@@ -100,7 +100,7 @@ this file did not ask that until prior art pointed it out (see below).
 ## Retrieval methods are executable, not documentation
 
 A `Metric` carries enough to run: the SYSTEM (`prometheus` | `quipu` | `bd` |
-`hank` | `shell`), the QUERY, and its PARAMETERS. This mirrors the named stored
+`yupana` | `shell`), the QUERY, and its PARAMETERS. This mirrors the named stored
 queries this repo already plans (quipu #79) — same idea, other backends.
 
 The payoff is discovery without a human: an agent asking *"is this service

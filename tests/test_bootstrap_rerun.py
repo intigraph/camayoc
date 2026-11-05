@@ -1,6 +1,6 @@
 """bootstrap.sh must succeed when run a second time against the same store.
 
-caboodle's resumed install re-runs bootstrap as camayoc's functional
+tambo's resumed install re-runs bootstrap as camayoc's functional
 verification. On the first run quipu has no shapes loaded, so its vocabulary
 gate is inactive and the ontology load succeeds; bootstrap then loads shapes,
 and every later load of core.ttl is refused with HTTP 400 ("unknown rdf:type

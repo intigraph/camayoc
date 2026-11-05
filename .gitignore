@@ -28,3 +28,6 @@ book-out/
 # Python packaging output for the camayoc CLI (pyproject.toml).
 build/
 *.egg-info/
+
+# Legacy local tracker state stays private.
+/.beads/
