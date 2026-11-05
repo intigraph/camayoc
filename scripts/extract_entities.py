@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Quarantined entity-mention extraction from prose — deterministic-first.
 
-Gap G4 of the txtai comparison (caboodle `docs/design/txtai-gap-analysis.md`):
+Gap G4 of the txtai comparison (tambo `docs/design/txtai-gap-analysis.md`):
 txtai ships NER pipelines; camayoc's ingress rule 4 says inference is
 quarantined, not banned. This producer fills the slot WITHOUT a model in the
 loop: every mention it emits is reproducible from its inputs, and the whole

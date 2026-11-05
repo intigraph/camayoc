@@ -230,58 +230,191 @@ DEFAULT_PLANES = {"declared": "https://camayoc.local/plane/crew/declared",
                   "inferred": "https://camayoc.local/plane/crew/inferred"}
 
 
+#: ROOT, quipu's default graph, where the pre-camayoc aegis:Directive nodes live
+#: (hammond's migrated memories and the fleet's standing directives, no naturalKey).
+ROOT_GRAPH = "urn:quipu:graph:root"
+EPOCH = "1970-01-01T00:00:00Z"
+
+_ALIASES: dict[str, list[str]] | None = None
+
+
+def term_aliases() -> dict[str, list[str]]:
+    """Old IRI -> its exact new IRIs, from the combined stable-namespace ledger.
+
+    Read-first while terms move (gshu.12): the query matches BOTH the legacy
+    and the canonical IRI of every term it uses, pair by pair from the ledger,
+    never by a prefix swap. A ledger change regenerates this query; the drift
+    check then fails until it is committed.
+    """
+    global _ALIASES
+    if _ALIASES is None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_stable_namespaces import combined_ledger
+        _ALIASES = {}
+        for row in combined_ledger(ROOT)["pairs"]:
+            _ALIASES.setdefault(row["old"], []).append(row["new"])
+    return _ALIASES
+
+
+def _terms(curie: str, family: int | None = None) -> list[str]:
+    """`aegis:x` and its exact ledger aliases, as SPARQL IRI terms.
+
+    family None: every spelling. 0: the legacy IRI. 1: the canonical IRI (the
+    legacy one when the ledger has no pair for it).
+    """
+    full = AEGIS + curie.split(":", 1)[1] if curie.startswith("aegis:") else curie
+    every = [full] + term_aliases().get(full, [])
+    if family is not None:
+        every = [every[0] if family == 0 else every[-1]]
+    return [f"<{t}>" for t in every]
+
+
+def _any(subject: str, curies, obj: str, family: int | None = None) -> str:
+    """A UNION of fixed-predicate patterns, for OPTIONAL lookups only.
+
+    Never `VALUES ?p` over predicates: quipu evaluates that block before the join
+    (6.2s on a production-size store with zero matches, gshu.15). A UNION as a
+    REQUIRED pattern is slow too (23.5s), so required patterns take one family.
+    """
+    terms = [t for c in curies for t in _terms(c, family)]
+    return " UNION ".join(f"{{ {subject} {t} {obj} }}" for t in terms)
+
+
+def _none(subject: str, curie: str, obj: str) -> str:
+    """No triple in ANY spelling: one FILTER NOT EXISTS per IRI (a conjunction of
+    NOT EXISTS is NOT EXISTS of the union, without a UNION inside the filter)."""
+    return " ".join(f"FILTER NOT EXISTS {{ {subject} {t} {obj} }}" for t in _terms(curie))
+
+
+def _none_obj(subject: str, curie: str, obj: str) -> str:
+    """As _none, for a pattern whose OBJECT is the bound variable."""
+    return " ".join(f"FILTER NOT EXISTS {{ {subject} {t} {obj} }}" for t in _terms(curie))
+
+
 def index_since(doc: dict) -> dict:
-    """`mem_index_since`: the one paged query bobbin's memory mirror consumes (gshu.2).
+    """`mem_index_since`: the one paged query bobbin's memory mirror consumes (gshu.2, gshu.15).
 
-    Contract: bobbin src/memory_recall.rs and its stub
+    Contract: bobbin src/memory_recall and its stub
     tests/fixtures/agent-memory/mem_index_since.json. Called with only
-    `since`, so the plane graphs are optional params defaulting to camayoc's
-    default planes. Every current record comes back with status `current` at
-    its own recordedAt; a superseded one comes back with status `superseded`
-    at the recordedAt of the record that replaced it, so the mirror deletes
-    it. status and cursor come from a UNION of the two branches, never from
-    IF/COALESCE, which older quipu SPARQL leaves unbound. The body is each
-    entity's own body field (chose, rule, prefers, locator, next).
+    `since`; the plane graphs and ROOT are optional params with defaults.
 
-    A superseded row's instant is its `supersededAt` (when the back-link was
-    written, so a late repair still lands after the reader's cursor), or the
-    replacing record's recordedAt for links written before supersededAt
-    existed. The cursor is `<recordedAt>|<iri>` (recordedAt is fixed-width UTC, so the
-    string orders by recordedAt, then iri): records sharing a timestamp never
-    fall between two pages, and `since` carries both parts.
+    Two kinds of rows, one cursor order:
+
+    * Memory records (`aegis:naturalKey`), as before: a current record at its
+      own recordedAt; a superseded one at its `supersededAt`, else the
+      replacing record's recordedAt, with status `superseded` so the mirror
+      deletes it. status and cursor come from a UNION, never IF/COALESCE,
+      which older quipu SPARQL leaves unbound.
+    * Legacy `aegis:Directive` nodes in ROOT with no naturalKey (Stiwi
+      2026-11-04: recall should use quipu, whatever the record type). Text is
+      `rdfs:label` + `rdfs:comment`. The instant is the newest
+      `prov:generatedAtTime` of the episodes that produced it, else the epoch,
+      so they arrive on a full pull. A node superseded through `aegis:supersedes`
+      is skipped.
+
+    `owl:sameAs` collapses a cluster to ONE item: a memory record wins over a
+    legacy node (the legacy node then comes back `superseded` at the record's
+    recordedAt, so a mirror that already holds it deletes it), and between
+    legacy nodes the smallest IRI wins.
+
+    The cursor is `<instant>|<iri>` (fixed-width UTC, so it orders by instant,
+    then iri): rows sharing a timestamp never fall between two pages.
     """
     bodies = sorted({f["path"] for e in doc["entities"].values() for f in e["fields"]
                      if f["name"] == e["body"]})
     params = [{"name": "since", "type": "text", "required": False, "default": "",
-               "description": "The cursor of the last row of the previous page, '<recordedAt>|<iri>'; empty for a full pull."}]
+               "description": "The cursor of the last row of the previous page, '<instant>|<iri>'; empty for a full pull."}]
     params += [{"name": n, "type": "iri", "required": False, "default": iri,
                 "description": f"The crew:{n} plane graph IRI; pass it when CAMAYOC_PLANE_NS is not the default."}
                for n, iri in DEFAULT_PLANES.items()]
+    params.append({"name": "root", "type": "iri", "required": False, "default": ROOT_GRAPH,
+                   "description": "The graph holding legacy aegis:Directive nodes: quipu's ROOT default graph."})
+    def one(subject, curie, obj, family):
+        return f"{subject} {_terms(curie, family)[0]} {obj} ."
+
+    def record_branch(f):
+        rec = lambda c, o: one("?iri", c, o, f)
+        return (
+            f"{{ {rec('aegis:naturalKey', '?naturalKey')} ?iri a ?kind ; rdfs:label ?label . "
+            f"{rec('aegis:recordedAt', '?recordedAt')} "
+            f"OPTIONAL {{ {_any('?iri', bodies, '?b')} }} "
+            f"OPTIONAL {{ {_any('?iri', ['aegis:sourceKind'], '?sourceKind')} }} "
+            f"OPTIONAL {{ {_any('?iri', ['aegis:reviewAfter'], '?reviewAfter')} }} "
+            f"OPTIONAL {{ {_any('?iri', ['aegis:expiresAt'], '?expiresAt')} }} "
+            f"{{ {rec('aegis:recordedAt', '?currentAt')} {_none('?iri', 'aegis:supersededBy', '?anyNewer')} "
+            "BIND(\"current\" AS ?status) BIND(CONCAT(STR(?currentAt), \"|\", STR(?iri)) AS ?cursor) } UNION "
+            f"{{ {rec('aegis:supersededBy', '?newer')} {rec('aegis:supersededAt', '?supersededAt')} "
+            "BIND(\"superseded\" AS ?status) BIND(CONCAT(STR(?supersededAt), \"|\", STR(?iri)) AS ?cursor) } UNION "
+            f"{{ {rec('aegis:supersededBy', '?newer')} {_none('?iri', 'aegis:supersededAt', '?stamped')} "
+            f"{one('?newer', 'aegis:recordedAt', '?replacedAt', f)} "
+            "BIND(\"superseded\" AS ?status) BIND(CONCAT(STR(?replacedAt), \"|\", STR(?iri)) AS ?cursor) } }"
+        )
+
+    def no_key(subject, var):
+        return _none(subject, "aegis:naturalKey", var)
+
+    def legacy_live(f):
+        return (
+            f"?iri a {_terms('aegis:Directive', f)[0]} ; rdfs:label ?label . {no_key('?iri', '?anyKey')} "
+            f"{_none_obj('?anyNewer', 'aegis:supersedes', '?iri')} "
+            f"{_none('?iri', 'aegis:supersededBy', '?anyNewer2')} "
+            + "".join(f"FILTER NOT EXISTS {{ {{ ?iri owl:sameAs ?rec }} UNION {{ ?rec owl:sameAs ?iri }} ?rec {t} ?recKey }} "
+                      for t in _terms("aegis:naturalKey"))
+            + "".join(f"FILTER NOT EXISTS {{ {{ ?iri owl:sameAs ?peer }} UNION {{ ?peer owl:sameAs ?iri }} ?peer a {d} . "
+                      f"{no_key('?peer', '?peerKey')} FILTER(STR(?peer) < STR(?iri)) }} "
+                      for d in _terms("aegis:Directive"))
+            + "OPTIONAL { ?iri rdfs:comment ?b } "
+            "BIND(aegis:Directive AS ?kind) BIND(\"current\" AS ?status) "
+        )
+
+    def legacy_branches(f):
+        return (
+            f"{{ {legacy_live(f)}"
+            # Restrict the aggregate to this family's directives: unrestricted, it
+            # groups every provenanced entity in the store (22s on production size).
+            f"{{ SELECT ?iri (MAX(STR(?genAt)) AS ?recordedAt) WHERE {{ ?iri a {_terms('aegis:Directive', f)[0]} ; "
+            "prov:wasGeneratedBy ?ep . ?ep prov:generatedAtTime ?genAt } GROUP BY ?iri } "
+            "BIND(CONCAT(?recordedAt, \"|\", STR(?iri)) AS ?cursor) } UNION "
+            f"{{ {legacy_live(f)}"
+            "FILTER NOT EXISTS { ?iri prov:wasGeneratedBy ?ep2 . ?ep2 prov:generatedAtTime ?anyAt } "
+            f"BIND(\"{EPOCH}\" AS ?recordedAt) BIND(CONCAT(\"{EPOCH}|\", STR(?iri)) AS ?cursor) }}"
+        )
+
+    def twin_branch(f, g):
+        # A legacy node (Directive spelling f) now owl:sameAs a record (term spelling g).
+        return (
+            f"{{ ?iri a {_terms('aegis:Directive', f)[0]} . {no_key('?iri', '?anyKey3')} "
+            "{ ?iri owl:sameAs ?rec2 } UNION { ?rec2 owl:sameAs ?iri } "
+            f"{one('?rec2', 'aegis:naturalKey', '?rec2Key', g)} {one('?rec2', 'aegis:recordedAt', '?rec2At', g)} "
+            "BIND(\"superseded\" AS ?status) BIND(CONCAT(STR(?rec2At), \"|\", STR(?iri)) AS ?cursor) }"
+        )
+
+    def unique(parts):
+        seen = []
+        for part in parts:
+            if part not in seen:
+                seen.append(part)
+        return seen
+
+    branches = (unique([record_branch(f) for f in (0, 1)])
+                + unique([legacy_branches(f) for f in (0, 1)])
+                + unique([twin_branch(f, g) for f in (0, 1) for g in (0, 1)]))
     template = (
-        f"PREFIX aegis: <{AEGIS}> PREFIX rdfs: <{PREFIXES['rdfs']}> "
+        f"PREFIX aegis: <{AEGIS}> PREFIX owl: <http://www.w3.org/2002/07/owl#> "
+        f"PREFIX prov: <{PREFIXES['prov']}> PREFIX rdfs: <{PREFIXES['rdfs']}> "
         "SELECT ?iri ?naturalKey ?kind ?label (GROUP_CONCAT(DISTINCT STR(?b); separator=\" | \") AS ?body) "
         "?sourceKind ?recordedAt ?reviewAfter ?expiresAt ?status ?cursor "
-        "FROM <{declared}> FROM <{records}> FROM <{inferred}> WHERE { "
-        "?iri aegis:naturalKey ?naturalKey ; a ?kind ; rdfs:label ?label ; aegis:recordedAt ?recordedAt . "
-        f"OPTIONAL {{ VALUES ?bp {{ {' '.join(bodies)} }} ?iri ?bp ?b }} "
-        "OPTIONAL { ?iri aegis:sourceKind ?sourceKind } "
-        "OPTIONAL { ?iri aegis:reviewAfter ?reviewAfter } "
-        "OPTIONAL { ?iri aegis:expiresAt ?expiresAt } "
-        "{ ?iri aegis:recordedAt ?currentAt . FILTER NOT EXISTS { ?iri aegis:supersededBy ?anyNewer } "
-        "BIND(\"current\" AS ?status) BIND(CONCAT(STR(?currentAt), \"|\", STR(?iri)) AS ?cursor) } UNION "
-        "{ ?iri aegis:supersededBy ?newer ; aegis:supersededAt ?supersededAt . "
-        "BIND(\"superseded\" AS ?status) BIND(CONCAT(STR(?supersededAt), \"|\", STR(?iri)) AS ?cursor) } UNION "
-        "{ ?iri aegis:supersededBy ?newer . FILTER NOT EXISTS { ?iri aegis:supersededAt ?stamped } "
-        "?newer aegis:recordedAt ?replacedAt . "
-        "BIND(\"superseded\" AS ?status) BIND(CONCAT(STR(?replacedAt), \"|\", STR(?iri)) AS ?cursor) } "
-        "FILTER(?cursor > '{since}') } "
+        "FROM <{declared}> FROM <{records}> FROM <{inferred}> FROM <{root}> WHERE { "
+        + " UNION ".join(branches)
+        + " FILTER(?cursor > '{since}') } "
         "GROUP BY ?iri ?naturalKey ?kind ?label ?sourceKind ?recordedAt ?reviewAfter ?expiresAt ?status ?cursor "
         "ORDER BY ?cursor LIMIT 51"
     )
     return {"action": "load", "name": "mem_index_since",
-            "description": "Memory records changed since a cursor, for bobbin's memory mirror: current ones to "
-                           "upsert, superseded ones to delete. cursor = '<instant>|<iri>' (a current row's recordedAt; a "
-                           "superseded row's supersededAt, else the replacing record's recordedAt), ordered by recordedAt then iri; "
+            "description": "Memory records and legacy aegis:Directive nodes changed since a cursor, for bobbin's "
+                           "memory mirror: current ones to upsert, superseded ones to delete; an owl:sameAs cluster "
+                           "is one item. cursor = '<instant>|<iri>' (a record's recordedAt or supersededAt; a legacy "
+                           "Directive's newest episode generatedAtTime, else the epoch), ordered by instant then iri; "
                            "pass the last row's cursor back as since. 50 rows plus one overflow sentinel. "
                            "Generated by scripts/memory_tools.py.",
             "template": template, "params": params}

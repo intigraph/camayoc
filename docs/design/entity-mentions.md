@@ -2,7 +2,7 @@
 
 > **Implementation status (2026-08-31):** ✅ **Implemented as
 > `scripts/extract_entities.py`** (camayoc-0c8, gap G4 of the txtai
-> comparison, caboodle `docs/design/txtai-gap-analysis.md`).
+> comparison, tambo `docs/design/txtai-gap-analysis.md`).
 > `tests/test_extract_entities.py` pins the promises below.
 
 txtai ships NER pipelines; camayoc's ingress rule 4 already defines the slot —

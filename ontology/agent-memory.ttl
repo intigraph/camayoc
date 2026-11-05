@@ -1,0 +1,174 @@
+# Generated from shapes/agent-memory.shapes.ttl sha256:356db1c9c33c8e806b1fda6669fab3f80ab9d6b818f1aee967686145b17e9737
+# by scripts/memory_schema_proposal.py (aegis-gshu.12). Do not hand-edit.
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+
+# No rdfs:domain on any property: a domain would type every subject that uses
+# the property (the aegis:expiresAt trap, design §7). Shapes carry the per-class
+# constraints instead.
+
+aegis:Preference a rdfs:Class , owl:Class ;
+    rdfs:label "Preference" ;
+    rdfs:comment "How a person wants things done in one context (camayoc agent memory)." .
+
+aegis:Handoff a rdfs:Class , owl:Class ;
+    rdfs:label "Handoff" ;
+    rdfs:comment "The one current hand-off note for an agent (camayoc agent memory)." .
+
+aegis:Reference a rdfs:Class , owl:Class ;
+    rdfs:label "Reference" ;
+    rdfs:comment "Where a system lives and how to reach it (camayoc agent memory)." .
+
+aegis:MemoryTopic a rdfs:Class , owl:Class ;
+    rdfs:label "MemoryTopic" ;
+    rdfs:comment "A named topic that memory records are filed under; its local name is a natural-key segment." .
+
+aegis:Directive a rdfs:Class , owl:Class ;
+    rdfs:label "Directive" ;
+    rdfs:comment "A directive, including legacy Directive individuals, scoped separately for memory records." .
+
+aegis:about a rdf:Property ;
+    rdfs:label "about" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:access a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "access" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:agent a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "agent" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:alias a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "alias" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:appliesTo a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "appliesTo" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:chose a rdf:Property ;
+    rdfs:label "chose" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:contentHash a rdf:Property ;
+    rdfs:label "contentHash" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:context a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "context" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:decidedBy a rdf:Property ;
+    rdfs:label "decidedBy" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:decidedIn a rdf:Property ;
+    rdfs:label "decidedIn" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:example a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "example" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:handoffContext a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "handoffContext" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:issuedBy a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "issuedBy" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:issuedOn a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "issuedOn" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:locator a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "locator" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:naturalKey a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "naturalKey" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:next a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "next" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:notWhen a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "notWhen" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:over a rdf:Property ;
+    rdfs:label "over" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:person a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "person" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:prefers a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "prefers" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:rationale a rdf:Property ;
+    rdfs:label "rationale" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:recordedAt a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "recordedAt" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:recordedBy a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "recordedBy" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:rule a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "rule" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:secretRef a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "secretRef" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:sourceKind a rdf:Property ;
+    rdfs:label "sourceKind" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:subject a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "subject" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:supersededAt a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "supersededAt" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:supersededBy a rdf:Property ;
+    rdfs:label "supersededBy" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:supersedes a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "supersedes" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:topic a rdf:Property , owl:ObjectProperty ;
+    rdfs:label "topic" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:verbatim a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "verbatim" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:waitingOn a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "waitingOn" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+
+aegis:why a rdf:Property , owl:DatatypeProperty ;
+    rdfs:label "why" ;
+    rdfs:comment "camayoc agent-memory field; see shapes/agent-memory.shapes.ttl." .
+

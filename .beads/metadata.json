@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "embedded",
-  "dolt_database": "camayoc",
-  "project_id": "816c9c90-dcb7-4fc0-9d92-05db46a3341f"
-}

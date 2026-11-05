@@ -1,0 +1,12 @@
+Script started on 2026-10-29 21:45:24-04:00 [COMMAND="bash /var/tmp/lex-mp5-demo.sh" <not executed on terminal>]
+Synthetic source demo: one published release, resolved commit, original publication time. No HTTP writes.
+BEFORE: base a4151d7 ingress, artifact.published fixture
+{"outcome": "quarantined", "input": "tests/fixtures/cdevents/artifact-published.json", "error": "no mapping for CDEvents type 'dev.cdevents.artifact.published'"}
+
+AFTER: candidate 6150088 ingress, identical fixture
+{"actor": "demo", "edges": [], "episode_body": "CDEvent dev.cdevents.artifact.published.0.2.0 for pkg:generic/example/tool@v1.2.0", "graph": "https://camayoc.local/window/release/2026-10", "name": "cdevent:2c557957e4d0a69d", "nodes": [{"description": "example/tool published v1.2.0", "name": "release-event-2c557957e4d0a69d", "properties": {"artifactId": "pkg:generic/example/tool@v1.2.0", "cdeventsType": "dev.cdevents.artifact.published.0.2.0", "changeRepository": "example/tool", "cloudEventId": "example/tool/release/42/published", "cloudEventSource": "https://github.com/example/tool", "commitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "eventActor": "publisher", "occurredAt": "2026-10-29T23:42:17Z", "releaseTag": "v1.2.0", "sourceKind": "observed"}, "type": "ReleaseEvent"}], "source": "cdevents:mapping=fedb8875ea73251b:https://github.com/example/tool#example/tool/release/42/published"}
+
+NEGATIVE: publication without resolved commit is quarantined
+REFUSED: required field commitSha (customData.commitSha) absent
+
+Script done on 2026-10-29 21:45:25-04:00 [COMMAND_EXIT_CODE="0"]

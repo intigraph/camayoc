@@ -290,6 +290,18 @@ class ChangeShapes(unittest.TestCase):
                 self.assertTrue(self.valid(ttl), self.report(ttl))
 
 
+    def test_publication_shape_accepts_ingress_and_rejects_missing_evidence(self):
+        body = _ingest().episode_for(json.loads((ROOT/'tests/fixtures/cdevents/artifact-published.json').read_text()), actor="writer")
+        self.assertTrue(self.valid(as_turtle(body)))
+        for key in ("artifactId", "commitSha", "eventActor", "releaseTag", "changeRepository"):
+            mutated = json.loads(json.dumps(body))
+            del mutated["nodes"][0]["properties"][key]
+            with self.subTest(key=key):
+                report = self.report(as_turtle(mutated))
+                self.assertIn("invalid: 1 violation(s)", report)
+                self.assertIn("ontology/" + key, report)
+
+
 def _ingest():
     sys.path.insert(0, str(ROOT / "scripts"))
     spec = importlib.util.spec_from_file_location("ingest_cdevents", ROOT / "scripts/ingest_cdevents.py")
@@ -308,7 +320,7 @@ class ProducerMatchesShape(unittest.TestCase):
         spec.loader.exec_module(ingest)
         declared = set(re.findall(r"^aegis:(\w+) a rdf:Property", SHAPES.read_text(), re.M))
         targets = set(re.findall(r"sh:targetClass aegis:(\w+)", SHAPES.read_text()))
-        for fixture in ("deployed", "rolledback", "change-merged", "testsuiterun-passed"):
+        for fixture in ("deployed", "rolledback", "change-merged", "testsuiterun-passed", "artifact-published"):
             event = json.loads((ROOT / f"tests/fixtures/cdevents/{fixture}.json").read_text())
             body = ingest.episode_for(event, actor="t")
             props = set(body["nodes"][0]["properties"]) - {"sourceKind"}

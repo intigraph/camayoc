@@ -58,6 +58,37 @@
         "environment": {"path": "customData.environment", "required": true}
       }
     },
+    "dev.cdevents.artifact.published": {
+      "versions": [
+        "0"
+      ],
+      "class": "ReleaseEvent",
+      "window": "release",
+      "fields": {
+        "artifactId": {
+          "path": "subject.id",
+          "required": true
+        },
+        "changeRepository": {
+          "path": "customData.changeRepository",
+          "required": true,
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "commitSha": {
+          "path": "customData.commitSha",
+          "required": true,
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "eventActor": {
+          "path": "customData.eventActor",
+          "required": true
+        },
+        "releaseTag": {
+          "path": "customData.releaseTag",
+          "required": true
+        }
+      }
+    },
     "dev.cdevents.change.created": {
       "versions": ["0"],
       "class": "ChangeEvent",
@@ -89,7 +120,8 @@
       "fields": {
         "changeId": {"path": "subject.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"},
         "changeRepository": {"path": "subject.content.repository.id", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
-        "commitSha": {"path": "customData.commitSha", "required": false, "pattern": "^[0-9a-f]{40}$"}
+        "commitSha": {"path": "customData.commitSha", "required": false, "pattern": "^[0-9a-f]{40}$"},
+        "eventActor": {"path": "customData.eventActor", "required": false}
       },
       "actionRequires": {"merged": ["commitSha"]}
     },
