@@ -105,7 +105,7 @@ class Sweep(custody.Journal):
 
 
 def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
-    calls = writes = verified = 0
+    calls = writes = verified = reconciled = 0
     slowest = 0.0
     measurements = []
     def call(endpoint, body):
@@ -140,8 +140,11 @@ def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
                     or (seen and slowest > delivery.READ_BUDGET_SECONDS)):
                 break
             seen.add(pending[0])
-            delivery.deliver(reader, journal, call, pending, plane=plane, actor=actor, wrote=wrote)
-            verified += 1
+            version = delivery.deliver(reader, journal, call, pending, plane=plane, actor=actor, wrote=wrote)
+            if version is None:
+                reconciled += 1
+            else:
+                verified += 1
         exhausted = journal.db.execute('SELECT exhausted FROM backfill').fetchone()[0]
         result.update(status='OK', enumeration_exhausted=bool(exhausted) if journal.item is None else False)
         if journal.item is not None:
@@ -149,6 +152,8 @@ def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
     except Exception as error:
         # Never print transport errors, credentials, records, or pending bodies.
         result['error'] = type(error).__name__
+    if reconciled:
+        result['reconciled'] = reconciled
     return {**result, 'requests': calls, 'writes': writes, 'verified': verified,
             'backlog': journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],
             'calls': measurements}

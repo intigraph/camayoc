@@ -86,6 +86,32 @@ class Backfill(unittest.TestCase):
         r=self.tick();self.assertEqual((r['verified'],r['writes'],r['requests']),(1,0,2))
         self.assertEqual(self.effects,['demo-000'])
 
+    def test_exact_absent_effect_is_reconciled_but_not_counted_verified(self):
+        self.exact()
+        original = self.post
+        attempts = []
+        def fault(endpoint, body):
+            if endpoint == '/knot':
+                attempts.append(body)
+                if len(attempts) == 1:
+                    raise TimeoutError('writer did not commit')
+            query = body.get('query', '')
+            if query.startswith('ASK '):
+                return {'result': bool(self.descriptions), 'truncated': False}
+            return original(endpoint, body)
+        self.post = fault
+        self.assertEqual(self.tick()['status'], 'UNKNOWN')
+        self.assertIsNotNone(self.j.next()[2])
+        receipt = self.tick()
+        self.assertEqual((receipt['status'], receipt['writes'], receipt['verified'],
+                          receipt['reconciled']), ('OK', 0, 0, 1))
+        self.assertLessEqual(receipt['requests'], backfill.delivery.ITEM_REQUESTS)
+        self.assertEqual(self.j.next(), ('demo-000', 0, None))
+        receipt = self.tick()
+        self.assertEqual((receipt['writes'], receipt['verified']), (1, 1))
+        self.assertEqual(len(attempts), 2)
+        self.assertEqual(self.effects, ['demo-000'])
+
     def test_exact_rejects_another_selection_and_sweep_custody_before_write(self):
         self.exact();self.tick();self.j.db.close();before=self.path.read_bytes()
         for item in ('demo-001',None,'foreign-one'):

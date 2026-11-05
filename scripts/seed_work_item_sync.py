@@ -28,17 +28,25 @@ def control_summary(response):
             'truncated':marker('truncated')}
 
 
-def verify(post,envelope,item):
+def verify(post,envelope,item,*,pending=False):
+    """Strict readback; a pending effect may distinguish an exact missing type.
+
+    False never verifies an effect. Pending reconciliation must independently
+    prove complete subject absence before releasing custody for a fresh write.
+    """
     request=envelope['request'];graph=request['graph'];subject=projection.A+item
     # Match the exact type on the server: SELECT bindings may compact its IRI
     # using a deployment-selected prefix. No client alias is type authority.
     control=post('/query',{'query':f'ASK {{ GRAPH <{graph}> {{ <{subject}> a <{projection.A}WorkItem> }} }}'})
-    if (not isinstance(control,dict) or control.get('truncated') or
-        control.get('result') is not True):
+    if (not isinstance(control,dict) or control.get('truncated',False) is not False or
+        type(control.get('result')) is not bool):
+        raise custody.CustodyUnknown('metadata WorkItem control unproved')
+    if control['result'] is False:
+        if pending:return False
         raise custody.CustodyUnknown('metadata WorkItem control unproved')
     found=post('/query',{'query':f'SELECT ?v WHERE {{ GRAPH <{graph}> {{ <{subject}> <{native.RDFS}comment> ?v }} }} LIMIT 129'})
     rows=found.get('rows') if isinstance(found,dict) else None
-    if not isinstance(rows,list) or found.get('truncated') or len(rows)>128:
+    if not isinstance(rows,list) or found.get('truncated') is not False or len(rows)>128:
         raise custody.CustodyUnknown('metadata readback partial')
     expected=envelope['description']
     # One exact attributable current description; unrelated comments need not
@@ -60,7 +68,7 @@ def prove_absent(post,item):
             response=post('/query',{'query':query})
         except (ValueError,OSError,RuntimeError,TypeError,KeyError):
             return False
-        if (not isinstance(response,dict) or response.get('truncated')
+        if (not isinstance(response,dict) or response.get('truncated',False) is not False
                 or response.get('result') is not False):
             return False
     return True
@@ -116,16 +124,22 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
-    is lost is still counted.
+    is lost is still counted. None means an absent effect was released, not
+    verified; its fresh write waits for the next normal tick's request budget.
     """
     item,tx,stored=pending
     journal.mark_attempt(item,time.time())
     if stored:
         envelope=json.loads(stored)
-        if not verify(call,envelope,item):
+        if verify(call,envelope,item,pending=True):
+            journal.acknowledge(item,tx,envelope['version'])
+            return envelope['version']
+        # A negative readback alone is not absence: partial or conflicting
+        # facts keep the exact effect frozen. Reuse the operator release proof.
+        if not prove_absent(call,item):
             raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
-        journal.acknowledge(item,tx,envelope['version'])
-        return envelope['version']
+        journal.release_unconfirmed(item,stored)
+        return None
     # Reader's own request gets the same total budget accounting.
     canonical=native.Reader(call,reader.board).get(item)
     previous=journal.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
@@ -239,7 +253,10 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             else:receipt['attempted_item']=pending[0]
             receipt['status']='UNKNOWN'
             version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote)
-            receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)
+            if version is None:
+                receipt.update(status='OK',reconciled=receipt.get('reconciled',0)+1)
+            else:
+                receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)
             pending=journal.next()
         if feed_error:
             receipt.update(status='UNKNOWN',feed_error=feed_error)
