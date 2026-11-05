@@ -368,7 +368,12 @@ Lifecycle uses terms that are already modeled: <code>aegis:supersedes</code>,
 </div>
 <p>Two queries span every entity: <code>mem_index_since(tx)</code> feeds bobbin's mirror
 (section 4), and <code>mem_due()</code> lists entities past <code>reviewAfter</code>, built on
-<code>review_due.py</code>. <code>mem_conflicts()</code> lists the near-match pairs from 2.1 and
+<code>review_due.py</code>. The scheduled consumer is <code>review_due.py</code>; <code>mem_due()</code> is a
+listing over that consumer, not a second review scheduler. The adapter also
+reads <code>reviewAfter</code> from typed, keyed memory records in the inferred plane.
+This includes the exact legacy and canonical term pairs. It does not read
+inferred blockers, ownership, idle limits or verification anchors. Superseded
+inferred memories resolve their old reminders. <code>mem_conflicts()</code> lists the near-match pairs from 2.1 and
 the contradictions from section 5.</p>
 <p>Every recall query has the same filters:</p>
 <ul>
