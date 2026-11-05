@@ -1,6 +1,7 @@
 """Fault-injected remote commit/timeout outcomes with real durable custody."""
 import json
 import unittest
+from unittest import mock
 
 import test_seed_work_item_sync as fixture
 from test_seed_change_custody import page
@@ -126,16 +127,42 @@ class Reconciliation(unittest.TestCase):
         self.assertEqual(self.j.next()[2], stored)
         self.assertEqual((self.writes, self.commits), (1, 1))
 
-    def test_verified_history_only_allows_an_absent_newer_pending_version(self):
+    def test_update_timeout_reconciles_with_previously_verified_facts_retained(self):
         self.assertEqual(self.tick()['verified'], 1)
+        previous = self.description
         self.j.retain(page(11))
         self.native_version = 4
-        self.description = None
         self.fail_write()
-        self.assertEqual(self.tick()['status'], 'OK')
-        self.assertEqual(self.j.next(), (ID, 11, None))
-        self.assertEqual(self.tick()['version'], 4)
+        # A failed v4 snapshot never deletes the previously committed v3.
+        self.assertEqual(self.description, previous)
+        with mock.patch.object(sync.time, 'time', return_value=1000):
+            self.tick()
+        with mock.patch.object(sync.time, 'time', return_value=4600):
+            self.tick()
+            receipt = self.tick()
+        self.assertEqual((receipt['status'], receipt['verified']), ('OK', 1))
+        self.assertIsNone(self.j.next())
         self.assertEqual((self.writes, self.commits), (3, 2))
+
+    def test_first_absence_read_cannot_release_custody_immediately(self):
+        stored = self.fail_write()
+        with mock.patch.object(sync.time, 'time', return_value=1000):
+            self.tick()
+        self.assertEqual(self.j.next()[2], stored)
+        self.assertEqual(self.writes, 1)
+
+    def test_delayed_commit_between_reads_is_verified_without_duplicate(self):
+        stored = self.fail_write()
+        with mock.patch.object(sync.time, 'time', return_value=1000):
+            self.tick()
+        # The original server operation completes after the first read.
+        self.description = json.loads(stored)['description']
+        self.commits = 1
+        with mock.patch.object(sync.time, 'time', return_value=4600):
+            receipt = self.tick()
+        self.assertEqual((receipt['status'], receipt['verified']), ('OK', 1))
+        self.assertIsNone(self.j.next())
+        self.assertEqual((self.writes, self.commits), (1, 1))
 
     def test_same_verified_version_cannot_be_automatically_repaired(self):
         self.assertEqual(self.tick()['verified'], 1)
