@@ -51,7 +51,11 @@ def provision(project: Path, server: str) -> None:
     config.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
     fd = os.open(config, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'w') as stream:
-        stream.write('[quipu]\nstore_path = ".quipu/store.db"\n\n'
+        # Match the namespace of the shipped ontology and shapes. Quipu no
+        # longer supplies an implicit instance/type namespace.
+        stream.write('[quipu]\n'
+                     'base_ns = "http://aegis.gastown.local/ontology/"\n'
+                     'store_path = ".quipu/store.db"\n\n'
                      '[quipu.shacl]\nvalidate_on_write = true\n\n'
                      '[quipu.server]\n'
                      f'bind = {json.dumps("127.0.0.1:" + str(endpoint.port or 3030))}\n'
