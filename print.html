@@ -3177,6 +3177,13 @@ competency question have a stored query that answers it — and stays with
 its pre-Jev name (camayoc-b6h) because other tools read it; read it as "how
 well the asked question maps".</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-agent-memory-entities"><a class="header" href="#design-agent-memory-entities">Design: agent-memory entities</a></h1>
+<blockquote>
+<p><strong>Contract review pending (2026-10-29):</strong> see the
+<a href="design/agent-memory-contract-review.html">implementation reconciliation and staged design</a>
+for current source/live boundaries and proposed corrections to key identity,
+authenticated authority, concurrent supersession and migration admission.
+Historical measurements and prescriptions below are not deployment authority.</p>
+</blockquote>
 <p>Status: DESIGN, for review by the quipu lead. Tracked as aegis-gshu.11 under
 the epic aegis-gshu. This is the contract that the bobbin recall work
 (gshu.2), capture and promotion (gshu.4), the generated tools (gshu.10), the
@@ -3707,6 +3714,273 @@ labelled (<code>scripts/planes.py ensure</code>) on the target store.</li>
 <p>The proposal is written up in <code>docs/design/proposals/agent-memory-schema.md</code>.
 It has the live Directive census (0 of 923 meet the shape), the decision to
 scope rather than migrate, and the ordered accept and load steps (aegis-gshu.12).</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="agent-memory-contract-review-and-staged-design"><a class="header" href="#agent-memory-contract-review-and-staged-design">Agent memory: contract review and staged design</a></h1>
+<blockquote>
+<p><strong>Status: DESIGN, awaiting Quipu-lead review (2026-10-29).</strong> This is a
+source-only reconciliation of the existing <a href="design/agent-memory-entities.html">memory design</a>.
+No schema, data migration, hook, retrieval lane or runtime change is authorized
+by this document. Where the older design prescribes automatic replacement or
+infers authority from a named person, the requirements below are the proposed
+correction, not a claim that the implementation already enforces them.</p>
+</blockquote>
+<h2 id="1-questions-before-entities"><a class="header" href="#1-questions-before-entities">1. Questions before entities</a></h2>
+<p>The design must answer these competency questions without treating a retrieved
+sentence as current authority:</p>
+<ol>
+<li>What was chosen for this subject and question, by whom, on what evidence?</li>
+<li>Which standing instructions bind this principal in this scope now?</li>
+<li>What does this person prefer in this context, and did they say it themselves?</li>
+<li>What work remains, and which tracker record currently owns its state?</li>
+<li>What happened, what was measured, and which conclusion remains unverified?</li>
+<li>Where is the authoritative external resource, without copying its secrets?</li>
+<li>Which record replaced this one, under whose authority, and what was known then?</li>
+<li>Can this caller see and replace this record in this tenant and audience?</li>
+</ol>
+<p>Camayoc owns vocabulary, validation and earning ingress. Quipu owns storage and
+transactional enforcement; Bobbin owns retrieval/injection. The tracker owns task
+state. A memory record cannot become a merge approval, operational permission or
+tracker transition merely because recall ranked it first.</p>
+<h2 id="2-evidence-and-implemented-boundary"><a class="header" href="#2-evidence-and-implemented-boundary">2. Evidence and implemented boundary</a></h2>
+<p>The source baseline is Camayoc <code>a4151d70d9b5310166e7c897aeac054f9c60be80</code>.
+Inspection covered the memory shapes, five sidecars, generator, CLI writer,
+REST client, plane router, generated recall queries and offline-buffer contract.
+These are reproducible source observations, not installed-service assertions.</p>
+<p>The bounded usage sample contained 17 local topic files: 13 project, two feedback,
+one reference and one user. Selection was the first 16 topic files in sorted path
+order, supplemented by the first user-typed file; each read was capped at 16 KiB.
+It is a convenience sample, biased toward one workspace, not a fleet census.
+The four frontmatter types mixed incident reports, corrective lessons, standing
+constraints and references. Type alone therefore cannot choose a memory entity.
+No sampled content, identity, source path or reversible pseudonym map is published.</p>
+<p>Two retained handoff packets were also read, bounded to their opening sections.
+Both distinguish historical receipts, current gates, ownership and next steps.
+This supports linking tracker state rather than copying it into a second board.
+One existing design-task comment was read: it recommends bounded per-prompt
+recall, capture/consolidation separation and reversible file-writer redirection.
+Its external-plugin comparison is attributed research, not an independently
+reproduced capability or an instruction to activate hooks.</p>
+<p>The existing usage-telemetry task retains an acceptance receipt of three events
+(two reads, one write) and a reuse denominator of one with zero matches. This is
+historical evidence that delivery and reuse can be measured separately; it is
+not a current adoption rate or evidence that a read caused a successful repair.
+No raw telemetry corpus or new scheduled collection was requested for this study.
+The older design's larger file census remains a dated, separately sourced study;
+its counts were not remeasured here. Private evidence retains exact sources,
+hashes, selection limits and task links outside this public repository.</p>
+<p>Authenticated vocabulary and loaded-shape catalog reads on the review date found
+Decision, Directive, Incident, Person and CrewRole among governed classes.
+Preference, Handoff, Reference, Lesson, Finding and MemoryTopic were absent from
+that vocabulary response. The catalog contained the core and governance shape
+sets, but no agent-memory shape set. A SELECT over application data returned no
+shape rows; that does not inspect the separate validation catalog. Exact loaded
+property constraints remain unverified by that SELECT. Source shapes below must
+not be advertised as live acceptance. The complete stored-query catalog had no
+<code>mem_*</code> names; source manifests and client-side rendering still exist.</p>
+<div class="table-wrapper"><table><thead><tr><th>Surface</th><th>Implemented in source</th><th>Not established by this review</th></tr></thead><tbody>
+<tr><td>Create</td><td>Five <code>record_*</code> MCP tools; <code>cy record &lt;entity&gt;</code></td><td>Live shape acceptance, authenticated issuer authority</td></tr>
+<tr><td>Recall</td><td>Five <code>recall_*</code> tools plus decision history; generated query JSON</td><td>Registered live memory queries, complete tenant authorization</td></tr>
+<tr><td>Generation</td><td><code>sh:name</code>, description, message and sidecars generate CLI/MCP/help</td><td>Security policy generated merely from field constraints</td></tr>
+<tr><td>Provenance</td><td>Bearer header, environment-derived provenance declarations, source-kind routing</td><td>Environment declarations attested by authenticated principal</td></tr>
+<tr><td>Replacement</td><td>Read current versions, write new record, write predecessor backlink</td><td>Atomic compare-and-swap, concurrent-writer safety</td></tr>
+<tr><td>Buffer</td><td>Private bounded FIFO; queued differs from recorded</td><td>Exactly-once delivery or durable remote acceptance while queued</td></tr>
+<tr><td>Capture</td><td>Opt-in capture/promotion code and quarantine</td><td>Safe typed promotion of every captured statement</td></tr>
+</tbody></table>
+</div>
+<h2 id="3-entity-tool-and-recall-matrix"><a class="header" href="#3-entity-tool-and-recall-matrix">3. Entity, tool and recall matrix</a></h2>
+<p><code>a:</code> below abbreviates the existing domain vocabulary prefix used by the source
+shapes. A source-defined class is not thereby a loaded governed class. Proposed
+rows require vocabulary-owner approval and shape admission before a writer ships.
+Every key below also includes tenant, audience and canonical full subject IRIs.
+The fields listed are caller content; provenance is a separate envelope (§4).</p>
+<div class="table-wrapper"><table><thead><tr><th>Need / class status</th><th>Required caller content</th><th>Matching key and lifecycle</th><th>Create and 2–3 recall questions</th></tr></thead><tbody>
+<tr><td>Decision / ruling: governed <code>a:Decision</code>, source memory shape</td><td><code>chose</code>, <code>by</code>, <code>about</code>, <code>topic</code>; rationale required for a proposed replacement</td><td>subject + topic + authority scope; review 90d, explicit replacement</td><td>Existing <code>record_decision</code>; existing <code>mem_decisions_current(about,topic)</code>, <code>mem_decision_history(key)</code>; proposed as-of decision context</td></tr>
+<tr><td>Directive / rule: governed <code>a:Directive</code>, source memory shape</td><td><code>rule</code>, <code>issuedBy</code>, <code>appliesTo</code>, <code>topic</code>; authority receipt</td><td>binding scope + topic + authority domain; review 90d, explicit expiry/replacement</td><td>Existing <code>record_directive</code>; existing <code>mem_directives_for(appliesTo)</code>; proposed applicable role expansion and lapsed/history queries</td></tr>
+<tr><td>Preference: source <code>a:Preference</code>, absent from observed live vocabulary</td><td><code>person</code>, <code>prefers</code>, <code>context</code>, <code>topic</code></td><td>person + context + topic; review 180d, person-authorized replacement</td><td>Existing <code>record_preference</code>; existing <code>mem_preferences(person,context)</code>; proposed preference history and due-review queries</td></tr>
+<tr><td>Handoff: source <code>a:Handoff</code>, absent from observed live vocabulary</td><td><code>agent</code>, 1–7 <code>next</code> links; optional waiting/context</td><td>agent + work scope; max age two days, explicit predecessor</td><td>Existing <code>record_handoff</code>; existing <code>mem_handoff(agent)</code>; proposed handoff history and unresolved linked-work query</td></tr>
+<tr><td>Reference: source <code>a:Reference</code>, absent from observed live vocabulary</td><td><code>subject</code>, <code>topic</code>, <code>locator</code>; key-name-only secret reference optional</td><td>subject + purpose; review 60d, verification separate from location</td><td>Existing <code>record_reference</code>; existing <code>mem_reference(subject,topic)</code>; proposed verification-age and reference-history queries</td></tr>
+<tr><td>Incident: governed <code>a:Incident</code>, detailed memory contract proposed</td><td>subject, symptom, start instant, evidence pointer</td><td>subject + source event ID; minute timestamp only a fallback candidate, never unique by assumption; review open incidents after 7d</td><td>Proposed <code>record_incident</code>; open-for-subject, history, evidence-at-time queries</td></tr>
+<tr><td>Finding: generic class/tool not admitted; do not substitute a security-specific class</td><td>claim, evidence pointer, subject, question/topic, observation interval</td><td>subject + question + evidence/run identity; review 30d</td><td>Proposed <code>record_finding</code>; findings-for-subject, supporting-evidence, findings-due queries</td></tr>
+<tr><td>Lesson / feedback: class/tool proposal</td><td>lesson, subject, topic, learned-from pointer; optional remedy</td><td>subject + topic + applicability scope; review 60d</td><td>Proposed <code>record_lesson</code>; applicable-lessons, origin-evidence, lesson-history queries</td></tr>
+<tr><td>Constraint: classify by meaning, no new class yet</td><td>binding issuer/scope for a rule, or measured limit/evidence for a finding</td><td>Directive key for obligations; Finding key for observations</td><td>Use the corresponding typed tool; applicable constraints and measured limits must remain distinguishable</td></tr>
+<tr><td>Person / Role: governed <code>a:Person</code>, <code>a:CrewRole</code>; identity enrollment remains authoritative</td><td>Canonical identity pointer; role assignment evidence and validity interval</td><td>issuer-owned stable identity, not display name; review membership when due</td><td>Proposed narrow identity-reference tool only after owner review; person lookup, roles-as-of, membership-source queries</td></tr>
+<tr><td>Task state: canonical tracker; Handoff only a pointer</td><td>Existing task IRI and next action, no copied authoritative status</td><td>Tracker's own key and event history</td><td>Tracker tool for state; linked work, current gate, transition-as-of queries</td></tr>
+</tbody></table>
+</div>
+<p>The existing nine-entity design supplies candidate fields for the proposed rows;
+the table does not invent server-loaded terms. Rule is not an invented <code>a:Rule</code>.
+Feedback maps to Lesson or Preference by content. Constraints retain the
+difference between an instruction and a measured physical limit. Person/Role
+records must reuse enrolled identities rather than minting duplicates.</p>
+<h3 id="source-discrepancies-requiring-explicit-disposition"><a class="header" href="#source-discrepancies-requiring-explicit-disposition">Source discrepancies requiring explicit disposition</a></h3>
+<p>The generated Preference sidecar currently keys by person and topic, while the
+older design includes context. The proposed key includes context so an email
+preference cannot silently replace a chat preference. The writer currently uses
+IRI local names for keys; two namespaces can share a local name. New keys should
+hash a canonical, versioned tuple of full IRIs plus tenant/audience, retaining
+the tuple for inspection. No key rewrite or migration is part of this document.</p>
+<p>Version IRIs currently have second-resolution timestamps and refuse a detected
+same-second collision. The proposed transaction allocates a collision-resistant
+version identity independent of wall-clock uniqueness. Incident start times
+rounded to minutes likewise cannot distinguish two incidents without evidence
+identity. These are source repair requirements, not completed fixes.</p>
+<h2 id="4-create-provenance-and-refusal-contracts"><a class="header" href="#4-create-provenance-and-refusal-contracts">4. Create, provenance and refusal contracts</a></h2>
+<p>Keep one entity-specific create and recall surface across MCP and CLI. For
+example, the existing caller contract is:</p>
+<pre><code class="language-text">record_decision(chose, by, about, topic, rationale?, over?, decidedIn?, verbatim?)
+cy record decision --chose ... --by ... --about ... --topic ...
+</code></pre>
+<p><code>rationale</code> is the existing field for why; <code>over</code> carries alternatives. Do not
+silently add an incompatible <code>why</code> argument to this tool. The proposed extension
+adds an expected predecessor/version and idempotency key as control metadata,
+not extra free-text properties. A missing field names its generated <code>sh:message</code>
+and remedy without echoing secret-shaped input. Unknown entities/topics refuse;
+search suggestions never enroll an identity automatically.</p>
+<p>Shapes own fields, cardinality, datatype and refusal messages. Sidecars own verb,
+key recipe, lifecycle defaults and recall mapping. Regeneration must cover CLI,
+MCP schema, primer, skills, man pages and query manifests; <code>just memory-tools --check</code> remains the drift gate. Authentication/authorization and atomicity need
+server controls and adversarial tests; SHACL alone cannot establish either.</p>
+<p>The proposed runtime envelope binds authenticated principal, enrolled agent,
+harness, model, session, host, source event/hash, tenant, audience, destination,
+schema/key version and server commit time. Agent/harness/model/session/host
+headers remain provenance declarations unless verified against enrollment;
+a bearer authenticates its holder, not every identity named in its content.
+Missing required bindings refuse authority-bearing writes. Clients cannot gain
+permission by filling <code>by</code> with a Person IRI or passing <code>--supersede</code>.</p>
+<p><code>sourceKind</code> retains the source vocabulary's exact values: <code>declared</code>, <code>observed</code>,
+<code>inferred</code>. The existing router maps these to declared, records and inferred
+planes and refuses an unknown kind rather than defaulting to ROOT. Proposed
+rules require an authenticated human/delegation receipt for declared rulings,
+an instrument/event pointer and observation time for observed claims, and a
+derivation link for inferred claims. A model's classification never upgrades
+authority. No generic episode fallback counts as a successful typed record.</p>
+<p>Current environment defaults, optional session metadata, person-based source-kind
+selection and <code>--probed</code>/<code>--noticed</code> switches do not establish that envelope.
+Migration must preserve the distinction between original speaker, importing agent
+and current authenticated replayer. Offline replay uses current credentials
+without rewriting historical origin, destination or authority.</p>
+<div class="table-wrapper"><table><thead><tr><th>Outcome</th><th>Required meaning</th></tr></thead><tbody>
+<tr><td>Recorded / unchanged</td><td>Exact typed record and transaction receipt read back; unchanged requires identical canonical content and scope</td></tr>
+<tr><td>Queued</td><td>Private durable local pending write only; never a remote record claim</td></tr>
+<tr><td>Refused</td><td>Validation, authority, scope or conflict denial; no queue fallback that makes it valid</td></tr>
+<tr><td>Conflict</td><td>Expected predecessor moved or multiple authoritative candidates; return bounded candidate IDs, no automatic winner</td></tr>
+<tr><td>Unknown</td><td>Timeout, malformed receipt or missing coverage; reconcile by idempotency key before retrying</td></tr>
+</tbody></table>
+</div>
+<h2 id="5-supersession-review-and-history"><a class="header" href="#5-supersession-review-and-history">5. Supersession, review and history</a></h2>
+<p>No automatic replacement on text similarity, common subject or latest timestamp.
+The existing writer repairs multiple current versions before its later issuer
+checks and writes record/backlink separately. That behavior is not proof of the
+following proposed invariant: exactly one accepted head per authority-scoped key.</p>
+<p>An authorized replacement must match the canonical key, name the exact expected
+head and provide a reason/source receipt. Quipu must validate authority and
+compare-and-swap the head, append the immutable new record and replacement event,
+and close the predecessor's validity in one transaction. Two concurrent writers
+against one head produce one success and one conflict. Retrying an identical
+idempotency key returns its original receipt; a different body under that key
+refuses. A lost response is UNKNOWN until that receipt is reconciled.</p>
+<p>Different authorities or applicability scopes coexist until an authorized
+adjudication explicitly relates them. Inference cannot replace a declaration;
+ranking declared above observed above inferred is presentation, not a permission
+check. Near-duplicate detection proposes links for review and never merges keys.
+No timestamp-sorting repair may choose between conflicting human instructions.</p>
+<p>Expiration, retraction and supersession are separate events. Expiry removes a
+record from current applicability at its declared end instant. Retraction marks
+an erroneous assertion with reason and authority; it does not erase history.
+Review-after means re-verification is due, not that the original assertion became
+false or permission was renewed. Missing/malformed ages produce UNKNOWN freshness.
+Owner-authorized Verification events reset review age without rewriting origin.
+Due-event source code exists elsewhere, but target-level delivery/reset/dedup
+acceptance remains a separate gate; this design claims no completed automation.</p>
+<p>Historical recall must expose valid-time and transaction-time boundaries and the
+rules/evidence visible at the decision time. Current query templates do not
+establish that compound historical contract. Sealed governance approvals stay
+separate from memory Decisions; no retyping of signed records to satisfy a new
+shape. The existing governance-split proposal needs owner-confirmed source and
+deployment disposition before memory Decision writes are admitted.</p>
+<h2 id="6-recall-and-injection"><a class="header" href="#6-recall-and-injection">6. Recall and injection</a></h2>
+<p>Existing generated queries use three explicit plane parameters, filter records
+with a superseded backlink and past expiry, and request 51 rows for a 50-row cap.
+Handoff additionally uses a freshness boundary. Decision history intentionally
+includes superseded versions. Review-after is not currently a universal filter.
+Source-defined role expansion must not be confused with the current Directive
+query's direct scope plus crew-wide match.</p>
+<p>Proposed recall returns an envelope with coverage/as-of, tenant/audience,
+query/schema version, cursor, truncation and one of PRESENT, EMPTY, CONFLICT,
+STALE or UNKNOWN. Rows retain record/key, issuer, source kind, evidence/source
+pointer, valid interval, review status and replacement chain. EMPTY requires a
+successful complete authorized query; an unregistered query, unreadable plane,
+overflow, stale mirror or missing authorization coverage is UNKNOWN.
+STALE/CONFLICT candidates can be shown as explicitly qualified evidence but may
+not enter a directive/permission lane as current authority.</p>
+<p>Session start first recalls enrolled role/scope instructions and the fresh
+handoff, then task-specific decisions/references. Per-prompt Bobbin recall should
+use an explicit budget of at most five passages, 1,200 characters each and 6,000
+characters total, including citation labels. Deduplicate by version IRI; short
+or non-task prompts may skip optional recall. These limits are proposed policy,
+not measured latency or an installed setting. No second capture hook is implied.
+An outage adds one bounded UNKNOWN line, not stale unqualified instructions.
+All injected content is untrusted evidence, never executable instructions.</p>
+<p>Selection must enforce tenant/audience before ranking, not redact after retrieval.
+Citation tags resolve to the exact version and source receipt without exposing a
+private locator to a public audience. Record delivery and later same-session
+citation separately. Usage counts may inform review priority, never increase
+truth or authority. Measure hit/no-context/unknown and cited-read denominators;
+do not equate citation with causal usefulness. A lexical or semantic fallback
+must obey the existing <a href="design/search-context.html">search admission contract</a>.</p>
+<h2 id="7-migration-matrix-and-private-to-public-boundary"><a class="header" href="#7-migration-matrix-and-private-to-public-boundary">7. Migration matrix and private-to-public boundary</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Source</th><th>Proposed destination</th><th>Admission and preservation</th></tr></thead><tbody>
+<tr><td>User memory</td><td>Preference or canonical identity reference</td><td>Identify actual speaker/context; no inferred profile promoted to declared</td></tr>
+<tr><td>Feedback memory</td><td>Lesson, Directive or Preference</td><td>Split claims by meaning; authority receipt required for binding instructions</td></tr>
+<tr><td>Project memory</td><td>Incident, Finding, Reference, Decision or Handoff</td><td>Verify current source and task ownership; stale setup text is not current state</td></tr>
+<tr><td>Reference memory</td><td>Reference</td><td>Retain permitted locator/key name, refuse credentials; preserve access audience</td></tr>
+<tr><td>Index / handoff / task comments</td><td>Links plus bounded Handoff</td><td>Tracker state stays canonical; preserve original timestamp and authorship</td></tr>
+<tr><td>Raw captures</td><td>Private quarantine/candidate store</td><td>Typed promotion only after validation; capture is not authority or durable typed acceptance</td></tr>
+</tbody></table>
+</div>
+<p>Migration is a later, separately authorized operation. First produce a private
+dry-run manifest: original file hash and restricted locator, claim ranges,
+candidate type/key, authority, duplicates/conflicts, target audience and proposed
+disposition. Mixed files split into claims; unknown identity, type, origin or
+authority stays pending. Never classify solely from frontmatter or silently
+delete an unclassifiable file. Exact source bytes stay in a restricted archive
+under an explicit retention policy; public source receives only synthetic data.</p>
+<p>Then a reviewed small canary imports idempotently, reads each typed record back
+and compares recall against the manifest. Preserve partial/error receipts and
+resume from acknowledged claims rather than replaying the whole corpus blindly.
+Require complete inventory accounting, source hash stability and owner sign-off
+before redirecting any writer. Writer redirection and auto-memory disablement
+are reversible later gates, never consequences of merging this document.
+Rollback restores prior writer configuration and marks imported versions through
+normal authorized retraction; it does not purge history or overwrite newer work.</p>
+<p>A public example uses <code>https://example.org/entity/widget-service</code>, a synthetic
+principal and a synthetic topic. Do not publish source filenames, tenant IDs,
+private task links, hostnames, personal preferences or stable pseudonyms derived
+from private values. Secret-pattern checks are necessary but cannot prove that
+an example is not reversible. Raw captures never enter public qpacks by default.</p>
+<h2 id="8-staged-breakdown-and-acceptance-gates"><a class="header" href="#8-staged-breakdown-and-acceptance-gates">8. Staged breakdown and acceptance gates</a></h2>
+<p>These are proposed implementation slices, not newly created work items.</p>
+<div class="table-wrapper"><table><thead><tr><th>Stage / owner boundary</th><th>Deliverable</th><th>Discriminating acceptance before next stage</th></tr></thead><tbody>
+<tr><td>A: Quipu lead + Camayoc owner</td><td>Review this matrix, class ownership, governance split, key/authority model and scope</td><td>Explicit review decision; unresolved vocabulary and security questions retained, not silently approved</td></tr>
+<tr><td>B: Camayoc source</td><td>Versioned key tuple, context-safe Preference, generated control fields and errors</td><td>Same local name across namespaces differs; chat/email differ; missing field names itself; regeneration drift fails</td></tr>
+<tr><td>C: Quipu authority/storage</td><td>Authenticated envelope and atomic expected-head replacement</td><td>Forged issuer/tenant denied; concurrent writes yield one conflict; lost response reconciles; unauthorized repair writes nothing</td></tr>
+<tr><td>D: Vocabulary owners</td><td>Approved proposed types/shapes and compatibility plan</td><td>Legacy records still validate as intended; new incomplete typed record refuses; sealed approvals unchanged; no shared predicate domain</td></tr>
+<tr><td>E: Camayoc + Bobbin source</td><td>Current/history/due queries and bounded injection</td><td>Empty vs unknown, stale mirror, expiry/review, role scope, overflow and audience isolation tested independently</td></tr>
+<tr><td>F: Migration owner</td><td>Private manifest, dry run, reviewed canary and reconciliation</td><td>Mixed files split, conflicts retained, idempotent restart, private-public checks, complete accounting and rollback rehearsal</td></tr>
+<tr><td>G: Harness owner</td><td>Separately admitted writer redirect and optional capture</td><td>Restore old configuration control passes; outages preserve pending evidence; hook success never means remote persistence</td></tr>
+<tr><td>H: Operations owner</td><td>Separately authorized installed acceptance</td><td>Exact installed identities, typed write/read receipts, original scheduled evidence and usage denominators; no source-only completion claim</td></tr>
+</tbody></table>
+</div>
+<p>All code slices need focused positive and refusal controls, current-base green CI
+and the normal independent review/landing policy. This design-only packet needs
+documentation checks and the repository's required regression suite, but runs no
+live assay, schema load, record write or hook exercise. No performance improvement
+or behavioral demo is claimed for prose changes.</p>
+<p>The lead review must resolve: which authority registry is normative; whether the
+store can atomically enforce expected-head replacement; final tenant/audience
+key semantics; class-owner admission for proposed kinds; historical query API;
+and migration retention/rollback responsibility. Until those decisions exist,
+the entity count and lifecycle defaults remain design proposals, not permission
+to mass-create records or implementation tasks.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-camayoc--yupana-thesis-boundary"><a class="header" href="#the-camayoc--yupana-thesis-boundary">The camayoc / yupana thesis boundary</a></h1>
 <blockquote>
 <p><strong>Implementation status (2026-08-17):</strong> ✅ <strong>Proposed and written down on both
