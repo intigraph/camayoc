@@ -79,6 +79,20 @@ class RepositoryQuery(unittest.TestCase):
         result = set(source.query(QUERY).graph)
         self.assertEqual(result, published(expected))
 
+    def test_repeated_private_values_exclude_node_and_incoming_edges(self):
+        source = Graph()
+        clean, blocked = DOC["public.md"], DOC["blocked.md"]
+        expected = {(clean, RDF.type, A.Document),
+                    (clean, A.filePath, Literal("public.md"))}
+        for triple in expected:
+            source.add(triple)
+        source.add((blocked, RDF.type, A.Document))
+        source.add((blocked, A.filePath, Literal("blocked.md")))
+        for n in range(12):
+            source.add((blocked, RDFS.comment, Literal(f"private aegis-internal{n}")))
+        source.add((clean, RDFS.seeAlso, blocked))
+        self.assertEqual(set(source.query(QUERY).graph), published(expected))
+
     def test_ideas_and_sssom_records_survive_without_identity_knots(self):
         source = Graph()
         S = Namespace("https://w3id.org/sssom/")
