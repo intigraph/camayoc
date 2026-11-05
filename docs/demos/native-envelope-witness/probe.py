@@ -11,7 +11,7 @@ import test_seed_work_item_sync as fixtures
 if sys.argv[1:] == ['--compare']:
     import subprocess
     import tempfile
-    base = '4b1607c'
+    base = '7162eaa'
     content = subprocess.check_output(['git', 'show', base + ':scripts/seed_work_item_sync.py'], cwd=root)
     with tempfile.NamedTemporaryFile(suffix='.py') as retained:
         retained.write(content)

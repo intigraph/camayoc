@@ -135,6 +135,7 @@ class EnvelopeWitness(unittest.TestCase):
 
 class MultiItemWitness(unittest.TestCase):
     ITEMS = fixtures.SerialTicks.ITEMS
+    LEGACY = fixtures.SerialTicks.LEGACY
     setUp = fixtures.SerialTicks.setUp
     tearDown = fixtures.SerialTicks.tearDown
     post = fixtures.SerialTicks.post

@@ -7,8 +7,8 @@ proved write response are attributable to `demo-b`. Both runs keep UNKNOWN,
 one verified target, eight requests, two writes and the same control result.
 No installed producer or live store is invoked.
 
-Base: `4b1607cf08f60bd40c1a33a47b83410b2096f6d3`. Candidate sync source blob:
-`e60d171c59c9fd48ef6f8819a7f6a30a50b6e390`. Publication-only changes do not alter this demonstration.
+Base: `7162eaa`. Candidate sync source blob:
+`de167a22282179358dcf6dff2726e844b36b68f0`. The refreshed comparison retains current feed catch-up behavior on both sides.
 Reproduce from the repository root:
 
 ```sh
