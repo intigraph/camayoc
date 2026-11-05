@@ -1,5 +1,11 @@
 # Design: agent-memory entities
 
+> **Contract review pending (2026-10-29):** see the
+> [implementation reconciliation and staged design](agent-memory-contract-review.md)
+> for current source/live boundaries and proposed corrections to key identity,
+> authenticated authority, concurrent supersession and migration admission.
+> Historical measurements and prescriptions below are not deployment authority.
+
 Status: DESIGN, for review by the quipu lead. Tracked as aegis-gshu.11 under
 the epic aegis-gshu. This is the contract that the bobbin recall work
 (gshu.2), capture and promotion (gshu.4), the generated tools (gshu.10), the
