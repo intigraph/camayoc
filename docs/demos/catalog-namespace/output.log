@@ -1,0 +1,7 @@
+Script started on 2026-11-05 08:34:04-05:00 [COMMAND="python3 demo.py" <not executed on terminal>]
+BASE: render the real catalog through a disposable native store
+REFUSED: no usable base namespace (expected baseline failure)
+CANDIDATE: render the real catalog through a disposable native store
+PASS: catalog rendered; Ansible row present; existing README matches exactly
+
+Script done on 2026-11-05 08:34:04-05:00 [COMMAND_EXIT_CODE="0"]

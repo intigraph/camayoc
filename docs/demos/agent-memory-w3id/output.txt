@@ -1,0 +1,9 @@
+Script started on 2026-11-03 23:39:22-05:00 [COMMAND="uv run --with rdflib python /tmp/ian-gshu12-native-demo.py" <not executed on terminal>]
+Candidate profile demo: canonical Directive with a natural key but no rule.
+Target: read-only native /validate; fixtures only, no schema load or memory write.
+before: legacy-only profile conforms=True violations=0 elapsed_ms=10
+after: canonical profile with explicit alias paths conforms=False violations=1 elapsed_ms=5
+after positive control: complete canonical record conforms=True
+PASS: canonical missing-rule false-pass is closed; valid input still passes.
+
+Script done on 2026-11-03 23:39:22-05:00 [COMMAND_EXIT_CODE="0"]

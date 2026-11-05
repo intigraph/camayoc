@@ -9,7 +9,8 @@ from camayoc_metrics import push
 
 
 SOURCE_MARKER = '# st-bead-cost-source '
-SAMPLES = ('st_bead_tokens_total', 'st_bead_cost_coverage')
+SAMPLES = ('st_bead_tokens_total', 'st_bead_tokens_inferred_total',
+           'st_bead_api_equivalent_usd', 'st_bead_api_equivalent_known_usd', 'st_bead_priced_token_share', 'st_bead_cost_coverage')
 
 
 def publish(body, rig):

@@ -1,0 +1,11 @@
+Script started on 2026-11-02 15:14:09-05:00 [COMMAND="python3 docs/demos/compact-directive-iris/probe.py" <not executed on terminal>]
+Synthetic graph; capture at 2026-10-07T21:00Z, judged one hour later.
+Base: f44db6616a58d2291fca096c63f424b3f09e6804
+Candidate blocked_by.py eb8e3f0579bc4b900b6bab596966657391b346309961133d7a55e2df90f379f9
+Candidate directive_edges.py 04e2fe739aa27dfcf1f0cf297b50fef6d51b87a30c83db732586a92fee605444
+a: before: LAPSED None after: NOT_LAPSED 2026-10-09T21:00:00+00:00 expired control: LAPSED
+aegis: before: NOT_LAPSED 2026-10-09T21:00:00+00:00 after: NOT_LAPSED 2026-10-09T21:00:00+00:00 expired control: LAPSED
+full IRI before: NOT_LAPSED 2026-10-09T21:00:00+00:00 after: NOT_LAPSED 2026-10-09T21:00:00+00:00 expired control: LAPSED
+PASS: both compact aliases preserve the capture grace; expiry still lapses.
+
+Script done on 2026-11-02 15:14:09-05:00 [COMMAND_EXIT_CODE="0"]

@@ -1,6 +1,6 @@
 """bootstrap.sh must succeed when run a second time against the same store.
 
-caboodle's resumed install re-runs bootstrap as camayoc's functional
+tambo's resumed install re-runs bootstrap as camayoc's functional
 verification. On the first run quipu has no shapes loaded, so its vocabulary
 gate is inactive and the ontology load succeeds; bootstrap then loads shapes,
 and every later load of core.ttl is refused with HTTP 400 ("unknown rdf:type
@@ -174,6 +174,30 @@ class BootstrapRerunTest(unittest.TestCase):
             f"<{BASE_NS}{observation}> <{BASE_NS}about> ?target }} }}"}, "/query")
         self.assertEqual(status, 200, result)
         self.assertEqual(result["count"], 1, result)
+
+        # Admission must write the sanctioned class, not merely return 200.
+        status, result = post({"query":
+            f"SELECT ?node WHERE {{ GRAPH <{body['graph']}> {{ "
+            f"?node a <{BASE_NS}Observation> . "
+            f"FILTER(?node = <{BASE_NS}{observation}>) }} }}"}, "/query")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["count"], 1, result)
+
+        # Keep vocabulary admission armed: an invented type must still refuse
+        # before writing any facts, even though a sanctioned Observation works.
+        unknown = episode_for({**record, "id": "tracker-unknown-type"},
+                              actor="test", source="test:tracker")
+        unknown["nodes"] = unknown["nodes"][1:]
+        unknown["nodes"][0]["type"] = "BootstrapUnknownType"
+        unknown_name = unknown["nodes"][0]["name"]
+        status, result = post(unknown)
+        self.assertEqual(status, 400, result)
+        self.assertIn("unknown rdf:type IRIs", result)
+        status, result = post({"query":
+            f"SELECT ?p WHERE {{ GRAPH <{unknown['graph']}> {{ "
+            f"<{BASE_NS}{unknown_name}> ?p ?o }} }}"}, "/query")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["count"], 0, result)
 
         # A MISSING anchor is write-validation debt (aegis-g51c C10): the
         # Observation minCount constraints live in the emit + sh:Warning

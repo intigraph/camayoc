@@ -95,8 +95,13 @@ class Backfill(unittest.TestCase):
         self.j=backfill.Sweep(self.path,self.board,server=PEER,plane=PLANE,actor='fixture',item='demo-000')
 
     def test_bounded_pages_full_native_coverage_repeat_no_effect(self):
+        # The backfill shares the delivery tick ceiling (aegis-etv raised it
+        # from 17 to 57 requests, 4 to 12 items). Pinned so a change is seen here.
+        self.assertEqual(backfill.delivery.TICK_REQUESTS,57)
+        self.assertEqual(backfill.delivery.MAX_DELIVERIES,12)
         for _ in range(8):
-            r=self.tick();self.assertEqual(r['status'],'OK');self.assertLessEqual(r['requests'],17)
+            r=self.tick();self.assertEqual(r['status'],'OK')
+            self.assertLessEqual(r['requests'],backfill.delivery.TICK_REQUESTS)
         self.assertEqual(set(self.effects),set(self.ids));self.assertEqual(len(self.effects),19)
         self.assertEqual(r['backlog'],0);self.assertTrue(r['enumeration_exhausted'])
         self.assertEqual(self.tick()['writes'],0)

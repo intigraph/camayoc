@@ -133,7 +133,11 @@ class KnotWriteInventoryTests(unittest.TestCase):
                    "trackedBy and inferredAt",
                    "exact_work_item_coverage.py": "reads the positive control's "
                    "capture episode in exact-subject snapshots; its transport "
-                   "permits only /query and never writes the edge"}
+                   "permits only /query and never writes the edge",
+                   "memory_tools.py": "generates the read-only stored query "
+                   "mem_index_since, which reads a legacy Directive's capture "
+                   "episode prov:generatedAtTime as its recall instant (aegis-gshu.15); "
+                   "it writes no graph data"}
         for path in sorted(SCRIPTS.rglob("*")):
             if path.suffix in (".sh", ".py") and path.is_file() and path.name not in readers:
                 self.assertNotIn("wasGeneratedBy", path.read_text(), str(path))

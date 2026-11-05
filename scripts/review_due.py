@@ -30,7 +30,8 @@ no memory between runs; transitions and delivery belong to the emitter.
 
 Reads only, with single-pattern or bound-subject queries (joins exceed quipu's
 10 s budget live), across the default graph and the observed and declared
-planes, never the inferred one.
+planes. The inferred plane contributes only reviewAfter obligations from
+typed, keyed memory records; its other facts remain quarantined.
 
     python3 scripts/review_due.py              # JSON: one verdict per aged entity
     python3 scripts/review_due.py --due-only   # only the DUE ones
@@ -91,6 +92,75 @@ def parse_duration(raw: str) -> dt.timedelta | None:
         return None
     weeks, days, t_days, hours, h_minutes, minutes = (int(g) if g else 0 for g in m.groups())
     return dt.timedelta(weeks=weeks, days=days + t_days, hours=hours, minutes=h_minutes + minutes)
+
+
+# Exact aliases from the stable-namespace ledger. Kept inline because the
+# deployed adapter is a copied script, not an installed repository/package.
+MEMORY_CORE = "https://w3id.org/intigraph/camayoc/core/ns#"
+MEMORY_QUIPU = "https://w3id.org/intigraph/quipu/ns#"
+MEMORY_CLASSES = {A + name for name in
+                  ("Decision", "Directive", "Preference", "Lesson", "Reference",
+                   "Handoff", "Incident", "Finding", "Person")} | {
+    MEMORY_CORE + name for name in ("Directive", "Preference", "Reference", "Handoff", "Person")
+} | {MEMORY_QUIPU + name for name in ("Decision", "Incident")}
+MEMORY_PROPERTIES = {
+    name: list(dict.fromkeys([A + name, MEMORY_CORE + name] +
+                            (["https://scbrown.github.io/quechua/ns#" + name]
+                             if name == "reviewAfter" else [])))
+    for name in ("naturalKey", "supersededBy", "reviewAfter")
+}
+TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+
+
+def _memory_rows(post, query):
+    """Inferred memory metadata only; never widen the shared blocker reader."""
+    result = post("/query", {"query": query, "graph": planes.plane_for("inferred")})
+    if not isinstance(result.get("rows"), list) or result.get("truncated"):
+        raise ValueError("inferred memory query unproven")
+    return result["rows"]
+
+
+def _memory_values(post, entity, prop):
+    subject = f"<{item_iri(entity)}>"
+    iris = [TYPE] if prop == "type" else MEMORY_PROPERTIES[prop]
+    branches = [f"{subject} <{iri}> ?v" for iri in iris]
+    query = " UNION ".join("{ " + b + " }" for b in branches) if len(branches) > 1 else branches[0]
+    return list(dict.fromkeys(str(r["v"]) for r in
+                             _memory_rows(post, f"SELECT ?v WHERE {{ {query} }}")))
+
+
+def memory_basis(post, entity):
+    """Only a typed, keyed memory can declare an inferred reviewAfter.
+
+    No inferred ownership, verification, idle obligation or blocker is promoted
+    into the ordinary reader. A superseded memory resolves its old reminder.
+    """
+    if not _memory_values(post, entity, "naturalKey"):
+        return []
+    from blocked_by import _iri
+    if not MEMORY_CLASSES.intersection(_iri(v) for v in _memory_values(post, entity, "type")):
+        return []
+    superseded = _memory_values(post, entity, "supersededBy")
+    ages = _memory_values(post, entity, "reviewAfter")
+    if superseded or not ages:
+        return [{"age": "memory-review", "value": "superseded" if superseded else "no reviewAfter",
+                 "due_at": None, "why": "memory review obligation ended", "resolved": True}]
+    basis = []
+    for raw in ages:
+        when = parse_instant(raw)
+        basis.append({"age": "reviewAfter", "value": raw.strip('"'),
+                      "due_at": when.isoformat() if when else None,
+                      "why": "inferred memory review instant" if when else "unreadable memory review instant"})
+    return basis
+
+
+def discover(post):
+    """Ordinary ages plus keyed inferred memories, using single patterns."""
+    aged = {_local(row["s"]) for prop in ("reviewAfter", "maxAge", "idleLimit")
+            for row in select(post, f"SELECT ?s WHERE {{ {pattern('?s', prop, '?v')} }}")}
+    candidates = {_local(row["s"]) for iri in MEMORY_PROPERTIES["naturalKey"]
+                  for row in _memory_rows(post, f"SELECT ?s WHERE {{ ?s <{iri}> ?v }}")}
+    return sorted(aged | {e for e in candidates if memory_basis(post, e)})
 
 
 def _values(post, entity: str, prop: str) -> list[str]:
@@ -155,8 +225,48 @@ def _native_id(post, entity: str, reader=None) -> str | None:
     return None
 
 
+#: Shantytown publishes each agent's lifecycle as an immutable observation, one
+#: IRI per revision. Until shantytown 3f29f257 each one also carried
+#: reviewAfter = observed + lease. That deadline is a liveness lease on a
+#: heartbeat nobody re-verifies, not an owner's review obligation, so every
+#: superseded revision went DUE forever. They are recognised by their exact
+#: producer, never by name alone.
+HEARTBEAT_SOURCE = "urn:shantytown:owned-work:"
+
+
+def _literal(raw: str) -> str:
+    return raw.split("^^")[0].strip('"')
+
+
+def lifecycle_heartbeat(post, entity: str) -> bool:
+    """True only for a shantytown owned-work lifecycle observation: the local
+    name, an observed source kind and the producer's source prefix must all agree."""
+    if not entity.startswith("owned-work-"):
+        return False
+    if [_literal(v) for v in _values(post, entity, "sourceKind")] != ["observed"]:
+        return False
+    sources = [_literal(v) for v in _values(post, entity, "source")]
+    return len(sources) == 1 and sources[0].startswith(HEARTBEAT_SOURCE)
+
+
+def heartbeat_verdict(entity: str) -> dict:
+    """NOT_DUE, so an event already raised for it resolves through the emitter's
+    ordinary DUE -> NOT_DUE transition rather than by hand."""
+    basis = [{"age": "lifecycle-lease", "value": HEARTBEAT_SOURCE, "due_at": None,
+              "why": "shantytown owned-work lifecycle observation: a liveness lease, not a review obligation",
+              "resolved": True}]
+    ident = json.dumps([entity, "lifecycle-lease"], separators=(",", ":"))
+    return {"entity": entity, "verdict": NOT_DUE, "due_at": None,
+            "evidence": "sha256:" + hashlib.sha256(ident.encode()).hexdigest(),
+            "owner": None, "basis": basis}
+
+
 def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
-    basis = []
+    # Every caller, the full evaluation and the change-scoped one alike, comes
+    # through here, so the lifecycle-lease guard lives here and nowhere else.
+    if lifecycle_heartbeat(post, entity):
+        return heartbeat_verdict(entity)
+    basis = memory_basis(post, entity)
     native_record=None
     native_failed=False
     native_error=None
@@ -254,11 +364,7 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
 
 def evaluate(post, *, now: dt.datetime | None = None) -> list[dict]:
     now = now or dt.datetime.now(dt.timezone.utc)
-    aged = set()
-    for prop in ("reviewAfter", "maxAge", "idleLimit"):
-        for row in select(post, f"SELECT ?s WHERE {{ {pattern('?s', prop, '?v')} }}"):
-            aged.add(_local(row["s"]))
-    return [judge(post, e, now) for e in sorted(aged)]
+    return [judge(post, e, now) for e in discover(post)]
 
 
 def main(argv=None) -> int:

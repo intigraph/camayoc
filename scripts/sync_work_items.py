@@ -531,8 +531,20 @@ def native_main(args):
                     payload=response.read(custody.MAX_BYTES+1)
                 if len(payload)>custody.MAX_BYTES:raise custody.CustodyUnknown('feed exceeds response budget')
                 return json.loads(payload)
+            def cursor_time(tx):
+                # The exact cursor transaction's timestamp (aegis-etv cursor age).
+                # Exact id or refuse: a neighbour's time would misstate the lag.
+                request=urllib.request.Request(planes.SERVER+'/transactions?'+urllib.parse.urlencode({'since':tx-1,'limit':1}),
+                    headers={'X-Quipu-Client':'camayoc-ingress',**planes.provenance_headers('camayoc-ingress')})
+                with urllib.request.urlopen(request,timeout=10) as response:
+                    payload=json.loads(response.read(64*1024))
+                rows=payload.get('transactions') if isinstance(payload,dict) else None
+                if not rows or not isinstance(rows[0],dict) or rows[0].get('id')!=tx:
+                    raise ValueError('cursor transaction not found')
+                from datetime import datetime
+                return datetime.fromisoformat(str(rows[0]['timestamp']).replace('Z','+00:00')).timestamp()
             receipt=native_sync.tick(reader,journal,post,changes=changes,
-                    plane=planes.plane_for('observed'),actor=args.actor)
+                    plane=planes.plane_for('observed'),actor=args.actor,cursor_time=cursor_time)
         except Exception as exc:
             receipt['error']=type(exc).__name__  # never log auth or payloads
         finally:
@@ -560,6 +572,9 @@ def publish_native_receipt(args,receipt,started,last_success,graph):
             samples.append(('camayoc_workitem_ingress_last_success_timestamp_seconds',{},last_success))
         if type(receipt.get('cursor')) is int:
             samples.append(('camayoc_workitem_ingress_cursor',{},receipt['cursor']))
+        # aegis-etv: lag in wall-clock seconds. Absent when unproved, never 0.
+        if type(receipt.get('cursor_age_seconds')) is int:
+            samples.append(('camayoc_workitem_ingress_cursor_age_seconds',{},receipt['cursor_age_seconds']))
         # Stream mode only: a held transaction is otherwise visible just as a
         # backlog stuck near MAX_PENDING. Absent for the scheduled native tick.
         if 'stream_admission_paused' in receipt:

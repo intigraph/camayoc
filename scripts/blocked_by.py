@@ -125,8 +125,10 @@ def graphs() -> list[str | None]:
 
 
 def _iri(term: str) -> str:
-    if term.startswith("aegis:"):
-        return A + term[len("aegis:"):]
+    # Both spellings are emitted by Quipu compact query results.
+    for prefix in ("aegis:", "a:"):
+        if term.startswith(prefix):
+            return A + term[len(prefix):]
     if term.startswith("schema:"):
         return SCHEMA + term[len("schema:"):]
     return term
@@ -134,7 +136,7 @@ def _iri(term: str) -> str:
 
 def item_iri(item: str) -> str:
     """Preserve stored seed IRIs; legacy adapter keys remain local names."""
-    iri = _iri(item) if item.startswith(("https://", "http://", "aegis:")) else A + item
+    iri = _iri(item) if item.startswith(("https://", "http://", "aegis:", "a:")) else A + item
     if any(c in iri for c in '<>"{}\\\n\r\t '):
         raise ValueError("unsafe entity IRI")
     return iri

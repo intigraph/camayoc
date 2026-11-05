@@ -365,6 +365,13 @@ class TransportControls(unittest.TestCase):
         self.assertIn('<'+n.PRINCIPAL+'worker>', query)
         self.assertIn('<'+n.SEEDS+'priority> 1', query)
         self.assertIn('LIMIT 1001', query)
+        # The cohort constants must lead the pattern so the engine starts from
+        # the cohort, not from every work item (aegis-efa).
+        agent = query.index('<'+n.SCHEMA+'agent> <'+n.PRINCIPAL+'worker>')
+        priority = query.index('<'+n.SEEDS+'priority> 1')
+        action = query.index('a <'+n.SCHEMA+'Action>')
+        self.assertLess(priority, agent)
+        self.assertLess(agent, action)
         r = dict(s=n.ITEM+'test-a', identifier='test-a', status='open', priority=1,
                  owner=n.PRINCIPAL+'worker', created=T, modified=T, version=1)
         good = dict(rows=[r], count=1, truncated=False)

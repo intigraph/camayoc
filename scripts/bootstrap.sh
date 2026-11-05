@@ -161,7 +161,7 @@ SHAPES="$PLUGIN_ROOT/shapes/core.shapes.ttl"
 # RE-RUNNABLE ON PURPOSE. Quipu's vocabulary gate is inactive until shapes are
 # loaded, so the first run's load succeeds; this script then loads shapes, and
 # every later load of the same file is refused (HTTP 400, "unknown rdf:type
-# IRIs: rdf:Property, rdfs:Class"). caboodle's resume re-runs this script as its
+# IRIs: rdf:Property, rdfs:Class"). tambo's resume re-runs this script as its
 # functional verification, so that refusal failed every resumed install. A
 # refusal says nothing about whether the ontology is already there — ask the
 # store. The body is captured, not discarded: `curl -f` printed an empty

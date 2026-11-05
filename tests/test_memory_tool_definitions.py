@@ -124,7 +124,8 @@ class DefinitionTests(unittest.TestCase):
         _, queries = mt.build(self.shapes, self.sidecars)
         q = queries["mem_index_since.json"]
         params = {p["name"]: p for p in q["params"]}
-        self.assertEqual({"since", "declared", "records", "inferred"}, set(params))
+        self.assertEqual({"since", "declared", "records", "inferred", "root"}, set(params))
+        self.assertEqual("urn:quipu:graph:root", params["root"]["default"])
         self.assertTrue(all(p["required"] is False and "default" in p for p in params.values()))
         self.assertEqual("", params["since"]["default"])
         t = q["template"]
@@ -136,6 +137,10 @@ class DefinitionTests(unittest.TestCase):
         self.assertIn('BIND("superseded" AS ?status)', t)
         self.assertNotIn("IF(", t)
         self.assertNotIn("COALESCE", t)
+        # gshu.15: VALUES over predicates costs 6s on production-size data; bodies are UNIONs.
+        self.assertNotIn("VALUES ?bp", t)
+        self.assertIn("FROM <{root}>", t)
+        self.assertIn("aegis:Directive", t)
         self.assertIn("FILTER(?cursor > '{since}')", t)
         self.assertTrue(t.endswith("ORDER BY ?cursor LIMIT 51"))
         self.assertIn('CONCAT(STR(?currentAt), "|", STR(?iri)) AS ?cursor', t)
