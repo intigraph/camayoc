@@ -51,7 +51,7 @@ setup_hank() {
   if ! command -v hank >/dev/null 2>&1; then
     command -v cargo >/dev/null 2>&1 || { say "hank: needs cargo (install Rust first) — skipped"; return 1; }
     say "hank: installing from git (cargo install --git ... — takes several minutes)..."
-    cargo install --git https://github.com/scbrown/hank --locked --features "mcp langs-extra" --quiet \
+    cargo install --git https://github.com/intigraph/yupana --locked --features "mcp langs-extra" --quiet \
       || { say "hank: cargo install FAILED (hank is pre-release; building from a clone may be needed)"; return 1; }
   fi
   say "hank: binary ready ($(command -v hank))"

@@ -3,7 +3,7 @@
 The long form that used to open the README: its place in the stack, what this
 repository owns, what runs today, what it deliberately is not, and the name.
 The README now leads with a three-command first success
-([the caboodle-stack README standard](https://github.com/scbrown/caboodle/blob/main/docs/stack/README-STANDARD.md)).
+([the caboodle-stack README standard](https://github.com/intigraph/tambo/blob/main/docs/stack/README-STANDARD.md)).
 
 ## Role in the stack
 
