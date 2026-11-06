@@ -55,9 +55,12 @@ def probability(value) -> float:
     return float(value)
 
 
-def verdict(out: dict) -> dict:
+def verdict(out: dict, *, expected_request: dict) -> dict:
+    embedded = out.get("request")
+    if not isinstance(embedded, dict) or digest(embedded) != digest(expected_request):
+        raise ValueError("response embedded request does not match exact canonical request")
     if (out.get("model") != MODEL or out.get("response", {}).get("model") != MODEL
-            or out.get("request", {}).get("model") != MODEL):
+            or embedded.get("model") != MODEL):
         raise ValueError("response model does not match pinned benchmark model")
     answers = out["answers"]
     scheduled = probability(answers["scheduled_work"]["noul"])
@@ -77,7 +80,8 @@ def classify(title: str, body: str, client=None) -> dict:
     prepared = request(title, body)
     client = client or jev.JevClient(model=MODEL)
     client.model = MODEL
-    return verdict(client.ask(prepared["state"], prepared["questions"]))
+    return verdict(client.ask(prepared["state"], prepared["questions"]),
+                   expected_request=prepared)
 
 
 def validate(items: list[dict]) -> None:
@@ -117,7 +121,8 @@ def report(items: list[dict], records: list[dict]) -> dict:
         record = by_id.get(item["id"])
         row = {"id": item["id"], "kind": item["kind"], "expected": item["expected"], "status": "unknown"}
         if record and record.get("status") == "ok":
-            v = verdict(record["response"])
+            v = verdict(record["response"],
+                        expected_request=request(item["title"], item["body"]))
             expected_flag = item["expected"]["scheduled_work"] and not item["expected"]["chaski_trigger"]
             row.update(status=v["outcome"], expected_flag=expected_flag,
                        predicted_flag=v["outcome"] == "flag", probabilities={k:v[k] for k in item["expected"]})
@@ -178,7 +183,7 @@ def run(items, responses: Path | None, live: bool, max_calls: int | None,
                     raise ValueError("missing actual input-token accounting")
                 spent += usage * INPUT_PRICE
                 record["list_price_usd"] = str(usage * INPUT_PRICE)
-                verdict(out)
+                verdict(out, expected_request=req)
                 record["status"] = "ok"
             except (jev.JevError, ValueError, KeyError, TypeError, OSError) as exc:
                 record["error_kind"] = type(exc).__name__

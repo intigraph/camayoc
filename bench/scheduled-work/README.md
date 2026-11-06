@@ -16,7 +16,9 @@ operational evidence. These limits preclude a claim of calibrated production
 accuracy or permission to refuse writes.
 
 Only title and body enter the model state. Labels, ids, notes and provenance do
-not. Exact request and dataset hashes bind replay to the frozen inputs and labels.
+not. Dataset and request sidecar hashes bind replay to the frozen inputs and labels.
+The response must also embed that exact canonical request, including its model,
+questions and state; a matching sidecar hash cannot admit a foreign request.
 The model is pinned to `jev-1.14.0`, rather than a moving alias.
 
 ## One measured run
@@ -97,3 +99,13 @@ scriptreplay --log-out bench/scheduled-work/output.log \
 Playback was verified with util-linux `scriptreplay`; download both files for
 terminal replay. The output file is also a readable transcript. Retain this
 small recording beside the benchmark for the lifetime of this source change.
+
+## Request-binding repair demonstration
+
+Run `python3 bench/scheduled-work/request-binding-demo.py` to compare the
+reviewed baseline with the repair using the original archived responses.
+The baseline accepts altered embedded state or questions while the sidecar hash
+stays unchanged; the repair rejects both. All 32 original rows remain unchanged.
+The [recording](request-binding-output.txt) and [timing](request-binding-timing.txt)
+show this offline source check. It sends no model requests and proves no new
+model calibration, tracker adoption or installation.
