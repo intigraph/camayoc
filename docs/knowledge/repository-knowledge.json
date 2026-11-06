@@ -49,7 +49,7 @@
       "source": "docs/releases.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Freleases.md",
       "summary": "Stable tags publish the tracked source archive, checksum and source.json; source releases contain no native Camayoc executable.",
-      "source_sha256": "4f82a5cbef1625f2bc36bc1b760c6054040430bf7389a002ea0133facfd0a549",
+      "source_sha256": "b0ad985b939c5cf99ed56b513630da28e9bdc8870e64a157914d20e333420c55",
       "properties": {
         "interfaceKind": "file-format",
         "publicName": "source archive, SHA256SUMS, source.json"
