@@ -1,5 +1,18 @@
 # Source releases
 
+## v0.1.6 release preparation
+
+Both plugin metadata files declare `0.1.6`. The release revision must also include
+the private repository-share query budget correction (#218) and the shared-node
+exclusion query optimization (#220). The earlier version-only merge (#219)
+predates #220 and is not a suitable release revision.
+
+Publish through the existing Release workflow from the reviewed release
+preparation merge, then verify both the source assets and the trusted producer's
+repository pendant assets. Source publication alone does not establish pendant
+acceptance. Keep existing consumers pinned to v0.1.5 until their separate upgrade
+and verification gates pass; do not replay its consumed producer attempt.
+
 Camayoc releases contain the tracked source tree used by the plugin and shell
 bootstrap, plus deterministic compatibility files built from that archived source. They do not contain a native Camayoc executable.
 
