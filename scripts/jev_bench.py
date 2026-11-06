@@ -66,13 +66,29 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--suite", default=str(Path(__file__).resolve().parents[1] / "competency"))
     ap.add_argument("--arm", choices=("lexical", "jev", "jev-hier", "both", "all"), default="both")
     ap.add_argument("--json", action="store_true")
-    ap.add_argument("--slot", choices=("competency", "ordinal"), default="competency")
+    ap.add_argument("--slot", choices=("competency", "ordinal", "scheduled-work"), default="competency")
     ap.add_argument("--responses", type=Path, help="Replay ordinal responses without a model")
     ap.add_argument("--live", action="store_true", help="Explicitly enable paid ordinal calls")
     ap.add_argument("--max-calls", type=int, help="Hard call ceiling; no automatic retries")
     ap.add_argument("--output", type=Path, help="New ordinal response JSONL; never overwritten")
+    ap.add_argument("--max-cost-usd", help="Scheduled-work run's separately authorized dollar ceiling")
+    ap.add_argument("--approval-ref", help="Recorded scheduled-work benchmark spend ruling")
     a = ap.parse_args(argv)
     items = [json.loads(l) for l in a.labelled.read_text().splitlines() if l.strip()]
+    if a.slot == "scheduled-work":
+        import seed_schedule
+        import jev_mcp
+        try:
+            result = seed_schedule.run(items, a.responses, a.live, a.max_calls,
+                                       a.output, a.max_cost_usd, a.approval_ref,
+                                       lambda out: jev_mcp.record_usage("scheduled-work-benchmark", out))
+        except (ValueError, OSError) as exc:
+            print(f"scheduled-work: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(result, indent=2, allow_nan=False))
+        return 1 if result.get("unknown", 0) else 0
+    if a.max_cost_usd is not None or a.approval_ref is not None:
+        ap.error("spend options require --slot scheduled-work")
     if a.slot == "ordinal":
         import jev_ordinal
         try:

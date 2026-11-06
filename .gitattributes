@@ -1,2 +1,4 @@
+# Preserve terminal recording bytes for scriptreplay.
+bench/scheduled-work/output.log -text -whitespace
 # Preserve terminal recording bytes; CRLF belongs to the captured output.
 docs/demos/inferred-memory-review/output.log -text whitespace=cr-at-eol
