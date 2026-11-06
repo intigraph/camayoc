@@ -37,11 +37,11 @@
       "kind": "interface",
       "source": "scripts/jev_mcp.py",
       "subject": "http://aegis.gastown.local/ontology/code/camayoc/scripts%2Fjev_mcp.py",
-      "summary": "The stdio MCP adapter delegates typed decisions to the existing Jev client; a missing key is a tool error and dry-run sends no provider request.",
-      "source_sha256": "8e899900f4e7a04ee5b0f24dc4c89d54b60bbc704e58e74daa83390b4c1d192a",
+      "summary": "The stdio MCP adapter delegates typed decisions to the existing Jev client; a missing key is a tool error, dry-run sends no provider request, and scheduled-work preflight proposes an advisory seed label without refusing a write.",
+      "source_sha256": "1cbef12936d6ace51c97def6ac967b46d47ea2376586bec461eb48a9b418dbab",
       "properties": {
         "interfaceKind": "MCP",
-        "publicName": "jev_noul, jev_choice, jev_score, jev_dry_run, map_question"
+        "publicName": "jev_noul, jev_choice, jev_score, jev_dry_run, map_question, check_scheduled_work"
       }
     },
     {
