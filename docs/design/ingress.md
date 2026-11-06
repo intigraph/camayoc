@@ -464,8 +464,10 @@ requires the `quipu.knot-completion/v1` response to bind the original ID and pro
 `stopped` or `not_started`, followed by fresh absence proof. A stopped worker may
 have committed, so its state alone never permits retry. For a new item, both
 named-graph and default-graph subject absence must be proved. For an update, the
-previously verified version's canonical description, type and version may remain;
-a conflicting, partial or newer effect keeps custody frozen. Releasing custody
+previously verified version's canonical description, type and version may remain.
+The bounded read must return exactly one description/version pair with the
+expected integer datatype; an extra version cannot be hidden by filtering for
+the older one. A conflicting, partial or newer effect keeps custody frozen. Releasing custody
 only prepares a fresh candidate for the next normal tick. That tick reads the
 current native source and allocates a new ID for its one new write.
 

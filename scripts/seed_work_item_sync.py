@@ -99,12 +99,18 @@ def completed_without_effect(post, journal, envelope, item):
     # or a conflicting/newer version, and never require the entire subject gone.
     graph = projection.safe_iri(envelope['request']['graph'])
     subject = projection.safe_iri(projection.A + item)
-    found = post('/query', {'query': f'SELECT ?v WHERE {{ GRAPH {graph} {{ {subject} a <{projection.A}WorkItem> ; <{native.SCHEMA}version> \"{previous[0]}\"^^<http://www.w3.org/2001/XMLSchema#integer> ; <{native.RDFS}comment> ?v }} }} LIMIT 129'})
+    found = post('/query', {'query': f'SELECT ?version ?v ?datatype WHERE {{ GRAPH {graph} {{ {subject} a <{projection.A}WorkItem> ; <{native.SCHEMA}version> ?version ; <{native.RDFS}comment> ?v }} BIND(IF(DATATYPE(?version) = <http://www.w3.org/2001/XMLSchema#integer>, \"integer\", \"other\") AS ?datatype) }} LIMIT 129'})
     if (not isinstance(found, dict) or found.get('truncated') is not False
             or not isinstance(found.get('rows'), list) or len(found['rows']) != 1):
         return False
+    row = found['rows'][0]
+    if not isinstance(row, dict) or set(row) != {'version', 'v', 'datatype'}:
+        return False
     try:
-        prior = json.loads(native.lexical(found['rows'][0].get('v')))
+        if (native.lexical(row.get('version')) != str(previous[0])
+                or native.lexical(row.get('datatype')) != 'integer'):
+            return False
+        prior = json.loads(native.lexical(row.get('v')))
         expected = json.loads(envelope['description'])
     except (ValueError, TypeError, AttributeError):
         return False

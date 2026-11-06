@@ -39,10 +39,10 @@ class Reconciliation(unittest.TestCase):
                 raise TimeoutError('fault-injected unconfirmed writer response')
             return {'replaced': True, 'tx_id': 99, 'conforms': True}
         query = body['query']
-        if 'BIND(' in query:
+        if 'BIND(' in query and 'SELECT ?version ?v' not in query:
             return {'rows': rows(**{native.SCHEMA+'version': {
                 'value': str(getattr(self, 'native_version', 3)),
-                'datatype': 'xsd:integer'}}), 'truncated': False}
+                'datatype': 'integer'}}), 'truncated': False}
         if query.startswith('ASK '):
             if '?p ?o' in query:
                 self.absence_queries = getattr(self, 'absence_queries', []) + [query]
@@ -50,6 +50,10 @@ class Reconciliation(unittest.TestCase):
                     'result': self.description is not None, 'truncated': False})
             return getattr(self, 'control_answer', {
                 'result': self.description is not None, 'truncated': False})
+        if 'SELECT ?version ?v' in query:
+            return {'rows': [{'version': str(json.loads(self.description)['source_version']),
+                              'v': self.description, 'datatype': 'integer'}] if self.description else [],
+                    'truncated': False}
         return getattr(self, 'description_answer', {
             'rows': [{'v': self.description}] if self.description else [],
             'truncated': False})
@@ -227,7 +231,8 @@ class Reconciliation(unittest.TestCase):
                 return {'contract': 'quipu.knot-completion/v1',
                         'write_id': body['write_id'], 'state': 'stopped'}
             result = dataset.query(body['query'])
-            return {'rows': [{'v': str(row.v)} for row in result], 'truncated': False}
+            return {'rows': [{str(name): str(value) for name, value in row.asdict().items()}
+                             for row in result], 'truncated': False}
         self.assertTrue(sync.completed_without_effect(post, self.j, envelope, ID))
         subject = URIRef(sync.projection.A + ID)
         triple = (subject, RDF.type, URIRef(sync.projection.A + 'WorkItem'))
@@ -235,6 +240,31 @@ class Reconciliation(unittest.TestCase):
         self.assertFalse(sync.completed_without_effect(post, self.j, envelope, ID))
         graph.add(triple)
         graph.parse(data=envelope['request']['turtle'], format='turtle')
+        self.assertFalse(sync.completed_without_effect(post, self.j, envelope, ID))
+
+    def test_extra_version_fact_cannot_be_hidden_by_previous_version_match(self):
+        from rdflib import Dataset, URIRef, Literal
+        self.assertEqual(self.tick()['verified'], 1)
+        prior = self.last_envelope
+        self.j.retain(page(11))
+        self.native_version = 4
+        envelope = json.loads(self.fail_write())
+        dataset = Dataset()
+        graph = dataset.graph(URIRef(prior['request']['graph']))
+        graph.parse(data=prior['request']['turtle'], format='turtle')
+        def post(endpoint, body):
+            if endpoint == '/knot/status':
+                return {'contract': 'quipu.knot-completion/v1',
+                        'write_id': body['write_id'], 'state': 'stopped'}
+            result = dataset.query(body['query'])
+            return {'rows': [{str(name): str(value) for name, value in row.asdict().items()}
+                             for row in result], 'truncated': False}
+        self.assertTrue(sync.completed_without_effect(post, self.j, envelope, ID))
+        graph.add((URIRef(sync.projection.A + ID), URIRef(native.SCHEMA + 'version'),
+                   Literal(5)))
+        self.assertFalse(sync.completed_without_effect(post, self.j, envelope, ID))
+        graph.set((URIRef(sync.projection.A + ID), URIRef(native.SCHEMA + 'version'),
+                   Literal('3')))
         self.assertFalse(sync.completed_without_effect(post, self.j, envelope, ID))
 
     def test_same_verified_version_cannot_be_automatically_repaired(self):
