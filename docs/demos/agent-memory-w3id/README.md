@@ -1,5 +1,10 @@
 # Canonical memory validation demo
 
+This historical recording describes the previous candidate at the exact hashes
+below. Current generated profiles use per-predicate cardinality instead; see the
+[post-state write demonstration](../memory-write-safe/README.md). Passing this
+read-only validation did not establish write safety.
+
 This is a replayable terminal recording of read-only native `/validate` calls
 against fixture data on Quipu 0.16.6 (`dafe8bfedddfa01adf39cbc96e0d2f7e2a82e50f`).
 It demonstrates candidate profiles, not installation or actual memory capture.
