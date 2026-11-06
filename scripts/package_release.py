@@ -7,12 +7,15 @@ import hashlib
 import io
 import json
 import re
+import runpy
 import subprocess
 import tarfile
 import tempfile
 import sys
 from pathlib import Path
 
+
+repository_identity = runpy.run_path(str(Path(__file__).with_name("repository_identity.py")))["repository"]
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -113,6 +116,7 @@ def stable_namespace_source(source, prefix):
 def package(ref, version, output):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("release version must be stable major.minor.patch")
+    repository = repository_identity()
     revision = git("rev-parse", "--verify", ref + "^{commit}").decode().strip()
     for file in (".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"):
         metadata = json.loads(git("show", revision + ":" + file))
@@ -136,7 +140,7 @@ def package(ref, version, output):
     archive.write_bytes(compressed.getvalue())
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     (output / "SHA256SUMS").write_text(digest + "  " + archive.name + "\n")
-    provenance = {"repository": "https://github.com/scbrown/camayoc", "tag": "v" + version,
+    provenance = {"repository": "https://github.com/" + repository, "tag": "v" + version,
                   "version": version, "source_revision": revision,
                   "artifact": archive.name, "sha256": digest, "format": "git-archive-tar-gzip"}
     if compatibility is not None:

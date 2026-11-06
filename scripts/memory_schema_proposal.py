@@ -39,11 +39,11 @@ def vocabulary_gaps(text: str) -> list[str]:
     return sorted(shape_paths(text) - set(PROPS) - ALREADY_SANCTIONED_LIVE)
 
 
-def stable_profile(text: str, compatibility: bool = False) -> str:
+def stable_profile(text: str, compatibility: bool = False, write_safe: bool = True) -> str:
     """Canonical vocabulary, plus explicit legacy validation while reasoning is off.
 
     Only RDF IRIs change. Literals, individual IRIs and frozen ledgers stay put.
-    Compatibility shapes have stable names and explicit alternative paths; no writer
+    Compatibility shapes have stable names and literal-predicate branches; no writer
     flip or reactive-materialization assumption is needed for legacy cy records.
     """
     ledger = combined_ledger(ROOT)
@@ -51,32 +51,67 @@ def stable_profile(text: str, compatibility: bool = False) -> str:
     source = Graph().parse(data=text, format='turtle')
     result = remap_graph(source, mapping)
     if compatibility:
-        from rdflib import BNode, RDF, SH
+        from rdflib import BNode, SH
         from rdflib.collection import Collection
         inverse = {new: old for old, new in mapping.items()}
-        # One constraint counts BOTH spellings, including mixed records. Two
-        # independent profiles would let a canonical class with legacy fields
-        # evade the scoped Directive requirement (or vice versa).
-        for shape, pred, value in list(result):
-            old = inverse.get(str(value)) if isinstance(value, URIRef) else None
-            if not old:
-                continue
-            legacy = URIRef(old)
-            if pred in (SH.targetClass, SH.targetSubjectsOf):
-                result.add((shape, pred, legacy))
-            elif pred == SH.path:
-                path, choices = BNode(), BNode()
-                Collection(result, choices, [value, legacy])
-                result.remove((shape, pred, value))
-                result.add((shape, pred, path))
-                result.add((path, SH.alternativePath, choices))
-            elif pred == SH['class']:
+        # Convert class choices before sharing their constraint nodes between
+        # the two predicate branches. Canonical classes and legacy classes pass.
+        for shape, value in list(result.subject_objects(SH['class'])):
+            old = inverse.get(str(value))
+            if old:
                 choices, left, right = BNode(), BNode(), BNode()
-                result.remove((shape, pred, value))
+                result.remove((shape, SH['class'], value))
                 result.add((shape, SH['or'], choices))
                 Collection(result, choices, [left, right])
                 result.add((left, SH['class'], value))
-                result.add((right, SH['class'], legacy))
+                result.add((right, SH['class'], URIRef(old)))
+        for shape, pred, value in list(result):
+            old = inverse.get(str(value)) if isinstance(value, URIRef) else None
+            if old and pred in (SH.targetClass, SH.targetSubjectsOf):
+                result.add((shape, pred, URIRef(old)))
+        # Cardinality is per literal predicate, never on an alternativePath.
+        # Required values may use either spelling. This intentionally does NOT
+        # promise a union cardinality across aliases; that needs engine support.
+        gates = {}
+        for prop, value in sorted(result.subject_objects(SH.path), key=lambda pair: str(pair[1])):
+            old = inverse.get(str(value))
+            if not old:
+                continue
+            legacy = URIRef(old)
+            if not write_safe:
+                # The excluded Decision proposal keeps its reviewed bytes.
+                path, choices = BNode(), BNode()
+                Collection(result, choices, [value, legacy])
+                result.remove((prop, SH.path, value))
+                result.add((prop, SH.path, path))
+                result.add((path, SH.alternativePath, choices))
+                continue
+            owners = list(result.subjects(SH.property, prop))
+            twin = BNode()
+            for key, obj in list(result.predicate_objects(prop)):
+                result.add((twin, key, legacy if key == SH.path else obj))
+            minimum = result.value(prop, SH.minCount)
+            result.remove((prop, SH.minCount, None))
+            result.remove((twin, SH.minCount, None))
+            for owner in owners:
+                result.add((owner, SH.property, twin))
+            if minimum is not None:
+                gate, choices = BNode(), BNode()
+                branches = []
+                for predicate in (value, legacy):
+                    branch, required = BNode(), BNode()
+                    result.add((branch, SH.property, required))
+                    result.add((required, SH.path, predicate))
+                    result.add((required, SH.minCount, minimum))
+                    branches.append(branch)
+                Collection(result, choices, branches)
+                result.add((gate, SH['or'], choices))
+                for owner in owners:
+                    gates.setdefault(owner, []).append(gate)
+        for owner, fields in gates.items():
+            conjunction = BNode()
+            Collection(result, conjunction, fields)
+            result.add((owner, SH['and'], conjunction))
     else:
         used = {str(x) for triple in source for x in triple if isinstance(x, URIRef)}
         result += alias_graph({'pairs': [r for r in ledger['pairs'] if r['old'] in used]})
@@ -173,7 +208,7 @@ def main() -> None:
         legacy_ontology.write_text(onto_ttl)
 
     def write(fname, kind, target, diff, rationale):
-        (out / fname).write_text(json.dumps({"kind": kind, "target": target, "diff": stable_profile(diff, kind == "shape"),
+        (out / fname).write_text(json.dumps({"kind": kind, "target": target, "diff": stable_profile(diff, kind == "shape", not fname.startswith("04-")),
             "proposer": PROPOSER, "rationale": rationale, "trigger_ref": TRIGGER}, indent=2) + "\n")
 
     write("01-ontology.json", "ontology", "camayoc-agent-memory-vocabulary", onto_ttl,

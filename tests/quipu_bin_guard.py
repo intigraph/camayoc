@@ -60,6 +60,9 @@ QUIPU_SERVER = os.environ.get("QUIPU_SERVER_BIN") or shutil.which("quipu-server"
 #: A `quipu` CLI new enough for `validate --format json` (0.16+). No PATH
 #: fallback: an older CLI on PATH prints text, which would read as a broken test.
 QUIPU_REPORT = os.environ.get("QUIPU_REPORT_BIN")
+#: The separately pinned post-state writer baseline. Do not fall back to the
+#: legacy integration server: it predates the behavior this comparison probes.
+QUIPU_MEMORY_SERVER = os.environ.get("QUIPU_MEMORY_SERVER_BIN")
 
 _WHERE = (
     "The {program} gates run in the `integration` job of "
@@ -122,6 +125,15 @@ def requires_quipu(target):
 def requires_quipu_server(target):
     """Gate a suite or test on `quipu-server`, honouring QUIPU_SERVER_BIN."""
     return _guard(target, QUIPU_SERVER, "QUIPU_SERVER_BIN", "quipu-server")
+
+
+def requires_quipu_memory_server(target):
+    """Honor the integration job's dedicated post-state server promise."""
+    return _guard(target, QUIPU_MEMORY_SERVER, "QUIPU_MEMORY_SERVER_BIN",
+                  "quipu-server",
+                  where="The memory write-plan comparison runs in the integration "
+                  "job with its separately pinned {env_var}. Set that variable "
+                  "to the documented baseline to reproduce it locally.")
 
 
 def requires_quipu_report(target):

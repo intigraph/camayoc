@@ -1,0 +1,55 @@
+Script started on 2026-11-04 02:02:10-05:00 [COMMAND="stty -onlcr && uv run --no-project --with rdflib python docs/demos/memory-write-safe/demo.py" <not executed on terminal>]
+⠋ Resolving dependencies...                                                     [2K⠙ Resolving dependencies...                                                     [2K⠋ Resolving dependencies...                                                     [2K⠙ Resolving dependencies...                                                     [2K⠙ rdflib==7.6.0                                                                 [2K⠙ pyparsing==3.3.3                                                              [2K⠙                                                                               [2Kquipu-server 0.16.6
+git_sha: 678f687ef02cae46a38dd24fa9e6f0367e9c960e
+git_dirty: false
+test_old_alternative_cardinality_blocks_an_unrelated_write (test_memory_write_safe_profiles.MemoryWritePlan.test_old_alternative_cardinality_blocks_an_unrelated_write) ... /knot <urn:test:probe>: HTTP 200, conforms=True
+/shapes old-control: HTTP 200, conforms=not returned
+/knot <urn:test:probe>: HTTP 400, conforms=not returned
+ok
+test_replacements_allow_writes_and_keep_record_constraints (test_memory_write_safe_profiles.MemoryWritePlan.test_replacements_allow_writes_and_keep_record_constraints) ... /shapes fixture-vocabulary: HTTP 200, conforms=not returned
+/shapes camayoc-agent-memory: HTTP 200, conforms=not returned
+/shapes camayoc-agent-memory-directive: HTTP 200, conforms=not returned
+/knot <urn:test:legacy>: HTTP 200, conforms=True
+/knot <urn:test:probe:legacy>: HTTP 200, conforms=True
+/knot <urn:test:canonical>: HTTP 200, conforms=True
+/knot <urn:test:probe:canonical>: HTTP 200, conforms=True
+/knot <urn:test:mixed>: HTTP 200, conforms=True
+/knot <urn:test:probe:mixed>: HTTP 200, conforms=True
+/knot <urn:test:missing>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing>: HTTP 200, conforms=True
+/knot <urn:test:twice>: HTTP 200, conforms=False
+/knot <urn:test:probe:twice>: HTTP 200, conforms=True
+/knot <urn:test:dual>: HTTP 200, conforms=True
+/knot <urn:test:probe:dual>: HTTP 200, conforms=True
+/knot <urn:test:dual-identical>: HTTP 200, conforms=True
+/knot <urn:test:probe:dual-identical>: HTTP 200, conforms=True
+/knot <urn:test:wrong-type>: HTTP 200, conforms=False
+/knot <urn:test:probe:wrong-type>: HTTP 200, conforms=True
+/knot <urn:test:old>: HTTP 200, conforms=True
+/knot <urn:test:probe:old-directive>: HTTP 200, conforms=True
+/knot <urn:test:missing-label>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-label>: HTTP 200, conforms=True
+/knot <urn:test:missing-sourceKind>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-sourceKind>: HTTP 200, conforms=True
+/knot <urn:test:missing-recordedAt>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-recordedAt>: HTTP 200, conforms=True
+/knot <urn:test:missing-recordedBy>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-recordedBy>: HTTP 200, conforms=True
+/knot <urn:test:missing-contentHash>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-contentHash>: HTTP 200, conforms=True
+/knot <urn:test:missing-issuedBy>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-issuedBy>: HTTP 200, conforms=True
+/knot <urn:test:missing-appliesTo>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-appliesTo>: HTTP 200, conforms=True
+/knot <urn:test:missing-topic>: HTTP 200, conforms=False
+/knot <urn:test:probe:missing-topic>: HTTP 200, conforms=True
+/knot <urn:test:legacy>: HTTP 200, conforms=True
+/knot <urn:test:legacy>: HTTP 400, conforms=not returned
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.401s
+
+OK
+
+Script done on 2026-11-04 02:02:12-05:00 [COMMAND_EXIT_CODE="0"]

@@ -10,11 +10,15 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shutil
 import sqlite3
 import io
 import tarfile
 import subprocess
+
+
+repository_identity = runpy.run_path(str(Path(__file__).with_name("repository_identity.py")))["repository"]
 
 
 def command(args, *, env=None, cwd=None):
@@ -252,12 +256,10 @@ def verify_former_names(export):
 
 
 def build(revision, source, tooling, binary, bobbin, output):
-    repository = "scbrown/camayoc"
+    repository = repository_identity()
     source, tooling, output = map(Path, (source, tooling, output))
     if output.exists():
         raise ValueError("repository share output already exists")
-    if not re.fullmatch(r"scbrown/[a-z][a-z0-9-]*", repository):
-        raise ValueError("invalid repository identity")
     slug = repository.split("/")[1]
     if (
         not re.fullmatch(r"[0-9a-f]{40}", revision)
