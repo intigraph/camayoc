@@ -8,13 +8,15 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
 
-REPOSITORY = "scbrown/camayoc"
+repository_identity = runpy.run_path(str(Path(__file__).with_name("repository_identity.py")))["repository"]
+
 MEMBERS = {"export.nt", "export.ttl", "payload.nq", "manifest.json", "manifest.ttl", "shapes.ttl", "queries.ttl"}
 
 
@@ -91,6 +93,7 @@ def publish(tag, revision, output):
         raise ValueError("unexpected Camayoc release tag")
     if not re.fullmatch("[0-9a-f]{40}", revision):
         raise ValueError("invalid release revision")
+    repository = repository_identity()
     source = Path(__file__).resolve().parents[1]
     if (
         command(["git", "-C", source, "rev-parse", "HEAD"]).strip() != revision
@@ -132,7 +135,7 @@ def publish(tag, revision, output):
         (prepared / (archive_name + ".sha256")).write_text(digest(archive) + "  " + archive_name + "\n")
         proof = {
             "schema": "quipu.repository-share-producer/v1",
-            "source_repository": REPOSITORY,
+            "source_repository": repository,
             "source_revision": revision,
             "release_tag": tag,
             "archive_sha256": digest(archive),
@@ -146,7 +149,7 @@ def publish(tag, revision, output):
         names = sorted(p.name for p in prepared.iterdir())
         if held():
             raise ValueError("publication held after preparation")
-        available = json.loads(command(["gh", "release", "view", tag, "--repo", REPOSITORY, "--json", "assets"]))
+        available = json.loads(command(["gh", "release", "view", tag, "--repo", repository, "--json", "assets"]))
         present = {a["name"] for a in available["assets"]} & set(names)
         if present and present != set(names):
             raise ValueError("partial publication; explicit reconciliation required")
@@ -156,7 +159,7 @@ def publish(tag, revision, output):
         if not present:
             if held():
                 raise ValueError("publication held immediately before upload")
-            command(["gh", "release", "upload", tag, "--repo", REPOSITORY, *(output / name for name in names)])
+            command(["gh", "release", "upload", tag, "--repo", repository, *(output / name for name in names)])
         downloaded = private / "downloaded"
         downloaded.mkdir()
         command(
@@ -166,7 +169,7 @@ def publish(tag, revision, output):
                 "download",
                 tag,
                 "--repo",
-                REPOSITORY,
+                repository,
                 "--dir",
                 downloaded,
                 *(arg for name in names for arg in ("--pattern", name)),

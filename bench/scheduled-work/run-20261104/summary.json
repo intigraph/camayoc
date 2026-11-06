@@ -1,0 +1,518 @@
+{
+  "dataset_sha256": "ef2cb7a34d4d95e8c48a218353cd50821521454d753a383a061cb735d25032ee",
+  "model": "jev-1.14.0",
+  "label_channel": "agent-reference",
+  "thresholds": {
+    "high": 0.8,
+    "low": 0.2
+  },
+  "groups": {
+    "operational-paraphrase": {
+      "n": 8,
+      "judged": 8,
+      "tn": 7,
+      "uncertain": 1,
+      "tp": 1,
+      "flag_agreement": 1.0
+    },
+    "synthetic-control": {
+      "n": 24,
+      "judged": 24,
+      "tp": 12,
+      "uncertain": 3,
+      "tn": 12,
+      "flag_agreement": 1.0
+    }
+  },
+  "rows": [
+    {
+      "id": "case-01",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": true,
+        "scheduled_work": true
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.94,
+        "scheduled_work": 0.96
+      }
+    },
+    {
+      "id": "case-02",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.09,
+        "scheduled_work": 0.09
+      }
+    },
+    {
+      "id": "case-03",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.06,
+        "scheduled_work": 0.95
+      }
+    },
+    {
+      "id": "case-04",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "uncertain",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.14,
+        "scheduled_work": 0.34
+      }
+    },
+    {
+      "id": "case-05",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.05
+      }
+    },
+    {
+      "id": "case-06",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.06,
+        "scheduled_work": 0.1
+      }
+    },
+    {
+      "id": "case-07",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.07
+      }
+    },
+    {
+      "id": "case-08",
+      "kind": "operational-paraphrase",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.14
+      }
+    },
+    {
+      "id": "case-09",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.05,
+        "scheduled_work": 0.9
+      }
+    },
+    {
+      "id": "case-10",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.1,
+        "scheduled_work": 0.98
+      }
+    },
+    {
+      "id": "case-11",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.09,
+        "scheduled_work": 0.98
+      }
+    },
+    {
+      "id": "case-12",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.98
+      }
+    },
+    {
+      "id": "case-13",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.1,
+        "scheduled_work": 0.81
+      }
+    },
+    {
+      "id": "case-14",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.96
+      }
+    },
+    {
+      "id": "case-15",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.06,
+        "scheduled_work": 0.95
+      }
+    },
+    {
+      "id": "case-16",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.98
+      }
+    },
+    {
+      "id": "case-17",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.06,
+        "scheduled_work": 0.97
+      }
+    },
+    {
+      "id": "case-18",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.08,
+        "scheduled_work": 0.98
+      }
+    },
+    {
+      "id": "case-19",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.05,
+        "scheduled_work": 0.97
+      }
+    },
+    {
+      "id": "case-20",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": true
+      },
+      "status": "flag",
+      "expected_flag": true,
+      "predicted_flag": true,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.96
+      }
+    },
+    {
+      "id": "case-21",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": true,
+        "scheduled_work": true
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.95,
+        "scheduled_work": 0.97
+      }
+    },
+    {
+      "id": "case-22",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": true,
+        "scheduled_work": true
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.94,
+        "scheduled_work": 0.93
+      }
+    },
+    {
+      "id": "case-23",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": true,
+        "scheduled_work": true
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.95,
+        "scheduled_work": 0.86
+      }
+    },
+    {
+      "id": "case-24",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": true,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.95,
+        "scheduled_work": 0.05
+      }
+    },
+    {
+      "id": "case-25",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": true,
+        "scheduled_work": true
+      },
+      "status": "uncertain",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.78,
+        "scheduled_work": 0.93
+      }
+    },
+    {
+      "id": "case-26",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": true,
+        "scheduled_work": true
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.93,
+        "scheduled_work": 0.92
+      }
+    },
+    {
+      "id": "case-27",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.1,
+        "scheduled_work": 0.13
+      }
+    },
+    {
+      "id": "case-28",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "uncertain",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.26
+      }
+    },
+    {
+      "id": "case-29",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.06,
+        "scheduled_work": 0.09
+      }
+    },
+    {
+      "id": "case-30",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.06,
+        "scheduled_work": 0.2
+      }
+    },
+    {
+      "id": "case-31",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "uncertain",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.22
+      }
+    },
+    {
+      "id": "case-32",
+      "kind": "synthetic-control",
+      "expected": {
+        "chaski_trigger": false,
+        "scheduled_work": false
+      },
+      "status": "clear",
+      "expected_flag": false,
+      "predicted_flag": false,
+      "probabilities": {
+        "chaski_trigger": 0.07,
+        "scheduled_work": 0.05
+      }
+    }
+  ],
+  "unknown": 0,
+  "misses": [],
+  "adoption": "flag-only; refusal requires a separate owner ruling",
+  "calls": 32,
+  "list_price_usd": "0.000590856",
+  "known_input_list_price_usd": "0.000590856",
+  "unaccounted_calls": 0,
+  "invoice_verified": false,
+  "retries": 0
+}

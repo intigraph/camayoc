@@ -1,0 +1,30 @@
+{
+  "data": {
+    "context": {
+      "id": "8db824b39aad0dd498c0788c129defcd",
+      "source": "example-cd/deploy",
+      "timestamp": "2026-10-14T19:41:59Z",
+      "type": "dev.cdevents.service.deployed.0.2.0",
+      "version": "0.4.1"
+    },
+    "subject": {
+      "content": {
+        "artifactId": "pkg:github/example/example-svc@3392682256648f3ec088dd768b270a0097089a7a",
+        "environment": {
+          "id": "deploy-host.example.invalid",
+          "source": "example-cd/deploy"
+        }
+      },
+      "id": "example-svc",
+      "source": "example-cd/deploy",
+      "type": "service"
+    }
+  },
+  "datacontenttype": "application/json",
+  "id": "8db824b39aad0dd498c0788c129defcd",
+  "source": "example-cd/deploy",
+  "specversion": "1.0",
+  "subject": "example-svc",
+  "time": "2026-10-14T19:41:59Z",
+  "type": "dev.cdevents.service.deployed.0.2.0"
+}

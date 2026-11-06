@@ -1,0 +1,45 @@
+{
+  "title": "Camayoc: check an event before admitting it",
+  "description": "Actual adapter source API compiles public synthetic CloudEvents; unknown type is quarantined. Preview prints selected mapped fields and performs no post.",
+  "width": 1000,
+  "height": 620,
+  "font_size": 24,
+  "line_height": 32,
+  "inputs": [
+    "preview-event.py",
+    "scripts/ingest_cdevents.py",
+    "scripts/planes.py",
+    "scripts/windows.py",
+    "scripts/quipu_auth.py",
+    "mappings/cdevents.json",
+    "deployed.json",
+    "unmapped-type.json"
+  ],
+  "steps": [
+    {
+      "tool": "python3",
+      "args": [
+        "preview-event.py",
+        "deployed.json"
+      ],
+      "hold": 10,
+      "requires": [
+        "Mapped class: DeploymentEvent",
+        "Outcome: succeeded",
+        "Preview only"
+      ]
+    },
+    {
+      "tool": "python3",
+      "args": [
+        "preview-event.py",
+        "unmapped-type.json"
+      ],
+      "hold": 10,
+      "exit": 2,
+      "requires": [
+        "Quarantined: no mapping for CDEvents type"
+      ]
+    }
+  ]
+}

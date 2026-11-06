@@ -9,6 +9,8 @@ import shutil
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
+import os
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location("package_release", Path(__file__).resolve().parents[1] / "scripts/package_release.py")
@@ -140,6 +142,11 @@ class SourceRelease(unittest.TestCase):
             for row in [*manifest['files'], manifest['aliases']]:
                 content = archive.extractfile(base+row['path']).read()
                 self.assertEqual(hashlib.sha256(content).hexdigest(), row['sha256'])
+
+    def test_release_provenance_uses_hosted_repository_context(self):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "release-owner/source-fixture"}):
+            proof = PACK.package("HEAD", "0.1.0", self.root / "context-provenance")
+        self.assertEqual(proof["repository"], "https://github.com/release-owner/source-fixture")
 
     def test_same_revision_repeats_identical_bytes(self):
         one = PACK.package("HEAD", "0.1.0", self.root / "one")

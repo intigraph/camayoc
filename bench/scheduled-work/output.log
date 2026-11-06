@@ -1,0 +1,15 @@
+Script started on 2026-11-04 13:42:42-05:00 [COMMAND="python3 bench/scheduled-work/demo.py" <not executed on terminal>]
+Source checkout demo; base 088c403d7541eca1acad9a112aa8ab35d5410134
+Candidate: scheduled-work adapter; actual recorded responses replayed, ZERO network calls
+
+INPUT case-09 {"title": "Hourly report", "body": "Run X every hour via cron."}
+BEFORE: unknown tool 'check_scheduled_work'
+AFTER: {"outcome": "flag", "labels_to_add": ["needs-chaski"], "sourceKind": "inferred", "plane": "quarantine", "refuses_write": false}
+
+INPUT case-21 {"title": "Daily graph-owned scan", "body": "Create a Chaski reaction that runs the scan when its Quipu stored deadline expires each day."}
+BEFORE: unknown tool 'check_scheduled_work'
+AFTER: {"outcome": "clear", "labels_to_add": [], "sourceKind": "inferred", "plane": "quarantine", "refuses_write": false}
+
+PASS: cron flag + explicit Chaski trigger control; no tracker writes or installation claim
+
+Script done on 2026-11-04 13:42:42-05:00 [COMMAND_EXIT_CODE="0"]

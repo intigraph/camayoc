@@ -28,6 +28,9 @@ verifier = load("verifier_test", ROOT / "verify-repository-share.py")
 
 class Publication(unittest.TestCase):
     def setUp(self):
+        environment = patch.dict(os.environ, {"GITHUB_REPOSITORY": "intigraph/camayoc"})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -46,7 +49,7 @@ class Publication(unittest.TestCase):
         self.archive.with_name(self.archive.name + ".sha256").write_text(sha + "  " + self.archive.name + "\n")
         self.proof = {
             "schema": "quipu.repository-share-producer/v1",
-            "source_repository": "scbrown/camayoc",
+            "source_repository": "intigraph/camayoc",
             "source_revision": self.revision,
             "release_tag": "v1.2.3",
             "archive_sha256": sha,
@@ -118,6 +121,32 @@ class Publication(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "hold state unreadable"):
                     publisher.held()
 
+    def test_repository_context_and_origin_validation(self):
+        for identity in ("intigraph/camayoc", "another-owner/renamed-repo"):
+            with self.subTest(identity=identity), patch.dict(os.environ, {"GITHUB_REPOSITORY": identity}):
+                self.assertEqual(publisher.repository_identity(), identity)
+        for identity in ("", "../camayoc", "owner/repo/extra", "https://github.com/owner/repo", "owner/repo\n"):
+            with self.subTest(identity=identity), patch.dict(os.environ, {"GITHUB_REPOSITORY": identity}):
+                with self.assertRaisesRegex(ValueError, "invalid GITHUB_REPOSITORY"):
+                    publisher.repository_identity()
+        with patch.dict(os.environ):
+            os.environ.pop("GITHUB_REPOSITORY", None)
+            for remote in ("https://github.com/intigraph/camayoc.git", "git@github.com:intigraph/camayoc.git"):
+                with patch("subprocess.check_output", return_value=remote):
+                    self.assertEqual(publisher.repository_identity(), "intigraph/camayoc")
+            with patch("subprocess.check_output", return_value="https://example.org/intigraph/camayoc.git"):
+                with self.assertRaisesRegex(ValueError, "origin must identify"):
+                    publisher.repository_identity()
+
+    def test_context_changes_expected_provenance_without_accepting_old_owner(self):
+        self.prepare()
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "another-owner/renamed-repo"}):
+            with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+                verifier.verify(self.root, "v1.2.3", self.revision)
+            self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "another-owner/renamed-repo"}))
+            self.assertEqual(verifier.verify(self.root, "v1.2.3", self.revision)["source_repository"],
+                             "another-owner/renamed-repo")
+
     def test_wait_is_bounded(self):
         calls, pauses = [], []
 
@@ -130,6 +159,7 @@ class Publication(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "bounded"):
             verifier.wait("v1.2.3", self.revision, attempts=2, pause=pauses.append, run=run)
+        self.assertTrue(all(args[args.index("--repo") + 1] == "intigraph/camayoc" for args in calls))
         self.assertEqual(len(calls), 2)
         self.assertEqual(pauses, [30])
 

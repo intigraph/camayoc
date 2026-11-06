@@ -56,7 +56,7 @@ jobs:
         run: |
           set -euo pipefail
           asset="quipu-${QUIPU_TAG}-x86_64-unknown-linux-gnu.tar.gz"
-          curl -fsSL --retry 3 -o "$asset" "https://github.com/scbrown/quipu/releases/download/${QUIPU_TAG}/$asset"
+          curl -fsSL --retry 3 --retry-all-errors -o "$asset" "https://github.com/intigraph/quipu/releases/download/${QUIPU_TAG}/$asset"
           echo "$QUIPU_SHA256  $asset" | sha256sum -c -
           tar -xzf "$asset"
           dependency="$PWD/quipu-${QUIPU_TAG}-x86_64-unknown-linux-gnu"

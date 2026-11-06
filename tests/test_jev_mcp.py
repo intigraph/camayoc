@@ -197,10 +197,10 @@ class ProtocolBasics(unittest.TestCase):
         self.assertIn("tools", r["result"]["capabilities"])
         self.assertEqual(r["result"]["serverInfo"]["name"], "jev")
 
-    def test_tools_list_has_the_four_tools(self):
+    def test_tools_list_includes_the_advisory_seed_preflight(self):
         r = jev_mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         names = sorted(t["name"] for t in r["result"]["tools"])
-        self.assertEqual(names, ["jev_choice", "jev_dry_run", "jev_noul", "jev_score", "map_question"])
+        self.assertEqual(names, ["check_scheduled_work", "jev_choice", "jev_dry_run", "jev_noul", "jev_score", "map_question"])
 
     def test_every_tool_declares_a_usable_schema(self):
         r = jev_mcp.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})

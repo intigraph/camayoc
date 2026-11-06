@@ -1,0 +1,10 @@
+Script started on 2026-11-05 21:35:44-05:00 [COMMAND="python3 bench/scheduled-work/request-binding-demo.py" <not executed on terminal>]
+Offline request-binding repair; baseline 82066632011918d2844eb13718d1a746cdb042dc
+Original archive: 32 unchanged rows, unknown=0
+BEFORE: altered state accepted with original sidecar hash
+AFTER: altered state rejected: response embedded request does not match exact canonical request
+BEFORE: altered questions accepted with original sidecar hash
+AFTER: altered questions rejected: response embedded request does not match exact canonical request
+PASS: original data preserved; zero model requests; no adoption or installation claim
+
+Script done on 2026-11-05 21:35:44-05:00 [COMMAND_EXIT_CODE="0"]
