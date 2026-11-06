@@ -387,6 +387,16 @@ that adapter is implemented or independently certified.</p>
 unknown types and invalid mixed transactions leave every submitted subject
 absent; a valid proposed AdmissionPolicy is the positive writer control.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="source-releases"><a class="header" href="#source-releases">Source releases</a></h1>
+<h2 id="v016-release-preparation"><a class="header" href="#v016-release-preparation">v0.1.6 release preparation</a></h2>
+<p>Both plugin metadata files declare <code>0.1.6</code>. The release revision must also include
+the private repository-share query budget correction (#218) and the shared-node
+exclusion query optimization (#220). The earlier version-only merge (#219)
+predates #220 and is not a suitable release revision.</p>
+<p>Publish through the existing Release workflow from the reviewed release
+preparation merge, then verify both the source assets and the trusted producer's
+repository pendant assets. Source publication alone does not establish pendant
+acceptance. Keep existing consumers pinned to v0.1.5 until their separate upgrade
+and verification gates pass; do not replay its consumed producer attempt.</p>
 <p>Camayoc releases contain the tracked source tree used by the plugin and shell
 bootstrap, plus deterministic compatibility files built from that archived source. They do not contain a native Camayoc executable.</p>
 <p>A stable version tag matching both plugin metadata files produces three assets:</p>
