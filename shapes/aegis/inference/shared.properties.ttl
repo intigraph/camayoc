@@ -384,4 +384,3 @@ aegis:verifier a owl:DatatypeProperty ;
     rdfs:label "verifier" ;
     rdfs:comment "Who rendered the verdict, as a key id. Carried by both Verdict and VerifierRegistration — on the first it is a claim, on the second it is the registration that makes the claim checkable — so no rdfs:domain." ;
     rdfs:range xsd:string .
-

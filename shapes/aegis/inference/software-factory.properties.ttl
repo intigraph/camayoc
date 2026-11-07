@@ -414,4 +414,3 @@ aegis:verificationPoint a owl:DatatypeProperty ;
     rdfs:comment "The enforcement point at which this constraint is evaluated: \"PAG\" (Pre-Action Gate, before dispatch), \"ATM\" (Action-Time Monitor, mid-flight), \"PAA\" (Post-Action Auditor, after the action and before the next), \"tool_layer\", or \"policy_layer\". Finer than aegis:boundary, which stays the coarse action/transition split. Which points a constraint may occupy is decided by its class — see src/governance/placement.rs." ;
     rdfs:domain aegis:Policy ;
     rdfs:range xsd:string .
-

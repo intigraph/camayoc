@@ -9,4 +9,3 @@ ex:depends_on_transitive a rule:Rule ;
     rule:body "depends_on(?a, ?b), depends_on(?b, ?c)" ;
     rule:head "depends_on(?a, ?c)" ;
     rule:id "depends_on_transitive" .
-

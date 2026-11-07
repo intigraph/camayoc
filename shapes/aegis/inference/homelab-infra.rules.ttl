@@ -6,4 +6,3 @@ ex:runs_on_transitive a rule:Rule ;
     rule:body "runs_on(?svc, ?container), runs_on(?container, ?host)" ;
     rule:head "runs_on(?svc, ?host)" ;
     rule:id "runs_on_transitive" .
-

@@ -25,6 +25,13 @@ class DomainPacks(unittest.TestCase):
         self.assertEqual(set(assigned), source)
         self.assertFalse(self.manifest['automatic_load'])
 
+    def test_release_and_validation_source_fixtures_are_the_same_pin(self):
+        original = ROOT/'tests/fixtures/aegis-upstream/original-aegis-ontology.ttl'
+        validation = ROOT/'tests/fixtures/aegis-upstream/legacy-compatibility.shapes.ttl'
+        self.assertEqual(original.read_bytes(), validation.read_bytes())
+        self.assertEqual(hashlib.sha256(original.read_bytes()).hexdigest(),
+                         self.manifest['source_sha256'])
+
     def test_recombination_preserves_every_original_triple(self):
         combined = Graph()
         for file in sorted({r['file'] for r in self.manifest['shapes']}):
