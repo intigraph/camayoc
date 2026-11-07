@@ -404,7 +404,7 @@ aegis:groundingQuery a owl:DatatypeProperty ;
 aegis:gate a owl:DatatypeProperty ;
     rdfs:label "gate" ;
     rdfs:range xsd:string ;
-    rdfs:comment "A secondary condition narrowing when the check applies. NB this property is used in TWO senses in this vocabulary — a Predicate's applicability gate, and the gate that produced an aegis:Decision — which is why it carries no rdfs:domain. Two meanings under one name is a defect worth recording rather than hiding; splitting them is a vocabulary change with a migration behind it." .
+    rdfs:comment "A secondary condition narrowing when the check applies. NB this property is used in TWO senses in this vocabulary — a Predicate's applicability gate, and the gate that produced an aegis:GateApproval (a governance aegis:Decision before the GateApproval split) — which is why it carries no rdfs:domain. Two meanings under one name is a defect worth recording rather than hiding; splitting them is a vocabulary change with a migration behind it." .
 
 aegis:tier a owl:DatatypeProperty ;
     rdfs:label "tier" ;

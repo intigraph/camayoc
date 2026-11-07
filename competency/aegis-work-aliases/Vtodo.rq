@@ -1,0 +1,9 @@
+PREFIX ical: <http://www.w3.org/2002/12/cal/ical#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX schema: <https://schema.org/>
+SELECT DISTINCT ?item WHERE {
+  ?item a schema:Action .
+  ?item (skos:exactMatch|^skos:exactMatch) ?calendar .
+  ?calendar a ical:Vtodo .
+  FILTER (?calendar != ?item)
+} ORDER BY ?item

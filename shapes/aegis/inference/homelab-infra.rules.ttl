@@ -1,0 +1,8 @@
+# Staged source only. Compose every manifest member; no automatic load.
+@prefix ex: <http://aegis.gastown.local/rules/> .
+@prefix rule: <http://quipu.local/rule#> .
+
+ex:runs_on_transitive a rule:Rule ;
+    rule:body "runs_on(?svc, ?container), runs_on(?container, ?host)" ;
+    rule:head "runs_on(?svc, ?host)" ;
+    rule:id "runs_on_transitive" .

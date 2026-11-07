@@ -1,0 +1,13 @@
+Script started on 2026-11-07 06:20:02-05:00 [COMMAND="stty -onlcr; .venv/bin/python docs/demos/domain-inference/reproduce.py" <not executed on terminal>]
+homelab-infra.rules.ttl: 4 triples
+shared.properties.ttl: 300 triples
+shared.rules.ttl: 6 triples
+software-factory.properties.ttl: 341 triples
+software-factory.rules.ttl: 4 triples
+original 655 triples -> split union 655 triples; RDF-isomorphic
+raw fixture: canonical=WorkItem=Bead=Vtodo; 2 canonical-only Action IDs, distinct calendar IDs
+negative: remove raw Bead subclass mapping -> Bead=0, canonical=2; equality REFUSED
+negative: remove calendar link -> Vtodo=1, canonical=2; equality REFUSED
+source-only: no network, load, rewrite, inference activation or removal
+
+Script done on 2026-11-07 06:20:03-05:00 [COMMAND_EXIT_CODE="0"]

@@ -61,7 +61,19 @@ aegis:BareMetalHostShape a sh:NodeShape ;
     sh:targetClass aegis:BareMetalHost .
 
 aegis:CommandDiskImpactObservationShape a sh:NodeShape ;
-    sh:property [ sh:datatype xsd:string ;
+    # Optional aggregate fields carried unchanged from the pinned Quipu source.
+    sh:property [ sh:path aegis:commandClass ;
+            sh:datatype xsd:string ; sh:maxCount 1 ;
+            sh:pattern "^[a-z]+:[a-z_]+$" ],
+        [ sh:path aegis:aggregateState ;
+            sh:datatype xsd:string ; sh:maxCount 1 ; sh:maxLength 32768 ],
+        [ sh:path aegis:runCount ;
+            sh:datatype xsd:integer ; sh:maxCount 1 ; sh:minInclusive 1 ],
+        [ sh:path aegis:maximumDeltaBytes ;
+            sh:datatype xsd:integer ; sh:maxCount 1 ],
+        [ sh:path aegis:p95DeltaBytes ;
+            sh:datatype xsd:integer ; sh:maxCount 1 ],
+        [ sh:datatype xsd:string ;
             sh:maxCount 1 ;
             sh:minCount 1 ;
             sh:path aegis:commandSignature ;

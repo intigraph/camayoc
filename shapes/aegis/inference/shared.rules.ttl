@@ -1,0 +1,11 @@
+# Staged source only. Compose every manifest member; no automatic load.
+@prefix ex: <http://aegis.gastown.local/rules/> .
+@prefix rule: <http://quipu.local/rule#> .
+
+ex:aegis a rule:RuleSet ;
+    rule:defaultPrefix "http://aegis.gastown.local/ontology/" .
+
+ex:depends_on_transitive a rule:Rule ;
+    rule:body "depends_on(?a, ?b), depends_on(?b, ?c)" ;
+    rule:head "depends_on(?a, ?c)" ;
+    rule:id "depends_on_transitive" .
