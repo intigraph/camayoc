@@ -1,0 +1,29 @@
+{
+  "release": "v0.1.7",
+  "previous_release": "v0.1.6",
+  "scope": "source preparation only; no published digest or runtime acceptance",
+  "reviewed_domain_source_revision": "f6372f6e43e762385b0b573c2ca5432afff544c9",
+  "source_rollback": "normal revert of release preparation; immutable published assets remain",
+  "consumer_rollback": "restore actual pre-operation producer/consumer pins and bytes, including any older compatibility pin; rehearse scoped shacl inverse before admission",
+  "domain": {
+    "node_shapes": 120,
+    "upstream_revision": "0bce50c1499994f8d1aef6bc585346288932636b",
+    "upstream_fixture_sha256": "e7fee83e08597b36d028da76e35c018d3d8843fb96a30ed80553456841f036a6",
+    "optional_constraint_delta": [
+      "commandClass",
+      "aggregateState",
+      "runCount",
+      "maximumDeltaBytes",
+      "p95DeltaBytes"
+    ],
+    "inference_composition_triples": 655,
+    "inference_manifest": "shapes/aegis/inference-placement.json",
+    "raw_alias_queries": "competency/aegis-work-aliases",
+    "automatic_load": false,
+    "installed_snapshot_equivalence": "not established"
+  },
+  "publication": "existing Release workflow only, after complete CI and ONE independent review",
+  "artifact_identity": "source.json and carried compatibility manifest generated from exact selected Git revision; verify published checksums independently",
+  "runtime_acceptance": "separate reviewed Gold pin/adapter, same-SHA LAB/inverse, and operator admission; no production removal",
+  "release_rollback": "retain independently verified v0.1.6 artifacts; never overwrite immutable release assets"
+}
