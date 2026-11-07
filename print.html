@@ -1207,6 +1207,29 @@ errors and backlog age; a backlog older than twice its bounded drain interval
 run. Operators must arm status, stale and absent detection with the scheduler.
 The scheduler should run this prerequisite before consumers; consumers retain
 their own canonical-presence checks.</p>
+<h3 id="native-seeds-timeout-reconciliation"><a class="header" href="#native-seeds-timeout-reconciliation">Native Seeds timeout reconciliation</a></h3>
+<p>The native SQLite producer persists a fresh 64-character lowercase hex write ID
+with the exact pending request before <code>/knot</code>. The HTTP transport sends it as
+<code>X-Quipu-Write-Id</code>. Polling uses <code>/knot/status</code> with that ID and the original
+request, under the same credential identity; it never resends the write to poll.</p>
+<p>An exact committed effect is verified without another write. Otherwise, retry
+requires the <code>quipu.knot-completion/v1</code> response to bind the original ID and prove
+<code>stopped</code> or <code>not_started</code>, followed by fresh absence proof. A stopped worker may
+have committed, so its state alone never permits retry. For a new item, both
+named-graph and default-graph subject absence must be proved. For an update, the
+previously verified version's canonical description, type and version may remain.
+The bounded read must return exactly one description/version pair with the
+expected integer datatype; an extra version cannot be hidden by filtering for
+the older one. A conflicting, partial or newer effect keeps custody frozen. Releasing custody
+only prepares a fresh candidate for the next normal tick. That tick reads the
+current native source and allocates a new ID for its one new write.</p>
+<p>Queued, running, unknown, malformed or mismatched completion receipts freeze the
+row. Missing endpoint support, evicted receipts, server restarts and old pending
+rows without an ID also stay unknown. A timeout or an elapsed clock interval
+never proves that the original writer has stopped. These are process-local
+completion receipts, not durable idempotency keys. Installation must separately
+verify native endpoint support; existing operator recovery and the 24-hour
+natural-tick acceptance remain separate from source tests.</p>
 <h3 id="standing-workitem-recovery-receipts"><a class="header" href="#standing-workitem-recovery-receipts">Standing WorkItem recovery receipts</a></h3>
 <p>These JSON adapter rules apply to repository-local tracker stores. The primary
 Seeds lane uses the separate SQLite custody implementation; this change neither
