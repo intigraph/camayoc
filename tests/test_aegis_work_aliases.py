@@ -1,13 +1,14 @@
 """Raw RDF gates; no endpoint rewriting, inference or production writes."""
 from pathlib import Path
 import unittest
-from rdflib import Graph, Namespace, RDF, URIRef
+from rdflib import Graph, Namespace, RDF, RDFS, URIRef
 
 ROOT = Path(__file__).resolve().parents[1]
 AEGIS = Namespace('http://aegis.gastown.local/ontology/')
 SCHEMA = Namespace('https://schema.org/')
 ICAL = Namespace('http://www.w3.org/2002/12/cal/ical#')
 SKOS = Namespace('http://www.w3.org/2004/02/skos/core#')
+DCTERMS = Namespace('http://purl.org/dc/terms/')
 
 
 def answers(graph):
@@ -17,12 +18,11 @@ def answers(graph):
 
 
 def populated():
-    graph = Graph()
+    graph = Graph().parse(ROOT/'ontology/core.ttl')
     for suffix in ('one', 'two'):
         item = URIRef(f'https://example.org/work/{suffix}')
         calendar = URIRef(f'https://example.org/calendar/{suffix}')
-        for kind in (SCHEMA.Action, AEGIS.WorkItem, AEGIS.Bead):
-            graph.add((item, RDF.type, kind))
+        graph.add((item, RDF.type, SCHEMA.Action))
         graph.add((calendar, RDF.type, ICAL.Vtodo))
         graph.add((item, SKOS.exactMatch, calendar))
     return graph
@@ -34,13 +34,27 @@ class RawAliases(unittest.TestCase):
         expected = {URIRef('https://example.org/work/'+s) for s in ('one', 'two')}
         self.assertEqual(list(result.values()), [expected]*4)
 
-    def test_missing_legacy_type_is_visible_without_inference(self):
-        for kind, view in ((AEGIS.WorkItem, 'WorkItem'), (AEGIS.Bead, 'Bead')):
+    def test_canonical_writes_need_no_duplicate_legacy_types(self):
+        graph = populated()
+        self.assertEqual(list(graph.subjects(RDF.type, AEGIS.WorkItem)), [])
+        self.assertEqual(list(graph.subjects(RDF.type, AEGIS.Bead)), [])
+        result = answers(graph)
+        self.assertEqual(list(result.values()), [result['canonical']]*4)
+
+    def test_missing_or_wrong_raw_class_mapping_is_visible(self):
+        for mode in ('replacement', 'subclass', 'wrong-replacement'):
             graph = populated()
-            graph.remove((URIRef('https://example.org/work/one'), RDF.type, kind))
+            if mode == 'subclass':
+                graph.remove((AEGIS.Bead, RDFS.subClassOf, AEGIS.WorkItem))
+            else:
+                graph.remove((AEGIS.WorkItem, DCTERMS.isReplacedBy, SCHEMA.Action))
+                if mode == 'wrong-replacement':
+                    graph.add((AEGIS.WorkItem, DCTERMS.isReplacedBy, SCHEMA.Thing))
             result = answers(graph)
-            self.assertNotEqual(result[view], result['canonical'])
-            self.assertEqual(len(result[view]), 1)
+            self.assertEqual(len(result['canonical']), 2)
+            self.assertEqual(result['Bead'], set(), mode)
+            if mode != 'subclass':
+                self.assertEqual(result['WorkItem'], set(), mode)
 
     def test_missing_wrong_or_identity_calendar_link_fails_population_gate(self):
         item = URIRef('https://example.org/work/one')

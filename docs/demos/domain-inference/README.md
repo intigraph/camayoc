@@ -3,7 +3,7 @@
 Target: isolated RDF fixtures and staged source, based on Camayoc `7363f71`.
 The original three property/rule inputs are unchanged. Their new domain/shared
 placement must recombine to the exact same RDF graph. The fixture then shows
-that raw alias equivalence detects a missing stored type and a missing calendar
+that raw alias equivalence detects a missing class mapping and a missing calendar
 link instead of treating rewritten queries as evidence.
 
 Run from the repository root with its review dependencies:

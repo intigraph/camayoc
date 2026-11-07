@@ -1,3 +1,9 @@
 PREFIX aegis: <http://aegis.gastown.local/ontology/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX schema: <https://schema.org/>
-SELECT DISTINCT ?item WHERE { ?item a aegis:Bead, schema:Action } ORDER BY ?item
+SELECT DISTINCT ?item WHERE {
+  aegis:Bead rdfs:subClassOf+ aegis:WorkItem .
+  aegis:WorkItem dcterms:isReplacedBy schema:Action .
+  ?item a schema:Action .
+} ORDER BY ?item

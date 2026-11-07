@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import sys
 
-from rdflib import Graph, RDF, URIRef
+from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.compare import isomorphic
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -22,15 +22,18 @@ for path in sorted(paths):
     after += graph
 assert isomorphic(before, after)
 print(f'original {len(before)} triples -> split union {len(after)} triples; RDF-isomorphic')
-result = answers(populated())
+positive = populated()
+assert not list(positive.subjects(RDF.type, AEGIS.WorkItem))
+assert not list(positive.subjects(RDF.type, AEGIS.Bead))
+result = answers(positive)
 assert all(items == result['canonical'] for items in result.values())
-print('raw fixture: canonical=WorkItem=Bead=Vtodo; 2 Action IDs, distinct calendar IDs')
+print('raw fixture: canonical=WorkItem=Bead=Vtodo; 2 canonical-only Action IDs, distinct calendar IDs')
 item = URIRef('https://example.org/work/one')
 graph = populated()
-graph.remove((item, RDF.type, AEGIS.Bead))
+graph.remove((AEGIS.Bead, RDFS.subClassOf, AEGIS.WorkItem))
 result = answers(graph)
-assert result['Bead'] != result['canonical']
-print('negative: remove explicit Bead type -> Bead=1, canonical=2; equality REFUSED')
+assert len(result['Bead']) == 0 and len(result['canonical']) == 2
+print('negative: remove raw Bead subclass mapping -> Bead=0, canonical=2; equality REFUSED')
 graph = populated()
 graph.remove((item, SKOS.exactMatch, None))
 result = answers(graph)
