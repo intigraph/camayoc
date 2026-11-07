@@ -1683,8 +1683,8 @@
       ]
     }
   ],
-  "source_commit": "43a344b5c13aa8cf5beaf5448522b6d84014f894",
+  "source_commit": "0bce50c1499994f8d1aef6bc585346288932636b",
   "source_repository": "scbrown/quipu",
-  "source_sha256": "9e3ad311f2703ac3a55eb367c92132a36f1086ebff897f938267a66aafb65843",
+  "source_sha256": "e7fee83e08597b36d028da76e35c018d3d8843fb96a30ed80553456841f036a6",
   "trim_source_commit": "41a1c2e05359c3b9cfb0091e6daf469604acc293"
 }

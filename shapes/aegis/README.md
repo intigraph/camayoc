@@ -42,8 +42,8 @@ domain question. The original constraints remain subject to the engine tests.
 
 The copied property and rule files retain original bytes. In particular, the
 property file documents domain-inference consequences and the transitive rules
-are not automatically loaded. Review their per-domain split and retained engine
-claims before any activation; no new inference is enabled here.
+are not automatically loaded. Their additive per-domain split is described below; retained engine
+claims still require review before activation. No new inference is enabled here.
 
 Rollout requires reviewed released artifacts, an admitted Gold pin candidate,
 same-SHA rehearsal/apply, unchanged loaded-set count, no new data violations and
@@ -87,3 +87,33 @@ behavior still needs its own review. A deployment must compose the declared
 files into its existing loaded-set contract, retain previous pins, and measure
 loaded vocabulary, data validation and alias-query behavior before removal of
 the upstream copies. Source isomorphism does not establish those runtime gates.
+
+## Per-domain property and rule source
+
+`inference-placement.json` pins the three unchanged copied inputs and assigns
+every subject to exactly one file under `inference/`. This is additive source,
+not a replacement release payload or a new inference activation. Existing
+constraint compatibility compilation and publication remain unchanged.
+
+- `software-factory.properties.ttl` owns declarations with explicit domains
+  (policy, principals, workflow, verification and code-production classes).
+- `shared.properties.ttl` owns declarations without an explicit domain. Range
+  alone does not establish an exclusive owner; none is invented here.
+- `homelab-infra.rules.ttl` owns `runs_on_transitive`.
+- `software-factory.rules.ttl` owns `git_commit_subsumes_commit`.
+- `shared.rules.ttl` owns the cross-domain `depends_on_transitive` rule and the
+  unchanged RuleSet/default-prefix declaration.
+
+No personal-media-only property or rule exists in these three original inputs;
+its constraints remain in the existing media pack. The placement test verifies
+pinned input bytes, complete subject assignments, exact per-file graphs, no
+duplicate triples and RDF-isomorphic union. A missing infra rule fails the
+union control. Compose all manifest members before evaluating the original
+rules: individual files are ownership units, not independent activation units.
+The existing class-subsumption versus transitive-closure separation remains an
+operator concern; this source stage does not load either or enable a reasoner.
+
+Raw alias acceptance queries and their populated/negative controls are in
+[`competency/aegis-work-aliases`](../../competency/aegis-work-aliases/README.md).
+Use the staged [removal plan](../../docs/aegis-domain-removal-plan.md) for the
+separate lab and deployment steps. No upstream compatibility copy is removed.

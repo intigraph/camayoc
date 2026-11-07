@@ -1,0 +1,387 @@
+# Staged source only. Compose every manifest member; no automatic load.
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+aegis:aboutWorkItem a owl:ObjectProperty ;
+    rdfs:label "about work item" ;
+    rdfs:comment "The primary work item providing an episode's context. This is an attribution claim, not proof of implementation or completion. A producer verifies the existing target's direct WorkItem type in its authoritative records graph before writing; a reader joins that graph explicitly. The target is not copied into the episode graph. No global domain or range: neither endpoint gains a type merely from a reference." .
+
+aegis:access_via a owl:DatatypeProperty ;
+    rdfs:label "external truth access method" ;
+    rdfs:comment "Executable read method for source_uri: mcp, rest, sparql-federated, file, or promql." ;
+    rdfs:range xsd:string .
+
+aegis:action a owl:DatatypeProperty ;
+    rdfs:label "action" ;
+    rdfs:comment "An action requested by a reaction: alert, page, bead or webhook. Multiple actions may be requested." ;
+    rdfs:range xsd:string .
+
+aegis:actor a owl:DatatypeProperty ;
+    rdfs:label "actor" ;
+    rdfs:comment "Who or what performs a step — an agent id, a role, a team. A string rather than a reference to a Principal, because a workflow definition names roles that need not exist as entities yet. Generic name, so no domain." ;
+    rdfs:range xsd:string .
+
+aegis:appliesTo a owl:DatatypeProperty ;
+    rdfs:label "applies to" ;
+    rdfs:comment "A repo-relative path glob scoping WHERE an action-boundary policy binds — the half of the seam yupana's projection had asked for since Phase 4 and quipu never declared. Genuinely multi-valued: a policy scoped to three globs carries three values, and the consumer accumulates them. Absent means unscoped. On a policy with no selector and no predicate this is the whole condition — a TRIPWIRE, where touching the path is the crossing. No rdfs:domain on purpose: the term reads the same on a Policy today and on a TextRule or Directive tomorrow, and a materialised wrong type outlives a missing one." ;
+    rdfs:range xsd:string .
+
+aegis:attestationSignature a owl:DatatypeProperty ;
+    rdfs:comment "Cosign-compatible signature binding the registered signing key to the attestation's canonical claim for independent verification." ;
+    rdfs:range xsd:string .
+
+aegis:attestsBundle a owl:ObjectProperty ;
+    rdfs:comment "Certified share bundle whose authorship and canonical graph hash a publisher attestation cryptographically binds." ;
+    rdfs:range aegis:CertifiedShareBundle .
+
+aegis:by a owl:DatatypeProperty ;
+    rdfs:label "by" ;
+    rdfs:comment "Who made a decision. Range and comment only — `by` is far too generic a name to materialise a type from, whatever this vocabulary happens to use it for today." ;
+    rdfs:range xsd:string .
+
+aegis:byteCount a owl:DatatypeProperty ;
+    rdfs:label "byte count" ;
+    rdfs:comment "Total size in bytes of the regular files in the collection's subtree at crawl time (apparent size from stat, not blocks used on the pool)." ;
+    rdfs:range xsd:integer .
+
+aegis:calibrationBasis a owl:DatatypeProperty ;
+    rdfs:label "calibration basis" ;
+    rdfs:comment "What the threshold is measured over, so a reader can tell a rolling spend cap from a symbol count without reading the claim." ;
+    rdfs:range xsd:string .
+
+aegis:canonicalGraphHash a owl:DatatypeProperty ;
+    rdfs:comment "Quipu pack_manifest content_hash: sha256 over lexically sorted N-Triples for graph, shapes, queries and labels; the knowledge-state identity shared across git, OCI and object storage." ;
+    rdfs:range xsd:string .
+
+aegis:certificationSeal a owl:ObjectProperty ;
+    rdfs:comment "The independent Quipu conformance seal attached to a certified share bundle after shape validation and outward-share scrubbing." ;
+    rdfs:range aegis:KnowledgeCertificationSeal .
+
+aegis:certifiesBundle a owl:ObjectProperty ;
+    rdfs:comment "Certified share bundle whose shape conformance, scrub result, and canonical graph hash a Quipu certification seal binds." ;
+    rdfs:range aegis:CertifiedShareBundle .
+
+aegis:claim a owl:DatatypeProperty ;
+    rdfs:label "claim" ;
+    rdfs:comment "A SPARQL ASK whose truth is the thing asserted. On a Policy it is the predicate that decides compliance; on an Artifact it is what the artifact asserts about itself. No rdfs:domain: the word means the same thing in both places and asserting either class would materialise the wrong one." ;
+    rdfs:range xsd:string .
+
+aegis:condition a owl:DatatypeProperty ;
+    rdfs:label "condition" ;
+    rdfs:comment "A reaction condition expressed as SPARQL SELECT ?focus. Query failure means unknown, not resolution. An adapter may interpret the result as its candidate population." ;
+    rdfs:range xsd:string .
+
+aegis:corpusWatermark a owl:DatatypeProperty ;
+    rdfs:label "corpus watermark" ;
+    rdfs:comment "Which state of the comparison corpus a sealed similarity score was computed against — a transaction id (\"tx:41\"), a snapshot hash, an index generation. The corpus half of the trust-chain rule: re-embedding against a corpus that has since changed is honestly a DIFFERENT comparison, and the watermark is what lets a re-verifier notice that instead of reporting a spurious mismatch. No rdfs:domain — any sealed similarity record may carry it." ;
+    rdfs:range xsd:string .
+
+aegis:createdAt a owl:DatatypeProperty ;
+    rdfs:label "created at" ;
+    rdfs:comment "When an entity was created, serialized in the producer's canonical timestamp form; generic enough to carry no materialising domain." ;
+    rdfs:range xsd:string .
+
+aegis:currentRevision a owl:DatatypeProperty ;
+    rdfs:comment "Monotone count of committed advances for this run; it changes atomically with the signed event so returning to a state cannot admit an old request." ;
+    rdfs:range xsd:integer .
+
+aegis:decisionPolicy a owl:DatatypeProperty ;
+    rdfs:label "decision policy" ;
+    rdfs:comment "The predicate a verifier must be registered to attest before its signature can seal this decision. Distinct from aegis:forPolicy, whose domain is DecisionRequest." ;
+    rdfs:range xsd:string .
+
+aegis:embeddingModel a owl:DatatypeProperty ;
+    rdfs:label "embedding model" ;
+    rdfs:comment "The identity of the embedding model that produced a sealed similarity score — the model half of the trust-chain rule applied to embeddings: a score is reproducible only under the model that computed it, so a verdict that omitted this would be unfalsifiable the moment the deployment swapped models. No rdfs:domain, same shared-carrier reasoning as aegis:similarityScore." ;
+    rdfs:range xsd:string .
+
+aegis:enabled a owl:DatatypeProperty ;
+    rdfs:label "enabled" ;
+    rdfs:comment "Whether the carrying rule is enabled. Chaski treats omission as enabled; this is a consumer default, not an asserted graph value." ;
+    rdfs:range xsd:boolean .
+
+aegis:eventId a owl:DatatypeProperty ;
+    rdfs:label "eventId" ;
+    rdfs:comment "Stable producer event identity. For a ReactionFiring, derive its IRI from the reaction label and this event ID, preserving the same payload on retries. No domain: events and other records may carry this identity." ;
+    rdfs:range xsd:string .
+
+aegis:eventTypes a owl:DatatypeProperty ;
+    rdfs:label "eventTypes" ;
+    rdfs:comment "Comma-separated event types selecting which feed events trigger a reaction evaluation." ;
+    rdfs:range xsd:string .
+
+aegis:evidenceHash a owl:DatatypeProperty ;
+    rdfs:label "evidence hash" ;
+    rdfs:comment "A digest of exactly what was judged, binding an attestation to its content. Change what was checked and the hash changes, so the old verdict or approval no longer applies — this is the approve-then-sneak-in-changes defence, and Verdict, Decision and DecisionRequest all use the same one rather than three mechanisms." ;
+    rdfs:range xsd:string .
+
+aegis:evidenceSource a owl:DatatypeProperty ;
+    rdfs:label "evidence source" ;
+    rdfs:comment "The concrete artifact that produces the evidence — a tree-sitter `.scm` query on a Selector, a regex on a Predicate. Named `evidenceSource` rather than `query` or `pattern` because the point is provenance: an evaluator must be able to say WHERE a fact came from, not only what it was." ;
+    rdfs:range xsd:string .
+
+aegis:extensionCounts a owl:DatatypeProperty ;
+    rdfs:label "extension counts" ;
+    rdfs:comment "Compact histogram of the subtree's extensions, as .ext=count pairs separated by spaces, largest first. A summary for readers; hasExtension is the queryable form." ;
+    rdfs:range xsd:string .
+
+aegis:falseNegativeTolerance a owl:DatatypeProperty ;
+    rdfs:label "false negative tolerance" ;
+    rdfs:comment "The rate of admitted-but-violating actions this deployment accepts. Zero for an exact predicate; a hard constraint with an inexact predicate should carry a tolerant false-positive number and a near-zero one here, never the reverse." ;
+    rdfs:range xsd:decimal .
+
+aegis:falsePositiveTolerance a owl:DatatypeProperty ;
+    rdfs:label "false positive tolerance" ;
+    rdfs:comment "The rate of blocked-but-valid actions this deployment accepts. For a hard constraint the asymmetry normally favours tolerating false positives: a missed violation is by definition unacceptable, while a wrongly blocked action falls back to escalation." ;
+    rdfs:range xsd:decimal .
+
+aegis:fileCount a owl:DatatypeProperty ;
+    rdfs:label "file count" ;
+    rdfs:comment "Number of regular files in the collection's whole subtree at the time of the crawl. Symlinks are not followed, so a link to elsewhere is not double counted." ;
+    rdfs:range xsd:integer .
+
+aegis:firedBy a owl:ObjectProperty ;
+    rdfs:label "fired by" ;
+    rdfs:comment "The Reaction whose transition produced this firing record." ;
+    rdfs:range aegis:Reaction .
+
+aegis:focus a owl:ObjectProperty ;
+    rdfs:label "focus" ;
+    rdfs:comment "The IRI that a reaction condition or adapter identified as the focus of a firing. No range class: any IRI may be a focus." .
+
+aegis:freshness a owl:DatatypeProperty ;
+    rdfs:label "freshness" ;
+    rdfs:comment "Freshness of a claim relative to its source. VerdictShape constrains verdicts to fresh|stale; ExternalTruthMappingShape constrains mapped external truth to live|snapshot(ts)|frozen(window). No rdfs:domain: the predicate intentionally serves both carriers, and a domain would incorrectly retype every mapped Artifact, Metric, service or document as a Verdict." ;
+    rdfs:range xsd:string .
+
+aegis:fromRevision a owl:DatatypeProperty ;
+    rdfs:comment "The run revision the performing agent signed as the prerequisite for this advance; it must match the committed current revision before the event is accepted." ;
+    rdfs:range xsd:integer .
+
+aegis:fromState a owl:DatatypeProperty ;
+    rdfs:label "from state" ;
+    rdfs:comment "The state a TransitionEvent left, retained on the event so archived history can be replayed without reconstructing a prior mutable status." ;
+    rdfs:range xsd:string .
+
+aegis:frozenWindow a owl:ObjectProperty ;
+    rdfs:comment "Source shuttle window for a certified bundle cut from frozen operational data; omitted by static packs." .
+
+aegis:gate a owl:DatatypeProperty ;
+    rdfs:label "gate" ;
+    rdfs:comment "A secondary condition narrowing when the check applies. NB this property is used in TWO senses in this vocabulary — a Predicate's applicability gate, and the gate that produced an aegis:GateApproval (a governance aegis:Decision before the GateApproval split) — which is why it carries no rdfs:domain. Two meanings under one name is a defect worth recording rather than hiding; splitting them is a vocabulary change with a migration behind it." ;
+    rdfs:range xsd:string .
+
+aegis:gatedBy a owl:ObjectProperty ;
+    rdfs:label "gated by" ;
+    rdfs:comment "A policy that must be satisfied before this step proceeds. Ranged at Policy but undomained: a policy can gate more than a workflow step." ;
+    rdfs:range aegis:Policy .
+
+aegis:gatedTx a owl:DatatypeProperty ;
+    rdfs:label "gated transaction" ;
+    rdfs:comment "The committed transaction whose delta a verdict judged, not the transaction persisting that verdict. Optional and positive; refused or rolled-back attempts and historical verdicts omit it. Never predict an attempted id or guess a backfill. IDs are local to the originating store. A producer must bind the link into signed evidence and verdict identity. No domain: another audit record may also name a judged transaction without becoming a Verdict." ;
+    rdfs:range xsd:integer .
+
+aegis:hasExtension a owl:DatatypeProperty ;
+    rdfs:label "has extension" ;
+    rdfs:comment "A lower-cased file extension, with its leading dot, present anywhere in the collection's subtree. Multi-valued. It is what lets a query find the collection holding .z64 files without a crawl." ;
+    rdfs:range xsd:string .
+
+aegis:implements a owl:ObjectProperty ;
+    rdfs:label "implements" ;
+    rdfs:comment "A provenance claim that this thing (a commit, an episode, a bead close) realises the cited work item. A CLAIM, deliberately — writing the edge asserts nothing about its truth; verify_claimed_linkage (src/governance/linkage.rs) checks the claiming content's similarity against the cited item's description and types the answer grounded / cited-but-dissimilar / no-citation, which is what turns this edge from trusted to checkable. No rdfs:domain: many kinds of thing legitimately claim to implement work, and a domain would materialise a wrong type on all but one of them." ;
+    rdfs:range aegis:WorkItem .
+
+aegis:inExport a owl:ObjectProperty ;
+    rdfs:label "in export" ;
+    rdfs:comment "The NFS export a FileCollection was crawled from. The collection's relativePath is relative to that export's root, so the pair locates it without touching the filesystem." .
+
+aegis:inStep a owl:ObjectProperty ;
+    rdfs:label "in step" ;
+    rdfs:comment "The workflow step a plan step belongs to. What lets a concrete plan be checked against the workflow it claims to be executing, rather than only against itself." ;
+    rdfs:range aegis:Step .
+
+aegis:initialState a owl:DatatypeProperty ;
+    rdfs:comment "State entered by a newly created run of this workflow; direct processing checks the run starts here before any signed advance is admitted." ;
+    rdfs:range xsd:string .
+
+aegis:kind a owl:DatatypeProperty ;
+    rdfs:label "operating point kind" ;
+    rdfs:comment "How this operating point is expressed: \"exact_predicate\" (a string, regex or typed comparison with no classifier and so no score to threshold), \"threshold\" (a numeric cut), or \"deterministic_threshold\" (a threshold over an exactly-known quantity)." ;
+    rdfs:range xsd:string .
+
+aegis:leadFor a owl:ObjectProperty ;
+    rdfs:label "lead for" ;
+    rdfs:comment "Pairs a review/design LEAD with the KEEPER whose domain it reviews, 1:1 from both ends. Not reports_to: it routes design and review work, not the stop-event tree (aegis-vj3uet). No rdfs:domain or rdfs:range on purpose: the roles are asserted with aegis:hasRole and checked by LeadForShape, so inference must not type anyone as a lead." .
+
+aegis:name a owl:DatatypeProperty ;
+    rdfs:label "name" ;
+    rdfs:comment "A short human handle for an evidence atom. No rdfs:domain: Selector and Predicate both carry it, and the name is far too generic to materialise a type from." ;
+    rdfs:range xsd:string .
+
+aegis:newestMtime a owl:DatatypeProperty ;
+    rdfs:label "newest mtime" ;
+    rdfs:comment "The most recent modification time of any file in the subtree, as UTC YYYY-MM-DDTHH:MM:SSZ. Answers when a collection last changed without listing it." ;
+    rdfs:range xsd:string .
+
+aegis:on a owl:DatatypeProperty ;
+    rdfs:label "on" ;
+    rdfs:comment "The event a transition fires on. About as generic a name as this vocabulary contains, so range and comment only." ;
+    rdfs:range xsd:string .
+
+aegis:option a owl:DatatypeProperty ;
+    rdfs:label "option" ;
+    rdfs:comment "One outcome the decision offers. Repeatable. When a decision declares options, a sealed verdict must choose one of them; the chosen outcome is inside the signed challenge." ;
+    rdfs:range xsd:string .
+
+aegis:outcome a owl:DatatypeProperty ;
+    rdfs:label "outcome" ;
+    rdfs:comment "What was concluded. Three-valued on a Verdict — \"satisfied\", \"unsatisfied\", \"unknown\" — where \"unknown\" is NOT a soft \"unsatisfied\": a check that could not run has told you nothing, and collapsing the two is how an unevaluated constraint reads as a passing one. On a Decision the values are \"approve\", \"reject\" and \"changes\". No rdfs:domain, since both classes carry it." ;
+    rdfs:range xsd:string .
+
+aegis:parentCollection a owl:ObjectProperty ;
+    rdfs:label "parent collection" ;
+    rdfs:comment "The enclosing FileCollection, e.g. a season's show or an album's artist. Its counts and extensions include this collection's, because every aggregate covers the whole subtree." .
+
+aegis:performedBy a owl:ObjectProperty ;
+    rdfs:label "performed by" ;
+    rdfs:comment "The principal that performed and signed an event; shared by workflow history and any later attested activity, so it carries no materialising domain." ;
+    rdfs:range rdfs:Resource .
+
+aegis:produces a owl:ObjectProperty ;
+    rdfs:label "produces" ;
+    rdfs:comment "An artifact this step yields. No rdfs:domain: `produces` is a relation many things in an estate can hold." ;
+    rdfs:range aegis:Artifact .
+
+aegis:provenanceManifest a owl:ObjectProperty ;
+    rdfs:comment "Manifest IRI describing the sources and production lineage of a certified bundle or seal." .
+
+aegis:publisherAttestation a owl:ObjectProperty ;
+    rdfs:comment "The publisher-authorship claim attached to a certified share bundle, independently verifiable with its registered publisher key." ;
+    rdfs:range aegis:PublisherAttestation .
+
+aegis:question a owl:DatatypeProperty ;
+    rdfs:label "question" ;
+    rdfs:comment "What a human is being asked to decide, in the words they will see. Part of the sealed content: changing it after presentation invalidates the presentation and any verdict over it." ;
+    rdfs:range xsd:string .
+
+aegis:reference a owl:DatatypeProperty ;
+    rdfs:label "reference" ;
+    rdfs:comment "A pointer to where an artifact actually lives — a path, a URL, a commit. Deliberately opaque: the graph records that an artifact is referenced somewhere resolvable without becoming a second copy of it." ;
+    rdfs:range xsd:string .
+
+aegis:references a owl:ObjectProperty ;
+    rdfs:label "references" ;
+    rdfs:comment "A code symbol a plan step names. What makes a plan checkable against structure rather than against prose." ;
+    rdfs:range aegis:CodeSymbol .
+
+aegis:relativePath a owl:DatatypeProperty ;
+    rdfs:label "relative path" ;
+    rdfs:comment "Path of a FileCollection relative to its export's root, with no leading slash. Stable across re-crawls, so it keys the collection's identity together with the export." ;
+    rdfs:range xsd:string .
+
+aegis:requires a owl:ObjectProperty ;
+    rdfs:label "requires" ;
+    rdfs:comment "An artifact this step needs before it can run. No rdfs:domain, for the same reason as aegis:produces." ;
+    rdfs:range aegis:Artifact .
+
+aegis:resolvedAt a owl:DatatypeProperty ;
+    rdfs:label "resolvedAt" ;
+    rdfs:comment "Resolution instant of an occurrence. For a ReactionFiring this is absent while active and set once on resolution; SHACL cardinality cannot enforce that temporal transition." ;
+    rdfs:range xsd:dateTime .
+
+aegis:scrubCheckPass a owl:DatatypeProperty ;
+    rdfs:comment "Boolean certification claim that is true only when the outward-share internal-identifier scrub completed successfully with no prohibited identifiers." ;
+    rdfs:range xsd:boolean .
+
+aegis:shaclReportHash a owl:DatatypeProperty ;
+    rdfs:comment "Content digest of the complete SHACL conformance report, binding a certification seal to the exact validation evidence it summarizes." ;
+    rdfs:range xsd:string .
+
+aegis:shapesBundleVersion a owl:DatatypeProperty ;
+    rdfs:comment "Stable name and version of the governed shapes bundle against which the graph was validated when its certification seal was issued." ;
+    rdfs:range xsd:string .
+
+aegis:signingKey a owl:ObjectProperty ;
+    rdfs:comment "Human-gated verifier registration naming the public key used to authenticate and verify an attestation signature." ;
+    rdfs:range aegis:VerifierRegistration .
+
+aegis:similarityMethod a owl:DatatypeProperty ;
+    rdfs:label "similarity method" ;
+    rdfs:comment "The method/model identity that produced a similarity score — e.g. \"embedding:model.onnx\", or an honestly self-naming deterministic method. This is the falsifier: a score outside its method is an assertion, a score with it is an experiment anyone can re-run. A method that cannot name itself must not put scores on record. No rdfs:domain, for the same shared-carrier reason as aegis:similarityScore." ;
+    rdfs:range xsd:string .
+
+aegis:similarityScore a owl:DatatypeProperty ;
+    rdfs:label "similarity score" ;
+    rdfs:comment "The numeric result of a similarity comparison, recorded as a fact about the COMPARISON rather than about either compared thing. Meaningless without the method that produced it, so it never appears without aegis:similarityMethod (or, on a sealed verdict, the model identity) beside it — re-run the named method to reproduce or disprove the number. No rdfs:domain: any similarity claim carries it (a PrecedentLink today, a sealed Verdict next), and a domain would materialise a wrong rdf:type on the others." ;
+    rdfs:range xsd:decimal .
+
+aegis:similarityThreshold a owl:DatatypeProperty ;
+    rdfs:label "similarity threshold" ;
+    rdfs:comment "The cut a similarity score was compared against when a verdict was sealed. Recorded ON the verdict even though the declared value lives in the policy's OperatingPoint, because the verdict must stay falsifiable after the policy is re-calibrated: \"0.83 >= 0.75\" is re-checkable forever, \"0.83 >= whatever the threshold was then\" is not. No rdfs:domain — any sealed similarity record may carry it." ;
+    rdfs:range xsd:decimal .
+
+aegis:sourceKind a owl:DatatypeProperty ;
+    rdfs:label "source kind" ;
+    rdfs:comment "How a fact entered the graph: observed, declared, or inferred; a trust-plane tag shared across entity classes and therefore domain-free." ;
+    rdfs:range xsd:string .
+
+aegis:source_uri a owl:DatatypeProperty ;
+    rdfs:label "external truth source URI" ;
+    rdfs:comment "Where an entity's external truth lives, including s3, https, file-at-revision, PromQL and MCP identifiers." ;
+    rdfs:range xsd:string .
+
+aegis:startedAt a owl:DatatypeProperty ;
+    rdfs:label "startedAt" ;
+    rdfs:comment "The start instant of an occurrence. For a delivered ReactionFiring, use the frozen event payload observed_at, never retry send time." ;
+    rdfs:range xsd:dateTime .
+
+aegis:terminalState a owl:DatatypeProperty ;
+    rdfs:comment "A state in which this workflow finishes; the declared process must contain no outgoing step from any terminal state." ;
+    rdfs:range xsd:string .
+
+aegis:threshold a owl:DatatypeProperty ;
+    rdfs:label "threshold" ;
+    rdfs:comment "The numeric cut this operating point applies, in the units of its calibration basis." ;
+    rdfs:range xsd:decimal .
+
+aegis:tier a owl:DatatypeProperty ;
+    rdfs:label "tier" ;
+    rdfs:comment "How precise the evidence behind a fact is: \"live\", \"lsp\", \"tree-sitter\", \"committed\" or \"attested\" — plus, on Predicate AND Verdict, the grounded ladder of \"tree-sitter+graph\" (exact membership, hard-capable), \"embedding\" (reproducible but approximate; advisory or escalate, never a hard PAG deny) and \"model\" (generative judgment, last resort). The tier rides the verdict into the graph: a similarity verdict records tier \"embedding\", never an exact tier's label. Carried by Selector, Predicate AND Verdict, so no rdfs:domain. Every fact this stack serves is tagged, and an approximation is never presented as exact." ;
+    rdfs:range xsd:string .
+
+aegis:to a owl:ObjectProperty ;
+    rdfs:label "to" ;
+    rdfs:comment "The step a transition leads to. Together with aegis:on — the event — this is the whole of a transition: what happened, and where it goes next." ;
+    rdfs:range aegis:Step .
+
+aegis:toState a owl:DatatypeProperty ;
+    rdfs:label "to state" ;
+    rdfs:comment "The state a TransitionEvent entered, retained on the event as the append-only source from which currentState is projected." ;
+    rdfs:range xsd:string .
+
+aegis:transitionVersion a owl:DatatypeProperty ;
+    rdfs:comment "Selects the canonical transition signing protocol; omission retains legacy v1, while directly enforced processing requires v2 to bind the expected run revision." ;
+    rdfs:range xsd:integer .
+
+aegis:triggerKind a owl:DatatypeProperty ;
+    rdfs:label "triggerKind" ;
+    rdfs:comment "Whether a reaction is triggered by event-feed activity or by its schedule." ;
+    rdfs:range xsd:string .
+
+aegis:trustTier a owl:DatatypeProperty ;
+    rdfs:label "trust tier" ;
+    rdfs:comment "\"human\" marks a VerifierRegistration as a human trust-root key. Human decisions verify only against these, matched as an ASSERTED fact in ROOT. Adding, changing or removing the marker is a registry amendment that an already-enrolled human key must sign. No rdfs:domain on purpose: inference must never type an entity because of it." ;
+    rdfs:range xsd:string .
+
+aegis:verified_by a owl:DatatypeProperty ;
+    rdfs:label "external truth verification method" ;
+    rdfs:comment "How bytes read through a mapping are checked: a content hash, cosign signature, or Quipu certification seal identifier." ;
+    rdfs:range xsd:string .
+
+aegis:verifier a owl:DatatypeProperty ;
+    rdfs:label "verifier" ;
+    rdfs:comment "Who rendered the verdict, as a key id. Carried by both Verdict and VerifierRegistration — on the first it is a claim, on the second it is the registration that makes the claim checkable — so no rdfs:domain." ;
+    rdfs:range xsd:string .
+

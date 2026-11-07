@@ -1,0 +1,9 @@
+# Staged source only. Compose every manifest member; no automatic load.
+@prefix ex: <http://aegis.gastown.local/rules/> .
+@prefix rule: <http://quipu.local/rule#> .
+
+ex:git_commit_subsumes_commit a rule:Rule ;
+    rule:body "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>(?x, <http://aegis.gastown.local/ontology/Commit>)" ;
+    rule:head "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>(?x, <http://aegis.gastown.local/ontology/GitCommit>)" ;
+    rule:id "git_commit_subsumes_commit" .
+

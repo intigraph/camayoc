@@ -1,0 +1,3 @@
+PREFIX aegis: <http://aegis.gastown.local/ontology/>
+PREFIX schema: <https://schema.org/>
+SELECT DISTINCT ?item WHERE { ?item a aegis:WorkItem, schema:Action } ORDER BY ?item

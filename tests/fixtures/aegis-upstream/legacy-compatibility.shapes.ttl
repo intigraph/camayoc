@@ -923,6 +923,30 @@ aegis:CommandDiskImpactObservationShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
     ] ;
+    # Optional for migration: historical per-run observations remain valid.
+    # New producers use one stable subject per filesystem/command class and
+    # atomically replace the complete coherent summary. No raw argv or paths.
+    sh:property [
+        sh:path aegis:commandClass ;
+        sh:datatype xsd:string ; sh:maxCount 1 ;
+        sh:pattern "^[a-z]+:[a-z_]+$" ;
+    ] ;
+    sh:property [
+        sh:path aegis:aggregateState ;
+        sh:datatype xsd:string ; sh:maxCount 1 ; sh:maxLength 32768 ;
+    ] ;
+    sh:property [
+        sh:path aegis:runCount ;
+        sh:datatype xsd:integer ; sh:maxCount 1 ; sh:minInclusive 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:maximumDeltaBytes ;
+        sh:datatype xsd:integer ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aegis:p95DeltaBytes ;
+        sh:datatype xsd:integer ; sh:maxCount 1 ;
+    ] ;
     sh:property [
         sh:path rdfs:label ;
         sh:minCount 1 ;
@@ -1825,6 +1849,9 @@ aegis:SSHKey rdfs:subClassOf aegis:Credential .
 # absent from the facts table; `?s a DecisionRecord` applied no inference at all and
 # missed its Decision instance. Their neighbour `aegis:Policy` worked — same file,
 # same commit — which is exactly why the failure was invisible.
+# (Since the GateApproval split, governance.ttl declares
+# `aegis:GateApproval rdfs:subClassOf aegis:DecisionRecord` instead; the
+# memory `aegis:Decision` is no longer a DecisionRecord. Same rule applies.)
 #
 # So: adding a line HERE changes nothing on its own. Assert it too:
 #   POST /knot {"actor":"<you>","turtle":"@prefix aegis: … rdfs:subClassOf … ."}
@@ -1960,7 +1987,7 @@ aegis:CapabilityShape a sh:NodeShape ;
 #
 #   Tool — same shape, smaller: children CLI and AgentTool, 18 asserted, 11 of
 #   them bare. The bare ones are guards, skills and probes (dangerous-command-
-#   guard, hank-census, st_doctor); "a tool" is the honest claim for those and
+#   guard, yupana-census, st_doctor); "a tool" is the honest claim for those and
 #   inventing a child to hold them would be modelling for the checker's benefit.
 #
 # NOT a tightening, and measured before landing exactly as ec1f082 required:

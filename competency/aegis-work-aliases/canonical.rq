@@ -1,0 +1,2 @@
+PREFIX schema: <https://schema.org/>
+SELECT DISTINCT ?item WHERE { ?item a schema:Action } ORDER BY ?item
