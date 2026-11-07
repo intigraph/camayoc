@@ -50,7 +50,7 @@ class Backfill(unittest.TestCase):
             return {'rows':record,'truncated':False}
         if q.startswith('ASK '):return {'result':True}
         return {'rows':[{'v':self.descriptions[item]}] if item in self.descriptions else [],'truncated':False}
-    def tick(self):return backfill.tick(self.reader,self.j,self.post,plane=PLANE,actor='fixture')
+    def tick(self, **kwargs):return backfill.tick(self.reader,self.j,self.post,plane=PLANE,actor='fixture',**kwargs)
     def exact(self, item='demo-000', initialise=True):
         self.j.db.close()
         self.path=Path(self.tmp.name)/'exact.sqlite3'
@@ -85,6 +85,38 @@ class Backfill(unittest.TestCase):
         self.exact(initialise=False)
         r=self.tick();self.assertEqual((r['verified'],r['writes'],r['requests']),(1,0,2))
         self.assertEqual(self.effects,['demo-000'])
+
+    def test_exact_absent_effect_is_reconciled_but_not_counted_verified(self):
+        self.exact()
+        original = self.post
+        attempts = []
+        def fault(endpoint, body, **kwargs):
+            pending = json.loads(self.j.next()[2]) if self.j.next()[2] else None
+            if endpoint == '/knot/status':
+                self.assertEqual(body, {'write_id': pending['write_id'], 'request': pending['request']})
+                return {'contract': 'quipu.knot-completion/v1',
+                        'write_id': body['write_id'], 'state': 'stopped'}
+            if endpoint == '/knot':
+                self.assertEqual(kwargs.get('write_id'), pending['write_id'])
+                attempts.append(body)
+                if len(attempts) == 1:
+                    raise TimeoutError('writer did not commit')
+            query = body.get('query', '')
+            if query.startswith('ASK '):
+                return {'result': bool(self.descriptions), 'truncated': False}
+            return original(endpoint, body)
+        self.post = fault
+        self.assertEqual(self.tick(completion=True)['status'], 'UNKNOWN')
+        self.assertIsNotNone(self.j.next()[2])
+        receipt = self.tick(completion=True)
+        self.assertEqual((receipt['status'], receipt['writes'], receipt['verified'],
+                          receipt['reconciled']), ('OK', 0, 0, 1))
+        self.assertLessEqual(receipt['requests'], backfill.delivery.ITEM_REQUESTS)
+        self.assertEqual(self.j.next(), ('demo-000', 0, None))
+        receipt = self.tick(completion=True)
+        self.assertEqual((receipt['writes'], receipt['verified']), (1, 1))
+        self.assertEqual(len(attempts), 2)
+        self.assertEqual(self.effects, ['demo-000'])
 
     def test_exact_rejects_another_selection_and_sweep_custody_before_write(self):
         self.exact();self.tick();self.j.db.close();before=self.path.read_bytes()

@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import hashlib
 import re
+import secrets
 import sqlite3
 import time
 import seed_change_custody as custody
@@ -29,17 +30,25 @@ def control_summary(response):
             'truncated':marker('truncated')}
 
 
-def verify(post,envelope,item):
+def verify(post,envelope,item,*,pending=False):
+    """Strict readback; a pending effect may distinguish an exact missing type.
+
+    False never verifies an effect. Pending reconciliation must independently
+    prove native completion and exact pending-effect absence before release.
+    """
     request=envelope['request'];graph=request['graph'];subject=projection.A+item
     # Match the exact type on the server: SELECT bindings may compact its IRI
     # using a deployment-selected prefix. No client alias is type authority.
     control=post('/query',{'query':f'ASK {{ GRAPH <{graph}> {{ <{subject}> a <{projection.A}WorkItem> }} }}'})
-    if (not isinstance(control,dict) or control.get('truncated') or
-        control.get('result') is not True):
+    if (not isinstance(control,dict) or control.get('truncated',False) is not False or
+        type(control.get('result')) is not bool):
+        raise custody.CustodyUnknown('metadata WorkItem control unproved')
+    if control['result'] is False:
+        if pending:return False
         raise custody.CustodyUnknown('metadata WorkItem control unproved')
     found=post('/query',{'query':f'SELECT ?v WHERE {{ GRAPH <{graph}> {{ <{subject}> <{native.RDFS}comment> ?v }} }} LIMIT 129'})
     rows=found.get('rows') if isinstance(found,dict) else None
-    if not isinstance(rows,list) or found.get('truncated') or len(rows)>128:
+    if not isinstance(rows,list) or found.get('truncated') is not False or len(rows)>128:
         raise custody.CustodyUnknown('metadata readback partial')
     expected=envelope['description']
     # One exact attributable current description; unrelated comments need not
@@ -61,10 +70,55 @@ def prove_absent(post,item):
             response=post('/query',{'query':query})
         except (ValueError,OSError,RuntimeError,TypeError,KeyError):
             return False
-        if (not isinstance(response,dict) or response.get('truncated')
+        if (not isinstance(response,dict) or response.get('truncated',False) is not False
                 or response.get('result') is not False):
             return False
     return True
+
+
+def completed_without_effect(post, journal, envelope, item):
+    """A retained native fence plus exact effect absence, never elapsed time.
+
+    Old journals, evicted receipts and unavailable capabilities stay UNKNOWN.
+    A stopped worker may have committed: readback must still prove absence.
+    """
+    write_id = envelope.get('write_id')
+    if not isinstance(write_id, str) or not re.fullmatch('[0-9a-f]{64}', write_id):
+        return False
+    status = post('/knot/status', {'write_id': write_id, 'request': envelope['request']})
+    if (not isinstance(status, dict) or status.get('contract') != 'quipu.knot-completion/v1'
+            or status.get('write_id') != write_id or status.get('truncated', False) is not False
+            or status.get('state') not in ('not_started', 'stopped')):
+        return False
+    previous = journal.db.execute('SELECT version FROM verified WHERE id=?', (item,)).fetchone()
+    if previous is None:
+        return prove_absent(post, item)
+    if type(envelope.get('version')) is not int or envelope['version'] <= previous[0]:
+        return False
+    # An update does not erase its previously verified snapshot on failure.
+    # Permit that exact older version's canonical metadata, not arbitrary facts
+    # or a conflicting/newer version, and never require the entire subject gone.
+    graph = projection.safe_iri(envelope['request']['graph'])
+    subject = projection.safe_iri(projection.A + item)
+    found = post('/query', {'query': f'SELECT ?version ?v ?datatype WHERE {{ GRAPH {graph} {{ {subject} a <{projection.A}WorkItem> ; <{native.SCHEMA}version> ?version ; <{native.RDFS}comment> ?v }} BIND(IF(DATATYPE(?version) = <http://www.w3.org/2001/XMLSchema#integer>, \"integer\", \"other\") AS ?datatype) }} LIMIT 129'})
+    if (not isinstance(found, dict) or found.get('truncated') is not False
+            or not isinstance(found.get('rows'), list) or len(found['rows']) != 1):
+        return False
+    row = found['rows'][0]
+    if not isinstance(row, dict) or set(row) != {'version', 'v', 'datatype'}:
+        return False
+    try:
+        if (native.lexical(row.get('version')) != str(previous[0])
+                or native.lexical(row.get('datatype')) != 'integer'):
+            return False
+        prior = json.loads(native.lexical(row.get('v')))
+        expected = json.loads(envelope['description'])
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return (isinstance(prior, dict) and set(prior) == set(expected)
+            and type(prior.get('source_version')) is int
+            and prior['source_version'] == previous[0]
+            and all(prior.get(k) == expected.get(k) for k in ('id', 'source_graph', 'native_action')))
 
 
 #: Serial deliveries per tick. aegis-ksd (wu ACK) set four deliveries and one feed
@@ -127,11 +181,12 @@ def envelope_witness(witness,request):
     except (TypeError,ValueError,UnicodeError):pass
 
 
-def deliver(reader,journal,call,pending,*,plane,actor,wrote,witness=None):
+def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
-    is lost is still counted.
+    is lost is still counted. None means an absent effect was released, not
+    verified; its fresh write waits for the next normal tick's request budget.
     """
     item,tx,stored=pending
     journal.mark_attempt(item,time.time())
@@ -139,10 +194,16 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,witness=None):
         if witness is not None:witness['branch']='stored-readback'
         envelope=json.loads(stored)
         envelope_witness(witness,envelope['request'])
-        if not verify(call,envelope,item):
+        if verify(call,envelope,item,pending=True):
+            journal.acknowledge(item,tx,envelope['version'])
+            return envelope['version']
+        # A negative readback alone is not absence: partial or conflicting
+        # facts keep the exact effect frozen. Native completion must precede
+        # a fresh absence proof; HTTP timeout never proves worker termination.
+        if not completed_without_effect(call,journal,envelope,item):
             raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
-        journal.acknowledge(item,tx,envelope['version'])
-        return envelope['version']
+        journal.release_unconfirmed(item,stored)
+        return None
     # Reader's own request gets the same total budget accounting.
     canonical=native.Reader(call,reader.board).get(item)
     previous=journal.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
@@ -151,6 +212,8 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,witness=None):
     request=projection.body(canonical,plane=plane,actor=actor)
     description=projection.description(canonical)
     envelope={'request':request,'version':canonical.version,'description':description}
+    if completion:
+        envelope['write_id']=secrets.token_hex(32)
     envelope_witness(witness,request)
     if previous and canonical.version==previous[0]:
         if witness is not None:witness['branch']='same-version'
@@ -162,7 +225,7 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,witness=None):
         journal.prepare(item,tx,envelope)
         wrote()
         if witness is not None:witness['own_write']='attempted'
-        response=call('/knot',request)
+        response=call('/knot',request,**({'write_id':envelope['write_id']} if completion else {}))
         if (not isinstance(response,dict) or response.get('conforms') is False
             or not response.get('replaced') or type(response.get('tx_id')) is not int):
             raise custody.CustodyUnknown('projection write outcome unproved; preserve exact pending effect')
@@ -174,17 +237,17 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,witness=None):
 
 
 def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
-         cursor_time=None,wall=time.time):
+         cursor_time=None,wall=time.time,completion=False):
     requests=0;writes=0;slowest=0.0;last=None
     tick_started=clock()
     def wrote():
         nonlocal writes
         writes+=1
-    def call(endpoint,body):
+    def call(endpoint,body,**kwargs):
         nonlocal requests
         requests+=1
         if requests>TICK_REQUESTS:raise custody.CustodyUnknown('tick request budget exhausted')
-        response=timed(post,endpoint,body)
+        response=timed(post,endpoint,body,**kwargs)
         if endpoint=='/query' and body.get('query','').startswith('ASK '):
             receipt['control']=control_summary(response)
         return response
@@ -266,9 +329,12 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             except native.NativeUnknown:pass
             else:receipt['attempted_item']=pending[0]
             receipt['status']='UNKNOWN'
-            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,
+            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,completion=completion,
                             witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None)
-            receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)
+            if version is None:
+                receipt.update(status='OK',reconciled=receipt.get('reconciled',0)+1)
+            else:
+                receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)
             pending=journal.next()
         if feed_error:
             receipt.update(status='UNKNOWN',feed_error=feed_error)

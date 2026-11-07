@@ -188,7 +188,8 @@ class Journal:
         seed_work_item_sync.prove_absent). The row returns to a fresh candidate
         (body/effect_tx NULL, tx kept), so the next normal delivery reads the
         native item, prepares a new exact effect and writes once. Nothing is
-        resent here. Refuses a missing, verified, unprepared or changed row.
+        resent here. Refuses a missing, unprepared or changed row, or an effect
+        whose version is already verified. Older verified history is retained.
         """
         if not isinstance(expected_body,str) or not expected_body:
             raise CustodyUnknown('release needs the exact stored effect')
@@ -197,8 +198,12 @@ class Journal:
             row=self.db.execute('SELECT tx,body FROM pending WHERE id=?',(item,)).fetchone()
             if row is None or row[1] is None:raise CustodyUnknown('no stored pending effect to release')
             if row[1]!=expected_body:raise CustodyUnknown('stored effect changed since it was proved absent')
-            if self.db.execute('SELECT 1 FROM verified WHERE id=?',(item,)).fetchone():
-                raise CustodyUnknown('item already verified; nothing unconfirmed to release')
+            previous=self.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
+            if previous:
+                envelope=json.loads(expected_body)
+                version=envelope.get('version') if isinstance(envelope,dict) else None
+                if type(version) is not int or version<=integer(previous[0]):
+                    raise CustodyUnknown('effect version already verified or unproved; no automatic repair')
             self.db.execute('UPDATE pending SET body=NULL,effect_tx=NULL WHERE id=? AND body=?',(item,expected_body))
             self.db.execute('COMMIT')
         except Exception:self.db.execute('ROLLBACK');raise

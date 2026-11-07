@@ -104,11 +104,11 @@ class Sweep(custody.Journal):
             raise
 
 
-def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
-    calls = writes = verified = 0
+def tick(reader, journal, post, *, plane, actor, clock=time.monotonic, completion=False):
+    calls = writes = verified = reconciled = 0
     slowest = 0.0
     measurements = []
-    def call(endpoint, body):
+    def call(endpoint, body, **kwargs):
         nonlocal calls, slowest
         calls += 1
         if calls > delivery.TICK_REQUESTS:
@@ -116,7 +116,7 @@ def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
         started = clock()
         response = None
         try:
-            response = post(endpoint, body)
+            response = post(endpoint, body, **kwargs)
             return response
         finally:
             elapsed = clock()-started
@@ -140,8 +140,11 @@ def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
                     or (seen and slowest > delivery.READ_BUDGET_SECONDS)):
                 break
             seen.add(pending[0])
-            delivery.deliver(reader, journal, call, pending, plane=plane, actor=actor, wrote=wrote)
-            verified += 1
+            version = delivery.deliver(reader, journal, call, pending, plane=plane, actor=actor, wrote=wrote, completion=completion)
+            if version is None:
+                reconciled += 1
+            else:
+                verified += 1
         exhausted = journal.db.execute('SELECT exhausted FROM backfill').fetchone()[0]
         result.update(status='OK', enumeration_exhausted=bool(exhausted) if journal.item is None else False)
         if journal.item is not None:
@@ -149,6 +152,8 @@ def tick(reader, journal, post, *, plane, actor, clock=time.monotonic):
     except Exception as error:
         # Never print transport errors, credentials, records, or pending bodies.
         result['error'] = type(error).__name__
+    if reconciled:
+        result['reconciled'] = reconciled
     return {**result, 'requests': calls, 'writes': writes, 'verified': verified,
             'backlog': journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],
             'calls': measurements}
@@ -173,7 +178,7 @@ def main(argv=None):
         raw = sys.stdin.buffer.read(4097)
         if len(raw) > 4096:
             raise native.NativeUnknown('authority exceeds budget')
-        post = lambda route, body: planes._post(route, body, client='camayoc-ingress', response_limit=native.MAX_BYTES)
+        post = lambda route, body, **kwargs: planes._post(route, body, client='camayoc-ingress', response_limit=native.MAX_BYTES, **kwargs)
         reader = native.from_authority(post, json.loads(raw), server=planes.SERVER)
         plane = planes.plane_for('observed')
         # Parent must already exist; this command never installs a schedule/store.
@@ -181,7 +186,7 @@ def main(argv=None):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             journal = Sweep(args.state, reader.board, server=planes.SERVER, plane=plane,
                             actor=args.actor, initialise=args.initialise, item=args.item)
-            receipt = tick(reader, journal, post, plane=plane, actor=args.actor)
+            receipt = tick(reader, journal, post, plane=plane, actor=args.actor, completion=True)
     except Exception as error:
         receipt = {'status': 'UNKNOWN', 'error': type(error).__name__}
     finally:

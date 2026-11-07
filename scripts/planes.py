@@ -146,7 +146,11 @@ def provenance_headers(client: str, env=None) -> dict[str, str]:
 
 
 def _post(path: str, body: dict, *, client: str, form: bool = False,
-          response_limit: int | None = None) -> dict:
+          response_limit: int | None = None, write_id: str | None = None) -> dict:
+    if write_id is not None:
+        import re
+        if path != '/knot' or not isinstance(write_id, str) or not re.fullmatch('[0-9a-f]{64}', write_id):
+            raise PlaneError('Invalid completion write binding')
     maximum_response = 8 * 1024 * 1024 if client == 'camayoc-cost-generation' else 262144
     if response_limit is not None and (type(response_limit) is not int or not 1 <= response_limit <= maximum_response):
         raise PlaneError("Invalid explicit response budget")
@@ -157,6 +161,8 @@ def _post(path: str, body: dict, *, client: str, form: bool = False,
                  **provenance_headers(client)},
         method="POST",
     )
+    if write_id is not None:
+        req.add_header('X-Quipu-Write-Id', write_id)
     is_write = path not in ("/query", "/search", "/search/nodes", "/search_nodes")
     if is_write:
         try:

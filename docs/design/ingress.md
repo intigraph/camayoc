@@ -452,6 +452,33 @@ run. Operators must arm status, stale and absent detection with the scheduler.
 The scheduler should run this prerequisite before consumers; consumers retain
 their own canonical-presence checks.
 
+### Native Seeds timeout reconciliation
+
+The native SQLite producer persists a fresh 64-character lowercase hex write ID
+with the exact pending request before `/knot`. The HTTP transport sends it as
+`X-Quipu-Write-Id`. Polling uses `/knot/status` with that ID and the original
+request, under the same credential identity; it never resends the write to poll.
+
+An exact committed effect is verified without another write. Otherwise, retry
+requires the `quipu.knot-completion/v1` response to bind the original ID and prove
+`stopped` or `not_started`, followed by fresh absence proof. A stopped worker may
+have committed, so its state alone never permits retry. For a new item, both
+named-graph and default-graph subject absence must be proved. For an update, the
+previously verified version's canonical description, type and version may remain.
+The bounded read must return exactly one description/version pair with the
+expected integer datatype; an extra version cannot be hidden by filtering for
+the older one. A conflicting, partial or newer effect keeps custody frozen. Releasing custody
+only prepares a fresh candidate for the next normal tick. That tick reads the
+current native source and allocates a new ID for its one new write.
+
+Queued, running, unknown, malformed or mismatched completion receipts freeze the
+row. Missing endpoint support, evicted receipts, server restarts and old pending
+rows without an ID also stay unknown. A timeout or an elapsed clock interval
+never proves that the original writer has stopped. These are process-local
+completion receipts, not durable idempotency keys. Installation must separately
+verify native endpoint support; existing operator recovery and the 24-hour
+natural-tick acceptance remain separate from source tests.
+
 ### Standing WorkItem recovery receipts
 
 These JSON adapter rules apply to repository-local tracker stores. The primary
