@@ -24,6 +24,8 @@ class Tick(unittest.TestCase):
             return {'replaced':True,'tx_id':99,'conforms':True}
         if self.unavailable:raise TimeoutError('readback unavailable')
         query=body['query']
+        if query.startswith('SELECT ?has_type ?v '):
+            return {'rows':[dict(has_type=True,**({'v':self.description} if self.description else {}))],'truncated':False}
         if 'BIND(' in query:return {'rows':rows(),'truncated':False}
         if query.startswith('ASK '):return {'result':True}
         return {'rows':[{'v':self.description}] if self.description else [],'truncated':False}
@@ -59,6 +61,9 @@ class Tick(unittest.TestCase):
         result=self.tick()
         self.assertEqual((result['status'],result['writes'],result['verified']),('OK',0,1))
         self.assertEqual(self.writes,1)
+        self.assertEqual(result['requests'],3)
+        self.assertNotIn('control',result)
+        self.assertEqual(result['fused_control'],dict(schema='workitem-fused-readback/v1',shape='object',result='missing',truncated='false',type_witness='true',description='one'))
 
     def test_new_feed_transaction_keeps_lost_response_effect_custody(self):
         self.drop=True
@@ -153,6 +158,10 @@ class SerialTicks(unittest.TestCase):
             if item in self.drop:raise TimeoutError('committed, response lost')
             return {'replaced':True,'tx_id':99,'conforms':True}
         query=body['query'];item=self.item_of(query)
+        if query.startswith('SELECT ?has_type ?v '):
+            if item in self.drop:raise TimeoutError('readback unavailable')
+            value=self.descriptions.get(item)
+            return {'rows':[dict(has_type=True,**({'v':value} if value else {}))],'truncated':False}
         if 'BIND(' in query:
             found=rows(**{nw.SCHEMA+'identifier':item})
             return {'rows':[dict(row,s=nw.ITEM+item) for row in found],'truncated':False}
