@@ -492,7 +492,7 @@ def native_main(args):
         try:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:
-            print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
+            print(json.dumps({'status':'BUSY','busy_reason':'lock-held','requests':0,'writes':0}));return 0
         # Read the carried success first thing UNDER the lock, before anything
         # that can fail: an early failure (authority, custody, journal) must not
         # save None over a real success, and no concurrent tick can save between
@@ -520,7 +520,7 @@ def native_main(args):
                 if type(previous_time) not in (int,float) or not math.isfinite(previous_time):
                     raise custody.CustodyUnknown('last native tick timestamp unproved')
                 if started<previous_time+INTERVAL:
-                    print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
+                    print(json.dumps({'status':'BUSY','busy_reason':'interval-not-due','requests':0,'writes':0}));return 0
             def post(endpoint,body,**kwargs):
                 return planes._post(endpoint,body,client='camayoc-ingress',**kwargs)
             def changes(**params):

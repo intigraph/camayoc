@@ -479,7 +479,34 @@ completion receipts, not durable idempotency keys. Installation must separately
 verify native endpoint support; existing operator recovery and the 24-hour
 natural-tick acceptance remain separate from source tests.
 
+### Native feed capacity fallback
+
+When a whole four-transaction feed page exceeds pending custody, the native
+producer retries at the unchanged cursor with two transactions, then one.
+Every attempt consumes one of the existing eight feed reads and respects the
+same half-tick feed deadline. Successful retries remain at the smaller limit
+for the rest of that tick; the next tick starts at four again. The 256-item
+custody cap, 57-request ceiling, twelve deliveries, 40-second tick and slow-read
+stop do not change. No transaction is split and no cursor skips to a watermark.
+
+A single transaction that still cannot fit leaves custody unchanged and drains
+existing work as before. If no page was retained, capacity failure remains
+UNKNOWN, including when the read or time budget ends during fallback. A later
+capacity stop preserves earlier retained pages. Malformed pages and uncertain
+write/readback outcomes still report UNKNOWN and preserve exact pending effects.
+Source tests do not establish catch-up: acceptance requires cursor advancement
+and decreasing cursor age on the normal schedule, with the same budgets.
+
 ### Standing WorkItem recovery receipts
+
+The scheduled native caller reports `busy_reason: lock-held` when its existing
+nonblocking run lock is held, and `busy_reason: interval-not-due` when fewer than
+60 seconds have elapsed since its previous attempt. These are diagnostic fields
+on the existing `BUSY` output only: exit status, zero requests/writes, custody,
+stored receipt and published freshness remain unchanged. They do not identify a
+lock owner or change cadence. Page/custody failures retain their existing UNKNOWN
+status; they are not reclassified as BUSY. Count reasons from natural scheduled
+output before attributing lost ticks or proposing a rate change.
 
 These JSON adapter rules apply to repository-local tracker stores. The primary
 Seeds lane uses the separate SQLite custody implementation; this change neither
