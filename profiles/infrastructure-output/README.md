@@ -46,8 +46,14 @@ one non-author approves the full crosswalk and output contract.
 
 Supply an independently prepared manifest binding every exact record IRI to its
 subject IRI and scoped identifier. The checker rejects missing/extra markers,
-conflicting identities, unknown types, disconnected extra subjects and unequal
-record/input source links. It then runs the native SHACL engine on the same
+conflicting identities, unknown types and unequal record/input source links.
+Its complete subject inventory is bounded to records, their primary subjects,
+sources, extraction activities and address nodes, each with its own permitted
+types and predicates. Locator and address-space IRIs are terminal references;
+they do not authorize statements about their subjects. External host/service
+references carry only the required type statements unless independently bound
+by another admitted record. Arbitrary URI reachability never expands this
+inventory. It then runs the native SHACL engine on the same
 retained input bytes. It makes no graph writes, source fetch or runtime claim.
 
 ```sh

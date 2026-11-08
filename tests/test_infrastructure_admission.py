@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from rdflib import Graph
+from rdflib import Graph, Literal, URIRef
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -31,6 +31,49 @@ class InfrastructureAdmission(unittest.TestCase):
 
     def test_complete_control(self):
         self.assertEqual(1, self.admit())
+
+    def test_external_references_cannot_expand_the_subject_inventory(self):
+        # Host references carry only their required type; locators stay IRI
+        # objects. Neither is permission to traverse arbitrary RDF statements.
+        self.assertEqual(1, self.admit())
+        for extra in [
+            'ex:host <https://example.org/unapproved> "fixture-only" .',
+            '<https://example.org/repository/inventory.yaml> '
+            '<https://example.org/unapproved> "fixture-only" .',
+            '<https://example.org/repository/inventory.yaml> a core:Host .',
+            'ex:host core:runs_on ex:unmarked . ex:unmarked a core:Host .',
+        ]:
+            with self.subTest(extra=extra):
+                with self.assertRaises(ValueError):
+                    self.admit(DATA + '\n' + extra)
+
+    def test_address_space_is_a_reference_not_an_output_subject(self):
+        body = DATA + ADDRESS % "192.0.2.1"
+        self.assertEqual(1, self.admit(body))
+        with self.assertRaises(ValueError):
+            self.admit(body + '\nex:network a core:Host .')
+
+    def test_support_roles_cannot_carry_unrelated_known_types(self):
+        for extra in ['ex:record a core:Host .', 'ex:source a core:Host .',
+                      'ex:extraction a core:Service .']:
+            with self.subTest(extra=extra):
+                with self.assertRaises(ValueError):
+                    self.admit(DATA + '\n' + extra)
+
+    def test_referenced_host_can_have_its_own_admitted_record(self):
+        graph = Graph().parse(data=DATA, format="turtle")
+        record = URIRef(next(iter(EXPECTED)))
+        host_record = URIRef("https://example.org/host-record")
+        guest = MODULE.one(graph, record, MODULE.SCHEMA.about)
+        host = MODULE.one(graph, guest, MODULE.CORE.runs_on)
+        for predicate, value in list(graph.predicate_objects(record)):
+            graph.add((host_record, predicate,
+                       host if predicate == MODULE.SCHEMA.about else value))
+        graph.add((host, MODULE.SCHEMA.identifier, Literal("cluster-a/host")))
+        graph.add((host, MODULE.RDFS.label, Literal("host")))
+        expected = dict(EXPECTED)
+        expected[str(host_record)] = {"subject": str(host), "identifier": "cluster-a/host"}
+        self.assertEqual(2, MODULE.admit(graph, expected))
 
     def test_omitted_marker_or_extra_subject_refuses(self):
         for body in [

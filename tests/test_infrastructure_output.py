@@ -5,6 +5,7 @@ These fixture probes do not load shapes, run connectors or write a store.
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -35,6 +36,29 @@ class InfrastructureOutput(unittest.TestCase):
 
     def test_complete_control(self):
         self.assertTrue(self.conforms(EXAMPLE))
+
+    def test_cli_rejects_reference_statements_that_native_targeting_does_not(self):
+        for extra in [
+            '',
+            '\nex:host <https://example.org/unapproved> "fixture-only" .',
+            '\n<https://example.org/repository/inventory.yaml> '
+            '<https://example.org/unapproved> "fixture-only" .',
+        ]:
+            with self.subTest(extra=extra):
+                body = EXAMPLE + extra
+                self.assertTrue(self.conforms(body))
+                with tempfile.TemporaryDirectory() as directory:
+                    data = Path(directory) / "data.ttl"
+                    data.write_text(body)
+                    result = subprocess.run(
+                        [sys.executable, str(ROOT / "scripts/admit_infrastructure_output.py"),
+                         str(data), str(PROFILE / "example.manifest.json"),
+                         "--quipu", str(Path(QUIPU).resolve())],
+                        capture_output=True, text=True, timeout=40, check=False,
+                    )
+                self.assertEqual(2 if extra else 0, result.returncode,
+                                 result.stdout + result.stderr)
+                self.assertIn('"REFUSED"' if extra else '"ADMITTED_OFFLINE"', result.stdout)
 
     def test_guest_without_host_refuses_even_when_also_typed_host(self):
         missing = EXAMPLE.replace(" ; core:runs_on ex:host", "")

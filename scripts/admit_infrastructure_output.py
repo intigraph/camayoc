@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from rdflib import Graph, Literal, Namespace, RDF, RDFS, URIRef
 
 CORE = Namespace("https://w3id.org/intigraph/camayoc/core/ns#")
 INFRA = Namespace("https://w3id.org/intigraph/camayoc/homelab-infra/ns#")
@@ -35,6 +35,61 @@ def one(graph: Graph, subject: URIRef, predicate: URIRef):
     if len(values) != 1:
         raise ValueError("required field does not have exactly one value")
     return values[0]
+
+
+def check_subject_inventory(graph: Graph, records: set) -> None:
+    """Assign subjects by profile roles, never by arbitrary URI reachability.
+
+    Locator and address-space IRIs are terminal references. Host/service
+    references can carry their required type only, unless independently bound
+    as a primary subject by another admitted record. Native SHACL validates
+    the complete statements of every record, primary subject and support node.
+    """
+    subjects = {one(graph, record, SCHEMA.about) for record in records}
+    sources = {one(graph, record, PROV.wasDerivedFrom) for record in records}
+    activities = {one(graph, record, PROV.wasGeneratedBy) for record in records}
+    addresses = {address for subject in subjects
+                 for address in graph.objects(subject, CRTV.ipAddress)}
+    inventory = {}
+    roles = [
+        (records, {RDF.type, DCT.conformsTo, SCHEMA.about, CORE.sourceKind,
+                   CORE.contentSha256, PROV.wasDerivedFrom, PROV.wasGeneratedBy},
+         {PROV.Entity}),
+        (subjects, {RDF.type, SCHEMA.identifier, RDFS.label, CRTV.ipAddress,
+                    INFRA.hostname, INFRA.ctId, CORE.runs_on, CORE.routes_to},
+         ALLOWED_TYPES - {PROV.Entity, PROV.Activity, CRTV.IPAddress}),
+        (sources, {RDF.type, DCT.identifier, CORE.contentSha256, PROV.atLocation},
+         {PROV.Entity}),
+        (activities, {RDF.type, PROV.used, DCT.identifier}, {PROV.Activity}),
+        (addresses, {RDF.type, CRTV.address, CRTV.contextAddressSpace}, {CRTV.IPAddress}),
+    ]
+    for members, predicates, kinds in roles:
+        for member in members:
+            if not isinstance(member, URIRef) or member in inventory:
+                raise ValueError("support subject has an invalid or conflicting role")
+            types = set(graph.objects(member, RDF.type))
+            if not types or not types <= kinds:
+                raise ValueError("subject kind is incompatible with its output role")
+            inventory[member] = predicates
+    for relation, kinds in [
+        (CORE.runs_on, {CORE.Host, CORE.BareMetalHost, CORE.ProxmoxNode}),
+        (CORE.routes_to, {CORE.Service, CORE.SystemdService}),
+    ]:
+        for subject in subjects:
+            for reference in graph.objects(subject, relation):
+                if reference in subjects:
+                    continue  # Its own admitted record supplies full validation.
+                if not isinstance(reference, URIRef):
+                    raise ValueError("host/service reference must be an IRI")
+                types = set(graph.objects(reference, RDF.type))
+                if not types or not types <= kinds:
+                    raise ValueError("reference carries an unsupported entity kind")
+                if reference in inventory and inventory[reference] != {RDF.type}:
+                    raise ValueError("reference conflicts with a support subject role")
+                inventory[reference] = {RDF.type}
+    for subject, predicate, _ in graph:
+        if subject not in inventory or predicate not in inventory[subject]:
+            raise ValueError("statement outside the role-bounded subject inventory")
 
 
 def admit(graph: Graph, expected: dict) -> int:
@@ -76,16 +131,7 @@ def admit(graph: Graph, expected: dict) -> int:
         text = str(lexical)
         if "%" in text or str(ipaddress.ip_address(text)) != text:
             raise ValueError("address must be canonical, unscoped IP text")
-    reached = set(marked)
-    pending = list(marked)
-    while pending:
-        subject = pending.pop()
-        for obj in graph.objects(subject):
-            if isinstance(obj, URIRef) and obj not in reached:
-                reached.add(obj)
-                pending.append(obj)
-    if set(graph.subjects()) - reached:
-        raise ValueError("unclaimed subject outside the admitted batch closure")
+    check_subject_inventory(graph, marked)
     return len(marked)
 
 
