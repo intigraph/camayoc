@@ -5,6 +5,7 @@ receipt; a failed tick must carry the previous success forward, never report a
 new one, and graph coverage is disclosed rather than implied.
 """
 import io
+import fcntl
 import json
 import sys
 import tempfile
@@ -12,7 +13,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import seed_change_custody
@@ -80,6 +81,69 @@ class NativeFreshness(unittest.TestCase):
                 self.assertIn('camayoc_workitem_ingress_last_success_timestamp_seconds 1100', text)
             receipt = json.loads(state.with_suffix('.receipt.json').read_text())
             self.assertEqual(receipt['last_success_at'], 1100.0)
+
+
+class NativeBusyDiagnostics(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.state = Path(self.tmp.name) / 'seeds-state.sqlite3'
+        self.state.write_bytes(b'exact retained custody fixture')
+        self.receipt = self.state.with_suffix('.receipt.json')
+        self.receipt.write_text(json.dumps({'attempted_at': 1000.0,
+                                          'last_success_at': 900.0,
+                                          'status': 'UNKNOWN', 'cursor': 41}))
+
+    def run_native(self, now):
+        argv = ['sync', '--native-authority-stdin', '--state', str(self.state),
+                '--actor', 'fixture', '--source', 'urn:fixture', '--publish-status']
+        reader = SimpleNamespace(board=SimpleNamespace(graph='urn:fixture:board'))
+        journal = SimpleNamespace(db=SimpleNamespace(close=Mock()))
+        output = io.StringIO()
+        before = (self.state.read_bytes(), self.receipt.read_bytes())
+        with (patch.object(sys, 'argv', argv),
+              patch.object(sys, 'stdin', SimpleNamespace(buffer=io.BytesIO(b'{}'))),
+              patch.object(sync.time, 'time', return_value=now),
+              patch.object(seed_work_items, 'from_authority', return_value=reader) as authority,
+              patch.object(seed_change_custody, 'Journal', return_value=journal) as opened,
+              patch.object(seed_work_item_sync, 'tick', return_value={
+                  'status': 'OK', 'requests': 0, 'writes': 0, 'verified': 0}) as tick,
+              patch.object(sync.camayoc_metrics, 'push', return_value=(True, '')) as push,
+              redirect_stdout(output)):
+            code = sync.main()
+        return SimpleNamespace(code=code, output=json.loads(output.getvalue()),
+                               authority=authority, journal=opened, tick=tick, push=push,
+                               before=before)
+
+    def assert_busy_preserves_state(self, result, reason):
+        self.assertEqual(result.code, 0)
+        self.assertEqual(result.output.get('busy_reason'), reason)
+        self.assertEqual(result.output['status'], 'BUSY')
+        self.assertEqual((result.output['requests'], result.output['writes']), (0, 0))
+        self.assertEqual((self.state.read_bytes(), self.receipt.read_bytes()), result.before)
+        result.tick.assert_not_called()
+        result.push.assert_not_called()
+
+    def test_real_lock_contention_names_its_reason_without_opening_custody(self):
+        with self.state.with_suffix('.lock').open('a') as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            result = self.run_native(1061.0)
+        self.assert_busy_preserves_state(result, 'lock-held')
+        result.authority.assert_not_called()
+        result.journal.assert_not_called()
+
+    def test_interval_guard_names_its_reason_without_refreshing_the_receipt(self):
+        result = self.run_native(1059.999)
+        self.assert_busy_preserves_state(result, 'interval-not-due')
+        result.journal.assert_called_once()
+
+    def test_exact_interval_boundary_still_runs_the_normal_tick(self):
+        result = self.run_native(1060.0)
+        self.assertEqual((result.code, result.output['status']), (0, 'OK'))
+        self.assertNotIn('busy_reason', result.output)
+        result.tick.assert_called_once()
+        result.push.assert_called_once()
+        self.assertEqual(json.loads(self.receipt.read_text())['attempted_at'], 1060.0)
 
 
 if __name__ == '__main__':
