@@ -1,0 +1,198 @@
+{
+  "atomic_writes": 20,
+  "commits_during_reads": 1,
+  "concurrent_reads": 20,
+  "execution_profile": {
+    "choices": [
+      {
+        "input_rows": 1,
+        "output_rows": 1,
+        "path": "bgp_nested"
+      },
+      {
+        "input_rows": 1,
+        "output_rows": 1,
+        "path": "bgp_nested"
+      }
+    ],
+    "choices_complete": true,
+    "choices_dropped": 0,
+    "contract": "quipu-execution-profile/v1",
+    "coverage": "algebra operators, BGP dispatch and filter_join; not SQL EXPLAIN or all optimizer decisions",
+    "elapsed_us": 211,
+    "operators": [
+      {
+        "calls": 3,
+        "errors": 0,
+        "inclusive_us": 54,
+        "operator": "bgp",
+        "output_rows_sum": 3
+      },
+      {
+        "calls": 1,
+        "errors": 0,
+        "inclusive_us": 65,
+        "operator": "graph",
+        "output_rows_sum": 1
+      },
+      {
+        "calls": 3,
+        "errors": 0,
+        "inclusive_us": 156,
+        "operator": "other",
+        "output_rows_sum": 3
+      },
+      {
+        "calls": 1,
+        "errors": 0,
+        "inclusive_us": 67,
+        "operator": "project",
+        "output_rows_sum": 1
+      },
+      {
+        "calls": 1,
+        "errors": 0,
+        "inclusive_us": 68,
+        "operator": "slice",
+        "output_rows_sum": 1
+      }
+    ],
+    "paths": [
+      {
+        "calls": 2,
+        "calls_with_output": 2,
+        "input_rows_sum": 2,
+        "output_rows_sum": 2,
+        "path": "bgp_nested"
+      }
+    ],
+    "scope": "local tool_query including inference and label reads",
+    "timing": "inclusive; overlapping operators are not additive"
+  },
+  "explain_scope": "visitor access shape only; not a complete physical SPARQL trace",
+  "median_seconds": {
+    "fused": 0.0009485899936407804,
+    "legacy": 0.001857819501310587
+  },
+  "paired_samples_per_method": 10,
+  "proof_requests": {
+    "fused": 10,
+    "legacy": 20
+  },
+  "raw_seconds": {
+    "fused": [
+      0.0007140300003811717,
+      0.0007596589857712388,
+      0.0010332480305805802,
+      0.0010508259292691946,
+      0.0007979789515957236,
+      0.0009189619449898601,
+      0.0010497430339455605,
+      0.0010207219747826457,
+      0.0009536870056763291,
+      0.0009434929816052318
+    ],
+    "legacy": [
+      0.0015381460543721914,
+      0.002074984018690884,
+      0.001934289000928402,
+      0.00217336299829185,
+      0.0016726559260860085,
+      0.0018480150029063225,
+      0.001687229028902948,
+      0.0018676239997148514,
+      0.001742650056257844,
+      0.0018982370384037495
+    ]
+  },
+  "representative_bound_comment_explain": [
+    [
+      7,
+      0,
+      0,
+      "SEARCH facts USING INDEX idx_current_gea (g=? AND e=? AND a=?)"
+    ],
+    [
+      18,
+      0,
+      0,
+      "USE TEMP B-TREE FOR GROUP BY"
+    ]
+  ],
+  "semantic_cases": [
+    {
+      "case": "good",
+      "fused": true,
+      "legacy": true
+    },
+    {
+      "case": "extra",
+      "fused": true,
+      "legacy": true
+    },
+    {
+      "case": "wrong-type",
+      "fused": null,
+      "legacy": null
+    },
+    {
+      "case": "missing-type",
+      "fused": null,
+      "legacy": null
+    },
+    {
+      "case": "no-comment",
+      "fused": false,
+      "legacy": false
+    },
+    {
+      "case": "wrong-comment",
+      "fused": false,
+      "legacy": false
+    },
+    {
+      "case": "boundary128",
+      "fused": true,
+      "legacy": true
+    },
+    {
+      "case": "overflow129",
+      "fused": null,
+      "legacy": null
+    }
+  ],
+  "server_binary_sha256": "057f1f66fdd087ceed910059fd2a9ba4f8e6386d1d7512d6d1c95b29ece4eb7f",
+  "server_version": {
+    "features": {
+      "bundled-onnx": true,
+      "dev-tools": false,
+      "docgen": false,
+      "full": true,
+      "ha-read-profile": false,
+      "jemalloc": true,
+      "lancedb": false,
+      "mcp": true,
+      "onnx": true,
+      "owl": true,
+      "oxicompare": false,
+      "reactive-reasoner": true,
+      "remote": true,
+      "server": true,
+      "shacl": true
+    },
+    "git_dirty": false,
+    "git_sha": "1792a7a6771583876522cff6fa0dfa0f31e7b6ce",
+    "read_contracts": [
+      "quipu-acquisition/v1",
+      "quipu-acquisition/composed-v1",
+      "quipu-eligibility/v1",
+      "quipu-entity-history/main-v1",
+      "quipu-entity-history/observation-v1"
+    ],
+    "version": "0.17.0",
+    "write_contracts": [
+      "quipu.knot-completion/v1"
+    ]
+  },
+  "status": "PASS"
+}
