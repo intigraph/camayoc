@@ -32,11 +32,44 @@ exact expected record/subject set and marker, reject unexpected RDF types,
 require one scoped identity and a resolved duplicate decision, parse IP literals
 with address-space scope, and check that each record's source is exactly the
 source used by its Activity. Marker removal or an unmarked extra subject must
-refuse admission. The profile currently excludes IP output until that parsed
-address contract is implemented; it must not claim IP validation from a regex.
+refuse admission. The offline admission helper parses IP literals with Python ipaddress and
+requires canonical text plus an IRI address-space scope; SHACL alone does not
+prove IP parsing.
 Host/route references need admission and identity checks beyond their type.
 
 Validation does not prove that these shapes are loaded, enforced by ingress,
 or compatible with the serving vocabulary. Those require separate measured
 activation proofs. Connector output stays disabled until those gates pass and
 one non-author approves the full crosswalk and output contract.
+
+## Offline admission
+
+Supply an independently prepared manifest binding every exact record IRI to its
+subject IRI and scoped identifier. The checker rejects missing/extra markers,
+conflicting identities, unknown types, disconnected extra subjects and unequal
+record/input source links. It then runs the native SHACL engine on the same
+retained input bytes. It makes no graph writes, source fetch or runtime claim.
+
+```sh
+uv run --locked --script scripts/admit_infrastructure_output.py \
+  profiles/infrastructure-output/example.ttl \
+  profiles/infrastructure-output/example.manifest.json --quipu /absolute/quipu
+```
+
+The manifest is an explicit expected batch, not an authorization receipt. The
+connector still needs its existing duplicate gate and admitted destination.
+
+## Recorded scope comparison
+
+[Output](demo-output.log) and [timing](demo-timing.log) are a retained util-linux
+terminal recording, not an inline video. They show native SHACL accepting an
+unmarked fixture outside its target scope, then exact-batch admission rejecting
+that same input. The complete positive control passes both checks. These are
+disposable source fixtures, not an installed-before baseline. The recording
+binds fixture/shape SHA256 values. The small files remain with this profile.
+
+Download both files and run:
+
+```sh
+scriptreplay --log-out demo-output.log --log-timing demo-timing.log
+```

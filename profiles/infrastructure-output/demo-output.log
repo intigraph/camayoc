@@ -1,0 +1,17 @@
+Script started on 2026-11-07 22:27:24-05:00 [COMMAND="uv run --frozen --python 3.11 --group review python profiles/infrastructure-output/demo.py" <not executed on terminal>]
+Target: disposable source fixtures; no graph writes or deployed baseline
+shapes.ttl sha256=9b30fbfdcbdb1ec09da8c38bda3872521abcc879e4805d0b07c2d83881d9cef7
+example.ttl sha256=32852761c00dc8c1ad2814ca705dc7f0be1e34818377c1c13d35472b7315b5b2
+example.manifest.json sha256=8695d49cf6d7246a523c524d6b1f9b71f559becc1b9f2ed4f32f807df4ff78bd
+
+INPUT: complete control
+Native SHACL only: valid (0 warnings)
+Exact batch admission: ADMITTED_OFFLINE, records= 1
+
+INPUT: same input with profile marker removed
+Native SHACL only: valid (0 warnings)
+Exact batch admission: REFUSED - record membership or profile marker mismatch
+
+PASS: complete control stays valid; omitted marker cannot bypass batch admission
+
+Script done on 2026-11-07 22:27:24-05:00 [COMMAND_EXIT_CODE="0"]
