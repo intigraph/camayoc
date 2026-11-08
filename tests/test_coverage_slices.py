@@ -185,11 +185,12 @@ class SuiteTotalTests(unittest.TestCase):
         # GitHub activity (aegis-c01c.3) adds six gaps, all waiting on the
         # GitHub classes passing Quipu's schema path.
         figures = coverage.totals()
-        self.assertEqual(10, figures["slices"])
-        self.assertEqual(118, figures["total"])
+        # Infrastructure adds four unwritten questions and one admission gap.
+        self.assertEqual(11, figures["slices"])
+        self.assertEqual(123, figures["total"])
         self.assertEqual(44, figures["covered"])
-        self.assertEqual(29, figures["unwritten"])
-        self.assertEqual(45, figures["gaps"])
+        self.assertEqual(33, figures["unwritten"])
+        self.assertEqual(46, figures["gaps"])
 
     def test_the_three_states_account_for_every_question(self):
         """No question falls between the states. If one ever does it is
