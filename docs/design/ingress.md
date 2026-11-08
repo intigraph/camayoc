@@ -499,6 +499,15 @@ and decreasing cursor age on the normal schedule, with the same budgets.
 
 ### Standing WorkItem recovery receipts
 
+The scheduled native caller reports `busy_reason: lock-held` when its existing
+nonblocking run lock is held, and `busy_reason: interval-not-due` when fewer than
+60 seconds have elapsed since its previous attempt. These are diagnostic fields
+on the existing `BUSY` output only: exit status, zero requests/writes, custody,
+stored receipt and published freshness remain unchanged. They do not identify a
+lock owner or change cadence. Page/custody failures retain their existing UNKNOWN
+status; they are not reclassified as BUSY. Count reasons from natural scheduled
+output before attributing lost ticks or proposing a rate change.
+
 These JSON adapter rules apply to repository-local tracker stores. The primary
 Seeds lane uses the separate SQLite custody implementation; this change neither
 imports legacy pending state nor rearms that lane.
