@@ -276,7 +276,9 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
         feed_error=None
         backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
         if backlog < custody.MAX_PENDING and changes is not None:
-            # Up to MAX_FEED_PAGES pages (aegis-etv). The first page keeps the
+            page_limit=custody.MAX_TRANSACTIONS
+            retained_pages=0
+            # Up to MAX_FEED_PAGES reads, including retries (aegis-etv). The first page keeps the
             # original contract exactly. A later page stops feeding quietly when
             # custody is full, the feed is caught up, or half the tick's wall clock
             # is spent; the retained pages and the cursor they advanced stand.
@@ -288,20 +290,29 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
                 before=journal.cursor
                 try:
                     caught_up=False
-                    page=timed(changes,since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
+                    page=timed(changes,since=journal.cursor,limit=page_limit,
                                  capture='new_values',graph=reader.board.graph)
                     journal.retain(page)
+                    retained_pages+=1
+                    feed_error=None
                     # The feed is graph-filtered while watermark_tx is global, so a
                     # quiet board answers an empty page with next_tx == since, far
                     # below the watermark. That empty page is the caught-up proof.
                     caught_up=(isinstance(page,dict) and (page.get('records')==[] or
                                integer_or_none(page.get('next_tx'))==integer_or_none(page.get('watermark_tx'))))
                 except custody.CustodyFull:
-                    if page_number:break
+                    # retain() rolled back the entire page, including its cursor.
+                    # Spend another EXISTING feed-read slot on fewer whole txs;
+                    # never split a transaction or expand custody/tick budgets.
+                    if not retained_pages:feed_error='CustodyFull'
+                    if page_limit>1:
+                        page_limit=max(1,page_limit//2)
+                        continue
+                    if retained_pages:break
                     if pending is None:raise
                     feed_error='CustodyFull';break
                 except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
-                    if page_number==0 and pending is None:raise
+                    if not retained_pages and pending is None:raise
                     feed_error=type(exc).__name__;break
                 backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
                 if (journal.cursor==before or not isinstance(page,dict)
