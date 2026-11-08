@@ -128,7 +128,9 @@ class KnotWriteInventoryTests(unittest.TestCase):
         """
         # READERS of the PROV edge quipu's own /episode writes are not knot
         # writers. Each exemption names why; it must never write the edge.
-        readers = {"directive_edges.py": "anchors a Directive's grace window on "
+        readers = {"admit_infrastructure_output.py": "validates offline record-to-activity "
+                   "links and the exact batch; it has no HTTP client and writes no graph data",
+                   "directive_edges.py": "anchors a Directive's grace window on "
                    "its capture episode (aegis-q9m5mp.47); writes only governedBy, "
                    "trackedBy and inferredAt",
                    "exact_work_item_coverage.py": "reads the positive control's "

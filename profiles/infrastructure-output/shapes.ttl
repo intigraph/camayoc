@@ -1,0 +1,95 @@
+# Optional producer contract. Not automatically loaded with the default packs.
+@prefix infra: <https://w3id.org/intigraph/camayoc/homelab-infra/ns#> .
+@prefix core: <https://w3id.org/intigraph/camayoc/core/ns#> .
+@prefix crtv: <http://open-services.net/ns/crtv#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix schema: <https://schema.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# The adapter must separately bind the exact expected record/subject set and
+# marker. Removing a marker is NOT proof of valid producer output.
+infra:ConnectorOutputScope a sh:NodeShape ;
+    sh:targetSubjectsOf dct:conformsTo ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path dct:conformsTo ;
+              sh:hasValue infra:ConnectorRecordShape ] ] ]
+        infra:ConnectorRecordShape
+    ) .
+
+infra:ConnectorRecordShape a sh:NodeShape ;
+    sh:closed true ; sh:ignoredProperties ( rdf:type ) ;
+    sh:class prov:Entity ;
+    sh:property [ sh:path dct:conformsTo ; sh:hasValue infra:ConnectorRecordShape ;
+          sh:minCount 1 ; sh:maxCount 1 ],
+        [ sh:path schema:about ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:nodeKind sh:IRI ; sh:node infra:ConnectorSubjectShape ],
+        [ sh:path core:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( "declared" "observed" ) ],
+        [ sh:path core:contentSha256 ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ],
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:nodeKind sh:IRI ; sh:node infra:ConnectorSourceShape ],
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:nodeKind sh:IRI ; sh:node infra:ConnectorExtractionShape ] .
+
+infra:ConnectorSourceShape a sh:NodeShape ;
+    sh:closed true ; sh:ignoredProperties ( rdf:type ) ; sh:class prov:Entity ;
+    sh:property [ sh:path dct:identifier ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:datatype xsd:string ; sh:minLength 1 ],
+        [ sh:path core:contentSha256 ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ],
+        [ sh:path prov:atLocation ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] .
+
+infra:ConnectorExtractionShape a sh:NodeShape ;
+    sh:closed true ; sh:ignoredProperties ( rdf:type ) ; sh:class prov:Activity ;
+    sh:property [ sh:path prov:used ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:nodeKind sh:IRI ; sh:node infra:ConnectorSourceShape ],
+        [ sh:path dct:identifier ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:datatype xsd:string ; sh:minLength 1 ] .
+
+infra:ConnectorSubjectShape a sh:NodeShape ;
+    sh:closed true ; sh:ignoredProperties ( rdf:type ) ;
+    sh:property [ sh:path schema:identifier ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:datatype xsd:string ; sh:minLength 1 ],
+        [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ],
+        [ sh:path crtv:ipAddress ; sh:nodeKind sh:IRI ;
+          sh:node infra:ConnectorAddressShape ],
+        [ sh:path infra:hostname ; sh:datatype xsd:string ; sh:maxCount 1 ],
+        [ sh:path infra:ctId ; sh:datatype xsd:integer ; sh:minInclusive 1 ; sh:maxCount 1 ],
+        [ sh:path core:runs_on ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+          sh:or ( [ sh:class core:Host ] [ sh:class core:ProxmoxNode ] ) ],
+        [ sh:path core:routes_to ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+          sh:or ( [ sh:class core:Service ] [ sh:class core:SystemdService ] ) ] ;
+    sh:and (
+        [ sh:or ( [ sh:not [ sh:class core:LXCContainer ] ]
+            [ sh:property [ sh:path core:runs_on ; sh:minCount 1 ] ] ) ]
+        [ sh:or ( [ sh:not [ sh:class infra:ReverseProxyRoute ] ]
+            [ sh:property [ sh:path core:routes_to ; sh:minCount 1 ] ] ) ]
+    ) ;
+    sh:or (
+        [ sh:class core:Host ]
+        [ sh:class core:BareMetalHost ]
+        [ sh:class core:ProxmoxNode ]
+        [ sh:class core:LXCContainer ;
+          sh:property [ sh:path core:runs_on ; sh:minCount 1 ] ]
+        [ sh:class core:Service ]
+        [ sh:class core:SystemdService ]
+        [ sh:class core:AnsibleGroup ]
+        [ sh:class core:AnsibleRole ]
+        [ sh:class infra:TerraformResource ]
+        [ sh:class infra:ReverseProxyRoute ;
+          sh:property [ sh:path core:routes_to ; sh:minCount 1 ] ]
+    ) .
+
+# Full IP parsing/canonicalization is checked by the offline batch admission
+# helper in addition to this lexical/type contract, never inferred from regex.
+infra:ConnectorAddressShape a sh:NodeShape ;
+    sh:closed true ; sh:ignoredProperties ( rdf:type ) ; sh:class crtv:IPAddress ;
+    sh:property [ sh:path crtv:address ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:datatype xsd:string ; sh:minLength 2 ; sh:maxLength 45 ],
+        [ sh:path crtv:contextAddressSpace ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:nodeKind sh:IRI ] .
