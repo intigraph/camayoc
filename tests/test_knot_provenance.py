@@ -127,9 +127,12 @@ class KnotWriteInventoryTests(unittest.TestCase):
         doc's "costs something" paragraph needs revisiting.
         """
         # READERS of the PROV edge quipu's own /episode writes are not knot
-        # writers. Each exemption names why; it must never write the edge.
+        # writers. Each exemption names why; offline producers may serialize the
+        # edge to fixture files but must have no ingress transport.
         readers = {"admit_infrastructure_output.py": "validates offline record-to-activity "
                    "links and the exact batch; it has no HTTP client and writes no graph data",
+                   "produce_infrastructure.py": "serializes only local offline fixtures; "
+                   "no HTTP client, source fetch or ingress transport",
                    "directive_edges.py": "anchors a Directive's grace window on "
                    "its capture episode (aegis-q9m5mp.47); writes only governedBy, "
                    "trackedBy and inferredAt",

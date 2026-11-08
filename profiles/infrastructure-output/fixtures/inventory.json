@@ -1,0 +1,1 @@
+{"_meta":{"hostvars":{"node-a":{"declared_units":["demo.service"]},"guest-a":{"password":"fixture-sentinel-never-emit"}}},"all":{"hosts":["node-a","guest-a"]}}

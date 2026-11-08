@@ -1,0 +1,1 @@
+{"format_version":"1.0","values":{"root_module":{"child_modules":[{"resources":[{"address":"module.lab.proxmox_lxc.guest","mode":"managed","values":{"hostname":"guest-a","node_name":"node-a","password":"fixture-sentinel-never-emit"}}]}]}}}
