@@ -559,3 +559,13 @@ SLICES: dict[str, dict[int, dict]] = {
     "delivery-and-dora": COVERAGE_DD,
     "github-activity": COVERAGE_GH,
 }
+
+# The optional infrastructure contract has no stored-query coverage yet.
+SLICES["infrastructure-projections"] = {
+    1: {"expressible": "PROV source Entity, extraction Activity and exact revision/digest; query unwritten."},
+    2: {"expressible": "The output record carries sourceKind; query unwritten."},
+    3: {"expressible": "Typed placement and route targets; query unwritten."},
+    4: {"gap": "Identity admission receipts are not yet part of this staged output contract.",
+        "needs": ["resolved scoped identity admission"]},
+    5: {"expressible": "Closed producer field shapes plus adapter admission; query unwritten."},
+}
