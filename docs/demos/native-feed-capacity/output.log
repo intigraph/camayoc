@@ -1,0 +1,7 @@
+Script started on 2026-11-07 23:38:44-05:00 [COMMAND="python3 docs/demos/native-feed-capacity/demo.py" <not executed on terminal>]
+Isolated SQLite custody: 171 pending plus a 100-item four-transaction page; cap 256.
+{"calls": [[10, 4]], "cursor": 10, "pending": 171, "requests": 1, "source": "before", "status": "UNKNOWN"}
+{"calls": [[10, 4], [10, 2], [12, 2], [12, 1], [13, 1]], "cursor": 13, "pending": 246, "requests": 5, "source": "candidate", "status": "OK"}
+PASS: smaller whole pages advance the cursor inside existing custody/read budgets; no live writes.
+
+Script done on 2026-11-07 23:38:45-05:00 [COMMAND_EXIT_CODE="0"]

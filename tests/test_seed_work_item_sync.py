@@ -419,7 +419,7 @@ class Throughput(unittest.TestCase):
     def test_later_page_custody_full_stops_quietly_keeping_earlier_pages(self):
         first=self.feed(head=9+4*20)
         def changes(**args):
-            if self.feed_calls==2:
+            if self.feed_calls>=2:
                 self.feed_calls+=1;raise sc.CustodyFull('pending custody is full; keep prior cursor')
             return first(**args)
         with mock.patch.object(sync,'MAX_DELIVERIES',0):
@@ -468,3 +468,87 @@ class Throughput(unittest.TestCase):
         with mock.patch.object(sync,'MAX_DELIVERIES',0):
             result=self.tick(failing,cursor_time=lambda tx:1000.0,wall=lambda:4600.0)
         self.assertNotEqual(result.get('cursor_age_seconds'),0)
+
+
+class AdaptiveFeed(unittest.TestCase):
+    """Whole pages shrink under pressure; custody and all tick budgets stay fixed."""
+    setUp=Throughput.setUp
+    tearDown=Throughput.tearDown
+    clock=Throughput.clock
+    tick=Throughput.tick
+
+    def seed(self,count):
+        self.j.retain(self.page(10,10,count,'old'))
+
+    def page(self,start,end,items_per_tx,prefix='new'):
+        return dict(records=[dict(graph=GRAPH,tx=tx,sequence=i,
+                    entity=nw.ITEM+f'demo-{prefix}-{tx}-{i}',
+                    attribute=nw.SCHEMA+'name',op='assert')
+                    for tx in range(start,end+1) for i in range(items_per_tx)],
+                    next_tx=end,watermark_tx=14,capture='new_values')
+
+    def test_measured_171_plus_100_falls_back_without_replacing_exact_effect(self):
+        self.seed(171)
+        self.j.prepare('demo-old-10-0',10,{'retained':'exact pending effect'})
+        before=self.j.db.execute('SELECT body,effect_tx FROM pending WHERE body IS NOT NULL').fetchall()
+        calls=[]
+        def changes(**args):
+            calls.append((args['since'],args['limit']))
+            return self.page(args['since']+1,min(14,args['since']+args['limit']),25)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):result=self.tick(changes)
+        self.assertEqual(calls,[(10,4),(10,2),(12,2),(12,1),(13,1)])
+        self.assertEqual(self.j.cursor,13)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],246)
+        self.assertEqual(self.j.db.execute('SELECT body,effect_tx FROM pending WHERE body IS NOT NULL').fetchall(),before)
+        self.assertEqual((result['status'],result['writes'],result['requests']),('OK',0,5))
+
+    def test_single_transaction_over_cap_never_advances_or_splits(self):
+        calls=[]
+        def changes(**args):
+            calls.append((args['since'],args['limit']))
+            return self.page(10,10,sc.MAX_PENDING+1)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):result=self.tick(changes)
+        self.assertEqual(calls,[(9,4),(9,2),(9,1)])
+        self.assertEqual(self.j.cursor,9)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],0)
+        self.assertEqual((result['status'],result['error'],result['writes']),('UNKNOWN','CustodyFull',0))
+
+    def test_retries_consume_existing_feed_read_budget_and_remain_unknown(self):
+        self.seed(171);calls=[]
+        def changes(**args):
+            calls.append(args['limit']);return self.page(11,11,100)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0),mock.patch.object(sync,'MAX_FEED_PAGES',2):
+            result=self.tick(changes)
+        self.assertEqual(calls,[4,2])
+        self.assertEqual(self.j.cursor,10)
+        self.assertEqual((result['requests'],result['status'],result['feed_error']),(2,'UNKNOWN','CustodyFull'))
+
+    def test_slow_overflow_does_not_start_another_feed_read(self):
+        self.seed(171);calls=[]
+        def changes(**args):
+            calls.append(args['limit']);self.now+=sync.TICK_SECONDS/2+1
+            return self.page(11,11,100)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):result=self.tick(changes)
+        self.assertEqual(calls,[4]);self.assertEqual(self.j.cursor,10)
+        self.assertEqual((result['status'],result['feed_error']),('UNKNOWN','CustodyFull'))
+
+    def test_malformed_retry_is_not_capacity_or_success(self):
+        self.seed(171);calls=[]
+        def changes(**args):
+            calls.append(args['limit']);p=self.page(11,11,100)
+            if len(calls)>1:p['truncated']=True
+            return p
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):result=self.tick(changes)
+        self.assertEqual(calls,[4,2]);self.assertEqual(self.j.cursor,10)
+        self.assertEqual((result['status'],result['feed_error'],result['writes']),('UNKNOWN','CustodyUnknown',0))
+
+    def test_delivery_uncertainty_stays_unknown_after_successful_fallback(self):
+        self.seed(171)
+        self.j.prepare('demo-old-10-0',10,{'retained':'exact pending effect'})
+        before=self.j.db.execute('SELECT body,effect_tx FROM pending WHERE body IS NOT NULL').fetchall()
+        def changes(**args):return self.page(args['since']+1,min(14,args['since']+args['limit']),25)
+        with mock.patch.object(sync,'deliver',side_effect=sc.CustodyUnknown('readback uncertain')):
+            result=self.tick(changes)
+        self.assertEqual(self.j.cursor,13)
+        self.assertEqual((result['status'],result['error'],result['writes']),('UNKNOWN','CustodyUnknown',0))
+        self.assertEqual(self.j.db.execute('SELECT body,effect_tx FROM pending WHERE body IS NOT NULL').fetchall(),before)
