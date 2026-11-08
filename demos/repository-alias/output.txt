@@ -1,0 +1,8 @@
+Script started on 2026-11-07 16:46:56-05:00 [COMMAND="python3 docs/demos/repository-alias/reproduce.py" <not executed on terminal>]
+before: REFUSE literal repository mismatch
+after: ACCEPT declared alias and identical repository id
+missing-map: REFUSE
+wrong-id: REFUSE
+PASS read-only fixture verification; no release assets or tags changed
+
+Script done on 2026-11-07 16:46:56-05:00 [COMMAND_EXIT_CODE="0"]
