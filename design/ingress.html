@@ -639,13 +639,33 @@ Source tests do not establish catch-up: acceptance requires cursor advancement
 and decreasing cursor age on the normal schedule, with the same budgets.</p>
 <h3 id="standing-workitem-recovery-receipts"><a class="header" href="#standing-workitem-recovery-receipts">Standing WorkItem recovery receipts</a></h3>
 <p>The scheduled native caller reports <code>busy_reason: lock-held</code> when its existing
-nonblocking run lock is held, and <code>busy_reason: interval-not-due</code> when fewer than
-60 seconds have elapsed since its previous attempt. These are diagnostic fields
-on the existing <code>BUSY</code> output only: exit status, zero requests/writes, custody,
-stored receipt and published freshness remain unchanged. They do not identify a
-lock owner or change cadence. Page/custody failures retain their existing UNKNOWN
-status; they are not reclassified as BUSY. Count reasons from natural scheduled
-output before attributing lost ticks or proposing a rate change.</p>
+nonblocking run lock is held, and <code>busy_reason: interval-not-due</code> when admission
+is not due. Admission requires a later UTC minute slot and at least 30 elapsed
+monotonic seconds since the previous admission reservation. The scheduler stays
+once per minute; subsecond scheduler jitter no longer requires a full skipped
+minute. The reviewed policy accepts starts less than 60 seconds apart across
+a minute boundary, with a hard 30-second physical floor.</p>
+<p>The protected <code>.admission.json</code> sidecar binds that floor to the Linux boot ID and
+non-adjustable monotonic clock. Under the existing flock, the caller reserves the
+slot before entering the tick, including ticks that subsequently fail. A crash
+before receipt publication cannot free the reserved slot. A forward wall-clock
+step cannot bypass the elapsed floor; a backward step cannot repeat an admitted
+wall slot. Suspend conservatively lengthens the floor.</p>
+<p>Missing, unreadable, invalid or rebooted admission history establishes a full
+60-second monotonic quiet period before a later minute slot can run. This can
+skip an extra initial scheduled opportunity. An unavailable clock or failed
+reservation write stays BUSY. <code>admission_reason</code> distinguishes <code>bootstrap</code>,
+<code>spacing</code>, <code>minute-slot</code>, <code>clock-unavailable</code> and <code>state-unavailable</code>. Boot ID
+reads are bounded to 129 characters and metadata reads to 4097 characters.
+Local admission metadata does not count as a graph write or verified delivery.</p>
+<p>BUSY keeps its exit status, zero requests/writes, custody, stored receipt and
+published freshness. It does not identify a lock owner. Page/custody failures
+retain their existing UNKNOWN status. Cap 256, K12, 57 requests, the 40-second
+tick budget and 2.5-second slow stop are unchanged. Reverting source leaves the
+admission sidecar inert; no custody reset or replay is needed. Source controls
+and the <a href="../demos/native-minute-admission/README.html">private fixture replay</a> do
+not establish catch-up: natural cursor-age decline and the recurring alarm's
+14 authoritative quiet days remain separate acceptance gates.</p>
 <p>These JSON adapter rules apply to repository-local tracker stores. The primary
 Seeds lane uses the separate SQLite custody implementation; this change neither
 imports legacy pending state nor rearms that lane.</p>
