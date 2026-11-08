@@ -1,0 +1,7 @@
+Script started on 2026-11-08 01:55:54-05:00 [COMMAND="python profiles/infrastructure-identity/demo.py" <not executed on terminal>]
+complete host: no key policy=True; identity profile=True
+host missing site: no key policy=True; identity profile=False
+host aliases Terraform declaration: no key policy=True; identity profile=False
+Disposable RDF only; no namespace enrollment, mint or installed effect.
+
+Script done on 2026-11-08 01:55:55-05:00 [COMMAND_EXIT_CODE="0"]

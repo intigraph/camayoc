@@ -4,3 +4,6 @@ bench/scheduled-work/output.log -text -whitespace
 docs/demos/inferred-memory-review/output.log -text whitespace=cr-at-eol
 # Preserve the repository-alias recording's captured carriage returns.
 docs/demos/repository-alias/output.txt -text whitespace=cr-at-eol
+docs/demos/native-feed-capacity/output.log -text whitespace=cr-at-eol
+docs/demos/native-busy-reason/output.log -text whitespace=cr-at-eol
+docs/demos/native-minute-admission/output.log -text whitespace=cr-at-eol

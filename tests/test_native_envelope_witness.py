@@ -23,6 +23,8 @@ class EnvelopeWitness(unittest.TestCase):
         def post(endpoint, body):
             if body.get('query', '').startswith('ASK '):
                 return {'result': False, 'private': 'RESPONSE-CANARY'}
+            if body.get('query', '').startswith('SELECT ?has_type ?v '):
+                return {'rows':[{'has_type':False,'v':'RESPONSE-CANARY'}],'truncated':False}
             return original(endpoint, body)
         self.post = post
 
@@ -51,6 +53,9 @@ class EnvelopeWitness(unittest.TestCase):
         self.j.retain(page(11))
         self.fail_control()
         result = self.tick()
+        self.assertEqual(result['status'],'UNKNOWN')
+        self.assertNotIn('control',result)
+        self.assertEqual(result['fused_control']['schema'],'workitem-fused-readback/v1')
         self.assertEqual(result['envelope_witness']['branch'], 'same-version')
         self.assertEqual(result['envelope_witness']['own_write'], 'not-attempted')
         self.assertEqual((result['writes'], self.writes), (0, 1))

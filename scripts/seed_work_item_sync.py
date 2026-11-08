@@ -56,6 +56,54 @@ def verify(post,envelope,item,*,pending=False):
     return sum(native.lexical(row.get('v'))==expected for row in rows)==1
 
 
+
+def verify_fused(post,envelope,item,*,diagnostics=None):
+    """One bounded same-version proof; never used for writes or pending effects.
+
+    Native 1792 projects BIND(true) as a JSON boolean. EXISTS in BIND is
+    unbound there, so use the exact mandatory type inside its own OPTIONAL.
+    Missing or ambiguous witnesses remain UNKNOWN, never an absence proof.
+    """
+    graph=projection.safe_iri(envelope['request']['graph'])
+    subject=projection.safe_iri(projection.A+item)
+    kind=projection.safe_iri(projection.A+'WorkItem')
+    query=(f'SELECT ?has_type ?v WHERE {{ GRAPH {graph} {{ '
+           f'OPTIONAL {{ {subject} a {kind} . BIND(true AS ?has_type) }} '
+           f'OPTIONAL {{ {subject} <{native.RDFS}comment> ?v }} }} }} LIMIT 129')
+    found=post('/query',{'query':query})
+    # This is explicitly SELECT evidence, not a synthetic ASK response. Old
+    # control_summary and every actual ASK receipt remain unchanged.
+    diagnostic={'schema':'workitem-fused-readback/v1',**control_summary(found),
+                'type_witness':'unproved','description':'unproved'}
+    if diagnostics is not None:diagnostics['fused_control']=diagnostic
+    try:
+        size=len(json.dumps(found,ensure_ascii=False,separators=(',',':')).encode('utf-8'))
+    except (TypeError,ValueError,UnicodeError):
+        raise custody.CustodyUnknown('fused readback encoding unproved') from None
+    rows=found.get('rows') if isinstance(found,dict) else None
+    if (size>262144 or not isinstance(rows,list) or found.get('truncated') is not False
+            or not 1<=len(rows)<=128):
+        raise custody.CustodyUnknown('fused readback partial or outside budget')
+    if 'count' in found and (type(found['count']) is not int or found['count']!=len(rows)):
+        raise custody.CustodyUnknown('fused readback cardinality unproved')
+    if 'variables' in found and found['variables']!=['has_type','v']:
+        raise custody.CustodyUnknown('fused readback bindings unproved')
+    comments=[]
+    for row in rows:
+        if (not isinstance(row,dict) or not set(row)<= {'has_type','v'}
+                or row.get('has_type') is not True):
+            raise custody.CustodyUnknown('fused WorkItem type witness unproved')
+        if 'v' not in row:
+            if len(rows)!=1:raise custody.CustodyUnknown('fused sentinel mixed with comments')
+            continue
+        try:comments.append(native.lexical(row['v']))
+        except (ValueError,TypeError):
+            raise custody.CustodyUnknown('fused comment representation unproved') from None
+    diagnostic['type_witness']='true'
+    matches=comments.count(envelope['description'])
+    diagnostic['description']='one' if matches==1 else 'missing' if matches==0 else 'multiple'
+    return matches==1
+
 def prove_absent(post,item):
     """True only when the server holds NO triple about the WorkItem subject.
 
@@ -181,7 +229,7 @@ def envelope_witness(witness,request):
     except (TypeError,ValueError,UnicodeError):pass
 
 
-def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None):
+def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None,diagnostics=None):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
@@ -217,7 +265,7 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
     envelope_witness(witness,request)
     if previous and canonical.version==previous[0]:
         if witness is not None:witness['branch']='same-version'
-        if not verify(call,envelope,item):
+        if not verify_fused(call,envelope,item,diagnostics=diagnostics):
             raise custody.CustodyUnknown('same native version lost projection; no automatic repair/replay')
         journal.prepare(item,tx,envelope)
     else:
@@ -276,7 +324,9 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
         feed_error=None
         backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
         if backlog < custody.MAX_PENDING and changes is not None:
-            # Up to MAX_FEED_PAGES pages (aegis-etv). The first page keeps the
+            page_limit=custody.MAX_TRANSACTIONS
+            retained_pages=0
+            # Up to MAX_FEED_PAGES reads, including retries (aegis-etv). The first page keeps the
             # original contract exactly. A later page stops feeding quietly when
             # custody is full, the feed is caught up, or half the tick's wall clock
             # is spent; the retained pages and the cursor they advanced stand.
@@ -288,20 +338,29 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
                 before=journal.cursor
                 try:
                     caught_up=False
-                    page=timed(changes,since=journal.cursor,limit=custody.MAX_TRANSACTIONS,
+                    page=timed(changes,since=journal.cursor,limit=page_limit,
                                  capture='new_values',graph=reader.board.graph)
                     journal.retain(page)
+                    retained_pages+=1
+                    feed_error=None
                     # The feed is graph-filtered while watermark_tx is global, so a
                     # quiet board answers an empty page with next_tx == since, far
                     # below the watermark. That empty page is the caught-up proof.
                     caught_up=(isinstance(page,dict) and (page.get('records')==[] or
                                integer_or_none(page.get('next_tx'))==integer_or_none(page.get('watermark_tx'))))
                 except custody.CustodyFull:
-                    if page_number:break
+                    # retain() rolled back the entire page, including its cursor.
+                    # Spend another EXISTING feed-read slot on fewer whole txs;
+                    # never split a transaction or expand custody/tick budgets.
+                    if not retained_pages:feed_error='CustodyFull'
+                    if page_limit>1:
+                        page_limit=max(1,page_limit//2)
+                        continue
+                    if retained_pages:break
                     if pending is None:raise
                     feed_error='CustodyFull';break
                 except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
-                    if page_number==0 and pending is None:raise
+                    if not retained_pages and pending is None:raise
                     feed_error=type(exc).__name__;break
                 backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
                 if (journal.cursor==before or not isinstance(page,dict)
@@ -322,6 +381,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             # Attribute this attempt separately, even if its control fails.
             receipt.pop('attempted_item',None)
             receipt.pop('control',None)
+            receipt.pop('fused_control',None)
             reset_witness()
             last=None
             # Diagnostic validation must not alter delivery or custody decisions.
@@ -330,7 +390,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             else:receipt['attempted_item']=pending[0]
             receipt['status']='UNKNOWN'
             version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,completion=completion,
-                            witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None)
+                            witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None,diagnostics=receipt)
             if version is None:
                 receipt.update(status='OK',reconciled=receipt.get('reconciled',0)+1)
             else:

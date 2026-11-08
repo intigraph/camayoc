@@ -1,0 +1,8 @@
+Script started on 2026-11-08 00:59:53-05:00 [COMMAND="python3 docs/demos/native-busy-reason/demo.py" <not executed on terminal>]
+{"case": "lock-held", "output": {"requests": 0, "status": "BUSY", "writes": 0}, "source": "before"}
+{"case": "interval-not-due", "output": {"requests": 0, "status": "BUSY", "writes": 0}, "source": "before"}
+{"case": "lock-held", "output": {"busy_reason": "lock-held", "requests": 0, "status": "BUSY", "writes": 0}, "source": "candidate"}
+{"case": "interval-not-due", "output": {"busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "candidate"}
+PASS: reasons separate; custody, receipt, zero work and freshness publication unchanged.
+
+Script done on 2026-11-08 00:59:53-05:00 [COMMAND_EXIT_CODE="0"]

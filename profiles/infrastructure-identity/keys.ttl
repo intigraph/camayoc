@@ -1,0 +1,89 @@
+# Opt-in identity contract. Never loaded by the ordinary source installer.
+@prefix core: <https://w3id.org/intigraph/camayoc/core/ns#> .
+@prefix infra: <https://w3id.org/intigraph/camayoc/homelab-infra/ns#> .
+@prefix crtv: <http://open-services.net/ns/crtv#> .
+@prefix quipu: <https://quipu.dev/ontology/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# These are new reviewed key predicates, not aliases for mutable observations.
+infra:identitySite a rdf:Property ; rdfs:label "Immutable site identity" .
+infra:identityAsset a rdf:Property ; rdfs:label "Immutable physical asset identity" .
+infra:identityCluster a rdf:Property ; rdfs:label "Immutable cluster identity" .
+infra:identityGuestKind a rdf:Property ; rdfs:label "Guest identity kind" .
+infra:identityVmid a rdf:Property ; rdfs:label "Cluster-scoped numeric VMID" .
+infra:identityIncarnation a rdf:Property ; rdfs:label "Immutable creation incarnation" .
+infra:identityHost a rdf:Property ; rdfs:label "Immutable deployment host identity" .
+infra:identityUnit a rdf:Property ; rdfs:label "Exact deployment unit identity" .
+infra:identityStateAuthority a rdf:Property ; rdfs:label "Immutable state authority identity" .
+infra:identityWorkspace a rdf:Property ; rdfs:label "Immutable workspace identity" .
+infra:identityResourceAddress a rdf:Property ; rdfs:label "Declared resource address" .
+infra:identityDocument a rdf:Property ; rdfs:label "Immutable document identity" .
+
+infra:SiteKey a sh:PropertyShape ; sh:path infra:identitySite ;
+    sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 .
+infra:IncarnationKey a sh:PropertyShape ; sh:path infra:identityIncarnation ;
+    sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 .
+
+# Mint the physical thing as Host; BareMetalHost/ProxmoxNode are additional
+# classifications of that same Host IRI, never independent allocation types.
+infra:HostIdentityShape a sh:NodeShape ; sh:targetClass core:Host ;
+    quipu:keyFields ( infra:identitySite infra:identityAsset ) ; quipu:keyStrategy "hash" ;
+    sh:property infra:SiteKey,
+        [ sh:path infra:identityAsset ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 ] .
+
+infra:GuestIdentityShape a sh:NodeShape ; sh:targetClass core:LXCContainer ;
+    quipu:keyFields ( infra:identityCluster infra:identityGuestKind infra:identityVmid infra:identityIncarnation ) ;
+    quipu:keyStrategy "hash" ;
+    sh:property [ sh:path infra:identityCluster ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 ],
+        [ sh:path infra:identityGuestKind ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:in ( "lxc" ) ],
+        [ sh:path infra:identityVmid ; sh:datatype xsd:integer ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minInclusive 1 ],
+        infra:IncarnationKey .
+
+infra:SystemdIdentityShape a sh:NodeShape ; sh:targetClass core:SystemdService ;
+    quipu:keyFields ( infra:identityHost infra:identityUnit infra:identityIncarnation ) ;
+    quipu:keyStrategy "hash" ;
+    sh:property [ sh:path infra:identityHost ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ],
+        [ sh:path infra:identityUnit ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 ],
+        infra:IncarnationKey .
+
+infra:TerraformIdentityShape a sh:NodeShape ; sh:targetClass infra:TerraformResource ;
+    quipu:keyFields ( infra:identityStateAuthority infra:identityWorkspace infra:identityResourceAddress infra:identityIncarnation ) ;
+    quipu:keyStrategy "hash" ;
+    sh:property [ sh:path infra:identityStateAuthority ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 ],
+        [ sh:path infra:identityWorkspace ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 ],
+        [ sh:path infra:identityResourceAddress ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 1024 ],
+        infra:IncarnationKey .
+
+infra:AddressIdentityShape a sh:NodeShape ; sh:targetClass crtv:IPAddress ;
+    quipu:keyFields ( crtv:contextAddressSpace crtv:address ) ; quipu:keyStrategy "hash" ;
+    sh:property [ sh:path crtv:contextAddressSpace ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ],
+        [ sh:path crtv:address ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 15 ;
+          # Until an IPv6 canonicalizer is admitted, refuse rather than mint
+          # two identities for compressed/expanded or case variants.
+          sh:pattern "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])[.]){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$" ] .
+
+infra:DocumentIdentityShape a sh:NodeShape ; sh:targetClass core:Document ;
+    quipu:keyFields ( infra:identitySite infra:identityDocument ) ; quipu:keyStrategy "hash" ;
+    sh:property infra:SiteKey,
+        [ sh:path infra:identityDocument ; sh:datatype xsd:string ;
+          sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ; sh:maxLength 253 ] .
+
+# A declaration cannot also be the thing declared, even when labels/keys match.
+infra:PrimaryIdentityShape a sh:NodeShape ;
+    sh:targetClass core:Host, core:LXCContainer, core:SystemdService,
+        infra:TerraformResource, crtv:IPAddress, core:Document ;
+    sh:xone ( [ sh:class core:Host ] [ sh:class core:LXCContainer ]
+        [ sh:class core:SystemdService ] [ sh:class infra:TerraformResource ]
+        [ sh:class crtv:IPAddress ] [ sh:class core:Document ] ) .
