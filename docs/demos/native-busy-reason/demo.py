@@ -21,7 +21,14 @@ with tempfile.TemporaryDirectory() as directory:
     spec = importlib.util.spec_from_file_location('native_busy_before', path)
     baseline = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(baseline)
-    for name, implementation in [('before', baseline), ('candidate', candidate)]:
+    after_path = Path(directory) / 'after.py'
+    after_path.write_bytes(subprocess.check_output(
+        ['git', '-C', str(ROOT), 'show',
+         'a16bad379f532d0f69dccd4d8d699611b354de97:scripts/sync_work_items.py']))
+    spec = importlib.util.spec_from_file_location('native_busy_after', after_path)
+    after = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(after)
+    for name, implementation in [('before', baseline), ('candidate', after)]:
         tests.sync = implementation
         for reason in ('lock-held', 'interval-not-due'):
             case = tests.NativeBusyDiagnostics()
