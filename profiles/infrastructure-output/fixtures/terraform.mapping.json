@@ -1,0 +1,36 @@
+{
+  "producer": "terraform",
+  "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "extractor_revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "source_iri": "https://example.org/terraform-source",
+  "activity_iri": "https://example.org/terraform-activity",
+  "source_locator": "https://example.org/repository/terraform.json",
+  "state_subjects": {
+    "host": {
+      "record": "https://example.org/record/state-host",
+      "subject": "https://example.org/state-host",
+      "identifier": "fixture/host/node-a",
+      "type": "https://w3id.org/intigraph/camayoc/core/ns#ProxmoxNode",
+      "resource": "module.lab.proxmox_lxc.guest",
+      "label_field": "node_name"
+    },
+    "guest": {
+      "record": "https://example.org/record/state-guest",
+      "subject": "https://example.org/state-guest",
+      "identifier": "fixture/lxc/101",
+      "type": "https://w3id.org/intigraph/camayoc/core/ns#LXCContainer",
+      "resource": "module.lab.proxmox_lxc.guest",
+      "label_field": "hostname",
+      "host": "host",
+      "host_field": "node_name"
+    }
+  },
+  "entities": {
+    "module.lab.proxmox_lxc.guest": {
+      "record": "https://example.org/record/terraform",
+      "subject": "https://example.org/terraform",
+      "identifier": "fixture/state/module.lab.proxmox_lxc.guest",
+      "type": "https://w3id.org/intigraph/camayoc/homelab-infra/ns#TerraformResource"
+    }
+  }
+}
