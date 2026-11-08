@@ -124,6 +124,9 @@ def project(raw: bytes, mapping: dict):
         state_labels[key] = label
         entries.append((key, config, "observed", label))
     all_entities = {**entities, **state_subjects}
+    subjects = [iri(config["subject"]) for _, config, _, _ in entries]
+    if len(set(subjects)) != len(subjects):
+        raise ValueError("duplicate subject address across distinct mapping keys")
     for key, config, plane, label in entries:
         record, subject = iri(config["record"]), iri(config["subject"])
         kind = iri(config["type"])

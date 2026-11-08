@@ -141,6 +141,27 @@ class Producers(unittest.TestCase):
         with self.assertRaises(ValueError):
             M.project(json.dumps(source).encode(), config)
 
+    def test_distinct_mapping_keys_cannot_alias_one_subject(self):
+        fixtures = ROOT / "profiles/infrastructure-output/fixtures"
+        for same_identifier in (True, False):
+            config = json.loads((fixtures / "terraform.mapping.json").read_text())
+            source = json.loads((fixtures / "terraform.json").read_text())
+            address = next(iter(config["entities"]))
+            declaration = config["entities"][address]
+            guest = config["state_subjects"]["guest"]
+            guest["subject"] = declaration["subject"]
+            if same_identifier:
+                guest["identifier"] = declaration["identifier"]
+            source["values"]["root_module"]["child_modules"][0]["resources"][0]["values"]["hostname"] = address
+            with self.subTest(same_identifier=same_identifier):
+                with self.assertRaisesRegex(ValueError, "duplicate subject address"):
+                    M.project(json.dumps(source).encode(), config)
+        config = mapping()
+        config["entities"]["guest-a"]["subject"] = config["entities"]["node-a"]["subject"]
+        config["entities"]["guest-a"]["identifier"] = config["entities"]["node-a"]["identifier"]
+        with self.assertRaisesRegex(ValueError, "duplicate subject address"):
+            self.ansible(config)
+
     def test_exact_source_and_extractor_revisions_required(self):
         for field in ["source_revision", "extractor_revision"]:
             config = mapping()

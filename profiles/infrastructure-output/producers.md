@@ -24,7 +24,10 @@ mapped `host` and `host_field` (`node_name` or `target_node`). The extracted hos
 field must equal that host's extracted label; a contradictory placement refuses.
 State subjects use the observed plane to describe the retained state snapshot.
 They do not establish that a process or guest is currently running. Terraform
-resource declarations remain separate subjects in the declared plane.
+resource declarations remain separate subjects in the declared plane. Distinct
+mapping keys must have distinct subject IRIs, including across `entities` and
+`state_subjects`. Shared identifiers or matching labels cannot authorize aliasing;
+any source-alias adjudication belongs in the reviewed deployment mapping first.
 
 A mapping contains `producer` (`ansible` or `terraform`), exact forty-character
 `source_revision` and `extractor_revision`, explicit `source_iri`, `activity_iri`
