@@ -45,7 +45,7 @@ jobs:
             git merge-base --is-ancestor HEAD origin/main
           fi
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
-      - run: pip install boto3 cryptography rdflib pyyaml
+      - run: pip install boto3 cryptography rdflib pyyaml pyshacl==0.40.1
       - name: Install just
         uses: ./.github/actions/install-just
       - run: just check
@@ -78,4 +78,3 @@ jobs:
           name: source-release
           path: release/
           if-no-files-found: error
-
