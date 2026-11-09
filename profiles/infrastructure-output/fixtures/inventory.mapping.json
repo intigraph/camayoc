@@ -1,0 +1,31 @@
+{
+  "producer": "ansible",
+  "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "extractor_revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "source_iri": "https://example.org/source",
+  "activity_iri": "https://example.org/activity",
+  "source_locator": "https://example.org/repository/inventory.json",
+  "service_variables": {"node-a": "declared_units"},
+  "entities": {
+    "node-a": {
+      "record": "https://example.org/record/host",
+      "subject": "https://example.org/host",
+      "identifier": "fixture/host/a",
+      "type": "https://w3id.org/intigraph/camayoc/core/ns#ProxmoxNode"
+    },
+    "node-a/service/demo.service": {
+      "record": "https://example.org/record/service",
+      "subject": "https://example.org/service",
+      "identifier": "fixture/host/a/unit/demo.service",
+      "type": "https://w3id.org/intigraph/camayoc/core/ns#SystemdService",
+      "host": "node-a"
+    },
+    "guest-a": {
+      "record": "https://example.org/record/guest",
+      "subject": "https://example.org/guest",
+      "identifier": "fixture/lxc/101",
+      "type": "https://w3id.org/intigraph/camayoc/core/ns#LXCContainer",
+      "host": "node-a"
+    }
+  }
+}

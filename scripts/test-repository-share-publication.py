@@ -7,6 +7,8 @@
 import importlib.util
 import json
 import os
+import subprocess
+from types import SimpleNamespace
 from unittest.mock import patch
 from pathlib import Path
 import tempfile
@@ -31,9 +33,23 @@ class Publication(unittest.TestCase):
         environment = patch.dict(os.environ, {"GITHUB_REPOSITORY": "intigraph/camayoc"})
         environment.start()
         self.addCleanup(environment.stop)
+        identity_patch = patch.object(
+            verifier.subprocess, "run",
+            return_value=SimpleNamespace(stdout=json.dumps({"id": 1324782492, "full_name": "intigraph/camayoc"})),
+        )
+        self.identity_api = identity_patch.start()
+        self.addCleanup(identity_patch.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        self.stack_map_path = self.root / "stack-owner-map.json"
+        self.stack_map_path.write_text(json.dumps({
+            "legacy_owner": "scbrown", "target_owner": "intigraph",
+            "repositories": {"camayoc": "intigraph"},
+        }))
+        map_environment = patch.dict(os.environ, {"REPOSITORY_SHARE_STACK_MAP": str(self.stack_map_path)})
+        map_environment.start()
+        self.addCleanup(map_environment.stop)
         self.stage = self.root / "stage"
         self.stage.mkdir()
         recipe = {"model": "model.onnx", "model_sha256": "a" * 64, "tokenizer_sha256": "b" * 64, "dimension": 384}
@@ -138,7 +154,7 @@ class Publication(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "origin must identify"):
                     publisher.repository_identity()
 
-    def test_context_changes_expected_provenance_without_accepting_old_owner(self):
+    def test_exact_repository_retains_literal_offline_contract(self):
         self.prepare()
         with patch.dict(os.environ, {"GITHUB_REPOSITORY": "another-owner/renamed-repo"}):
             with self.assertRaisesRegex(ValueError, "provenance mismatch"):
@@ -146,6 +162,90 @@ class Publication(unittest.TestCase):
             self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "another-owner/renamed-repo"}))
             self.assertEqual(verifier.verify(self.root, "v1.2.3", self.revision)["source_repository"],
                              "another-owner/renamed-repo")
+        self.identity_api.assert_not_called()
+
+    def test_undeclared_alias_same_id_is_refused(self):
+        self.prepare()
+        self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "scbrown/camayoc"}))
+        with patch.dict(os.environ, {"REPOSITORY_SHARE_STACK_MAP": str(self.root / "absent-map.json")}):
+            with self.assertRaisesRegex(ValueError, "map|declared"):
+                verifier.verify(self.root, "v1.2.3", self.revision)
+        self.identity_api.assert_not_called()
+
+    def test_declared_alias_receipt_requires_same_numeric_repository(self):
+        self.prepare()
+        self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "scbrown/camayoc"}))
+        self.assertEqual(verifier.verify(self.root, "v1.2.3", self.revision)["source_repository"],
+                         "intigraph/camayoc")
+        self.assertEqual({call.args[0][2] for call in self.identity_api.call_args_list},
+                         {"repos/scbrown/camayoc", "repos/intigraph/camayoc"})
+
+    def test_wrong_id_or_canonical_name_refuses_alias(self):
+        self.prepare()
+        self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "scbrown/camayoc"}))
+        for identity in (
+            {"id": 1324782493, "full_name": "intigraph/camayoc"},
+            {"id": "1324782492", "full_name": "intigraph/camayoc"},
+            {"id": True, "full_name": "intigraph/camayoc"},
+            {"id": 1324782492, "full_name": "other/camayoc"},
+            {"id": 1324782492, "full_name": []}, {}, [],
+        ):
+            with self.subTest(identity=identity):
+                self.identity_api.return_value.stdout = json.dumps(identity)
+                with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+                    verifier.verify(self.root, "v1.2.3", self.revision)
+
+    def test_both_alias_lookups_must_succeed(self):
+        self.prepare()
+        self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "scbrown/camayoc"}))
+        good = SimpleNamespace(stdout=json.dumps({"id": 1324782492, "full_name": "intigraph/camayoc"}))
+        for bad in (subprocess.TimeoutExpired("gh", 20),
+                    subprocess.CalledProcessError(1, "gh"), OSError("fixture unavailable")):
+            with self.subTest(error=type(bad).__name__):
+                self.identity_api.side_effect = [good, bad]
+                with self.assertRaisesRegex(ValueError, "lookup unavailable"):
+                    verifier.verify(self.root, "v1.2.3", self.revision)
+        self.identity_api.side_effect = None
+
+    def test_malformed_identity_response_refuses(self):
+        self.prepare()
+        self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "scbrown/camayoc"}))
+        for response in ("", "not json", "x" * 65537):
+            with self.subTest(response_length=len(response)):
+                self.identity_api.return_value.stdout = response
+                with self.assertRaisesRegex(ValueError, "lookup unavailable"):
+                    verifier.verify(self.root, "v1.2.3", self.revision)
+
+    def test_undeclared_delivered_alias_refuses_before_api(self):
+        self.prepare()
+        for name in ("another-owner/camayoc", "intigraph/quipu", "scbrown/camayoc-extra", None, []):
+            with self.subTest(name=name):
+                self.proof_path.write_text(json.dumps({**self.proof, "source_repository": name}))
+                self.identity_api.reset_mock()
+                with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+                    verifier.verify(self.root, "v1.2.3", self.revision)
+                self.identity_api.assert_not_called()
+
+    def test_map_must_explicitly_declare_both_aliases(self):
+        self.prepare()
+        self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "scbrown/camayoc"}))
+        for data in ({}, {"legacy_owner": "scbrown", "target_owner": "intigraph", "repositories": {}},
+                     {"legacy_owner": "scbrown", "target_owner": "other", "repositories": {"camayoc": "other"}},
+                     {"legacy_owner": "scbrown", "target_owner": "intigraph", "repositories": {"camayoc": []}}):
+            with self.subTest(data=data):
+                self.stack_map_path.write_text(json.dumps(data))
+                self.identity_api.reset_mock()
+                with self.assertRaisesRegex(ValueError, "map|declared"):
+                    verifier.verify(self.root, "v1.2.3", self.revision)
+                self.identity_api.assert_not_called()
+
+    def test_alias_id_mismatch_refuses(self):
+        self.prepare()
+        self.proof_path.write_text(json.dumps({**self.proof, "source_repository": "scbrown/camayoc"}))
+        self.identity_api.side_effect = [SimpleNamespace(stdout=json.dumps({"id": 1324782492, "full_name": "intigraph/camayoc"})),
+                                         SimpleNamespace(stdout=json.dumps({"id": 99, "full_name": "intigraph/camayoc"}))]
+        with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+            verifier.verify(self.root, "v1.2.3", self.revision)
 
     def test_wait_is_bounded(self):
         calls, pauses = [], []

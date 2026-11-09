@@ -479,7 +479,57 @@ completion receipts, not durable idempotency keys. Installation must separately
 verify native endpoint support; existing operator recovery and the 24-hour
 natural-tick acceptance remain separate from source tests.
 
+### Native feed capacity fallback
+
+When a whole four-transaction feed page exceeds pending custody, the native
+producer retries at the unchanged cursor with two transactions, then one.
+Every attempt consumes one of the existing eight feed reads and respects the
+same half-tick feed deadline. Successful retries remain at the smaller limit
+for the rest of that tick; the next tick starts at four again. The 256-item
+custody cap, 57-request ceiling, twelve deliveries, 40-second tick and slow-read
+stop do not change. No transaction is split and no cursor skips to a watermark.
+
+A single transaction that still cannot fit leaves custody unchanged and drains
+existing work as before. If no page was retained, capacity failure remains
+UNKNOWN, including when the read or time budget ends during fallback. A later
+capacity stop preserves earlier retained pages. Malformed pages and uncertain
+write/readback outcomes still report UNKNOWN and preserve exact pending effects.
+Source tests do not establish catch-up: acceptance requires cursor advancement
+and decreasing cursor age on the normal schedule, with the same budgets.
+
 ### Standing WorkItem recovery receipts
+
+The scheduled native caller reports `busy_reason: lock-held` when its existing
+nonblocking run lock is held, and `busy_reason: interval-not-due` when admission
+is not due. Admission requires a later UTC minute slot and at least 30 elapsed
+monotonic seconds since the previous admission reservation. The scheduler stays
+once per minute; subsecond scheduler jitter no longer requires a full skipped
+minute. The reviewed policy accepts starts less than 60 seconds apart across
+a minute boundary, with a hard 30-second physical floor.
+
+The protected `.admission.json` sidecar binds that floor to the Linux boot ID and
+non-adjustable monotonic clock. Under the existing flock, the caller reserves the
+slot before entering the tick, including ticks that subsequently fail. A crash
+before receipt publication cannot free the reserved slot. A forward wall-clock
+step cannot bypass the elapsed floor; a backward step cannot repeat an admitted
+wall slot. Suspend conservatively lengthens the floor.
+
+Missing, unreadable, invalid or rebooted admission history establishes a full
+60-second monotonic quiet period before a later minute slot can run. This can
+skip an extra initial scheduled opportunity. An unavailable clock or failed
+reservation write stays BUSY. `admission_reason` distinguishes `bootstrap`,
+`spacing`, `minute-slot`, `clock-unavailable` and `state-unavailable`. Boot ID
+reads are bounded to 129 characters and metadata reads to 4097 characters.
+Local admission metadata does not count as a graph write or verified delivery.
+
+BUSY keeps its exit status, zero requests/writes, custody, stored receipt and
+published freshness. It does not identify a lock owner. Page/custody failures
+retain their existing UNKNOWN status. Cap 256, K12, 57 requests, the 40-second
+tick budget and 2.5-second slow stop are unchanged. Reverting source leaves the
+admission sidecar inert; no custody reset or replay is needed. Source controls
+and the [private fixture replay](../demos/native-minute-admission/README.md) do
+not establish catch-up: natural cursor-age decline and the recurring alarm's
+14 authoritative quiet days remain separate acceptance gates.
 
 These JSON adapter rules apply to repository-local tracker stores. The primary
 Seeds lane uses the separate SQLite custody implementation; this change neither

@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Bounded hosted readback; build policy and credentials stay on trusted host."""
+"""Bounded readback; build policy and credentials stay on the trusted host.
+
+For a recorded owner alias, REPOSITORY_SHARE_STACK_MAP must name the operator's
+existing stack-owner map. Missing or invalid declarations refuse the alias.
+Literal repository matches do not need a map or an identity API lookup.
+"""
 
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -15,6 +21,57 @@ import time
 spec = importlib.util.spec_from_file_location("publisher", Path(__file__).with_name("publish_repository_share.py"))
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
+
+# A non-literal receipt needs both the trusted stack migration map and GitHub's
+# immutable numeric identity. Exact matches retain the existing offline contract.
+REPOSITORY_ID = 1324782492
+
+
+def declared_aliases(delivered, expected):
+    selected = os.environ.get("REPOSITORY_SHARE_STACK_MAP")
+    try:
+        if not selected:
+            raise ValueError("missing stack-owner map")
+        raw = Path(selected).read_bytes()
+        if len(raw) > 65536:
+            raise ValueError("oversized stack-owner map")
+        data = json.loads(raw)
+        legacy, target = data["legacy_owner"], data["target_owner"]
+        if (not all(isinstance(x, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*", x)
+                    for x in (legacy, target)) or legacy == target
+                or not isinstance(data["repositories"], dict)):
+            raise ValueError("invalid migration owners")
+        canonical_owner = data["repositories"]["camayoc"]
+        if canonical_owner not in (legacy, target):
+            raise ValueError("invalid repository owner")
+        aliases = {legacy + "/camayoc", target + "/camayoc"}
+        if delivered not in aliases or expected not in aliases:
+            raise ValueError("undeclared alias")
+        return canonical_owner + "/camayoc"
+    except (OSError, ValueError, KeyError, TypeError):
+        raise ValueError("repository/source/tag/provenance mismatch: undeclared alias or unavailable stack-owner map") from None
+
+
+def verify_repository_identity(delivered, expected):
+    if not isinstance(delivered, str) or not isinstance(expected, str):
+        raise ValueError("repository/source/tag/provenance mismatch: invalid repository")
+    if delivered == expected:
+        return
+    canonical = declared_aliases(delivered, expected)
+    for repository in sorted({delivered, expected}):
+        try:
+            result = subprocess.run(
+                ["gh", "api", "repos/" + repository, "--jq", "{id,full_name}"],
+                capture_output=True, text=True, timeout=20, check=True,
+            )
+            if len(result.stdout) > 65536:
+                raise ValueError("oversized identity response")
+            identity = json.loads(result.stdout)
+        except (OSError, subprocess.SubprocessError, ValueError):
+            raise ValueError("repository identity lookup unavailable; refusing verification") from None
+        if (not isinstance(identity, dict) or type(identity.get("id")) is not int
+                or identity["id"] != REPOSITORY_ID or identity.get("full_name") != canonical):
+            raise ValueError("repository/source/tag/provenance mismatch: repository id or alias changed")
 
 
 def verify(folder, tag, revision):
@@ -33,8 +90,9 @@ def verify(folder, tag, revision):
         "archive_sha256": sha,
         "destination": "outward",
     }
-    if any(proof.get(k) != v for k, v in expected.items()):
+    if any(proof.get(k) != v for k, v in expected.items() if k != "source_repository"):
         raise ValueError("repository/source/tag/provenance mismatch")
+    verify_repository_identity(proof.get("source_repository"), expected["source_repository"])
     for key in ("quipu_sha256", "quipu_server_sha256", "bobbin_sha256"):
         if not re.fullmatch("[0-9a-f]{64}", proof.get(key, "")):
             raise ValueError("missing engine/indexer digest")

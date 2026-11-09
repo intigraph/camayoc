@@ -1,0 +1,20 @@
+@prefix ex: <https://example.org/site/> .
+@prefix infra: <https://w3id.org/intigraph/camayoc/homelab-infra/ns#> .
+@prefix core: <https://w3id.org/intigraph/camayoc/core/ns#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix schema: <https://schema.org/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:record a prov:Entity ; dct:conformsTo infra:ConnectorRecordShape ;
+    schema:about ex:guest ; core:sourceKind "declared" ;
+    core:contentSha256 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ;
+    prov:wasDerivedFrom ex:source ; prov:wasGeneratedBy ex:extraction .
+ex:source a prov:Entity ; dct:identifier "commit-0123456789abcdef" ;
+    core:contentSha256 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" ;
+    prov:atLocation <https://example.org/repository/inventory.yaml> .
+ex:extraction a prov:Activity ; prov:used ex:source ;
+    dct:identifier "extractor-0123456789abcdef" .
+ex:guest a core:LXCContainer ; schema:identifier "cluster-a/lxc/101" ;
+    rdfs:label "ct-101" ; infra:ctId 101 ; core:runs_on ex:host .
+ex:host a core:ProxmoxNode .

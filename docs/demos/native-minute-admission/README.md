@@ -1,0 +1,5 @@
+# Native minute admission replay
+
+Run `python3 docs/demos/native-minute-admission/demo.py`. It invokes the real native caller with private files, seeded admission history, mocked effect I/O and fixed wall/monotonic clocks. The baseline skips a new scheduled minute after 59.999 seconds; the candidate admits it. A forward wall-clock step cannot bypass the candidate's 30-second physical floor. Same-minute duplicates and clock regression remain BUSY; missing admission history starts a conservative quiet period without publishing freshness. Unit controls additionally cover reboot, the full 60-second bootstrap boundary, real lock contention, reservation failure and failed ticks.
+
+[Output](output.log) and [timing](timing.log) are an output-only terminal recording. Replay with `scriptreplay --log-out output.log --log-timing timing.log`. Baseline revision is pinned in the script; candidate identity is the containing commit. No service calls, production ticks or custody mutations occur. The fixture proves caller behavior; natural cursor-age decline and recurring quiet-period acceptance remain open.

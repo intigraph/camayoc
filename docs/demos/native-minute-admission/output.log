@@ -1,0 +1,16 @@
+Script started on 2026-11-08 01:49:19-05:00 [COMMAND="python3 docs/demos/native-minute-admission/demo.py" <not executed on terminal>]
+{"case": "next-minute-jitter", "custody_and_receipt_preserved": true, "effect_tick_calls": 0, "monotonic": 1059.999, "output": {"busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "before", "wall": 1059.999}
+{"case": "forward-wall-step-below-floor", "custody_and_receipt_preserved": false, "effect_tick_calls": 1, "monotonic": 1029.999, "output": {"requests": 0, "status": "OK", "verified": 0, "writes": 0}, "source": "before", "wall": 10000.0}
+{"case": "forward-wall-step-at-floor", "custody_and_receipt_preserved": false, "effect_tick_calls": 1, "monotonic": 1030.0, "output": {"requests": 0, "status": "OK", "verified": 0, "writes": 0}, "source": "before", "wall": 10000.0}
+{"case": "same-minute-after-floor", "custody_and_receipt_preserved": true, "effect_tick_calls": 0, "monotonic": 1040.0, "output": {"busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "before", "wall": 1019.999}
+{"case": "backward-wall-step", "custody_and_receipt_preserved": true, "effect_tick_calls": 0, "monotonic": 1060.0, "output": {"busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "before", "wall": 900.0}
+{"case": "missing-history-bootstrap", "custody_and_receipt_preserved": false, "effect_tick_calls": 1, "monotonic": 2000.0, "output": {"requests": 0, "status": "OK", "verified": 0, "writes": 0}, "source": "before", "wall": 1060.0}
+{"case": "next-minute-jitter", "custody_and_receipt_preserved": false, "effect_tick_calls": 1, "monotonic": 1059.999, "output": {"requests": 0, "status": "OK", "verified": 0, "writes": 0}, "source": "candidate", "wall": 1059.999}
+{"case": "forward-wall-step-below-floor", "custody_and_receipt_preserved": true, "effect_tick_calls": 0, "monotonic": 1029.999, "output": {"admission_reason": "spacing", "busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "candidate", "wall": 10000.0}
+{"case": "forward-wall-step-at-floor", "custody_and_receipt_preserved": false, "effect_tick_calls": 1, "monotonic": 1030.0, "output": {"requests": 0, "status": "OK", "verified": 0, "writes": 0}, "source": "candidate", "wall": 10000.0}
+{"case": "same-minute-after-floor", "custody_and_receipt_preserved": true, "effect_tick_calls": 0, "monotonic": 1040.0, "output": {"admission_reason": "minute-slot", "busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "candidate", "wall": 1019.999}
+{"case": "backward-wall-step", "custody_and_receipt_preserved": true, "effect_tick_calls": 0, "monotonic": 1060.0, "output": {"admission_reason": "minute-slot", "busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "candidate", "wall": 900.0}
+{"case": "missing-history-bootstrap", "custody_and_receipt_preserved": true, "effect_tick_calls": 0, "monotonic": 2000.0, "output": {"admission_reason": "bootstrap", "busy_reason": "interval-not-due", "requests": 0, "status": "BUSY", "writes": 0}, "source": "candidate", "wall": 1060.0}
+PASS: jitter admits; physical floor, duplicate/regression and bootstrap controls hold.
+
+Script done on 2026-11-08 01:49:19-05:00 [COMMAND_EXIT_CODE="0"]

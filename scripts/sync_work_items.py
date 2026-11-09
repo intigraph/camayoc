@@ -21,6 +21,7 @@ from ingest_work_items import BASE_NS, _entity_name, episode_for
 import planes
 
 INTERVAL = 60
+NATIVE_MIN_START_SPACING = 30
 # 24h, not 6h (aegis-7dcleu, malcolm's call). At one item per INTERVAL the lane
 # serves ~60/h shared with transitions; 645 items at 6h needed ~107/h, so rechecks
 # lagged without bound (31h measured). 645 / 24h is ~27/h, ~45% utilization.
@@ -467,6 +468,67 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     return receipt
 
 
+def native_admission_clock():
+    """Linux boot identity binds the non-adjustable, process-independent clock."""
+    import uuid
+    monotonic = time.monotonic()
+    with Path('/proc/sys/kernel/random/boot_id').open() as source:
+        boot_id = source.read(129).strip()
+    return monotonic, str(uuid.UUID(boot_id))
+
+
+def reserve_native_admission(state, started, previous_time):
+    """Reserve one wall-minute slot, with a physical floor, under the caller's flock.
+
+    Unproved clock history starts a full-minute quiet period. This sidecar is
+    admission metadata only: BUSY never rewrites custody or freshness receipts.
+    Reserving before the tick also covers a crash before its receipt is saved.
+    """
+    try:
+        monotonic, boot_id = native_admission_clock()
+        if (type(monotonic) not in (int, float) or not math.isfinite(monotonic)
+                or monotonic < 0 or not isinstance(boot_id, str) or not boot_id):
+            return 'clock-unavailable'
+    except (OSError, ValueError):
+        return 'clock-unavailable'
+    path = state.with_suffix('.admission.json')
+    slot = math.floor(started / INTERVAL)
+    previous_slot = slot if previous_time is None else math.floor(previous_time / INTERVAL)
+    try:
+        with path.open() as source:
+            raw = source.read(4097)
+        if len(raw) > 4096:
+            raise ValueError('admission metadata exceeds bound')
+        carried = json.loads(raw)
+        if (not isinstance(carried, dict)
+                or set(carried) != {'version', 'boot_id', 'monotonic_at', 'wall_slot', 'cooldown_seconds'}
+                or type(carried['version']) is not int or carried['version'] != 1
+                or not isinstance(carried['boot_id'], str) or not carried['boot_id']
+                or type(carried['monotonic_at']) not in (int, float)
+                or not math.isfinite(carried['monotonic_at']) or carried['monotonic_at'] < 0
+                or type(carried['wall_slot']) is not int
+                or type(carried['cooldown_seconds']) is not int
+                or carried['cooldown_seconds'] not in (NATIVE_MIN_START_SPACING, INTERVAL)):
+            raise ValueError('unproved admission metadata')
+    except (OSError, ValueError):
+        carried = None
+    bootstrap = (carried is None or carried['boot_id'] != boot_id
+                 or monotonic < carried['monotonic_at'])
+    if not bootstrap:
+        if monotonic < carried['monotonic_at'] + carried['cooldown_seconds']:
+            return 'spacing'
+        if slot <= carried['wall_slot'] or (previous_time is not None and slot <= previous_slot):
+            return 'minute-slot'
+    record = {'version': 1, 'boot_id': boot_id, 'monotonic_at': monotonic,
+              'wall_slot': max(slot, previous_slot) if bootstrap else slot,
+              'cooldown_seconds': INTERVAL if bootstrap else NATIVE_MIN_START_SPACING}
+    try:
+        save(path, record)
+    except OSError:
+        return 'state-unavailable'
+    return 'bootstrap' if bootstrap else None
+
+
 def native_main(args):
     """Protected selector input, dedicated custody, bounded one-record tick.
 
@@ -492,7 +554,7 @@ def native_main(args):
         try:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:
-            print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
+            print(json.dumps({'status':'BUSY','busy_reason':'lock-held','requests':0,'writes':0}));return 0
         # Read the carried success first thing UNDER the lock, before anything
         # that can fail: an early failure (authority, custody, journal) must not
         # save None over a real success, and no concurrent tick can save between
@@ -514,13 +576,16 @@ def native_main(args):
                 raise custody.CustodyUnknown('native custody requires a separate .sqlite3 state; no br migration')
             journal=custody.Journal(args.state,reader.board,server=planes.SERVER,initial_tx=args.initial_tx)
             last_path=args.state.with_suffix('.receipt.json')
+            previous_time=None
             if last_path.exists():
                 previous=json.loads(last_path.read_text())
                 previous_time=previous.get('attempted_at')
                 if type(previous_time) not in (int,float) or not math.isfinite(previous_time):
                     raise custody.CustodyUnknown('last native tick timestamp unproved')
-                if started<previous_time+INTERVAL:
-                    print(json.dumps({'status':'BUSY','requests':0,'writes':0}));return 0
+            admission_reason=reserve_native_admission(args.state,started,previous_time)
+            if admission_reason is not None:
+                print(json.dumps({'status':'BUSY','busy_reason':'interval-not-due',
+                                  'admission_reason':admission_reason,'requests':0,'writes':0}));return 0
             def post(endpoint,body,**kwargs):
                 return planes._post(endpoint,body,client='camayoc-ingress',**kwargs)
             def changes(**params):
