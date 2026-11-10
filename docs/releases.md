@@ -1,5 +1,33 @@
 # Source releases
 
+## v0.1.7 release preparation
+
+This source release includes the reviewed domain placement and raw alias controls
+from [PR231](https://github.com/intigraph/camayoc/pull/231), merged at
+`f6372f6e43e762385b0b573c2ca5432afff544c9`. The release scope is recorded in
+[`release-notes/v0.1.7.json`](release-notes/v0.1.7.json).
+
+The domain fixture retains all 120 NodeShape names and carries five optional
+`CommandDiskImpactObservation` constraints from the pinned upstream source:
+`commandClass`, `aggregateState`, `runCount`, `maximumDeltaBytes` and
+`p95DeltaBytes`. This is a source delta relative to the prior published bundle;
+it must not be represented as an isomorphic replacement of an installed snapshot.
+The five additive property/rule files compose to all 655 input triples and remain
+inactive. Raw WorkItem/Bead views follow existing class mappings to canonical
+Action IDs; calendar Vtodo remains a separate exactMatch-linked node. No legacy
+type rewrite or inference activation accompanies publication.
+
+Use the existing source-release workflow after one independent peer and complete
+CI. Verify the published source revision, archive checksum, `source.json`, carried
+compatibility manifest and repository pendant separately. Retain verified v0.1.6 artifacts as the previous release rollback. Existing
+consumers keep their own exact prior pins until separately admitted adoption;
+this release does not assert that consumers already run v0.1.6. Publishing immutable assets
+cannot be undone by a Git revert: retain prior artifacts and do not overwrite or
+reuse a published tag. Runtime adoption needs a reviewed pin/adapter change,
+same-SHA lab rehearsal, exact named-set assertions and a proved inverse before
+its separately admitted scoped operator apply. No production shape removal is
+part of this release.
+
 ## v0.1.6 release preparation
 
 Both plugin metadata files declare `0.1.6`. The release revision must also include
