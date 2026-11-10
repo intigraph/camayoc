@@ -387,6 +387,30 @@ that adapter is implemented or independently certified.</p>
 unknown types and invalid mixed transactions leave every submitted subject
 absent; a valid proposed AdmissionPolicy is the positive writer control.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="source-releases"><a class="header" href="#source-releases">Source releases</a></h1>
+<h2 id="v017-release-preparation"><a class="header" href="#v017-release-preparation">v0.1.7 release preparation</a></h2>
+<p>This source release includes the reviewed domain placement and raw alias controls
+from <a href="https://github.com/intigraph/camayoc/pull/231">PR231</a>, merged at
+<code>f6372f6e43e762385b0b573c2ca5432afff544c9</code>. The release scope is recorded in
+<a href="release-notes/v0.1.7.json"><code>release-notes/v0.1.7.json</code></a>.</p>
+<p>The domain fixture retains all 120 NodeShape names and carries five optional
+<code>CommandDiskImpactObservation</code> constraints from the pinned upstream source:
+<code>commandClass</code>, <code>aggregateState</code>, <code>runCount</code>, <code>maximumDeltaBytes</code> and
+<code>p95DeltaBytes</code>. This is a source delta relative to the prior published bundle;
+it must not be represented as an isomorphic replacement of an installed snapshot.
+The five additive property/rule files compose to all 655 input triples and remain
+inactive. Raw WorkItem/Bead views follow existing class mappings to canonical
+Action IDs; calendar Vtodo remains a separate exactMatch-linked node. No legacy
+type rewrite or inference activation accompanies publication.</p>
+<p>Use the existing source-release workflow after one independent peer and complete
+CI. Verify the published source revision, archive checksum, <code>source.json</code>, carried
+compatibility manifest and repository pendant separately. Retain verified v0.1.6 artifacts as the previous release rollback. Existing
+consumers keep their own exact prior pins until separately admitted adoption;
+this release does not assert that consumers already run v0.1.6. Publishing immutable assets
+cannot be undone by a Git revert: retain prior artifacts and do not overwrite or
+reuse a published tag. Runtime adoption needs a reviewed pin/adapter change,
+same-SHA lab rehearsal, exact named-set assertions and a proved inverse before
+its separately admitted scoped operator apply. No production shape removal is
+part of this release.</p>
 <h2 id="v016-release-preparation"><a class="header" href="#v016-release-preparation">v0.1.6 release preparation</a></h2>
 <p>Both plugin metadata files declare <code>0.1.6</code>. The release revision must also include
 the private repository-share query budget correction (#218) and the shared-node
