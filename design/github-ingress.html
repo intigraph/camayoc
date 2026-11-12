@@ -265,6 +265,7 @@ reported it. Time is used only where an action can repeat:</p>
 <tr><td><code>pull_request.opened</code></td><td>PR node id</td></tr>
 <tr><td><code>pull_request.closed</code></td><td>PR node id, <code>closed_at</code></td></tr>
 <tr><td><code>pull_request.synchronize</code></td><td>PR node id, new head sha</td></tr>
+<tr><td><code>pull_request.observed</code></td><td>PR node id, head sha, state, merged, <code>updated_at</code></td></tr>
 <tr><td>other <code>pull_request.*</code></td><td>PR node id, <code>updated_at</code></td></tr>
 <tr><td><code>pull_request_review.submitted</code>, <code>.dismissed</code></td><td>review node id</td></tr>
 <tr><td><code>*_comment.created</code></td><td>comment node id</td></tr>
@@ -403,6 +404,24 @@ workflow runs. Check runs are not polled: one request per commit is too
 expensive, and <code>workflow_run</code> covers CI for Actions repositories.</p>
 </li>
 <li>
+<p><strong>Open pull requests (aegis-xxoa.5).</strong> The Events API reaches only the last
+~100 events, so an open PR that has been quiet longer than that never
+appears there. Each cycle also reads <code>GET /repos/{r}/pulls?state=open</code>, one
+page of 100 with an ETag, and spools every open PR as a
+<code>pull_request.observed</code> sighting. A sighting is not a GitHub event. It
+records the PR as GitHub reports it, at its <code>updated_at</code>, with no actor. Its
+key (above) is the same for an unchanged PR, so re-reading the list writes
+nothing new. The spool remembers which PRs the last complete list showed
+open. One that is missing from the next list is fetched once (the normal
+hydration path) and recorded as fetched: closed, merged or still open. That
+covers a close the Events window missed. A full page counts as truncated:
+it adds sightings, but an absence from it never counts, so a PR is never
+presumed closed. A failed or 304 list changes nothing. Measured 2026-11-12
+on <code>intigraph/quipu</code>: 17 of 17 open PRs observed in one dry-run cycle. The
+Events window alone had reached 19 recently active PRs, some of them closed,
+and missed quiet open ones such as #1078 and #1136.</p>
+</li>
+<li>
 <p><strong>Conditional requests.</strong> Every read sends the stored ETag. A 304 costs no
 primary quota. On a quiet repository nearly every request is a 304.</p>
 </li>
@@ -456,8 +475,10 @@ events ETag can move on safely, because a deferred event is already in the
 spool.</p>
 </li>
 <li>
-<p><strong>Spool keys.</strong> <code>poll:&lt;events-api id&gt;</code> and
-<code>poll:run:&lt;run id&gt;:&lt;attempt&gt;:&lt;status&gt;:&lt;conclusion&gt;</code>. These differ from
+<p><strong>Spool keys.</strong> <code>poll:&lt;events-api id&gt;</code>,
+<code>poll:run:&lt;run id&gt;:&lt;attempt&gt;:&lt;status&gt;:&lt;conclusion&gt;</code>,
+<code>poll:pr-open:&lt;node id&gt;:&lt;head sha&gt;:&lt;updated_at&gt;</code> and
+<code>poll:pr-gone:&lt;node id&gt;:&lt;last seen updated_at&gt;</code>. These differ from
 webhook delivery ids, but the activity key is the same for the same change.
 The spool's activity ledger therefore writes it once (§3).</p>
 </li>
