@@ -61,6 +61,7 @@ CLIENT = "camayoc-github-ingress"
 MAX_BODY = 5 * 1024 * 1024
 API = "https://api.github.com"
 ZERO_SHA = "0" * 40
+OPEN_PAGE = 100  # one page of open PRs per repo per cycle; a full page is treated as truncated
 
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _NODE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -277,8 +278,14 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
             if action in ("opened", "edited"):
                 texts.append(obj.get("body"))
             when = {"opened": obj.get("created_at"), "closed": obj.get("closed_at")}.get(action, obj.get("updated_at"))
-            key = _digest(kind, node_id, {"opened": "", "closed": obj.get("closed_at"),
-                                          "synchronize": head}.get(action, obj.get("updated_at")))
+            if action == "observed":
+                # A sighting, not a GitHub event: the state as of updated_at. The
+                # same unchanged PR seen again is the same record; any change to
+                # the head, state or update time is a new one.
+                key = _digest(kind, node_id, head, st, merged, obj.get("updated_at"))
+            else:
+                key = _digest(kind, node_id, {"opened": "", "closed": obj.get("closed_at"),
+                                              "synchronize": head}.get(action, obj.get("updated_at")))
         elif event == "issues":
             subject = _thread(payload, "issue", repo)
             st = _need(obj, "state", "issue")
@@ -465,6 +472,8 @@ CREATE TABLE IF NOT EXISTS etags (url TEXT PRIMARY KEY, etag TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS repos (full_name TEXT PRIMARY KEY, body TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS budget (hour INTEGER PRIMARY KEY, spent INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS open_prs (repo TEXT NOT NULL, node_id TEXT NOT NULL, url TEXT NOT NULL,
+  number INTEGER, updated_at TEXT, PRIMARY KEY (repo, node_id));
 """
 
 
@@ -594,6 +603,26 @@ class Spool:
         with self.lock:
             self.conn.execute("INSERT OR REPLACE INTO repos (full_name, body) VALUES (?,?)",
                               (full_name, json.dumps(body, sort_keys=True)))
+
+    def open_prs(self, repo: str) -> dict[str, tuple]:
+        """node_id -> (url, number, updated_at) of the PRs the last full sweep saw open."""
+        with self.lock:
+            rows = self.conn.execute("SELECT node_id, url, number, updated_at FROM open_prs WHERE repo=?",
+                                     (repo,)).fetchall()
+        return {r[0]: r[1:] for r in rows}
+
+    def set_open_prs(self, repo: str, prs: dict[str, tuple]) -> None:
+        with self.lock:
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                self.conn.execute("DELETE FROM open_prs WHERE repo=?", (repo,))
+                self.conn.executemany(
+                    "INSERT INTO open_prs (repo, node_id, url, number, updated_at) VALUES (?,?,?,?,?)",
+                    [(repo, node, *row) for node, row in prs.items()])
+                self.conn.execute("COMMIT")
+            except BaseException:
+                self.conn.execute("ROLLBACK")
+                raise
 
     def spend(self, now: float, limit: int) -> bool:
         """Take one request from this hour's budget; False when it is spent."""
@@ -887,7 +916,8 @@ class Poller:
     @staticmethod
     def _apply(event: str, payload: dict, key: str, full: dict) -> None:
         trimmed = payload.get(key) or {}
-        if event != "pull_request":
+        if event != "pull_request" or payload.get("action") == "observed":
+            # A sighting describes the PR as fetched, so its fetched state stands.
             payload[key] = full
             return
         # The fetched object is the PR NOW; the event's own head/base and action
@@ -988,6 +1018,7 @@ class Poller:
                 shaped = self.normalize(ev, repo)
                 if shaped is not None:
                     self._spool(delivery, shaped[0], shaped[1], now, receipt, occurred_at=ev.get("created_at"))
+        self._sweep_open_prs(full, repo, now, receipt)
         runs = self._json(f"/repos/{full}/actions/runs?per_page=20", now, receipt, etag_key=f"runs:{full}")
         if isinstance(runs, dict):
             for run in runs.get("workflow_runs") or []:
@@ -998,6 +1029,46 @@ class Poller:
                 payload = {"action": action, "workflow_run": run, "repository": repo,
                            "sender": {"login": (run.get("triggering_actor") or run.get("actor") or {}).get("login")}}
                 self._spool(delivery, "workflow_run", payload, now, receipt)
+
+
+    def _sweep_open_prs(self, full: str, repo: dict, now: float, receipt: dict) -> None:
+        """Record every open PR, including one with no recent event (aegis-xxoa.5).
+
+        The Events API only reaches the last ~100 events, so a quiet open PR is
+        never seen there. One ETag'd list call per repo per cycle spools each open
+        PR as a `pull_request.observed` sighting, deduplicated on its node id,
+        head, state and update time. A PR that was open at the last full sweep and
+        is missing now is fetched once (hydration) and recorded as it is: closed,
+        merged or still open. A list of a full page is TRUNCATED: it adds sightings
+        but never lets an absence count, so no PR is ever presumed closed."""
+        page = self._json(f"/repos/{full}/pulls?state=open&per_page={OPEN_PAGE}", now, receipt,
+                          etag_key=f"pulls-open:{full}")
+        if not isinstance(page, list):
+            return  # 304 (unchanged), or an error already in the receipt
+        seen: dict[str, tuple] = {}
+        for pr in page:
+            node, url = pr.get("node_id"), pr.get("url")
+            if not isinstance(node, str) or not isinstance(url, str):
+                continue
+            seen[node] = (url, pr.get("number"), pr.get("updated_at"))
+            head = (pr.get("head") or {}).get("sha")
+            delivery = f"poll:pr-open:{node}:{head}:{pr.get('updated_at')}"
+            if not self.spool.has(delivery):
+                payload = {"action": "observed", "pull_request": pr, "repository": repo, "sender": None}
+                self._spool(delivery, "pull_request", payload, now, receipt)
+        if len(page) >= OPEN_PAGE:
+            receipt.setdefault("truncated", []).append(full)
+            return
+        for node, (url, number, updated) in self.spool.open_prs(full).items():
+            if node in seen:
+                continue
+            delivery = f"poll:pr-gone:{node}:{updated}"
+            if not self.spool.has(delivery):
+                trimmed = {"node_id": node, "url": url, "number": number}
+                payload = {"action": "observed", "pull_request": trimmed, "repository": repo,
+                           "sender": None, "_hydrate": {"pull_request": url}}
+                self._spool(delivery, "pull_request", payload, now, receipt)
+        self.spool.set_open_prs(full, seen)
 
 
 # ---- CLI --------------------------------------------------------------------

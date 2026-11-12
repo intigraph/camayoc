@@ -138,6 +138,12 @@ class GitHubShapes(unittest.TestCase):
             with self.subTest(name):
                 self.assert_one_violation(body, "OR not satisfied", None)
 
+    def test_open_list_sighting(self):
+        """aegis-xxoa.5: a pull_request.observed sighting has no actor, and must say its state."""
+        sighting = dict(aegis__githubEventKind='"pull_request.observed"', aegis__githubActorLogin=None)
+        self.assertTrue(self.valid(activity(**sighting)), self.report(activity(**sighting)))
+        self.assert_one_violation(activity(**sighting, aegis__githubState=None), "OR not satisfied", None)
+
     def test_entity_negative_controls(self):
         repo = {"a": "aegis:GitHubRepository", "rdfs:label": '"r"', "aegis:githubNodeId": '"R_1"',
                 "aegis:githubFullName": '"example/widget"'}

@@ -287,6 +287,7 @@ class FakeTransport:
             "/repos/intigraph/camayoc": "repo.json",
             "/repos/intigraph/camayoc/events?per_page=100": "events-page.json",
             "/repos/intigraph/camayoc/actions/runs?per_page=20": "runs-page.json",
+            "/repos/intigraph/camayoc/pulls?state=open&per_page=100": "pulls-open.json",
             "/repos/intigraph/camayoc/pulls/177": "pull-177.json",
             "/repos/intigraph/camayoc/pulls/172": "pull-172.json",
         }
@@ -318,14 +319,15 @@ class PollerTests(unittest.TestCase):
         p = self.poller(t)
         first = p.cycle(now=1000)
         self.assertNotIn("skipped", first)
-        # 2 PR, 2 push, 2 review, 2 comment events and 1 run; DeleteEvent is not mapped.
-        self.assertEqual(9, first["accepted"])
+        # 2 PR, 2 push, 2 review, 2 comment events and 1 run; DeleteEvent is not mapped;
+        # plus one open-list sighting (aegis-xxoa.5).
+        self.assertEqual(10, first["accepted"])
         # Hydration: each object once per cycle, though two events name PR 177.
         self.assertEqual(1, t.calls.count("/repos/intigraph/camayoc/pulls/177"))
         self.assertIn("/repos/intigraph/camayoc/pulls/140", t.calls)  # recorded 404: stays trimmed
-        self.assertEqual({"pending": 9}, p.spool.counts())
+        self.assertEqual({"pending": 10}, p.spool.counts())
         second = p.cycle(now=1100)
-        self.assertEqual(2, second["not_modified"])
+        self.assertEqual(3, second["not_modified"])  # events, open list, runs
         self.assertNotIn("accepted", second)
         drained = gi.drain_once(p.spool, actor="t", writer=Collect(), repos={"intigraph/camayoc"}, now=1200)
         self.assertEqual(0, drained.get("retry", 0))
@@ -343,7 +345,7 @@ class PollerTests(unittest.TestCase):
         self.assertEqual(calls, len(t.calls))  # not even /rate_limit during the backoff
         later = self.poller(t, spool).cycle(now=1121)
         self.assertNotIn("skipped", later)
-        self.assertEqual(9, later["accepted"])
+        self.assertEqual(10, later["accepted"])  # 9 events + the open-list sighting of PR 177
         self.assertEqual(0, spool.get_state("backoff_n"))
 
     def test_403_with_spent_quota_waits_for_the_reset_and_otherwise_doubles(self):
@@ -429,6 +431,91 @@ class PollerTests(unittest.TestCase):
         rows = spool.conn.execute("SELECT id, reason FROM deliveries WHERE state='quarantined'").fetchall()
         self.assertEqual(1, len(rows), rows)  # the review on PR 140, whose fetch was a recorded 404
         self.assertIn("pull_request", rows[0][1])
+
+
+OPEN_LIST = "/repos/intigraph/camayoc/pulls?state=open&per_page=100"
+
+
+def observed(writer: "Collect") -> list[dict]:
+    return [activity(b) for b in writer.bodies if activity(b)["githubEventKind"] == "pull_request.observed"]
+
+
+class OpenPullRequestSweepTests(unittest.TestCase):
+    """aegis-xxoa.5: a quiet open PR is recorded, and a vanished one is resolved."""
+
+    def poller(self, transport, spool):
+        return gi.Poller(spool, transport, ["intigraph/camayoc"])
+
+    def quiet(self) -> FakeTransport:
+        """Only the open list carries PR 177: no events, no runs."""
+        t = FakeTransport()
+        empty = (200, {}, b"[]")
+        t.overrides = {"/repos/intigraph/camayoc/events?per_page=100": [empty, empty],
+                       "/repos/intigraph/camayoc/actions/runs?per_page=20": [(200, {}, b'{"workflow_runs": []}')] * 2}
+        return t
+
+    def test_a_quiet_open_pr_is_recorded_once(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        p = self.poller(t, spool)
+        p.cycle(now=1)
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer, now=2)
+        seen = observed(writer)
+        self.assertEqual(1, len(seen))
+        self.assertEqual(("open", False), (seen[0]["githubState"], seen[0]["githubMerged"]))
+        self.assertEqual("2026-10-27T18:50:00Z", seen[0]["occurredAt"])
+        self.assertNotIn("githubActorLogin", seen[0])  # a sighting has no actor
+        self.assertEqual(1, len(spool.open_prs("intigraph/camayoc")))
+        # The list unchanged (304), then re-served without an ETag: no new record either way.
+        p.cycle(now=100)
+        t.overrides[OPEN_LIST] = [(200, {}, (POLL / "pulls-open.json").read_bytes())]
+        p.cycle(now=200)
+        again = Collect()
+        gi.drain_once(spool, actor="t", writer=again, now=201)
+        self.assertEqual([], observed(again))
+
+    def test_a_pr_gone_from_the_list_is_fetched_and_recorded_as_it_is(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        p = self.poller(t, spool)
+        p.cycle(now=1)
+        gi.drain_once(spool, actor="t", writer=Collect(), now=2)
+        t.overrides[OPEN_LIST] = [(200, {}, b"[]")]
+        p.cycle(now=100)
+        self.assertEqual(1, t.calls.count("/repos/intigraph/camayoc/pulls/177"))
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer, now=101)
+        seen = observed(writer)
+        self.assertEqual(1, len(seen))
+        self.assertEqual(("closed", True), (seen[0]["githubState"], seen[0]["githubMerged"]))
+        self.assertEqual("24091efeed09250206b3f3295bc7a31867c5b2c2", seen[0]["githubMergeCommitSha"])
+        self.assertEqual({}, spool.open_prs("intigraph/camayoc"))
+
+    def test_a_full_page_never_presumes_a_pr_closed(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        p = self.poller(t, spool)
+        p.cycle(now=1)
+        other = json.loads((POLL / "pulls-open.json").read_text())
+        other[0].update(node_id="PR_other", number=999, url="https://api.github.com/repos/intigraph/camayoc/pulls/999")
+        t.overrides[OPEN_LIST.replace("per_page=100", "per_page=1")] = [(200, {}, json.dumps(other).encode())]
+        old = gi.OPEN_PAGE
+        gi.OPEN_PAGE = 1
+        try:
+            receipt = p.cycle(now=100)
+        finally:
+            gi.OPEN_PAGE = old
+        self.assertEqual(["intigraph/camayoc"], receipt["truncated"])
+        self.assertNotIn("/repos/intigraph/camayoc/pulls/177", t.calls)  # no gone-fetch
+        self.assertIn("PR_kwDOTvaTnM8AAAABLF8ZkA", spool.open_prs("intigraph/camayoc"))  # memory kept
+
+    def test_a_failed_list_changes_nothing(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        p = self.poller(t, spool)
+        p.cycle(now=1)
+        t.overrides[OPEN_LIST] = [(502, {}, b"bad gateway")]
+        receipt = p.cycle(now=100)
+        self.assertTrue(any("pulls?state=open" in e for e in receipt["errors"]))
+        self.assertNotIn("/repos/intigraph/camayoc/pulls/177", t.calls)
+        self.assertEqual(1, len(spool.open_prs("intigraph/camayoc")))
 
 
 class SpoolPrivacyTests(unittest.TestCase):
