@@ -29,3 +29,8 @@ Edits made to the recordings:
 
 No headers carry a real signature. Tests sign with a fixed test secret. No
 token or secret was recorded.
+
+- `poll/pulls-open.json` (aegis-xxoa.5): the `GET /repos/O/N/pulls?state=open`
+  list, DERIVED from `poll/pull-177.json` with PR 177 rolled back to open
+  (`updated_at` 2026-10-27T18:50:00Z, no merge fields, no body) and the fields
+  the list endpoint omits removed. Not a recording.

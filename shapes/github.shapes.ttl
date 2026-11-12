@@ -295,7 +295,7 @@ aegis:GitHubActivityShape a sh:NodeShape ;
     sh:property [ sh:path aegis:githubEventKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in (
         "push"
         "pull_request.opened" "pull_request.reopened" "pull_request.closed" "pull_request.synchronize"
-        "pull_request.ready_for_review" "pull_request.converted_to_draft" "pull_request.edited"
+        "pull_request.ready_for_review" "pull_request.converted_to_draft" "pull_request.edited" "pull_request.observed"
         "pull_request_review.submitted" "pull_request_review.dismissed" "pull_request_review.edited"
         "pull_request_review_comment.created" "pull_request_review_comment.edited"
         "issues.opened" "issues.reopened" "issues.closed" "issues.edited"
@@ -333,7 +333,7 @@ aegis:GitHubActivityShape a sh:NodeShape ;
     sh:or (
         [ sh:not [ sh:property [ sh:path aegis:githubEventKind ; sh:minCount 1 ; sh:in (
             "pull_request.opened" "pull_request.reopened" "pull_request.closed" "pull_request.synchronize"
-            "pull_request.ready_for_review" "pull_request.converted_to_draft" "pull_request.edited"
+            "pull_request.ready_for_review" "pull_request.converted_to_draft" "pull_request.edited" "pull_request.observed"
             "issues.opened" "issues.reopened" "issues.closed" "issues.edited" ) ] ] ]
         [ sh:property [ sh:path aegis:githubState ; sh:minCount 1 ] ]
     ) ;

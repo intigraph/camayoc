@@ -100,6 +100,7 @@ reported it. Time is used only where an action can repeat:
 | `pull_request.opened` | PR node id |
 | `pull_request.closed` | PR node id, `closed_at` |
 | `pull_request.synchronize` | PR node id, new head sha |
+| `pull_request.observed` | PR node id, head sha, state, merged, `updated_at` |
 | other `pull_request.*` | PR node id, `updated_at` |
 | `pull_request_review.submitted`, `.dismissed` | review node id |
 | `*_comment.created` | comment node id |
@@ -236,6 +237,22 @@ meters every call.
   releases. It also reads `GET /repos/{r}/actions/runs?per_page=20` for
   workflow runs. Check runs are not polled: one request per commit is too
   expensive, and `workflow_run` covers CI for Actions repositories.
+- **Open pull requests (aegis-xxoa.5).** The Events API reaches only the last
+  ~100 events, so an open PR that has been quiet longer than that never
+  appears there. Each cycle also reads `GET /repos/{r}/pulls?state=open`, one
+  page of 100 with an ETag, and spools every open PR as a
+  `pull_request.observed` sighting. A sighting is not a GitHub event. It
+  records the PR as GitHub reports it, at its `updated_at`, with no actor. Its
+  key (above) is the same for an unchanged PR, so re-reading the list writes
+  nothing new. The spool remembers which PRs the last complete list showed
+  open. One that is missing from the next list is fetched once (the normal
+  hydration path) and recorded as fetched: closed, merged or still open. That
+  covers a close the Events window missed. A full page counts as truncated:
+  it adds sightings, but an absence from it never counts, so a PR is never
+  presumed closed. A failed or 304 list changes nothing. Measured 2026-11-12
+  on `intigraph/quipu`: 17 of 17 open PRs observed in one dry-run cycle. The
+  Events window alone had reached 19 recently active PRs, some of them closed,
+  and missed quiet open ones such as #1078 and #1136.
 - **Conditional requests.** Every read sends the stored ETag. A 304 costs no
   primary quota. On a quiet repository nearly every request is a 304.
 - **Budget.** A local hourly token bucket, `--budget-per-hour` (default 300,
@@ -277,8 +294,10 @@ meters every call.
   to the drain, which then quarantines it with the missing field named. The
   events ETag can move on safely, because a deferred event is already in the
   spool.
-- **Spool keys.** `poll:<events-api id>` and
-  `poll:run:<run id>:<attempt>:<status>:<conclusion>`. These differ from
+- **Spool keys.** `poll:<events-api id>`,
+  `poll:run:<run id>:<attempt>:<status>:<conclusion>`,
+  `poll:pr-open:<node id>:<head sha>:<updated_at>` and
+  `poll:pr-gone:<node id>:<last seen updated_at>`. These differ from
   webhook delivery ids, but the activity key is the same for the same change.
   The spool's activity ledger therefore writes it once (§3).
 
