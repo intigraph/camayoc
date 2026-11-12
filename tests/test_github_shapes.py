@@ -64,6 +64,14 @@ def activity(**changes: str | None) -> str:
 
 @requires_quipu
 class GitHubShapes(unittest.TestCase):
+    def test_observed_mergeability_constraints(self):
+        positive = activity(aegis__githubMergeable='false', aegis__githubMergeableState='"dirty"',
+                            aegis__githubBaseSha='"' + 'a' * 40 + '"')
+        self.assertTrue(self.valid(positive))
+        self.assert_one_violation(activity(aegis__githubMergeable='"false"'), 'Datatype', 'githubMergeable')
+        self.assert_one_violation(activity(aegis__githubMergeableState='"guessed-clean"'), 'In', 'githubMergeableState')
+        self.assert_one_violation(activity(aegis__githubBaseSha='"short"'), 'Pattern', 'githubBaseSha')
+
     def report(self, body: str, *, prefix: bool = True) -> str:
         with tempfile.NamedTemporaryFile("w", suffix=".ttl", delete=False) as fh:
             fh.write((PREFIX if prefix else "") + body)

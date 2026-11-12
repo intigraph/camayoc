@@ -15,6 +15,7 @@ import http.client
 import importlib.util
 import json
 import re
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -516,6 +517,159 @@ class OpenPullRequestSweepTests(unittest.TestCase):
         self.assertTrue(any("pulls?state=open" in e for e in receipt["errors"]))
         self.assertNotIn("/repos/intigraph/camayoc/pulls/177", t.calls)
         self.assertEqual(1, len(spool.open_prs("intigraph/camayoc")))
+
+
+class MergeabilityObservationTests(unittest.TestCase):
+    quiet = OpenPullRequestSweepTests.quiet
+
+    def poller(self, transport, spool):
+        return gi.Poller(spool, transport, ["intigraph/camayoc"], observe_mergeability=True)
+
+    def details(self, transport, **fields):
+        pr = json.loads((POLL / "pulls-open.json").read_text())[0]
+        pr.update(mergeable=False, mergeable_state="dirty", **fields)
+        pr["base"]["sha"] = "a" * 40
+        path = "/repos/intigraph/camayoc/pulls/177"
+        transport.overrides[path] = [(200, {}, json.dumps(pr).encode())]
+        return pr
+
+    def test_detail_snapshot_survives_redaction_and_has_observation_time(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        self.details(t)
+        self.poller(t, spool).cycle(now=1000)
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer, now=1001)
+        seen = observed(writer)
+        self.assertEqual(1, len(seen))
+        self.assertIs(False, seen[0]["githubMergeable"])
+        self.assertEqual("dirty", seen[0]["githubMergeableState"])
+        self.assertEqual("a" * 40, seen[0]["githubBaseSha"])
+        self.assertEqual("1970-01-01T00:16:40Z", seen[0]["occurredAt"])
+
+    def test_unchanged_list_rechecks_detail_and_does_not_reemit_unchanged_snapshot(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        p = self.poller(t, spool)
+        self.details(t)
+        p.cycle(now=1000)
+        gi.drain_once(spool, actor="t", writer=Collect(), now=1001)
+        self.details(t)
+        p.cycle(now=1100)
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer, now=1101)
+        self.assertEqual([], observed(writer))
+        pr = self.details(t)
+        pr["base"]["sha"] = "b" * 40
+        pr["mergeable"], pr["mergeable_state"] = True, "clean"
+        t.overrides["/repos/intigraph/camayoc/pulls/177"] = [(200, {}, json.dumps(pr).encode())]
+        p.cycle(now=1200)
+        gi.drain_once(spool, actor="t", writer=writer, now=1201)
+        self.assertEqual(1, len(observed(writer)))
+        self.assertEqual("b" * 40, observed(writer)[0]["githubBaseSha"])
+        self.assertIs(True, observed(writer)[0]["githubMergeable"])
+
+    def test_detail_unknown_does_not_become_clean(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        pr = self.details(t)
+        pr["mergeable"], pr["mergeable_state"] = None, "unknown"
+        t.overrides["/repos/intigraph/camayoc/pulls/177"] = [(200, {}, json.dumps(pr).encode())]
+        self.poller(t, spool).cycle(now=1000)
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer, now=1001)
+        self.assertNotIn("githubMergeable", observed(writer)[0])
+        self.assertEqual("unknown", observed(writer)[0]["githubMergeableState"])
+
+    def test_returning_state_is_a_new_observation_across_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'spool.db')
+            writer = Collect()
+            for index, mergeable in enumerate((False, True, False, False)):
+                spool, t = gi.Spool(path), self.quiet()
+                pr = self.details(t)
+                pr['mergeable'] = mergeable
+                pr['mergeable_state'] = 'clean' if mergeable else 'dirty'
+                t.overrides['/repos/intigraph/camayoc/pulls/177'] = [(200, {}, json.dumps(pr).encode())]
+                self.poller(t, spool).cycle(now=1000 + index * 100)
+                gi.drain_once(spool, actor='t', writer=writer, now=1001 + index * 100)
+                spool.conn.close()
+            states = observed(writer)
+            self.assertEqual([False, True, False], [p['githubMergeable'] for p in states])
+            self.assertEqual('1970-01-01T00:20:00Z', states[-1]['occurredAt'])
+            self.assertEqual(3, len({p['githubActivityKey'] for p in states}))
+
+    def test_pending_observation_retries_byte_identically_after_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'spool.db')
+            spool, t = gi.Spool(path), self.quiet()
+            self.details(t)
+            self.poller(t, spool).cycle(now=1000)
+            attempts = []
+            def fail(body):
+                attempts.append(body)
+                raise OSError('fixture unavailable')
+            gi.drain_once(spool, actor='t', writer=fail, now=1001)
+            spool.conn.close()
+            spool, t = gi.Spool(path), self.quiet()
+            self.details(t)
+            self.poller(t, spool).cycle(now=1100)
+            self.assertEqual(1, spool.pending())
+            writer = Collect()
+            gi.drain_once(spool, actor='t', writer=writer, now=1101)
+            self.assertEqual(attempts, writer.bodies)
+            spool.conn.close()
+
+    def test_cursor_failure_rolls_back_queued_observation(self):
+        spool = gi.Spool(':memory:')
+        payload = delivery('pull_request.opened')['body']
+        spool.conn.executescript("CREATE TRIGGER reject_cursor BEFORE INSERT ON pr_observations "
+                                 "BEGIN SELECT RAISE(ABORT, 'fixture failure'); END;")
+        with self.assertRaises(sqlite3.IntegrityError):
+            spool.observe_pr('example/project', 'PR_fixture', 'a' * 64, payload, 1000)
+        self.assertEqual(0, spool.pending())
+        self.assertEqual(0, spool.conn.execute('SELECT COUNT(*) FROM pr_observations').fetchone()[0])
+        spool.conn.execute('DROP TRIGGER reject_cursor')
+        self.assertEqual('accepted', spool.observe_pr('example/project', 'PR_fixture', 'a' * 64, payload, 1000))
+        self.assertEqual('duplicate', spool.observe_pr('example/project', 'PR_fixture', 'a' * 64, payload, 1100))
+        self.assertEqual(1, spool.pending())
+
+    def test_detail_identity_mismatch_writes_no_sighting(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        pr = self.details(t)
+        pr["node_id"] = "PR_other"
+        t.overrides["/repos/intigraph/camayoc/pulls/177"] = [(200, {}, json.dumps(pr).encode())]
+        receipt = self.poller(t, spool).cycle(now=1000)
+        self.assertTrue(any("identity unknown" in x for x in receipt["errors"]))
+        writer = Collect()
+        gi.drain_once(spool, actor="t", writer=writer, now=1001)
+        self.assertEqual([], observed(writer))
+
+    def test_detail_uses_existing_budget_and_rate_backoff(self):
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        p = gi.Poller(spool, t, ["intigraph/camayoc"], budget_per_hour=3, observe_mergeability=True)
+        receipt = p.cycle(now=1000)
+        self.assertTrue(receipt["over_budget"])
+        self.assertNotIn("/repos/intigraph/camayoc/pulls/177", t.calls)
+        self.assertEqual(3, receipt["requests"])
+        spool, t = gi.Spool(":memory:"), self.quiet()
+        t.overrides["/repos/intigraph/camayoc/pulls/177"] = [(429, {"retry-after": "120"}, b"")]
+        p = self.poller(t, spool)
+        self.assertEqual(1120, p.cycle(now=1000)["rate_limited"])
+        calls = list(t.calls)
+        p.cycle(now=1100)
+        self.assertEqual(calls, t.calls)
+
+    def test_duplicate_or_malformed_list_never_replaces_last_complete_roster(self):
+        for malformed in ('duplicate', 'malformed'):
+            with self.subTest(malformed=malformed):
+                spool, t = gi.Spool(":memory:"), self.quiet()
+                old = {'PR_retained': ('https://api.github.com/repos/intigraph/camayoc/pulls/999', 999, 'old')}
+                spool.set_open_prs('intigraph/camayoc', old)
+                pr = self.details(t)
+                page = [pr, pr if malformed == 'duplicate' else None]
+                t.overrides['/repos/intigraph/camayoc/pulls?state=open&per_page=100'] = [
+                    (200, {}, json.dumps(page).encode())]
+                receipt = self.poller(t, spool).cycle(now=1000)
+                self.assertIn('intigraph/camayoc', receipt['truncated'])
+                self.assertEqual(old, spool.open_prs('intigraph/camayoc'))
 
 
 class SpoolPrivacyTests(unittest.TestCase):
