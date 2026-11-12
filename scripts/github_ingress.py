@@ -285,12 +285,14 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                 texts.append(obj.get("body"))
             when = {"opened": obj.get("created_at"), "closed": obj.get("closed_at")}.get(action, obj.get("updated_at"))
             if action == "observed":
-                # A sighting, not a GitHub event: the state as of updated_at. The
-                # same unchanged PR seen again is the same record; any change to
-                # the head, state or update time is a new one.
+                # Legacy list sightings retain their semantic identity. Detail
+                # transitions also bind their once-retained observation time:
+                # a return to a prior state is a new append-only observation.
                 key = _digest(kind, node_id, head, st, merged, obj.get("updated_at"),
                               state.get("githubBaseSha"), state.get("githubMergeable"),
                               state.get("githubMergeableState"), state.get("githubDraft"))
+                if occurred_at is not None:
+                    key = _digest(key, _instant(occurred_at, "PR observation time"))
             else:
                 key = _digest(kind, node_id, {"opened": "", "closed": obj.get("closed_at"),
                                               "synchronize": head}.get(action, obj.get("updated_at")))
@@ -482,6 +484,8 @@ CREATE TABLE IF NOT EXISTS budget (hour INTEGER PRIMARY KEY, spent INTEGER NOT N
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS open_prs (repo TEXT NOT NULL, node_id TEXT NOT NULL, url TEXT NOT NULL,
   number INTEGER, updated_at TEXT, PRIMARY KEY (repo, node_id));
+CREATE TABLE IF NOT EXISTS pr_observations (repo TEXT NOT NULL, node_id TEXT NOT NULL,
+  state_key TEXT NOT NULL, sequence INTEGER NOT NULL, PRIMARY KEY (repo, node_id));
 """
 
 
@@ -522,6 +526,36 @@ class Spool:
         with self.lock:
             return self.conn.execute(
                 "SELECT COUNT(*) FROM deliveries WHERE state IN ('pending','hydrate')").fetchone()[0]
+
+    def observe_pr(self, repo: str, node: str, state_key: str, payload: dict, now: float) -> str:
+        """Atomically queue a transition and remember only its consecutive state.
+
+        Cursor and queue commit together; a failed write cannot swallow a later
+        retry. Retained pending bytes and observation time never change.
+        """
+        body = json.dumps(redact(payload), sort_keys=True).encode()
+        at = datetime.fromtimestamp(now, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        with self.lock:
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                last = self.conn.execute(
+                    "SELECT state_key, sequence FROM pr_observations WHERE repo=? AND node_id=?",
+                    (repo, node)).fetchone()
+                if last and last[0] == state_key:
+                    self.conn.execute("COMMIT")
+                    return "duplicate"
+                sequence = last[1] + 1 if last else 1
+                delivery = f"poll:pr-detail-v2:{node}:{sequence}:{state_key}"
+                self.conn.execute(
+                    "INSERT INTO deliveries (id, event, body, occurred_at, received_at, state) "
+                    "VALUES (?,?,?,?,?,'pending')", (delivery, 'pull_request', body, at, now))
+                self.conn.execute("INSERT OR REPLACE INTO pr_observations VALUES (?,?,?,?)",
+                                  (repo, node, state_key, sequence))
+                self.conn.execute("COMMIT")
+                return "accepted"
+            except BaseException:
+                self.conn.execute("ROLLBACK")
+                raise
 
     def due_hydration(self, now: float, limit: int = 50) -> list[tuple]:
         with self.lock:
@@ -1115,12 +1149,9 @@ class Poller:
         state_key = _digest(head.get("sha"), base.get("sha"), base.get("ref"), pr.get("state"),
                             pr.get("merged"), pr.get("updated_at"), pr.get("draft"),
                             pr.get("mergeable"), pr.get("mergeable_state"))
-        delivery = f"poll:pr-detail:{node}:{state_key}"
-        if not self.spool.has(delivery):
-            payload = {"action": "observed", "pull_request": pr, "repository": repo, "sender": None}
-            # Retain observation time once; retries remain byte-identical.
-            at = datetime.fromtimestamp(now, tz=timezone.utc).isoformat().replace("+00:00", "Z")
-            self._spool(delivery, "pull_request", payload, now, receipt, occurred_at=at)
+        payload = {"action": "observed", "pull_request": pr, "repository": repo, "sender": None}
+        outcome = self.spool.observe_pr(full, node, state_key, payload, now)
+        receipt[outcome] = receipt.get(outcome, 0) + 1
 
 
 # ---- CLI --------------------------------------------------------------------

@@ -16,3 +16,9 @@ The additive shape changes require governed review and deployment before this
 flag is enabled against a live writer. This source change does not install a
 shape, issue a token, schedule a runner or arm a job. Budget exhaustion means
 coverage UNKNOWN, including for large repositories.
+
+Detail deduplication remembers only the last consecutive semantic state in an
+owned spool cursor. The cursor and queued bytes commit together. A returning
+state after an intervening change receives a new delivery sequence and an
+observation-time-bound activity identity. Unchanged observations, including
+after restart or a failed writer retry, retain the original queued bytes.

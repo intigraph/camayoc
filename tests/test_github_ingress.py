@@ -15,6 +15,7 @@ import http.client
 import importlib.util
 import json
 import re
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -576,6 +577,59 @@ class MergeabilityObservationTests(unittest.TestCase):
         gi.drain_once(spool, actor="t", writer=writer, now=1001)
         self.assertNotIn("githubMergeable", observed(writer)[0])
         self.assertEqual("unknown", observed(writer)[0]["githubMergeableState"])
+
+    def test_returning_state_is_a_new_observation_across_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'spool.db')
+            writer = Collect()
+            for index, mergeable in enumerate((False, True, False, False)):
+                spool, t = gi.Spool(path), self.quiet()
+                pr = self.details(t)
+                pr['mergeable'] = mergeable
+                pr['mergeable_state'] = 'clean' if mergeable else 'dirty'
+                t.overrides['/repos/intigraph/camayoc/pulls/177'] = [(200, {}, json.dumps(pr).encode())]
+                self.poller(t, spool).cycle(now=1000 + index * 100)
+                gi.drain_once(spool, actor='t', writer=writer, now=1001 + index * 100)
+                spool.conn.close()
+            states = observed(writer)
+            self.assertEqual([False, True, False], [p['githubMergeable'] for p in states])
+            self.assertEqual('1970-01-01T00:20:00Z', states[-1]['occurredAt'])
+            self.assertEqual(3, len({p['githubActivityKey'] for p in states}))
+
+    def test_pending_observation_retries_byte_identically_after_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'spool.db')
+            spool, t = gi.Spool(path), self.quiet()
+            self.details(t)
+            self.poller(t, spool).cycle(now=1000)
+            attempts = []
+            def fail(body):
+                attempts.append(body)
+                raise OSError('fixture unavailable')
+            gi.drain_once(spool, actor='t', writer=fail, now=1001)
+            spool.conn.close()
+            spool, t = gi.Spool(path), self.quiet()
+            self.details(t)
+            self.poller(t, spool).cycle(now=1100)
+            self.assertEqual(1, spool.pending())
+            writer = Collect()
+            gi.drain_once(spool, actor='t', writer=writer, now=1101)
+            self.assertEqual(attempts, writer.bodies)
+            spool.conn.close()
+
+    def test_cursor_failure_rolls_back_queued_observation(self):
+        spool = gi.Spool(':memory:')
+        payload = delivery('pull_request.opened')['body']
+        spool.conn.executescript("CREATE TRIGGER reject_cursor BEFORE INSERT ON pr_observations "
+                                 "BEGIN SELECT RAISE(ABORT, 'fixture failure'); END;")
+        with self.assertRaises(sqlite3.IntegrityError):
+            spool.observe_pr('example/project', 'PR_fixture', 'a' * 64, payload, 1000)
+        self.assertEqual(0, spool.pending())
+        self.assertEqual(0, spool.conn.execute('SELECT COUNT(*) FROM pr_observations').fetchone()[0])
+        spool.conn.execute('DROP TRIGGER reject_cursor')
+        self.assertEqual('accepted', spool.observe_pr('example/project', 'PR_fixture', 'a' * 64, payload, 1000))
+        self.assertEqual('duplicate', spool.observe_pr('example/project', 'PR_fixture', 'a' * 64, payload, 1100))
+        self.assertEqual(1, spool.pending())
 
     def test_detail_identity_mismatch_writes_no_sighting(self):
         spool, t = gi.Spool(":memory:"), self.quiet()
