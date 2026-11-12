@@ -1,0 +1,7 @@
+Synthetic source mapping; no GitHub or Quipu call.
+
+BASE bf4e470
+{"githubBaseSha": "UNKNOWN", "githubMergeable": "UNKNOWN", "githubMergeableState": "UNKNOWN"}
+
+CANDIDATE
+{"githubBaseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "githubMergeable": false, "githubMergeableState": "dirty"}

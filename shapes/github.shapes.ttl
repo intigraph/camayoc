@@ -194,6 +194,20 @@ aegis:githubBaseRef a rdf:Property ;
     rdfs:comment "Branch a pull request targets, or the branch a workflow or check ran on." ;
     rdfs:range xsd:string .
 
+aegis:githubBaseSha a rdf:Property ;
+    rdfs:label "GitHub observed base sha" ;
+    rdfs:comment "Base commit observed with this head; a changed base alone does not prove a main-only refresh." ;
+    rdfs:range xsd:string .
+
+aegis:githubMergeable a rdf:Property ;
+    rdfs:label "GitHub observed mergeability" ;
+    rdfs:comment "GitHub boolean observation; absent or null remains unknown, never clean." ;
+    rdfs:range xsd:boolean .
+
+aegis:githubMergeableState a rdf:Property ;
+    rdfs:label "GitHub observed mergeability state" ;
+    rdfs:range xsd:string .
+
 aegis:githubStatus a rdf:Property ;
     rdfs:label "GitHub status" ;
     rdfs:comment "Closed set for runs and checks: queued, in_progress, completed, requested, waiting, pending." ;
@@ -317,6 +331,9 @@ aegis:GitHubActivityShape a sh:NodeShape ;
     sh:property [ sh:path aegis:githubMergeCommitSha ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
     sh:property [ sh:path aegis:githubDraft ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
     sh:property [ sh:path aegis:githubBaseRef ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubBaseSha ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:githubMergeable ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path aegis:githubMergeableState ; sh:maxCount 1 ; sh:in ("clean" "dirty" "blocked" "behind" "unstable" "has_hooks" "draft" "unknown") ] ;
     sh:property [ sh:path aegis:reviewState ; sh:maxCount 1 ; sh:in ("approved" "changes_requested" "commented" "dismissed") ] ;
     sh:property [ sh:path aegis:githubStatus ; sh:maxCount 1 ; sh:in ("queued" "in_progress" "completed" "requested" "waiting" "pending") ] ;
     sh:property [ sh:path aegis:githubConclusion ; sh:maxCount 1 ; sh:in (

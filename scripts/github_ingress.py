@@ -270,6 +270,12 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                 state["commitSha"] = head
             if isinstance(obj.get("draft"), bool):
                 state["githubDraft"] = obj["draft"]
+            if isinstance(obj.get("mergeable"), bool):
+                state["githubMergeable"] = obj["mergeable"]
+            if obj.get("mergeable_state") in {"clean", "dirty", "blocked", "behind", "unstable", "has_hooks", "draft", "unknown"}:
+                state["githubMergeableState"] = obj["mergeable_state"]
+            if _sha(obj["base"].get("sha")):
+                state["githubBaseSha"] = obj["base"]["sha"]
             if merged:
                 mc = _sha(obj.get("merge_commit_sha"))
                 if not mc:
@@ -282,7 +288,9 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                 # A sighting, not a GitHub event: the state as of updated_at. The
                 # same unchanged PR seen again is the same record; any change to
                 # the head, state or update time is a new one.
-                key = _digest(kind, node_id, head, st, merged, obj.get("updated_at"))
+                key = _digest(kind, node_id, head, st, merged, obj.get("updated_at"),
+                              state.get("githubBaseSha"), state.get("githubMergeable"),
+                              state.get("githubMergeableState"), state.get("githubDraft"))
             else:
                 key = _digest(kind, node_id, {"opened": "", "closed": obj.get("closed_at"),
                                               "synchronize": head}.get(action, obj.get("updated_at")))
@@ -417,7 +425,7 @@ def read_secret(path: Path) -> bytes:
 _KEEP = {"node_id", "id", "number", "html_url", "url", "state", "merged", "merged_at", "merge_commit_sha",
          "draft", "created_at", "updated_at", "closed_at", "submitted_at", "commit_id", "name", "head_sha",
          "head_branch", "status", "conclusion", "run_attempt", "run_started_at", "started_at", "completed_at",
-         "tag_name", "prerelease", "published_at", "full_name", "pushed_at"}
+         "tag_name", "prerelease", "published_at", "full_name", "pushed_at", "mergeable", "mergeable_state"}
 _LOGIN = {"user", "author", "actor", "triggering_actor", "sender"}
 
 
@@ -825,11 +833,13 @@ class Poller:
     only a real 404/410 lets it through unhydrated (to be quarantined)."""
 
     def __init__(self, spool: Spool, transport, repos: list[str], *, budget_per_hour: int = 300,
-                 reserve: int = 1000, mapping: tuple[dict, str] | None = None):
+                 reserve: int = 1000, mapping: tuple[dict, str] | None = None,
+                 observe_mergeability: bool = False):
         self.spool, self.transport, self.repos = spool, transport, repos
         self.budget, self.reserve = budget_per_hour, reserve
         self.mapping, self.sha = mapping or load_mapping()
         self.poll_interval = 60
+        self.observe_mergeability = observe_mergeability
 
     def _back_off(self, now: float, headers: dict, receipt: dict) -> None:
         retry_after = headers.get("retry-after", "")
@@ -1043,20 +1053,38 @@ class Poller:
         but never lets an absence count, so no PR is ever presumed closed."""
         page = self._json(f"/repos/{full}/pulls?state=open&per_page={OPEN_PAGE}", now, receipt,
                           etag_key=f"pulls-open:{full}")
+        if page == "304" and self.observe_mergeability:
+            # Base changes need not invalidate the open-list ETag. Detail
+            # checks use retained identities and the same budget and backoff.
+            for node, (_, number, _) in self.spool.open_prs(full).items():
+                self._observe_pr(full, repo, node, number, now, receipt)
+            return
         if not isinstance(page, list):
             return  # 304 (unchanged), or an error already in the receipt
         seen: dict[str, tuple] = {}
+        complete = True
         for pr in page:
+            if not isinstance(pr, dict):
+                receipt["malformed_prs"] = receipt.get("malformed_prs", 0) + 1
+                complete = False
+                continue
             node, url = pr.get("node_id"), pr.get("url")
             if not isinstance(node, str) or not isinstance(url, str):
+                complete = False
                 continue
+            if node in seen:
+                complete = False
+                continue  # a duplicate page row cannot establish a complete sweep
             seen[node] = (url, pr.get("number"), pr.get("updated_at"))
+            if self.observe_mergeability:
+                self._observe_pr(full, repo, node, pr.get("number"), now, receipt)
+                continue
             head = (pr.get("head") or {}).get("sha")
             delivery = f"poll:pr-open:{node}:{head}:{pr.get('updated_at')}"
             if not self.spool.has(delivery):
                 payload = {"action": "observed", "pull_request": pr, "repository": repo, "sender": None}
                 self._spool(delivery, "pull_request", payload, now, receipt)
-        if len(page) >= OPEN_PAGE:
+        if not complete or len(page) >= OPEN_PAGE:
             receipt.setdefault("truncated", []).append(full)
             return
         for node, (url, number, updated) in self.spool.open_prs(full).items():
@@ -1069,6 +1097,30 @@ class Poller:
                            "sender": None, "_hydrate": {"pull_request": url}}
                 self._spool(delivery, "pull_request", payload, now, receipt)
         self.spool.set_open_prs(full, seen)
+
+
+    def _observe_pr(self, full, repo, node, number, now, receipt):
+        if type(number) is not int or number < 1:
+            receipt["malformed_prs"] = receipt.get("malformed_prs", 0) + 1
+            return
+        pr = self._json(f"/repos/{full}/pulls/{number}", now, receipt)
+        if (not isinstance(pr, dict) or pr.get("node_id") != node
+                or pr.get("number") != number):
+            receipt.setdefault("errors", []).append(f"{full}#{number}: PR detail identity unknown")
+            return
+        head, base = pr.get("head"), pr.get("base")
+        if not isinstance(head, dict) or not isinstance(base, dict):
+            receipt.setdefault("errors", []).append(f"{full}#{number}: head/base unknown")
+            return
+        state_key = _digest(head.get("sha"), base.get("sha"), base.get("ref"), pr.get("state"),
+                            pr.get("merged"), pr.get("updated_at"), pr.get("draft"),
+                            pr.get("mergeable"), pr.get("mergeable_state"))
+        delivery = f"poll:pr-detail:{node}:{state_key}"
+        if not self.spool.has(delivery):
+            payload = {"action": "observed", "pull_request": pr, "repository": repo, "sender": None}
+            # Retain observation time once; retries remain byte-identical.
+            at = datetime.fromtimestamp(now, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+            self._spool(delivery, "pull_request", payload, now, receipt, occurred_at=at)
 
 
 # ---- CLI --------------------------------------------------------------------
@@ -1102,6 +1154,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--reserve", type=int, default=1000)
     p.add_argument("--interval", type=int, default=60)
     p.add_argument("--once", action="store_true")
+    p.add_argument("--observe-mergeability", action="store_true",
+                   help="read PR detail snapshots through the existing request budget")
     for cmd in (s, p):
         cmd.add_argument("--spool", required=True)
         cmd.add_argument("--repo", action="append", required=True, help="owner/name; repeat")
@@ -1164,7 +1218,8 @@ def main(argv: list[str] | None = None) -> int:
             stop.set()
             wake.set()
         return 0
-    poller = Poller(spool, GhTransport(), args.repo, budget_per_hour=args.budget_per_hour, reserve=args.reserve)
+    poller = Poller(spool, GhTransport(), args.repo, budget_per_hour=args.budget_per_hour,
+                    reserve=args.reserve, observe_mergeability=args.observe_mergeability)
     while True:
         receipt = poller.cycle()
         receipt["drain"] = drain_once(spool, actor=args.actor, writer=writer, repos=repos)
