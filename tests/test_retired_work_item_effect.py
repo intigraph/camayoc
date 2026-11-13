@@ -143,7 +143,11 @@ class Retirement(unittest.TestCase):
         args=SimpleNamespace(action='retire',item=ID,write_id='a'*64,request_sha256=self.digest,
                              version=1,effect_tx=11,reason='one explicit operator act')
         before=list(self.j.db.iterdump())
-        for response in ({'result':True,'truncated':False},{'result':False,'truncated':True},{'result':False},{'result':False,'truncated':False,'padding':'x'*4096},{},None):
+        for response in ({'result':True,'truncated':False},{'result':False,'truncated':True},{'result':False},{'result':False,'truncated':False,'padding':'x'*4096},{},None,
+                         {'labels':None,'result':True}, {'labels':None,'result':'false'},
+                         {'labels':{},'result':False}, {'labels':None,'result':False,'rows':[]},
+                         {'labels':None,'result':False,'truncated':True},
+                         {'labels':None,'result':False,'count':0}):
             with self.assertRaises(custody.CustodyUnknown):cli.operate(self.j,args,post=lambda *a:response)
             self.assertEqual(list(self.j.db.iterdump()),before)
         calls=[]
@@ -155,6 +159,35 @@ class Retirement(unittest.TestCase):
         self.assertTrue(all(endpoint=='/query' for endpoint,body in calls))
         self.assertIn('GRAPH ?g',calls[0][1]['query'])
         self.assertNotIn('GRAPH',calls[1][1]['query'])
+    def test_cli_canonical_ask_without_truncation_metadata(self):
+        # Exact original-client response from Quipu's ASK branch. SELECT-only
+        # truncation metadata is absent; two independent false reads are needed.
+        args=SimpleNamespace(action='retire',item=ID,write_id='a'*64,request_sha256=self.digest,
+                             version=1,effect_tx=11,reason='one explicit operator act')
+        calls=[]
+        def post(endpoint,body):
+            calls.append((endpoint,body));return json.loads('{"labels":null,"result":false}')
+        result=cli.operate(self.j,args,post=post)
+        self.assertEqual(result['retired_effects'],1)
+        self.assertEqual(len(calls),2)
+        self.assertIn('GRAPH ?g',calls[0][1]['query'])
+        self.assertNotIn('GRAPH',calls[1][1]['query'])
+        self.assertEqual(self.j.db.execute('SELECT body FROM pending').fetchone()[0],self.original)
+        self.assertEqual(self.j.db.execute('SELECT body FROM retired_effect').fetchone()[0],self.original)
+    def test_cli_second_ask_must_also_prove_absence(self):
+        args=SimpleNamespace(action='retire',item=ID,write_id='a'*64,request_sha256=self.digest,
+                             version=1,effect_tx=11,reason='one explicit operator act')
+        before=list(self.j.db.iterdump())
+        for second in ({'labels':None,'result':True}, {'result':False},
+                       {'labels':None,'result':False,'truncated':True},
+                       {'labels':None,'result':False,'rows':[]}):
+            responses=iter([{'labels':None,'result':False},second]);calls=[]
+            def post(endpoint,body):
+                calls.append(body);return next(responses)
+            with self.subTest(second=second),self.assertRaises(custody.CustodyUnknown):
+                cli.operate(self.j,args,post=post)
+            self.assertEqual(len(calls),2)
+            self.assertEqual(list(self.j.db.iterdump()),before)
     def tick(self,post):
         return sync.tick(native.Reader(None,self.board),self.j,post,changes=None,
                          plane='urn:private:knowledge',actor='fixture',completion=True)

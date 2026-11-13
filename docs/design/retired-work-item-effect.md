@@ -13,7 +13,11 @@ newer native version permits replay of that retained envelope.
 SQLite state and the producer's protected native authority on stdin. It takes
 the same state lock as the scheduled producer. Retirement performs two bounded exact-subject absence reads while holding that
 lock and the journal transaction: all named graphs, then the default graph.
-Both must return explicit, untruncated false within 4096 bytes. Present subjects
+Both must return boolean false within 4096 bytes: either explicit
+`truncated:false`, or the exact canonical ASK body `{"labels":null,"result":false}`
+with no other fields. ASK has no row pagination; missing truncation metadata on
+any other response is UNKNOWN. Explicit truncation, partial/paginated responses,
+non-boolean results and oversized bodies refuse. Present subjects
 must complete instead; unknown, missing or partial evidence refuses. Inspect
 and release perform no HTTP requests.
 The operator must supply an independently reviewed item, write ID, request hash,
