@@ -75,14 +75,19 @@ class Retirement(unittest.TestCase):
         item,binding=self.add_effect(8)
         with self.assertRaises(custody.CustodyUnknown):self.j.retire_effect(item,**binding)
         self.assertEqual(list(self.j.db.execute('SELECT * FROM retired_effect ORDER BY slot')),before)
-        # Releasing one entry does not release any other or reclaim audit capacity.
+        # Releasing one entry frees active capacity without deleting audit history.
         other,other_binding=entries[0]
         self.j.release_retired(other,write_id=other_binding['write_id'],
             request_sha256=self.digest,reason='operator release one')
         self.assertEqual(self.j.retired_count(),7)
         self.assertEqual(self.j.db.execute('SELECT active FROM retired_effect WHERE id=?',(ID,)).fetchone(),(1,))
-        with self.assertRaises(custody.CustodyUnknown):self.j.retire_effect(item,**binding)
-        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM retired_effect').fetchone(),(8,))
+        self.j.retire_effect(item,**binding)
+        self.assertEqual(self.j.retired_count(),8)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM retired_effect').fetchone(),(9,))
+        self.assertEqual(self.j.db.execute('SELECT slot FROM retired_effect WHERE id=?',(item,)).fetchone(),(9,))
+        self.assertEqual(list(self.j.db.execute('SELECT * FROM retired_effect WHERE slot!=2 AND slot<=8 ORDER BY slot')), [r for r in before if r[0]!=2])
+        another,another_binding=self.add_effect(9)
+        with self.assertRaises(custody.CustodyUnknown):self.j.retire_effect(another,**another_binding)
     def test_absence_is_fresh_inside_cas_and_present_or_unknown_refuses(self):
         before=list(self.j.db.iterdump())
         for result in (False,None,{},1):
@@ -103,13 +108,37 @@ class Retirement(unittest.TestCase):
         before=self.j.db.execute('SELECT * FROM retired_effect').fetchall()
         schema=self.j.db.execute("SELECT sql FROM sqlite_master WHERE name='retired_effect'").fetchone()[0]
         self.j.db.execute('ALTER TABLE retired_effect RENAME TO retired_effect_new')
-        self.j.db.execute(schema.replace('BETWEEN 1 AND 8','=1'))
+        self.j.db.execute(schema.replace('>=1','=1'))
         self.j.db.execute('INSERT INTO retired_effect SELECT * FROM retired_effect_new')
         self.j.db.execute('DROP TABLE retired_effect_new')
         self.j.db.close();self.j=custody.Journal(self.path,self.board,server=self.server)
         self.assertEqual(self.j.db.execute('SELECT * FROM retired_effect').fetchall(),before)
         item,binding=self.add_effect(1);self.j.retire_effect(item,**binding)
         self.assertEqual(self.j.retired_count(),2)
+    def test_lifetime_schema_migration_and_bounded_history_pages(self):
+        self.retire()
+        old=self.j.db.execute('SELECT * FROM retired_effect').fetchall()
+        schema=self.j.db.execute("SELECT sql FROM sqlite_master WHERE name='retired_effect'").fetchone()[0]
+        self.j.db.execute('ALTER TABLE retired_effect RENAME TO retired_effect_old')
+        self.j.db.execute(schema.replace('>=1',' BETWEEN 1 AND 8'))
+        self.j.db.execute('INSERT INTO retired_effect SELECT * FROM retired_effect_old')
+        self.j.db.execute('DROP TABLE retired_effect_old')
+        self.j.db.close();self.j=custody.Journal(self.path,self.board,server=self.server)
+        self.assertEqual(self.j.db.execute('SELECT * FROM retired_effect').fetchall(),old)
+        for n in range(1,40):
+            item,binding=self.add_effect(n);self.j.retire_effect(item,**binding)
+            self.j.release_retired(item,write_id=binding['write_id'],request_sha256=self.digest,reason='release')
+        first=cli.operate(self.j,SimpleNamespace(action='inspect',history_limit=32,after_slot=0))
+        self.assertEqual(len(first['records']),32);self.assertTrue(first['history_has_more'])
+        second=cli.operate(self.j,SimpleNamespace(action='inspect',history_limit=32,after_slot=first['history_next_after']))
+        self.assertEqual(len(second['records']),8);self.assertFalse(second['history_has_more'])
+        self.assertEqual([r['slot'] for r in first['records']+second['records']],list(range(1,41)))
+        self.assertEqual([r['id'] for r in second['active_records']],[ID])
+        before=list(self.j.db.iterdump())
+        for limit,after in ((0,0),(65,0),(1,-1)):
+            with self.assertRaises(custody.CustodyUnknown):
+                cli.operate(self.j,SimpleNamespace(action='inspect',history_limit=limit,after_slot=after))
+        self.assertEqual(list(self.j.db.iterdump()),before)
     def test_cli_requires_two_absence_reads_and_present_subject_is_refused(self):
         args=SimpleNamespace(action='retire',item=ID,write_id='a'*64,request_sha256=self.digest,
                              version=1,effect_tx=11,reason='one explicit operator act')

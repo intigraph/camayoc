@@ -106,7 +106,7 @@ class Journal:
             elif initial_tx is not None and integer(initial_tx)!=row[0][2]:
                 raise CustodyUnknown('existing cursor cannot be reset')
             retired_schema=('CREATE TABLE IF NOT EXISTS retired_effect ('
-                            f'slot INTEGER PRIMARY KEY CHECK(slot BETWEEN 1 AND {MAX_RETIRED}),id TEXT UNIQUE NOT NULL,'
+                            'slot INTEGER PRIMARY KEY CHECK(slot>=1),id TEXT UNIQUE NOT NULL,'
                             'body TEXT NOT NULL,tx INTEGER NOT NULL,effect_tx INTEGER NOT NULL,'
                             'write_id TEXT NOT NULL,request_sha256 TEXT NOT NULL,version INTEGER NOT NULL,'
                             'reason TEXT NOT NULL,retired_at REAL NOT NULL,active INTEGER NOT NULL,'
@@ -114,14 +114,14 @@ class Journal:
             existing=self.db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='retired_effect'").fetchone()
             if existing:
                 normalized=re.sub(r'\s+','',existing[0]).lower()
-                if 'check(slot=1)' in normalized:
-                    # Upgrade only the known one-slot journal, atomically. Every
+                if 'check(slot=1)' in normalized or f'check(slotbetween1and{MAX_RETIRED})' in normalized:
+                    # Upgrade known one-slot and lifetime-cap journals atomically. Every
                     # body, active flag and released history is copied verbatim.
                     self.db.execute('ALTER TABLE retired_effect RENAME TO retired_effect_v1')
                     self.db.execute(retired_schema)
                     self.db.execute('INSERT INTO retired_effect SELECT * FROM retired_effect_v1')
                     self.db.execute('DROP TABLE retired_effect_v1')
-                elif f'check(slotbetween1and{MAX_RETIRED})' not in normalized:
+                elif 'check(slot>=1)' not in normalized:
                     raise CustodyUnknown('retirement journal schema unknown')
             else:self.db.execute(retired_schema)
             self.db.execute('COMMIT')
@@ -277,7 +277,7 @@ class Journal:
             raise CustodyUnknown('exact retirement binding or operator reason unproved')
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            if self.db.execute('SELECT COUNT(*) FROM retired_effect').fetchone()[0]>=MAX_RETIRED:
+            if self.retired_count()>=MAX_RETIRED:
                 raise CustodyUnknown('bounded retirement list is full')
             if self.db.execute('SELECT 1 FROM retired_effect WHERE id=?',(item,)).fetchone():
                 raise CustodyUnknown('effect already has preserved retirement history')

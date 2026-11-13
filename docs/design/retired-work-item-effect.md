@@ -21,9 +21,9 @@ version and effect transaction, plus an audit reason. Every binding is compared
 with the exact stored envelope in one transaction before exclusion is recorded.
 The request hash uses the same sorted-key JSON encoding as the writer.
 
-At most eight explicit retirement entries exist per journal, including released
-history. Each invocation retires exactly one bound effect; there is no list
-argument or batch release. The known one-slot schema upgrades atomically,
+At most eight active retirement entries exist per journal. Released audit
+history is retained without consuming active capacity. Each invocation retires exactly one bound effect; there is no list
+argument or batch release. The known one-slot and lifetime-cap schemas upgrade atomically,
 preserving every original field and released record. Unknown schemas refuse.
 There is no automatic age threshold, bulk operation, cursor reset, changed
 capacity or automatic retirement of subsequent UNKNOWN effects.
@@ -42,12 +42,17 @@ newer feed candidates can advance its candidate transaction but cannot replace
 its body or remove the exclusion. Other items use the unchanged delivery path.
 An un-retired UNKNOWN still stops its tick and retains custody. A second
 retirement requires its own operator act and fresh absence reads; a ninth
-refuses even after an earlier entry has been released.
+refuses while eight are active. After an explicit release, a new independently
+bound absent effect can retire; its monotonically increasing slot preserves history.
 
 ## Visibility
 
 `inspect` with the same protected authority and state prints bounded bindings
-and the active count. The full envelope stays queryable locally in
+and the active count. Every response includes all active bindings (at most eight),
+plus a history page of 32 records by default. `--history-limit` accepts 1 through
+64; `history_has_more` and `history_next_after` report coverage. Continue with
+`--after-slot` at that cursor. History pages omit full bodies and never delete
+older records. The full envelope stays queryable locally in
 `retired_effect.body` under the existing journal permissions; it is never
 printed to logs. Receipts disclose `retired_effects`, and scheduled publication
 adds `camayoc_workitem_ingress_retired_effects`. Alert on a positive value;
@@ -63,7 +68,7 @@ excluded across restart and receipt eviction.
 
 The per-item explicit `release` verb requires the same item/write ID/request hash and an
 operator reason. It removes only the scheduling exclusion and preserves the
-retirement record. It changes no other entry and does not reclaim list capacity.
+retirement record. It changes no other entry and frees one active slot without reusing an audit ID.
 It does not clear the pending body, acknowledge a version,
 prove absence/completion or send anything. The next normal tick must reconcile
 that original frozen effect under the unchanged status/readback rules; UNKNOWN
