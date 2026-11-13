@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import sys
 import time
 
@@ -80,10 +81,16 @@ def targets(post, kind, changes, items, *, native_reader=None):
         if graph is not None and graph != native_reader.board.graph:
             return None
         from urllib.parse import unquote
-        item_id=unquote(entity[len(native.ITEM):])
+        suffix=entity[len(native.ITEM):]
+        comment=re.fullmatch(r'([^/]+)/comment/([0-9]+)',suffix)
+        item_id=unquote(comment.group(1) if comment else suffix)
         if not item_id.startswith(native_reader.board.prefix+'-'):
             return None
-        if native_reader.board.subject(item_id)!=entity:
+        # Comments belong to the exact parent WorkItem's review policy. Never
+        # turn the comment path into an item ID or silently skip the whole batch.
+        expected=native_reader.board.subject(item_id)
+        if comment:expected+='/comment/'+comment.group(2)
+        if expected!=entity:
             raise native.NativeUnknown('native change candidate identity ambiguous')
         return item_id  # Existing exact-ID WorkItem's policy, never A + ActionIRI.
     out = {key for value in items for key in [review_key(value) if isinstance(value,str) and value.startswith(native.ITEM) else value] if key}
