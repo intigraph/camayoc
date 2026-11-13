@@ -78,3 +78,6 @@ A source rollback does not downgrade the journal or undo exclusions. Once the
 list schema is in use, do not enable the old one-slot retirement/release helper
 against it. Keep manual operations off until a list-aware helper is available;
 use its per-item release when an exclusion must be reversed.
+
+The [recorded fixture comparison](retirement-list-demo.md) shows the explicit
+list boundary and preserved UNKNOWN freeze without contacting a live receiver.
