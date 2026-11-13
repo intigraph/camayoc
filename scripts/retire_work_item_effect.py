@@ -30,7 +30,15 @@ def operate(journal,args,post=None):
             if post is None:return False
             def bounded_query(endpoint,body):
                 response=post(endpoint,body)
-                if (not isinstance(response,dict) or response.get('truncated') is not False
+                # Quipu's canonical ASK response has no row pagination and
+                # omits SELECT's truncation field. Admit only its exact known
+                # shape; a missing flag on any other response stays UNKNOWN.
+                canonical_ask=(isinstance(response,dict)
+                               and set(response)=={'labels','result'}
+                               and response['labels'] is None
+                               and type(response['result']) is bool)
+                if (not isinstance(response,dict)
+                        or not (response.get('truncated') is False or canonical_ask)
                         or type(response.get('result')) is not bool
                         or len(json.dumps(response).encode())>4096):
                     raise custody.CustodyUnknown('bounded absence response unproved')
