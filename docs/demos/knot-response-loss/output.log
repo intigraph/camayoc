@@ -1,0 +1,8 @@
+Script started on 2026-11-13 11:22:41-05:00 [COMMAND="python3 docs/demos/knot-response-loss/demo.py" <not executed on terminal>]
+Synthetic committed write, lost response, original-bound completion and exact effect readback.
+{"completion_state": "finished", "pending": true, "reason": "unclassified", "source": "base", "status": "UNKNOWN", "status_reads": 0, "verified": 0, "writes": 1}
+{"completion_state": "finished", "pending": false, "source": "candidate", "status": "OK", "status_reads": 1, "verified": 1, "writes": 1}
+{"completion_state": "unknown", "pending": true, "reason": "knot completion indeterminate; freeze, no resend", "source": "candidate", "status": "UNKNOWN", "status_reads": 1, "verified": 0, "writes": 1}
+PASS: finished resolves without resend; UNKNOWN preserves exact pending custody.
+
+Script done on 2026-11-13 11:22:41-05:00 [COMMAND_EXIT_CODE="0"]

@@ -86,6 +86,38 @@ class Backfill(unittest.TestCase):
         r=self.tick();self.assertEqual((r['verified'],r['writes'],r['requests']),(1,0,2))
         self.assertEqual(self.effects,['demo-000'])
 
+    def test_cli_lost_response_can_narrow_the_status_byte_budget(self):
+        self.exact();self.drop=True
+        original = self.post
+        limits = []
+        def transport(endpoint, body, *, client, response_limit, **kwargs):
+            self.assertEqual(client, 'camayoc-ingress')
+            limits.append((endpoint, response_limit))
+            if endpoint == '/knot/status':
+                envelope = json.loads(self.j.next()[2])
+                self.assertEqual(body, {'write_id': envelope['write_id'],
+                                        'request': envelope['request']})
+                return {'contract': 'quipu.knot-completion/v1',
+                        'write_id': body['write_id'], 'state': 'finished',
+                        'receipt': {'conforms': True, 'replaced': True, 'tx_id': 42}}
+            return original(endpoint, body)
+        with patch.object(backfill.planes, 'SERVER', PEER), \
+                patch.object(backfill.planes, '_post', side_effect=transport), \
+                patch.object(backfill.planes, 'plane_for', return_value=PLANE), \
+                patch.object(nw, 'from_authority', return_value=self.reader), \
+                patch.object(backfill.sys, 'stdin', io.TextIOWrapper(io.BytesIO(b'{}'))), \
+                patch('sys.stdout', new_callable=io.StringIO) as output:
+            code = backfill.main(['--enable', '--native-authority-stdin',
+                                  '--state', str(self.path), '--actor', 'fixture',
+                                  '--item', 'demo-000'])
+        result = json.loads(output.getvalue())
+        self.assertEqual((code, result['status'], result['writes'], result['verified']),
+                         (0, 'OK', 1, 1), result)
+        self.assertEqual([limit for route, limit in limits if route == '/knot/status'], [4096])
+        self.assertTrue(all(limit == nw.MAX_BYTES for route, limit in limits
+                            if route != '/knot/status'))
+        self.assertEqual(self.effects, ['demo-000'])
+
     def test_exact_absent_effect_is_reconciled_but_not_counted_verified(self):
         self.exact()
         original = self.post

@@ -178,7 +178,10 @@ def main(argv=None):
         raw = sys.stdin.buffer.read(4097)
         if len(raw) > 4096:
             raise native.NativeUnknown('authority exceeds budget')
-        post = lambda route, body, **kwargs: planes._post(route, body, client='camayoc-ingress', response_limit=native.MAX_BYTES, **kwargs)
+        # Delivery may narrow a completion lookup below the normal native-read
+        # ceiling; pass one response_limit rather than duplicate keyword values.
+        post = lambda route, body, **kwargs: planes._post(route, body, client='camayoc-ingress',
+                                                       **{'response_limit': native.MAX_BYTES, **kwargs})
         reader = native.from_authority(post, json.loads(raw), server=planes.SERVER)
         plane = planes.plane_for('observed')
         # Parent must already exist; this command never installs a schedule/store.

@@ -459,6 +459,17 @@ with the exact pending request before `/knot`. The HTTP transport sends it as
 `X-Quipu-Write-Id`. Polling uses `/knot/status` with that ID and the original
 request, under the same credential identity; it never resends the write to poll.
 
+If a new write loses its transport response, the producer makes one bounded
+completion lookup (4096 response bytes) inside the existing tick request budget.
+A `finished` response must bind the original ID and contain an explicit
+conforming, replaced receipt with an integer transaction ID. Exact type and
+description readback must then pass before the original effect is acknowledged.
+The diagnostic receipt labels this `finished-after-response-loss`; the write
+count remains one. Any uncertain completion response preserves the pending body
+without a resend. Authorization refusals do not enter this recovery path.
+The transport's 15-second socket timeout is unchanged; it is not a proven
+end-to-end deadline. A lost response alone is never evidence for raising it.
+
 An exact committed effect is verified without another write. Otherwise, retry
 requires the `quipu.knot-completion/v1` response to bind the original ID and prove
 `stopped` or `not_started`, followed by fresh absence proof. A stopped worker may
