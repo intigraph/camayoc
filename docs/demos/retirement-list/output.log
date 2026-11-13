@@ -25,6 +25,7 @@ operator retire 9: REFUSED; active=8
 fresh absence reads: 16
 un-retired UNKNOWN: UNKNOWN writes: 0
 release only entry 2: active=7; preserved records=8; entry 1 remains retired
+new independently absent effect after release: OK; active=8; preserved records=9
 PASS: fixture only; original pending bodies retained; no network or replay.
 
 Script done [COMMAND_EXIT_CODE="0"]

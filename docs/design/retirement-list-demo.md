@@ -4,12 +4,13 @@ Status: source fixture; installation and live operator acceptance pending.
 
 The same disposable SQLite fixture is exercised at base
 `c72f62178ec2efc1849cf8ef56fd0fcd1f14a40b` and source candidate
-`d0b7b8546edfcaf9227e37a30a4616263ab92bf6`. Watch the second explicit
+`85fbe307276710248b31d850b8d76d92294a5a5c`. Watch the second explicit
 retirement change from refusal to success, entries through eight succeed,
 and the ninth remain refused. The candidate performs sixteen fixture absence
 reads for the eight separate operator acts. An un-retired UNKNOWN still freezes
 with zero writes. Releasing entry 2 preserves all eight audit records and
-leaves entry 1 retired.
+leaves entry 1 retired. A new, separately bound and absence-checked effect then
+succeeds: eight active exclusions and nine preserved audit records.
 
 [Recorded output](../demos/retirement-list/output.log),
 [timing](../demos/retirement-list/timing.log), and

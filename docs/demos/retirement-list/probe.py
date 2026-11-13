@@ -64,5 +64,13 @@ with tempfile.TemporaryDirectory() as temp:
         assert journal.db.execute('SELECT active FROM retired_effect WHERE id=?',('demo-1',)).fetchone()==(1,)
         assert journal.db.execute('SELECT COUNT(*) FROM retired_effect').fetchone()==(8,)
         print('release only entry 2: active=7; preserved records=8; entry 1 remains retired')
+        replacement=SimpleNamespace(action='retire',item='demo-9',write_id=f'{9:064x}',
+            request_sha256=digest,version=1,effect_tx=19,reason='new explicit operator act after release')
+        result=cli.operate(journal,replacement,post=absent)
+        assert result['retired_effects']==8
+        assert journal.db.execute('SELECT COUNT(*) FROM retired_effect').fetchone()==(9,)
+        assert journal.db.execute('SELECT slot FROM retired_effect WHERE id=?',('demo-9',)).fetchone()==(9,)
+        print('new independently absent effect after release: OK; active=8; preserved records=9')
+
     journal.db.close()
 print('PASS: fixture only; original pending bodies retained; no network or replay.')
