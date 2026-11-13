@@ -210,9 +210,42 @@ def failure_reason(exc):
     if type(exc).__name__!='PlaneError':return None
     text=str(exc);code=re.search(r'\bHTTP (\d{3})\b',text)
     if code:return 'HTTP '+code.group(1)
-    for marker,name in (('unreachable','unreachable'),('budget','response budget'),('credential','auth refused'),('401','auth refused')):
+    for marker,name in (('gave no answer','no answer; outcome unknown'),('unreachable','unreachable'),('budget','response budget'),('credential','auth refused'),('401','auth refused')):
         if marker in text:return name
     return 'unclassified'
+
+
+def response_lost(exc):
+    """Transport uncertainty only; authorization and application refusals stay put."""
+    return (isinstance(exc,OSError) or
+            (type(exc).__name__=='PlaneError' and
+             ('gave no answer' in str(exc) or 'unreachable' in str(exc))))
+
+
+def finished_after_response_loss(call,envelope):
+    """One bounded authenticated lookup, bound to the persisted original request.
+
+    Native completion is process-local. Missing, evicted or incomplete evidence
+    never authorizes another write. A finished receipt still needs effect readback.
+    """
+    try:
+        status=call('/knot/status',{'write_id':envelope['write_id'],
+                                   'request':envelope['request']},response_limit=4096)
+        size=len(json.dumps(status,ensure_ascii=False,separators=(',',':')).encode())
+    except (ValueError,OSError,RuntimeError,TypeError,KeyError,UnicodeError):
+        raise custody.CustodyUnknown('knot completion unavailable; freeze, no resend') from None
+    if (size>4096 or not isinstance(status,dict)
+            or status.get('contract')!='quipu.knot-completion/v1'
+            or status.get('write_id')!=envelope['write_id']
+            or status.get('truncated',False) is not False
+            or status.get('state')!='finished'):
+        raise custody.CustodyUnknown('knot completion indeterminate; freeze, no resend')
+    receipt=status.get('receipt')
+    if (not isinstance(receipt,dict) or receipt.get('conforms') is not True
+            or receipt.get('replaced') is not True or type(receipt.get('tx_id')) is not int
+            or receipt['tx_id']<0):
+        raise custody.CustodyUnknown('knot completion receipt unproved; freeze, no resend')
+    return receipt
 
 
 def envelope_witness(witness,request):
@@ -273,7 +306,14 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
         journal.prepare(item,tx,envelope)
         wrote()
         if witness is not None:witness['own_write']='attempted'
-        response=call('/knot',request,**({'write_id':envelope['write_id']} if completion else {}))
+        try:
+            response=call('/knot',request,**({'write_id':envelope['write_id']} if completion else {}))
+        except (OSError,RuntimeError) as exc:
+            if not completion or not response_lost(exc):
+                raise
+            if diagnostics is not None:diagnostics['completion']='response-lost'
+            response=finished_after_response_loss(call,envelope)
+            if diagnostics is not None:diagnostics['completion']='finished-after-response-loss'
         if (not isinstance(response,dict) or response.get('conforms') is False
             or not response.get('replaced') or type(response.get('tx_id')) is not int):
             raise custody.CustodyUnknown('projection write outcome unproved; preserve exact pending effect')
