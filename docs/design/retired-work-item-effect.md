@@ -1,4 +1,4 @@
-# One-effect ingress retirement
+# Bounded explicit ingress retirement
 
 Status: source implementation; live retirement and scheduled acceptance pending.
 This is producer scheduling exclusion, not a receiver completion fence.
@@ -11,13 +11,20 @@ newer native version permits replay of that retained envelope.
 
 `retire_work_item_effect.py` defaults OFF. It requires the existing dedicated
 SQLite state and the producer's protected native authority on stdin. It takes
-the same state lock as the scheduled producer. It performs no HTTP request.
+the same state lock as the scheduled producer. Retirement performs two bounded exact-subject absence reads while holding that
+lock and the journal transaction: all named graphs, then the default graph.
+Both must return explicit, untruncated false within 4096 bytes. Present subjects
+must complete instead; unknown, missing or partial evidence refuses. Inspect
+and release perform no HTTP requests.
 The operator must supply an independently reviewed item, write ID, request hash,
 version and effect transaction, plus an audit reason. Every binding is compared
 with the exact stored envelope in one transaction before exclusion is recorded.
 The request hash uses the same sorted-key JSON encoding as the writer.
 
-Only one retirement slot exists per journal, including its released history.
+At most eight explicit retirement entries exist per journal, including released
+history. Each invocation retires exactly one bound effect; there is no list
+argument or batch release. The known one-slot schema upgrades atomically,
+preserving every original field and released record. Unknown schemas refuse.
 There is no automatic age threshold, bulk operation, cursor reset, changed
 capacity or automatic retirement of subsequent UNKNOWN effects.
 
@@ -33,7 +40,9 @@ The command retains the complete original body, request bindings, transaction,
 reason and timestamp in `retired_effect`. The original pending row remains;
 newer feed candidates can advance its candidate transaction but cannot replace
 its body or remove the exclusion. Other items use the unchanged delivery path.
-A second UNKNOWN still stops its tick and retains custody.
+An un-retired UNKNOWN still stops its tick and retains custody. A second
+retirement requires its own operator act and fresh absence reads; a ninth
+refuses even after an earlier entry has been released.
 
 ## Visibility
 
@@ -52,9 +61,10 @@ excluded across restart and receipt eviction.
 
 ## Reversal
 
-The explicit `release` verb requires the same item/write ID/request hash and an
+The per-item explicit `release` verb requires the same item/write ID/request hash and an
 operator reason. It removes only the scheduling exclusion and preserves the
-retirement record. It does not clear the pending body, acknowledge a version,
+retirement record. It changes no other entry and does not reclaim list capacity.
+It does not clear the pending body, acknowledge a version,
 prove absence/completion or send anything. The next normal tick must reconcile
 that original frozen effect under the unchanged status/readback rules; UNKNOWN
 still freezes it. The old absence-only release command cannot release an active
@@ -63,3 +73,8 @@ retired effect.
 Durable receiver-side completion/admission evidence is separate work. It must
 survive restart and eviction, bind exact owner/ID/body, and fence late workers;
 this producer retirement does not implement or claim that protocol.
+
+A source rollback does not downgrade the journal or undo exclusions. Once the
+list schema is in use, do not enable the old one-slot retirement/release helper
+against it. Keep manual operations off until a list-aware helper is available;
+use its per-item release when an exclusion must be reversed.

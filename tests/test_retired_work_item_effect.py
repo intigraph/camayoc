@@ -31,7 +31,7 @@ class Retirement(unittest.TestCase):
         self.digest=hashlib.sha256(json.dumps(self.env['request'],sort_keys=True).encode()).hexdigest()
     def tearDown(self):self.j.db.close();self.temp.cleanup()
     def retire(self,**overrides):
-        args=dict(write_id='a'*64,request_sha256=self.digest,version=1,effect_tx=11,reason='operator task:test',now=100)
+        args=dict(write_id='a'*64,request_sha256=self.digest,version=1,effect_tx=11,reason='operator task:test',now=100,prove_absent=lambda item,envelope:True)
         args.update(overrides);self.j.retire_effect(ID,**args)
     def test_exact_envelope_survives_restart_and_newer_candidates_stay_excluded(self):
         self.retire();self.j.retain(page(99))
@@ -51,11 +51,81 @@ class Retirement(unittest.TestCase):
             self.assertEqual(self.j.retired_count(),0);self.assertEqual(self.j.next()[2],self.original)
         self.j.db.execute('UPDATE pending SET body=?',(self.original.replace('original','changed'),))
         with self.assertRaises(custody.CustodyUnknown):self.retire()
-    def test_one_slot_only_and_foreign_journal_refused(self):
+    def test_duplicate_history_and_foreign_journal_refused(self):
         self.retire()
         with self.assertRaises(custody.CustodyUnknown):self.retire()
         with self.assertRaises(custody.CustodyUnknown):
             custody.Journal(self.path,self.board,server='https://other.example.test')
+    def add_effect(self,n):
+        item=f'demo-retired-{n}'
+        env={**self.env,'write_id':f'{n:064x}'}
+        self.j.db.execute('INSERT INTO pending(id,tx) VALUES(?,?)',(item,20+n))
+        self.j.prepare(item,20+n,env)
+        return item,dict(write_id=env['write_id'],request_sha256=self.digest,version=1,
+                         effect_tx=20+n,reason=f'operator act {n}',now=100+n,
+                         prove_absent=lambda item,envelope:True)
+    def test_second_retirement_and_ninth_refusal_keep_each_exact_effect(self):
+        self.retire()
+        entries=[]
+        for n in range(1,8):
+            item,binding=self.add_effect(n);entries.append((item,binding))
+            self.j.retire_effect(item,**binding)
+        self.assertEqual(self.j.retired_count(),8)
+        before=list(self.j.db.execute('SELECT * FROM retired_effect ORDER BY slot'))
+        item,binding=self.add_effect(8)
+        with self.assertRaises(custody.CustodyUnknown):self.j.retire_effect(item,**binding)
+        self.assertEqual(list(self.j.db.execute('SELECT * FROM retired_effect ORDER BY slot')),before)
+        # Releasing one entry does not release any other or reclaim audit capacity.
+        other,other_binding=entries[0]
+        self.j.release_retired(other,write_id=other_binding['write_id'],
+            request_sha256=self.digest,reason='operator release one')
+        self.assertEqual(self.j.retired_count(),7)
+        self.assertEqual(self.j.db.execute('SELECT active FROM retired_effect WHERE id=?',(ID,)).fetchone(),(1,))
+        with self.assertRaises(custody.CustodyUnknown):self.j.retire_effect(item,**binding)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM retired_effect').fetchone(),(8,))
+    def test_absence_is_fresh_inside_cas_and_present_or_unknown_refuses(self):
+        before=list(self.j.db.iterdump())
+        for result in (False,None,{},1):
+            calls=[]
+            def proof(item,envelope):
+                calls.append((item,envelope['write_id'],self.j.db.in_transaction))
+                return result
+            with self.assertRaises(custody.CustodyUnknown):self.retire(prove_absent=proof)
+            self.assertEqual(calls,[(ID,'a'*64,True)])
+            self.assertEqual(list(self.j.db.iterdump()),before)
+        calls=[]
+        def proof(item,envelope):
+            calls.append(self.j.db.in_transaction);return True
+        self.retire(prove_absent=proof)
+        self.assertEqual(calls,[True])
+    def test_existing_one_slot_journal_migrates_without_losing_history(self):
+        self.retire()
+        before=self.j.db.execute('SELECT * FROM retired_effect').fetchall()
+        schema=self.j.db.execute("SELECT sql FROM sqlite_master WHERE name='retired_effect'").fetchone()[0]
+        self.j.db.execute('ALTER TABLE retired_effect RENAME TO retired_effect_new')
+        self.j.db.execute(schema.replace('BETWEEN 1 AND 8','=1'))
+        self.j.db.execute('INSERT INTO retired_effect SELECT * FROM retired_effect_new')
+        self.j.db.execute('DROP TABLE retired_effect_new')
+        self.j.db.close();self.j=custody.Journal(self.path,self.board,server=self.server)
+        self.assertEqual(self.j.db.execute('SELECT * FROM retired_effect').fetchall(),before)
+        item,binding=self.add_effect(1);self.j.retire_effect(item,**binding)
+        self.assertEqual(self.j.retired_count(),2)
+    def test_cli_requires_two_absence_reads_and_present_subject_is_refused(self):
+        args=SimpleNamespace(action='retire',item=ID,write_id='a'*64,request_sha256=self.digest,
+                             version=1,effect_tx=11,reason='one explicit operator act')
+        before=list(self.j.db.iterdump())
+        for response in ({'result':True,'truncated':False},{'result':False,'truncated':True},{'result':False},{'result':False,'truncated':False,'padding':'x'*4096},{},None):
+            with self.assertRaises(custody.CustodyUnknown):cli.operate(self.j,args,post=lambda *a:response)
+            self.assertEqual(list(self.j.db.iterdump()),before)
+        calls=[]
+        def post(endpoint,body):
+            calls.append((endpoint,body));return {'result':False,'truncated':False}
+        result=cli.operate(self.j,args,post=post)
+        self.assertEqual(result['retired_effects'],1)
+        self.assertEqual(len(calls),2)
+        self.assertTrue(all(endpoint=='/query' for endpoint,body in calls))
+        self.assertIn('GRAPH ?g',calls[0][1]['query'])
+        self.assertNotIn('GRAPH',calls[1][1]['query'])
     def tick(self,post):
         return sync.tick(native.Reader(None,self.board),self.j,post,changes=None,
                          plane='urn:private:knowledge',actor='fixture',completion=True)
@@ -114,7 +184,7 @@ class Retirement(unittest.TestCase):
         def run(action,extra=(),profile=None):
             stdin=io.TextIOWrapper(io.BytesIO(json.dumps(profile or authority).encode()))
             with patch.object(cli.sys,'stdin',stdin),patch.object(cli.planes,'SERVER',self.server), \
-                 patch.object(cli.planes,'_post',side_effect=AssertionError('no network')):
+                 patch.object(cli.planes,'_post',return_value={'result':False,'truncated':False}):
                 return cli.main([action,*base,*extra])
         before=list(self.j.db.iterdump())
         self.assertEqual(run('retire'),0)  # OFF, no authority read or mutation

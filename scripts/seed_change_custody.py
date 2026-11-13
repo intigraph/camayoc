@@ -15,6 +15,7 @@ MAX_TRANSACTIONS=4
 MAX_RECORDS=4096
 MAX_BYTES=512*1024
 MAX_PENDING=256
+MAX_RETIRED=8
 
 class CustodyUnknown(ValueError):pass
 
@@ -104,12 +105,25 @@ class Journal:
                 raise CustodyUnknown('custody authority mismatch; no migration or reset')
             elif initial_tx is not None and integer(initial_tx)!=row[0][2]:
                 raise CustodyUnknown('existing cursor cannot be reset')
-            self.db.execute('CREATE TABLE IF NOT EXISTS retired_effect ('
-                            'slot INTEGER PRIMARY KEY CHECK(slot=1),id TEXT UNIQUE NOT NULL,'
+            retired_schema=('CREATE TABLE IF NOT EXISTS retired_effect ('
+                            f'slot INTEGER PRIMARY KEY CHECK(slot BETWEEN 1 AND {MAX_RETIRED}),id TEXT UNIQUE NOT NULL,'
                             'body TEXT NOT NULL,tx INTEGER NOT NULL,effect_tx INTEGER NOT NULL,'
                             'write_id TEXT NOT NULL,request_sha256 TEXT NOT NULL,version INTEGER NOT NULL,'
                             'reason TEXT NOT NULL,retired_at REAL NOT NULL,active INTEGER NOT NULL,'
                             'release_reason TEXT)')
+            existing=self.db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='retired_effect'").fetchone()
+            if existing:
+                normalized=re.sub(r'\s+','',existing[0]).lower()
+                if 'check(slot=1)' in normalized:
+                    # Upgrade only the known one-slot journal, atomically. Every
+                    # body, active flag and released history is copied verbatim.
+                    self.db.execute('ALTER TABLE retired_effect RENAME TO retired_effect_v1')
+                    self.db.execute(retired_schema)
+                    self.db.execute('INSERT INTO retired_effect SELECT * FROM retired_effect_v1')
+                    self.db.execute('DROP TABLE retired_effect_v1')
+                elif f'check(slotbetween1and{MAX_RETIRED})' not in normalized:
+                    raise CustodyUnknown('retirement journal schema unknown')
+            else:self.db.execute(retired_schema)
             self.db.execute('COMMIT')
         except Exception:
             self.db.execute('ROLLBACK');self.db.close();raise
@@ -251,8 +265,8 @@ class Journal:
         return self.db.execute('SELECT COUNT(*) FROM pending WHERE NOT EXISTS '
                                '(SELECT 1 FROM retired_effect r WHERE r.active=1 AND r.id=pending.id)').fetchone()[0]
 
-    def retire_effect(self,item,*,write_id,request_sha256,version,effect_tx,reason,now):
-        """Operator CAS for ONE effect, never an automatic UNKNOWN recovery."""
+    def retire_effect(self,item,*,write_id,request_sha256,version,effect_tx,reason,now,prove_absent=None):
+        """One explicit operator CAS with fresh absence, never UNKNOWN recovery."""
         import hashlib
         import math
         self.board.subject(item)
@@ -263,8 +277,10 @@ class Journal:
             raise CustodyUnknown('exact retirement binding or operator reason unproved')
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            if self.db.execute('SELECT 1 FROM retired_effect').fetchone():
-                raise CustodyUnknown('one-effect retirement slot already used')
+            if self.db.execute('SELECT COUNT(*) FROM retired_effect').fetchone()[0]>=MAX_RETIRED:
+                raise CustodyUnknown('bounded retirement list is full')
+            if self.db.execute('SELECT 1 FROM retired_effect WHERE id=?',(item,)).fetchone():
+                raise CustodyUnknown('effect already has preserved retirement history')
             row=self.db.execute('SELECT body,tx,effect_tx FROM pending WHERE id=?',(item,)).fetchone()
             if row is None or not row[0] or row[2]!=effect_tx:
                 raise CustodyUnknown('exact prepared effect not found')
@@ -278,8 +294,11 @@ class Journal:
                     or type(envelope.get('version')) is not int or envelope['version']!=version
                     or digest!=request_sha256):
                 raise CustodyUnknown('retirement effect binding changed')
-            self.db.execute('INSERT INTO retired_effect VALUES(1,?,?,?,?,?,?,?,?,?,1,NULL)',
-                            (item,row[0],row[1],row[2],write_id,request_sha256,version,reason,now))
+            if not callable(prove_absent) or prove_absent(item,envelope) is not True:
+                raise CustodyUnknown('fresh exact two-graph effect absence unproved; present effects must complete')
+            slot=self.db.execute('SELECT COALESCE(MAX(slot),0)+1 FROM retired_effect').fetchone()[0]
+            self.db.execute('INSERT INTO retired_effect VALUES(?,?,?,?,?,?,?,?,?,?,1,NULL)',
+                            (slot,item,row[0],row[1],row[2],write_id,request_sha256,version,reason,now))
             self.db.execute('COMMIT')
         except Exception:self.db.execute('ROLLBACK');raise
 
@@ -297,6 +316,7 @@ class Journal:
                                 'AND request_sha256=? AND active=1',(item,write_id,request_sha256)).fetchone()
             if row is None or self.db.execute('SELECT body FROM pending WHERE id=?',(item,)).fetchone()!=row:
                 raise CustodyUnknown('retired effect binding changed')
-            self.db.execute('UPDATE retired_effect SET active=0,release_reason=? WHERE slot=1',(reason,))
+            self.db.execute('UPDATE retired_effect SET active=0,release_reason=? WHERE id=? AND write_id=? AND request_sha256=? AND active=1',
+                            (reason,item,write_id,request_sha256))
             self.db.execute('COMMIT')
         except Exception:self.db.execute('ROLLBACK');raise
