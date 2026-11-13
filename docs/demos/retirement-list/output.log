@@ -1,0 +1,31 @@
+Script started [COMMAND="disposable retirement library fixture; metadata sanitized"]
+BASE one-slot journal
+operator retire 1: OK; active=1
+operator retire 2: REFUSED; active=1
+operator retire 3: REFUSED; active=1
+operator retire 4: REFUSED; active=1
+operator retire 5: REFUSED; active=1
+operator retire 6: REFUSED; active=1
+operator retire 7: REFUSED; active=1
+operator retire 8: REFUSED; active=1
+operator retire 9: REFUSED; active=1
+fresh absence reads: 0
+un-retired UNKNOWN: UNKNOWN writes: 0
+PASS: fixture only; original pending bodies retained; no network or replay.
+CANDIDATE bounded list
+operator retire 1: OK; active=1
+operator retire 2: OK; active=2
+operator retire 3: OK; active=3
+operator retire 4: OK; active=4
+operator retire 5: OK; active=5
+operator retire 6: OK; active=6
+operator retire 7: OK; active=7
+operator retire 8: OK; active=8
+operator retire 9: REFUSED; active=8
+fresh absence reads: 16
+un-retired UNKNOWN: UNKNOWN writes: 0
+release only entry 2: active=7; preserved records=8; entry 1 remains retired
+new independently absent effect after release: OK; active=8; preserved records=9
+PASS: fixture only; original pending bodies retained; no network or replay.
+
+Script done [COMMAND_EXIT_CODE="0"]
