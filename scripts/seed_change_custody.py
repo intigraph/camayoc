@@ -104,6 +104,12 @@ class Journal:
                 raise CustodyUnknown('custody authority mismatch; no migration or reset')
             elif initial_tx is not None and integer(initial_tx)!=row[0][2]:
                 raise CustodyUnknown('existing cursor cannot be reset')
+            self.db.execute('CREATE TABLE IF NOT EXISTS retired_effect ('
+                            'slot INTEGER PRIMARY KEY CHECK(slot=1),id TEXT UNIQUE NOT NULL,'
+                            'body TEXT NOT NULL,tx INTEGER NOT NULL,effect_tx INTEGER NOT NULL,'
+                            'write_id TEXT NOT NULL,request_sha256 TEXT NOT NULL,version INTEGER NOT NULL,'
+                            'reason TEXT NOT NULL,retired_at REAL NOT NULL,active INTEGER NOT NULL,'
+                            'release_reason TEXT)')
             self.db.execute('COMMIT')
         except Exception:
             self.db.execute('ROLLBACK');self.db.close();raise
@@ -159,7 +165,8 @@ class Journal:
         # A newer feed candidate can advance tx while an older exact effect is
         # retained. Read back and acknowledge that effect before the new work.
         row=self.db.execute('SELECT id,CASE WHEN body IS NOT NULL THEN effect_tx ELSE tx END,body '
-                            'FROM pending ORDER BY last_attempt,tx,id LIMIT 1').fetchone()
+                            'FROM pending WHERE NOT EXISTS (SELECT 1 FROM retired_effect r '
+                            'WHERE r.active=1 AND r.id=pending.id) ORDER BY last_attempt,tx,id LIMIT 1').fetchone()
         if row is not None:integer(row[1])
         return row
 
@@ -171,10 +178,12 @@ class Journal:
 
     def prepare(self,item,tx,body):
         """Durable exact pending effect before one writer call. Never replace it."""
+        self.assert_not_retired(item)
         serialized=json.dumps(body,sort_keys=True,separators=(',',':'))
         if len(serialized.encode())>nw.MAX_BYTES:raise CustodyUnknown('projection exceeds body budget')
         self.db.execute('BEGIN IMMEDIATE')
         try:
+            self.assert_not_retired(item)
             row=self.db.execute('SELECT tx,body FROM pending WHERE id=?',(item,)).fetchone()
             if row!=(tx,None):raise CustodyUnknown('candidate changed or effect already pending; read back, never resend')
             self.db.execute('UPDATE pending SET body=?,effect_tx=? WHERE id=?',(serialized,tx,item))
@@ -191,10 +200,12 @@ class Journal:
         resent here. Refuses a missing, unprepared or changed row, or an effect
         whose version is already verified. Older verified history is retained.
         """
+        self.assert_not_retired(item)
         if not isinstance(expected_body,str) or not expected_body:
             raise CustodyUnknown('release needs the exact stored effect')
         self.db.execute('BEGIN IMMEDIATE')
         try:
+            self.assert_not_retired(item)
             row=self.db.execute('SELECT tx,body FROM pending WHERE id=?',(item,)).fetchone()
             if row is None or row[1] is None:raise CustodyUnknown('no stored pending effect to release')
             if row[1]!=expected_body:raise CustodyUnknown('stored effect changed since it was proved absent')
@@ -211,10 +222,12 @@ class Journal:
 
     def acknowledge(self,item,tx,version):
         """Caller may ack only after independently controlled effect readback."""
+        self.assert_not_retired(item)
         version=integer(version)
         if version<1:raise CustodyUnknown('native version unproved')
         self.db.execute('BEGIN IMMEDIATE')
         try:
+            self.assert_not_retired(item)
             old=self.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
             if old and version<old[0]:raise CustodyUnknown('source version regression')
             row=self.db.execute('SELECT tx,effect_tx FROM pending WHERE id=?',(item,)).fetchone()
@@ -222,5 +235,68 @@ class Journal:
             self.db.execute('INSERT INTO verified VALUES(?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version',(item,version))
             if row[0]==tx:self.db.execute('DELETE FROM pending WHERE id=?',(item,))
             else:self.db.execute('UPDATE pending SET body=NULL,effect_tx=NULL WHERE id=?',(item,))
+            self.db.execute('COMMIT')
+        except Exception:self.db.execute('ROLLBACK');raise
+
+
+    def assert_not_retired(self,item):
+        if self.db.execute('SELECT 1 FROM retired_effect WHERE id=? AND active=1',(item,)).fetchone():
+            raise CustodyUnknown('effect is retired; explicit operator release required')
+
+    def retired_count(self):
+        return self.db.execute('SELECT COUNT(*) FROM retired_effect WHERE active=1').fetchone()[0]
+
+    def backlog_count(self):
+        # The original pending row is retained, not acknowledged or deleted.
+        return self.db.execute('SELECT COUNT(*) FROM pending WHERE NOT EXISTS '
+                               '(SELECT 1 FROM retired_effect r WHERE r.active=1 AND r.id=pending.id)').fetchone()[0]
+
+    def retire_effect(self,item,*,write_id,request_sha256,version,effect_tx,reason,now):
+        """Operator CAS for ONE effect, never an automatic UNKNOWN recovery."""
+        import hashlib
+        import math
+        self.board.subject(item)
+        if (not all(isinstance(v,str) and re.fullmatch('[0-9a-f]{64}',v) for v in (write_id,request_sha256))
+                or type(version) is not int or version<1 or type(effect_tx) is not int or effect_tx<0
+                or not isinstance(reason,str) or not reason.strip() or len(reason)>512
+                or type(now) not in (int,float) or not math.isfinite(now) or now<0):
+            raise CustodyUnknown('exact retirement binding or operator reason unproved')
+        self.db.execute('BEGIN IMMEDIATE')
+        try:
+            if self.db.execute('SELECT 1 FROM retired_effect').fetchone():
+                raise CustodyUnknown('one-effect retirement slot already used')
+            row=self.db.execute('SELECT body,tx,effect_tx FROM pending WHERE id=?',(item,)).fetchone()
+            if row is None or not row[0] or row[2]!=effect_tx:
+                raise CustodyUnknown('exact prepared effect not found')
+            previous=self.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
+            if previous and previous[0]>=version:
+                raise CustodyUnknown('effect version already verified; retirement refused')
+            envelope=json.loads(row[0])
+            request=envelope.get('request')
+            digest=hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest()
+            if (not isinstance(request,dict) or envelope.get('write_id')!=write_id
+                    or type(envelope.get('version')) is not int or envelope['version']!=version
+                    or digest!=request_sha256):
+                raise CustodyUnknown('retirement effect binding changed')
+            self.db.execute('INSERT INTO retired_effect VALUES(1,?,?,?,?,?,?,?,?,?,1,NULL)',
+                            (item,row[0],row[1],row[2],write_id,request_sha256,version,reason,now))
+            self.db.execute('COMMIT')
+        except Exception:self.db.execute('ROLLBACK');raise
+
+    def release_retired(self,item,*,write_id,request_sha256,reason):
+        """Undo only the scheduling exclusion. The original effect stays frozen.
+
+        No completion proof is invented: normal readback/status reconciliation
+        must still succeed before any later candidate can be written.
+        """
+        if not isinstance(reason,str) or not reason.strip() or len(reason)>512:
+            raise CustodyUnknown('operator release reason required')
+        self.db.execute('BEGIN IMMEDIATE')
+        try:
+            row=self.db.execute('SELECT body FROM retired_effect WHERE id=? AND write_id=? '
+                                'AND request_sha256=? AND active=1',(item,write_id,request_sha256)).fetchone()
+            if row is None or self.db.execute('SELECT body FROM pending WHERE id=?',(item,)).fetchone()!=row:
+                raise CustodyUnknown('retired effect binding changed')
+            self.db.execute('UPDATE retired_effect SET active=0,release_reason=? WHERE slot=1',(reason,))
             self.db.execute('COMMIT')
         except Exception:self.db.execute('ROLLBACK');raise

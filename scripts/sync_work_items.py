@@ -629,6 +629,7 @@ def publish_native_receipt(args,receipt,started,last_success,graph):
                  ('camayoc_workitem_ingress_exit_status',{},code),
                  ('camayoc_workitem_ingress_backlog',{},receipt.get('backlog',-1)),
                  ('camayoc_workitem_ingress_indeterminate',{},int(code!=0)),
+                 ('camayoc_workitem_ingress_retired_effects',{},receipt.get('retired_effects',-1)),
                  ('camayoc_workitem_ingress_requests',{},receipt.get('requests',0)),
                  ('camayoc_workitem_ingress_writes',{},receipt.get('writes',0)),
                  ('camayoc_workitem_ingress_verified',{},receipt.get('verified',0))]

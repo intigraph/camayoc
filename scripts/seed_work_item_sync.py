@@ -322,7 +322,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
     try:
         pending=journal.next()
         feed_error=None
-        backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
+        backlog=journal.backlog_count()
         if backlog < custody.MAX_PENDING and changes is not None:
             page_limit=custody.MAX_TRANSACTIONS
             retained_pages=0
@@ -362,7 +362,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
                 except (ValueError,OSError,RuntimeError,TypeError,KeyError,sqlite3.Error) as exc:
                     if not retained_pages and pending is None:raise
                     feed_error=type(exc).__name__;break
-                backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0]
+                backlog=journal.backlog_count()
                 if (journal.cursor==before or not isinstance(page,dict)
                         or integer_or_none(page.get('next_tx'))==integer_or_none(page.get('watermark_tx'))):
                     break
@@ -425,5 +425,5 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
         receipt['slow_read']=round(slowest,3)
     receipt['slowest_read']=round(slowest,3)
     receipt.update(requests=requests,writes=writes,cursor=journal.cursor,
-                   backlog=journal.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0])
+                   backlog=journal.backlog_count(),retired_effects=journal.retired_count())
     return receipt
