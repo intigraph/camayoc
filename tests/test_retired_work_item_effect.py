@@ -147,6 +147,10 @@ class Retirement(unittest.TestCase):
                          {'labels':None,'result':True}, {'labels':None,'result':'false'},
                          {'labels':{},'result':False}, {'labels':None,'result':False,'rows':[]},
                          {'labels':None,'result':False,'truncated':True},
+                         {'labels':None,'result':False,'truncated':None},
+                         {'labels':None,'result':False,'truncated':'false'},
+                         {'labels':None,'result':False,'truncated':0},
+                         {'labels':None,'result':False,'cursor':0},
                          {'labels':None,'result':False,'count':0}):
             with self.assertRaises(custody.CustodyUnknown):cli.operate(self.j,args,post=lambda *a:response)
             self.assertEqual(list(self.j.db.iterdump()),before)
@@ -188,6 +192,20 @@ class Retirement(unittest.TestCase):
                 cli.operate(self.j,args,post=post)
             self.assertEqual(len(calls),2)
             self.assertEqual(list(self.j.db.iterdump()),before)
+    def test_cli_non_200_original_client_refuses_without_custody_change(self):
+        import urllib.error
+        import planes
+        args=SimpleNamespace(action='retire',item=ID,write_id='a'*64,request_sha256=self.digest,
+                             version=1,effect_tx=11,reason='one explicit operator act')
+        before=list(self.j.db.iterdump())
+        error=urllib.error.HTTPError('https://peer.example.test/query',503,'unavailable',{},io.BytesIO(b'{}'))
+        with patch('planes.provenance_headers',return_value={}), patch('planes.auth_token',return_value=None), \
+             patch('planes.urllib.request.urlopen',side_effect=error) as opener:
+            with self.assertRaises(custody.CustodyUnknown):
+                cli.operate(self.j,args,post=lambda endpoint,body: planes._post(
+                    endpoint,body,client='camayoc-ingress',response_limit=4096))
+            opener.assert_called_once()
+        self.assertEqual(list(self.j.db.iterdump()),before)
     def tick(self,post):
         return sync.tick(native.Reader(None,self.board),self.j,post,changes=None,
                          plane='urn:private:knowledge',actor='fixture',completion=True)
