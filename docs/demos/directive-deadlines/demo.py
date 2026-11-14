@@ -27,7 +27,7 @@ for label, due, now, expected in [
     fake=board()
     def post(endpoint, body):
         if 'traceabilityDueAt' in body.get('query',''):
-            return {'rows': [{'due':{'value':due.isoformat(),'datatype':deadline.XSD_DATETIME},'datatype':deadline.XSD_DATETIME}] if body.get('graph') is None else []}
+            return {'rows': [{'due':{'value':due.isoformat(),'datatype':deadline.XSD_DATETIME},'datatype':deadline.XSD_DATETIME}] if body.get('graph') in (None, deadline.ROOT_GRAPH) else []}
         return fake(endpoint,body)
     result=(old.judge(post,'new',now)['lapse'],candidate.judge(post,'new',now)['lapse'])
     assert result==expected,(label,result)

@@ -1,9 +1,9 @@
-Script started on 2026-11-14 03:02:05-05:00 [COMMAND="uv run --frozen --python 3.11 --group review python docs/demos/directive-deadlines/demo.py" <not executed on terminal>]
+Script started on 2026-11-14 03:14:58-05:00 [COMMAND="uv run --frozen --python 3.11 --group review python docs/demos/directive-deadlines/demo.py" <not executed on terminal>]
 Private source consumer demonstration; mocked reads, no store or writes.
 Base revision: 49ba314f1b208ea159a03ed4d641cc18c477721d
-Candidate directive_edges.py SHA256 30f6b3fb2b2e3cae5fa6fb8a8b277ab5b2d6d4cf224b5e7a502bb3874df756bc
-Candidate directive_deadline.py SHA256 8b7b9605b8449c678af9855bf173b17bab6479162cee693cbae37e087ad5119f
+Candidate directive_edges.py SHA256 1eae183c15d30ecf879a3df0f1e0f35f6bb5680d11a61f407fd8eb23092d8d90
+Candidate directive_deadline.py SHA256 786e1ad1badf8a9500e8f39d5d0e2f8c3759d1d1fd3e260fad5faabfbb702944
 future explicit date after legacy grace: base=LAPSED candidate=NOT_LAPSED PASS
 past explicit date before legacy grace: base=NOT_LAPSED candidate=LAPSED PASS
 
-Script done on 2026-11-14 03:02:05-05:00 [COMMAND_EXIT_CODE="0"]
+Script done on 2026-11-14 03:14:58-05:00 [COMMAND_EXIT_CODE="0"]
