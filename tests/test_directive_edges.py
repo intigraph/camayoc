@@ -45,7 +45,17 @@ class FakeQuipu:
                              body["graph"])
             return {"tx_id": 1, "conforms": True}
         q, graph = body["query"], body.get("graph")
+        if graph == de.ROOT_GRAPH:
+            graph = None
+        if "traceabilityDueAt" in q:
+            return {"rows": []}
         triples = self.g.get(graph, set())
+        if "FILTER(isIRI(?o))" in q:
+            match = re.search(r"\{ <([^>]+)> <([^>]+)> \?o", q)
+            subject, predicate = match.groups()
+            return {"rows": [{"o": value} for s, p, value in triples
+                             if s == subject and p == predicate and
+                             value.startswith(("https://", "http://", "urn:"))]}
         m = re.search(r"(\?\w+|<[^>]+>) a \?t \. FILTER\(\?t = <([^>]+)>\)", q)
         if m:
             subj, cls = m.groups()
@@ -81,6 +91,7 @@ def board():
     q = FakeQuipu()
     q.add(POLICY, A + "claim", "A claim is evidence only after a positive control.")
     q.add(OTHER, A + "claim", "Work bounds the load it puts on shared services.")
+    q.add(TRACKER, "a", A + "WorkItem")
     q.add(POLICY, "a", A + "Policy")
     q.add(OTHER, "a", A + "Policy")
     # aegis:claim is NOT Policy-specific (615 Artifacts carry it live): an

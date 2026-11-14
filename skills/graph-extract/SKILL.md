@@ -172,3 +172,33 @@ This skill depends only on `curl` + the Quipu HTTP contract. To point it at a di
 change the endpoint. To run it from a non-Claude agent, the only Claude-specific piece is the skill
 wrapper — the workflow (read source → extract nodes/edges → POST) is plain instructions any capable
 LLM can follow. The capability travels with the prompt, not with a platform.
+
+## Deferred directive traceability
+
+Retain decisions even when their policy and work item need later evaluation.
+After the receiving store adopts the Quechua directive deadline shape, a
+Directive may carry one explicitly typed
+`https://w3id.org/intigraph/quechua/ns#traceabilityDueAt` `xsd:dateTime` instead
+of both `trackedBy` a typed WorkItem and `governedBy` a typed Policy. Choose an
+explicit UTC deadline; fourteen days from capture is a suggestion, never a
+silent default or permission to execute. Missing both alternatives is refused.
+
+Use the episode writer's explicit typed literal object, not an untyped string:
+
+```json
+"https://w3id.org/intigraph/quechua/ns#traceabilityDueAt": {
+  "value": "2030-11-28T08:00:00Z",
+  "datatype": "http://www.w3.org/2001/XMLSchema#dateTime"
+}
+```
+
+This belongs inside the directive node's `properties` object.
+Verify the loaded shape and read back the datatype. Do not guess missing links
+or relax other provenance/type requirements to get an episode accepted. A past
+deadline retains the decision but must be surfaced as overdue.
+
+Run the installed `camayoc_overdue_directive_traceability` query with the
+configured trusted `declared` plane and a timezone-bearing `now`. Its 101st
+row is an incomplete-coverage sentinel. The Camayoc `directive-lapse` adapter
+is the administrator alert consumer; publication alone does not install it or
+prove scheduled delivery. Retain source, adoption and natural-run evidence.

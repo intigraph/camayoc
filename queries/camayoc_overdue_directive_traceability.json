@@ -1,0 +1,20 @@
+{
+  "action": "load",
+  "name": "camayoc_overdue_directive_traceability",
+  "description": "Untraced directives whose explicit typed traceability evaluation deadline is due. ROOT plus the configured declared plane only; typed WorkItem+Policy links satisfy tracing. 101 rows is a sentinel: consumers must report incomplete if more than100. Read-time view, not permission to act.",
+  "template": "PREFIX a: <http://aegis.gastown.local/ontology/> PREFIX q: <https://w3id.org/intigraph/quechua/ns#> PREFIX old: <https://scbrown.github.io/quechua/ns#> PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT DISTINCT ?directive ?label ?due FROM <urn:quipu:graph:root> FROM <{declared}> WHERE { ?directive (q:traceabilityDueAt|old:traceabilityDueAt) ?due ; a a:Directive . FILTER(DATATYPE(?due) = xsd:dateTime) FILTER(?due <= \"{now}\"^^xsd:dateTime) FILTER NOT EXISTS { ?directive a a:Policy } FILTER NOT EXISTS { ?directive a a:AlertRule } FILTER NOT EXISTS { ?directive a:trackedBy ?work ; a:governedBy ?policy . ?work a a:WorkItem . ?policy a a:Policy } OPTIONAL { ?directive rdfs:label ?label } } ORDER BY ?due ?directive LIMIT 101",
+  "params": [
+    {
+      "name": "declared",
+      "type": "iri",
+      "required": true,
+      "description": "Configured trusted declared plane; never substitute inferred evidence."
+    },
+    {
+      "name": "now",
+      "type": "text",
+      "required": true,
+      "description": "Evaluation instant, ISO8601 xsd:dateTime with timezone."
+    }
+  ]
+}

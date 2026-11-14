@@ -42,11 +42,12 @@ import sys
 
 import blocked_by as bb
 import planes
+from directive_deadline import ROOT_GRAPH
 
 TRACED, PROPOSED, UNTRACED = "TRACED", "PROPOSED", "UNTRACED"
 #: The lapse view (sattler's ruling (a), [ian-q47-grace-window-blocker]): the
-#: shape stays Warning at write time, and a Directive still untraced, or still
-#: awaiting promotion, after GRACE is LAPSED and reaches a person.
+#: an explicit traceability deadline replaces the legacy GRACE fallback.
+#: A still-untraced directive reaches a person when its deadline passes.
 LAPSED, NOT_LAPSED = "LAPSED", "NOT_LAPSED"
 GRACE = dt.timedelta(days=2)
 EDGES = ("governedBy", "trackedBy")
@@ -67,7 +68,7 @@ NONE_TEXT = "none of these policies fits it"
 
 
 def _rows(post, query: str, graph: str | None = None) -> list[dict]:
-    out = post("/query", {"query": query, **({"graph": graph} if graph else {})})
+    out = post("/query", {"query": query, "verbose": True, **({"graph": graph} if graph else {})})
     if not isinstance(out.get("rows"), list) or out.get("truncated"):
         raise ValueError(f"query unproven in {graph or 'default'}: {query[:80]}")
     return out["rows"]
@@ -81,6 +82,24 @@ def _iri(term: str) -> str:
 def _has(post, entity: str, prop: str, graphs) -> bool:
     q = f"SELECT ?o WHERE {{ <{bb.A}{entity}> <{bb.A}{prop}> ?o }}"
     return any(_rows(post, q, g) for g in graphs)
+
+
+def _typed_link(post, entity: str, prop: str, expected: str) -> bool:
+    """A dangling or wrongly typed link cannot hide an overdue directive."""
+    graphs = (ROOT_GRAPH, DECLARED)
+    targets = {_iri(row["o"]) for graph in graphs for row in _rows(
+        post, f"SELECT ?o WHERE {{ <{bb.A}{entity}> <{bb.A}{prop}> ?o . "
+        "FILTER(isIRI(?o)) }", graph)}
+    for target in targets:
+        if (not target.startswith(("http://", "https://", "urn:")) or
+                any(c.isspace() or c in '<>"{}|\\^`' for c in target)):
+            raise ValueError("unsafe or unsupported traceability target IRI")
+        for graph in graphs:
+            types = _rows(post, f"SELECT ?t WHERE {{ <{target}> a ?t . "
+                          f"FILTER(?t = <{bb.A}{expected}>) }}", graph)
+            if types:
+                return True
+    return False
 
 
 def event_id(entity: str) -> str:
@@ -117,16 +136,20 @@ def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
     """Both views of one Directive. `verdict` drives the proposer; `lapse`
     drives the alert. A TRACED Directive never lapses."""
     now = now or dt.datetime.now(dt.timezone.utc)
-    traced = all(_has(post, entity, p, (None, DECLARED)) for p in EDGES)
+    traced = all(_typed_link(post, entity, prop, cls) for prop, cls in
+                 (("governedBy", "Policy"), ("trackedBy", "WorkItem")))
     proposed = not traced and all(_has(post, entity, p, (INFERRED,)) for p in EDGES)
     verdict = TRACED if traced else PROPOSED if proposed else UNTRACED
-    start = None if verdict == TRACED else anchor(post, entity, verdict)
-    due = start + GRACE if start else None
+    from directive_deadline import deadline
+    explicit_due = None if verdict == TRACED else deadline(
+        lambda q, g: _rows(post, q, g), bb.A + entity, DECLARED, _instant)
+    start = None if verdict == TRACED or explicit_due else anchor(post, entity, verdict)
+    due = explicit_due or (start + GRACE if start else None)
     # UNANCHORED counts as LAPSED (wu, [wu-cm84-review] item 1): measured, 407 of
     # 868 Directives have no datable capture episode. A stateless adapter cannot
     # remember first sight, so an untraced Directive with no age reaches a person
     # NOW rather than never.
-    unanchored = verdict != TRACED and start is None
+    unanchored = verdict != TRACED and due is None
     lapse = LAPSED if unanchored or (due and due <= now) else NOT_LAPSED
     return {"entity": entity, "verdict": verdict,
             # KNOWN LIMIT (item 2): constant per Directive, so a proposal that is
@@ -137,9 +160,10 @@ def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
             # A lapse is a NEW event each time the anchor moves: a proposal that
             # lapses, is withdrawn and re-proposed is a second lapse, not a replay.
             "lapse_event_id": (event_id(f"{entity}\0{verdict}\0"
-                                        f"{start.isoformat() if start else 'unanchored'}")
+                                        f"{(explicit_due or start).isoformat() if (explicit_due or start) else 'unanchored'}")
                                if lapse == LAPSED else None),
             "due_at": due.isoformat() if due else None,
+            "explicit_deadline": explicit_due is not None,
             "evidence": verdict, "owner": None}
 
 
@@ -228,7 +252,11 @@ def plan(post, client, entity: str, now: dt.datetime) -> dict:
     """What `propose` would write for one Directive. Reads, plus one Jev call."""
     if not is_directive(post, entity):
         return {"entity": entity, "outcome": "noop", "verdict": "NOT_A_DIRECTIVE"}
-    verdict = judge(post, entity)["verdict"]
+    state = judge(post, entity, now)
+    verdict = state["verdict"]
+    if state["explicit_deadline"] and state["lapse"] == NOT_LAPSED:
+        return {"entity": entity, "outcome": "noop", "verdict": "DEFERRED",
+                "due_at": state["due_at"]}
     if verdict != UNTRACED:
         return {"entity": entity, "outcome": "noop", "verdict": verdict}
     claims, tracked = policies(post), trackers(post)

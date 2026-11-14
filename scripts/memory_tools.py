@@ -559,6 +559,29 @@ def _entity_sections(doc: dict, mcp: bool) -> list[str]:
                    f"`cy recall {name}" + "".join(f" [{flags[x]}]" for x in r.get("filters", [])) + "`")
             out.append(f"- Recall: {how}{tool}: {r['summary']}")
         out += ["", "```bash", _example_cli(e), "```", ""]
+        if name == "directive":
+            out += [
+                "When policy/work-item evaluation is deferred, retain the directive with one",
+                "typed `https://w3id.org/intigraph/quechua/ns#traceabilityDueAt` date instead",
+                "of both traceability links. Suggest fourteen days from capture, then choose",
+                "an explicit UTC instant. This is an evaluation deadline, not expiration or",
+                "permission to execute. Missing both alternatives remains refused.",
+                "",
+                "First verify the receiving store has adopted the Quechua deadline shape",
+                "and episode typed literals. If the installed `cy` exposes no date field,",
+                "do not invent a flag: use the governed episode writer with this entry in",
+                "the Directive node's `properties` object:",
+                "", "```json",
+                '\"https://w3id.org/intigraph/quechua/ns#traceabilityDueAt\": {',
+                '  \"value\": \"2030-11-28T08:00:00Z\",',
+                '  \"datatype\": \"http://www.w3.org/2001/XMLSchema#dateTime\"',
+                "}", "```", "",
+                "An untyped string does not satisfy the shape. Read back the date and",
+                "datatype. The installed `directive-lapse` adapter schedules this deadline;",
+                "`camayoc_overdue_directive_traceability` lists due untraced directives for",
+                "administrators. Publishing source alone is not installation or alert proof.",
+                "",
+            ]
     return out
 
 
