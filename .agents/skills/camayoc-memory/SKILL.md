@@ -73,6 +73,29 @@ Record a standing rule: one imperative sentence, who issued it, who it binds.
 cy record directive --rule "Run disruptive deploys between 02:00 and 09:00 ET; never ask for a window." --issued-by "person-stiwi" --applies-to "crew" --topic "deploy-window" --issued-on "2026-10-27"
 ```
 
+When policy/work-item evaluation is deferred, retain the directive with one
+typed `https://w3id.org/intigraph/quechua/ns#traceabilityDueAt` date instead
+of both traceability links. Suggest fourteen days from capture, then choose
+an explicit UTC instant. This is an evaluation deadline, not expiration or
+permission to execute. Missing both alternatives remains refused.
+
+First verify the receiving store has adopted the Quechua deadline shape
+and episode typed literals. If the installed `cy` exposes no date field,
+do not invent a flag: use the governed episode writer with this entry in
+the Directive node's `properties` object:
+
+```json
+"https://w3id.org/intigraph/quechua/ns#traceabilityDueAt": {
+  "value": "2030-11-28T08:00:00Z",
+  "datatype": "http://www.w3.org/2001/XMLSchema#dateTime"
+}
+```
+
+An untyped string does not satisfy the shape. Read back the date and
+datatype. The installed `directive-lapse` adapter schedules this deadline;
+`camayoc_overdue_directive_traceability` lists due untraced directives for
+administrators. Publishing source alone is not installation or alert proof.
+
 ### handoff
 
 Write the agent's one current handoff; each write supersedes the last.

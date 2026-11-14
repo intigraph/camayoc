@@ -67,6 +67,27 @@ Respect the tags in what comes back: a fact tagged `inferred` is a lead,
 not a law. If two sources conflict, the conflict is the answer — report it
 as contested; do not silently pick.
 
+## Retain directives before traceability evaluation
+
+A directive needs a typed WorkItem `trackedBy` link and a typed Policy
+`governedBy` link, or one explicitly typed
+`https://w3id.org/intigraph/quechua/ns#traceabilityDueAt` `xsd:dateTime`.
+Use the date to retain a decision whose policy/work-item evaluation is deferred.
+Suggest fourteen days from capture, then choose and supply the actual UTC date;
+never silently manufacture links or drop the decision after a refusal. The date
+is an evaluation deadline, not an expiry or authority to execute the directive.
+
+Check that the receiving store has adopted this Quechua term and shape first.
+An untyped JSON date string does not satisfy the datatype constraint: use the
+governed writer's typed literal representation. Do not invent a `cy` flag if the
+installed CLI does not expose it. Missing both links and date remains refused.
+
+The read-time query `camayoc_overdue_directive_traceability` takes `declared`
+(the configured trusted plane) and `now` (a timezone-bearing instant). More than
+100 rows means incomplete coverage. The installed `directive-lapse` adapter
+schedules the explicit deadline and sends overdue directives through the
+existing administrator alert path; publishing the query alone is not adoption.
+
 ## Move 2 — Record at the moment
 
 When a decision is made **in this session**, record it now — not in a
