@@ -1,0 +1,9 @@
+Script started on 2026-11-14 06:59:51-05:00 [COMMAND="python3 docs/demos/completion-disposition/demo.py" <not executed on terminal>]
+BASE 49ba314f
+{"absence_proofs": 0, "calls": ["/knot/status"], "diagnostics": {}, "input_state": "unknown", "release_allowed": false}
+{"absence_proofs": 1, "calls": ["/knot/status"], "diagnostics": {}, "input_state": "stopped", "release_allowed": false}
+CANDIDATE efac443b
+{"absence_proofs": 0, "calls": ["/knot/status"], "diagnostics": {"completion_disposition": {"absence": "not-attempted", "contract_match": true, "id_match": true, "receipt_conforms": false, "receipt_replaced": false, "receipt_tx_valid": false, "response": "object", "schema": "workitem-completion-disposition/v1", "state": "unknown", "truncated": "absent"}}, "input_state": "unknown", "release_allowed": false}
+{"absence_proofs": 1, "calls": ["/knot/status"], "diagnostics": {"completion_disposition": {"absence": "unproved", "contract_match": true, "id_match": true, "receipt_conforms": false, "receipt_replaced": false, "receipt_tx_valid": false, "response": "object", "schema": "workitem-completion-disposition/v1", "state": "stopped", "truncated": "absent"}}, "input_state": "stopped", "release_allowed": false}
+
+Script done on 2026-11-14 06:59:52-05:00 [COMMAND_EXIT_CODE="0"]
