@@ -490,6 +490,17 @@ completion receipts, not durable idempotency keys. Installation must separately
 verify native endpoint support; existing operator recovery and the 24-hour
 natural-tick acceptance remain separate from source tests.
 
+Pending-effect receipts include `completion_disposition` from the existing
+completion lookup, without an extra request. It records fixed response/state
+categories, contract and ID match bits, truncation, receipt proof bits and
+whether the independent absence proof ran and passed. Raw responses, request
+IDs and arbitrary state strings are never retained. An `absent` or `evicted`
+state is only an observed server claim; it does not prove why evidence is
+missing or authorize a release. Missing legacy IDs, refused lookups and
+unavailable responses remain distinguishable and keep the existing decisions.
+The summary is cleared before each attempted item so a later failure cannot
+inherit a previous item's completion evidence.
+
 ### Native feed capacity fallback
 
 When a whole four-transaction feed page exceeds pending custody, the native
