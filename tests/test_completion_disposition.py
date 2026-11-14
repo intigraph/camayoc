@@ -96,3 +96,47 @@ class CompletionDisposition(unittest.TestCase):
         self.assertIs(caught.exception, exc)
         self.assertEqual(diagnostics['completion_disposition']['response'], 'refused')
         self.assertNotIn('PRIVATE', json.dumps(diagnostics))
+
+    def test_receipt_shape_and_proof_values_distinguish_missing_false_and_malformed(self):
+        cases = [
+            ({}, 'missing', 'absent', 'absent', 'absent'),
+            ({'receipt': {}}, 'object', 'absent', 'absent', 'absent'),
+            ({'receipt': None}, 'other', 'absent', 'absent', 'absent'),
+            ({'receipt': ['PRIVATE']}, 'other', 'absent', 'absent', 'absent'),
+            ({'receipt': 'PRIVATE'}, 'other', 'absent', 'absent', 'absent'),
+            ({'receipt': {'conforms': False, 'replaced': False, 'tx_id': -1}},
+             'object', 'false', 'false', 'negative_integer'),
+            ({'receipt': {'conforms': True, 'replaced': True, 'tx_id': 0}},
+             'object', 'true', 'true', 'nonnegative_integer'),
+            ({'receipt': {'conforms': True, 'replaced': True, 'tx_id': 1}},
+             'object', 'true', 'true', 'nonnegative_integer'),
+        ]
+        for invalid in (None, 'PRIVATE', 1, 0, [], {'PRIVATE': True}):
+            cases.append(({'receipt': {'conforms': invalid, 'replaced': invalid,
+                                       'tx_id': invalid}},
+                          'object', 'malformed', 'malformed',
+                          'nonnegative_integer' if type(invalid) is int else 'malformed'))
+        for invalid_id in (True, False, 1.5, '0'):
+            cases.append(({'receipt': {'tx_id': invalid_id}},
+                          'object', 'absent', 'absent', 'malformed'))
+        for extra, shape, conforms, replaced, tx in cases:
+            with self.subTest(extra=extra):
+                status = {'contract': 'quipu.knot-completion/v1', 'write_id': 'a' * 64,
+                          'state': 'unknown', **extra}
+                before = json.dumps(status, sort_keys=True)
+                result, summary, proofs = self.run_status(status)
+                self.assertFalse(result)
+                self.assertEqual(proofs, 0)
+                self.assertEqual((summary['receipt_shape'], summary['receipt_conforms_value'],
+                                  summary['receipt_replaced_value'], summary['receipt_tx_kind']),
+                                 (shape, conforms, replaced, tx))
+                self.assertIs(summary['receipt_conforms'], conforms == 'true')
+                self.assertIs(summary['receipt_replaced'], replaced == 'true')
+                self.assertIs(summary['receipt_tx_valid'], tx == 'nonnegative_integer')
+                self.assertEqual(json.dumps(status, sort_keys=True), before)
+
+    def test_queued_is_recognized_but_never_authorizes_absence_or_release(self):
+        result, summary, proofs = self.run_status({**self.status, 'state': 'queued'})
+        self.assertFalse(result)
+        self.assertEqual(proofs, 0)
+        self.assertEqual(summary['state'], 'queued')
