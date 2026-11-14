@@ -1,0 +1,9 @@
+Script started [COMMAND="disposable comment routing fixture; metadata sanitized"]
+BASE
+comment + parent changes: REFUSED; native identifier is not an exact bounded item ID
+PASS; no HTTP, database, delivery, replay or live-state changes
+CANDIDATE
+comment + parent changes: OK; one exact parent policy key
+PASS; no HTTP, database, delivery, replay or live-state changes
+
+Script done [COMMAND_EXIT_CODE="0"]
