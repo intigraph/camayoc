@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import errno
 import hashlib
 import hmac
 import json
@@ -868,9 +869,13 @@ class Metrics:
                 try:
                     tmp.write_bytes(data)
                     os.replace(tmp, self.path)
-                except PermissionError:
+                except OSError as exc:
                     # The scraped directory is not ours to create files in: rewrite
                     # the one pre-created file we may write, in a single write.
+                    # Under ProtectSystem=strict the directory is a read-only mount
+                    # (EROFS) with only the file bound writable, not EACCES.
+                    if exc.errno not in (errno.EACCES, errno.EPERM, errno.EROFS):
+                        raise
                     fd = os.open(self.path, os.O_WRONLY | os.O_TRUNC | os.O_NOFOLLOW)
                     try:
                         os.write(fd, data)
