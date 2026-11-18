@@ -53,6 +53,7 @@ import os
 import re
 import socket
 import sqlite3
+import stat
 import subprocess
 import sys
 import threading
@@ -508,6 +509,31 @@ CREATE TABLE IF NOT EXISTS pr_observations (repo TEXT NOT NULL, node_id TEXT NOT
 """
 
 
+def _secure_spool_file(path: str, mode: int, group_shared: bool) -> None:
+    """Tighten a spool file we own; verify one another user owns.
+
+    Only a file's owner may chmod it. The split drain runs as a different
+    user from the receiver that created the spool, so for a foreign-owned
+    file it checks the mode instead and refuses anything looser than the
+    shared 0660: no world bits, never executable, and group read/write only
+    when the spool is group_shared. Absent files are skipped.
+    """
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return
+    if not stat.S_ISREG(st.st_mode):
+        raise PermissionError(f"spool path is not a regular file: {path}")
+    if st.st_uid == os.geteuid():
+        os.chmod(path, mode)
+        return
+    perms = stat.S_IMODE(st.st_mode)
+    if not group_shared:
+        raise PermissionError(f"owner-only spool file is owned by another user: {path}")
+    if perms & ~0o660 or perms & 0o060 != 0o060:
+        raise PermissionError(f"shared spool file {path} has mode {perms:04o}; expected 0660")
+
+
 class Spool:
     """The one durable queue every transport feeds. Thread-safe by a lock."""
 
@@ -519,7 +545,14 @@ class Spool:
         old = os.umask(0o007 if group_shared else 0o077)
         try:
             if path != ":memory:":
-                os.close(os.open(path, os.O_CREAT | os.O_RDWR, mode))
+                # O_NOFOLLOW: a symlinked spool path is refused before anything
+                # is created or opened through it (the check below re-verifies).
+                try:
+                    os.close(os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, mode))
+                except OSError as exc:
+                    if os.path.islink(path):
+                        raise PermissionError(f"spool path is not a regular file: {path}") from exc
+                    raise
             self.conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10)
             self.lock = threading.Lock()
             with self.lock:
@@ -530,9 +563,12 @@ class Spool:
         finally:
             os.umask(old)
         if path != ":memory:":
-            for suffix in ("", "-wal", "-shm"):
-                if os.path.exists(path + suffix):
-                    os.chmod(path + suffix, mode)
+            try:
+                for suffix in ("", "-wal", "-shm"):
+                    _secure_spool_file(path + suffix, mode, group_shared)
+            except BaseException:
+                self.conn.close()
+                raise
 
     def add(self, delivery: str, event: str, payload: object, *, occurred_at: str | None = None,
             now: float | None = None, state: str = "pending") -> str:

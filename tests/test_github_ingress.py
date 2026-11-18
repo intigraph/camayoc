@@ -528,6 +528,70 @@ class SplitDrainTests(unittest.TestCase):
                 if os.path.exists(path + suffix):
                     self.assertEqual(0o660, stat.S_IMODE(os.stat(path + suffix).st_mode), suffix)
 
+    def _foreign_spool(self, tmp: str, perms: int) -> str:
+        """A spool the receiver created, as the drain (another uid) sees it."""
+        import os
+        path = str(Path(tmp) / "spool.db")
+        gi.Spool(path, group_shared=True).add("d1", "push", delivery("push")["body"])
+        for suffix in ("", "-wal", "-shm"):
+            if os.path.exists(path + suffix):
+                os.chmod(path + suffix, perms)
+        return path
+
+    def test_drain_opens_a_foreign_owned_0660_spool_without_chmod(self):
+        # aegis-w9e: the drain (chaski) crash-looped on chmod EPERM of the
+        # receiver-owned spool. A non-owner must verify, not chmod.
+        import os
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._foreign_spool(tmp, 0o660)
+            with mock.patch.object(gi.os, "geteuid", return_value=os.geteuid() + 1), \
+                 mock.patch.object(gi.os, "chmod", side_effect=PermissionError("EPERM")) as chmod:
+                spool = gi.Spool(path, group_shared=True)
+                self.assertEqual(1, spool.pending())
+            chmod.assert_not_called()
+
+    def test_drain_refuses_a_foreign_owned_world_readable_spool(self):
+        import os
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._foreign_spool(tmp, 0o666)
+            with mock.patch.object(gi.os, "geteuid", return_value=os.geteuid() + 1):
+                with self.assertRaisesRegex(PermissionError, "expected 0660"):
+                    gi.Spool(path, group_shared=True)
+
+    def test_drain_refuses_a_foreign_owned_spool_that_is_not_group_shared(self):
+        import os
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._foreign_spool(tmp, 0o660)
+            with mock.patch.object(gi.os, "geteuid", return_value=os.geteuid() + 1):
+                with self.assertRaisesRegex(PermissionError, "owned by another user"):
+                    gi.Spool(path)
+
+    def test_spool_path_that_is_a_symlink_is_refused(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            real = self._foreign_spool(tmp, 0o660)
+            link = str(Path(tmp) / "link.db")
+            os.symlink(real, link)
+            with self.assertRaisesRegex(PermissionError, "not a regular file"):
+                gi.Spool(link, group_shared=True)
+            # A dangling link is refused BEFORE anything is created through it.
+            target = Path(tmp) / "never-created.db"
+            dangling = str(Path(tmp) / "dangling.db")
+            os.symlink(target, dangling)
+            with self.assertRaisesRegex(PermissionError, "not a regular file"):
+                gi.Spool(dangling, group_shared=True)
+            self.assertFalse(target.exists())
+
+    def test_owner_still_tightens_a_loose_spool_to_0660(self):
+        import os, stat
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._foreign_spool(tmp, 0o666)
+            gi.Spool(path, group_shared=True)
+            self.assertEqual(0o660, stat.S_IMODE(os.stat(path).st_mode))
+
     def test_no_drain_receiver_never_writes_and_drain_cli_does(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "spool.db")
