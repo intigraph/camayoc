@@ -363,7 +363,11 @@ class ReceiverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "github_ingress.prom"
             self.restart()
-            self.metrics = gi.Metrics(path, clock=lambda: 1700000000.0)
+            clock = [1600000000.0]
+            self.metrics = gi.Metrics(path, clock=lambda: clock[0])
+            self.metrics.record("started")
+            self.assertIn("camayoc_github_ingress_last_accepted_timestamp_seconds 1600000000", path.read_text())
+            clock[0] = 1700000000.0
             self.tearDown()
             handler = gi.make_handler(self.spool, SECRET, {"intigraph/camayoc"}, "/hooks/github", self.wake,
                                       metrics=self.metrics)

@@ -804,7 +804,9 @@ class Metrics:
     def __init__(self, path: Path | None = None, clock=time.time):
         self.path, self.clock = path, clock
         self.counts: dict[str, int] = {}
-        self.last_accepted = 0.0
+        # Starts at the start time, so "no accepted delivery for N hours" counts
+        # from whichever is later: the last delivery or the restart.
+        self.last_accepted = clock()
         self.lock = threading.Lock()
 
     def record(self, verdict: str) -> None:
@@ -818,7 +820,7 @@ class Metrics:
                      "# TYPE camayoc_github_ingress_requests_total counter"]
             lines += [f'camayoc_github_ingress_requests_total{{verdict="{v}"}} {n}'
                       for v, n in sorted(self.counts.items())]
-            lines += ["# HELP camayoc_github_ingress_last_accepted_timestamp_seconds Last accepted delivery (0: none since start).",
+            lines += ["# HELP camayoc_github_ingress_last_accepted_timestamp_seconds Last accepted delivery, or process start if none since.",
                       "# TYPE camayoc_github_ingress_last_accepted_timestamp_seconds gauge",
                       f"camayoc_github_ingress_last_accepted_timestamp_seconds {self.last_accepted:.0f}"]
             tmp = self.path.with_name(self.path.name + ".tmp")
