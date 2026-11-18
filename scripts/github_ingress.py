@@ -49,6 +49,7 @@ import collections
 import errno
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import re
@@ -942,10 +943,104 @@ class LimitedServer(ThreadingHTTPServer):
             self.slots.release()
 
 
+class SourceAllowlist:
+    """GitHub's webhook source ranges (api.github.com/meta "hooks"), read from a
+    file a timer refreshes (`meta-refresh`), as a second layer behind HMAC.
+
+    Behind Tailscale Funnel the TCP peer is always loopback; Funnel overwrites
+    X-Forwarded-For with the real client address and marks the request with
+    Tailscale-Funnel-Request. So the forwarded address is trusted ONLY from a
+    loopback peer on a Funnel-marked request, and must be one bare address.
+    Anything else has no provable origin and is refused. A missing, unreadable,
+    empty or stale file refuses every request (fail closed)."""
+
+    def __init__(self, path: Path, max_age: float = 2 * 86400, clock=time.time):
+        self.path, self.max_age, self.clock = path, max_age, clock
+        self.lock = threading.Lock()
+        self._mtime: float | None = None
+        self._nets: list = []
+        self._fetched = 0.0
+
+    def _load(self) -> None:
+        try:
+            mtime = self.path.stat().st_mtime
+            if mtime == self._mtime:
+                return
+            doc = json.loads(self.path.read_text())
+            nets = [ipaddress.ip_network(c, strict=False) for c in doc["hooks"]]
+            fetched = float(doc["fetched_at"])
+        except (OSError, ValueError, KeyError, TypeError):
+            self._mtime, self._nets, self._fetched = None, [], 0.0
+            return
+        self._mtime, self._nets, self._fetched = mtime, nets, fetched
+
+    def client(self, peer: str, headers) -> str | None:
+        try:
+            if not ipaddress.ip_address(peer).is_loopback:
+                return peer
+        except ValueError:
+            return None
+        if (headers.get_all("Tailscale-Funnel-Request") or []) != ["?1"]:
+            return None
+        forwarded = (headers.get_all("X-Forwarded-For") or [])
+        if len(forwarded) != 1:
+            return None
+        return forwarded[0].strip()
+
+    def verdict(self, peer: str, headers) -> str | None:
+        """None when the source is allowed, else the refusal verdict."""
+        with self.lock:
+            self._load()
+            age = self.clock() - self._fetched
+            # A fetched_at in the future (clock skew, bad file) never ages out: refuse it.
+            if not self._nets or age > self.max_age or age < -300:
+                return "source_unknown"
+            addr = self.client(peer, headers)
+            try:
+                ip = ipaddress.ip_address(addr) if addr else None
+            except ValueError:
+                ip = None
+            if ip is None:
+                return "source"
+            return None if any(ip in n for n in self._nets if n.version == ip.version) else "source"
+
+
+def refresh_meta(out: Path, *, fetch=None, clock=time.time) -> int:
+    """Fetch api.github.com/meta and write {"fetched_at", "hooks"} atomically.
+    Refuses (exit 2, file untouched) on any failure or an empty/invalid list,
+    so a bad fetch never widens or empties the allowlist; staleness then
+    fails the receiver closed."""
+    import urllib.request
+    if fetch is None:
+        def fetch():
+            req = urllib.request.Request("https://api.github.com/meta",
+                                         headers={"Accept": "application/vnd.github+json",
+                                                  "User-Agent": "camayoc-github-ingress"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.read(1 << 20)
+    try:
+        hooks = json.loads(fetch())["hooks"]
+        nets = [str(ipaddress.ip_network(c, strict=True)) for c in hooks]
+    except Exception as exc:  # noqa: BLE001 - any failure leaves the old file in place
+        sys.stderr.write(f"github-ingress meta-refresh refused: {type(exc).__name__}\n")
+        return 2
+    if not nets or not all(isinstance(c, str) for c in hooks):
+        sys.stderr.write("github-ingress meta-refresh refused: empty hooks list\n")
+        return 2
+    data = json.dumps({"fetched_at": clock(), "hooks": nets}, sort_keys=True).encode()
+    tmp = out.with_name(out.name + ".tmp")
+    tmp.write_bytes(data)
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, out)
+    print(json.dumps({"outcome": "refreshed", "hooks": len(nets)}))
+    return 0
+
+
 def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: threading.Event, *,
                  events: set[str] | None = None, max_body: int | None = None,
                  limiter: RejectLimiter | None = None, metrics: Metrics | None = None,
-                 deadline: float | None = None, bodies: SeenBodies | None = None):
+                 deadline: float | None = None, bodies: SeenBodies | None = None,
+                 sources: SourceAllowlist | None = None):
     """The webhook handler. `events` is the allowlist (None: the mapped events + ping).
 
     `deadline` bounds one whole connection (headers, body, answer) in wall-clock
@@ -1047,6 +1142,10 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
                 return self._verdict("rate_limited", 429)
             if self.path != path:
                 return self._verdict("path", 404)
+            if sources is not None:
+                refused = sources.verdict(self.client_address[0], self.headers)
+                if refused:
+                    return self._verdict(refused, 403)
             if len(self.headers) > MAX_HEADERS:
                 return self._verdict("headers", 431)
             try:
@@ -1478,6 +1577,12 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--request-deadline", type=float, default=REQUEST_DEADLINE,
                    help="seconds for one whole request (headers, body, answer)")
     s.add_argument("--metrics-file", type=Path, help="node_exporter textfile for verdict counters")
+    s.add_argument("--source-allowlist", type=Path,
+                   help="meta-refresh output; refuse (403) any request not from GitHub's hook ranges")
+    s.add_argument("--source-max-age", type=float, default=2 * 86400,
+                   help="seconds; an older allowlist refuses every request")
+    mr = sub.add_parser("meta-refresh", help="write GitHub's webhook source ranges for --source-allowlist")
+    mr.add_argument("--out", type=Path, required=True)
     p = sub.add_parser("poll", help="budgeted poller + drain")
     p.add_argument("--budget-per-hour", type=int, default=300)
     p.add_argument("--reserve", type=int, default=1000)
@@ -1522,6 +1627,8 @@ def main(argv: list[str] | None = None) -> int:
                          spool=Spool(args.spool))
         print(json.dumps({"replay": counts}, sort_keys=True))
         return 0
+    if args.cmd == "meta-refresh":
+        return refresh_meta(args.out)
     if args.cmd == "status":
         print(json.dumps(Spool(args.spool).counts(), sort_keys=True))
         return 0
@@ -1558,7 +1665,9 @@ def main(argv: list[str] | None = None) -> int:
         metrics.record("started")
         server = LimitedServer((host or "127.0.0.1", int(port)),
                                make_handler(spool, secret, repos, args.path, wake, max_body=args.max_body,
-                                            metrics=metrics, deadline=args.request_deadline),
+                                            metrics=metrics, deadline=args.request_deadline,
+                                            sources=(SourceAllowlist(args.source_allowlist, args.source_max_age)
+                                                     if args.source_allowlist else None)),
                                max_concurrent=args.max_concurrent)
         if not args.no_drain:
             worker = threading.Thread(target=run_drain_loop, daemon=True, kwargs=dict(
