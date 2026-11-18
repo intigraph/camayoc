@@ -545,7 +545,14 @@ class Spool:
         old = os.umask(0o007 if group_shared else 0o077)
         try:
             if path != ":memory:":
-                os.close(os.open(path, os.O_CREAT | os.O_RDWR, mode))
+                # O_NOFOLLOW: a symlinked spool path is refused before anything
+                # is created or opened through it (the check below re-verifies).
+                try:
+                    os.close(os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, mode))
+                except OSError as exc:
+                    if os.path.islink(path):
+                        raise PermissionError(f"spool path is not a regular file: {path}") from exc
+                    raise
             self.conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10)
             self.lock = threading.Lock()
             with self.lock:

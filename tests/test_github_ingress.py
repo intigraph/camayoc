@@ -577,6 +577,13 @@ class SplitDrainTests(unittest.TestCase):
             os.symlink(real, link)
             with self.assertRaisesRegex(PermissionError, "not a regular file"):
                 gi.Spool(link, group_shared=True)
+            # A dangling link is refused BEFORE anything is created through it.
+            target = Path(tmp) / "never-created.db"
+            dangling = str(Path(tmp) / "dangling.db")
+            os.symlink(target, dangling)
+            with self.assertRaisesRegex(PermissionError, "not a regular file"):
+                gi.Spool(dangling, group_shared=True)
+            self.assertFalse(target.exists())
 
     def test_owner_still_tightens_a_loose_spool_to_0660(self):
         import os, stat
