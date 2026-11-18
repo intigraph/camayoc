@@ -224,36 +224,54 @@ class SignatureTests(unittest.TestCase):
 
 class ReceiverTests(unittest.TestCase):
     def setUp(self):
+        self.start()
+
+    def start(self, **kw):
         self.spool = gi.Spool(":memory:")
         self.wake = threading.Event()
-        handler = gi.make_handler(self.spool, SECRET, {"intigraph/camayoc"}, "/hooks/github", self.wake)
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        self.metrics = gi.Metrics()
+        handler = gi.make_handler(self.spool, SECRET, {"intigraph/camayoc"}, "/hooks/github", self.wake,
+                                  metrics=self.metrics, **kw)
+        self.server = gi.LimitedServer(("127.0.0.1", 0), handler)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def restart(self, **kw):
+        self.tearDown()
+        self.start(**kw)
 
     def tearDown(self):
         self.server.shutdown()
         self.server.server_close()
 
-    def post(self, rec: dict, *, body: bytes | None = None, secret: bytes = SECRET, path: str = "/hooks/github",
-             length: str | None = None) -> tuple[int, dict]:
+    def post(self, rec: dict, *, body: bytes | None = None, secret: bytes | None = SECRET,
+             path: str = "/hooks/github", length: str | None = None, method: str = "POST",
+             extra: dict | None = None, drop: tuple = ()) -> tuple[int, dict]:
         body = body_bytes(rec) if body is None else body
         headers = dict(rec["headers"])
-        headers["X-Hub-Signature-256"] = "sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest()
+        if secret is not None:
+            headers["X-Hub-Signature-256"] = "sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest()
         if length is not None:
             headers["Content-Length"] = length
+        headers.update(extra or {})
+        for name in drop:
+            headers.pop(name, None)
         conn = http.client.HTTPConnection("127.0.0.1", self.server.server_address[1], timeout=5)
-        conn.request("POST", path, body=body, headers=headers)
+        conn.request(method, path, body=body, headers=headers)
         resp = conn.getresponse()
-        out = (resp.status, json.loads(resp.read() or b"{}"))
+        raw = resp.read()
+        self.last_raw = raw
+        out = (resp.status, json.loads(raw or b"{}"))
         conn.close()
         return out
 
-    def test_accept_then_duplicate(self):
+    def test_accept_then_signed_replay_is_refused(self):
         rec = delivery("pull_request.closed")
         self.assertEqual((202, "accepted"), (lambda r: (r[0], r[1]["outcome"]))(self.post(rec)))
-        self.assertEqual((200, "duplicate"), (lambda r: (r[0], r[1]["outcome"]))(self.post(rec)))
+        self.assertEqual(409, self.post(rec)[0])  # same delivery id, valid signature: a replay
+        self.assertEqual(b"", self.last_raw)
         self.assertTrue(self.wake.is_set())
         self.assertEqual({"pending": 1}, self.spool.counts())
+        self.assertEqual(1, self.metrics.counts["replay"])
 
     def test_full_spool_answers_503(self):
         old = gi.MAX_PENDING
@@ -276,6 +294,250 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual((202, "ignored"), (lambda r: (r[0], r[1]["outcome"]))(self.post(foreign)))
         self.assertEqual((200, "pong"), (lambda r: (r[0], r[1]["outcome"]))(self.post(delivery("ping"))))
         self.assertEqual({}, self.spool.counts())
+
+    # ---- aegis-xxoa.5 internet-facing hardening: every negative arm spools nothing
+
+    def test_negative_arms_are_bare_and_spool_nothing(self):
+        rec = delivery("pull_request.closed")
+        arms = {
+            "unsigned": (401, dict(secret=None)),
+            "wrong signature": (401, dict(secret=b"wrong")),
+            "sha1 only": (401, dict(secret=None, extra={"X-Hub-Signature": "sha1=00"})),
+            "wrong path": (404, dict(path="/hooks/github/x")),
+            "query string": (404, dict(path="/hooks/github?a=1")),
+            "GET on the path": (405, dict(method="GET", body=b"")),
+            "PUT on the path": (405, dict(method="PUT")),
+            "GET elsewhere": (404, dict(method="GET", path="/healthz", body=b"")),
+            "oversize declared": (413, dict(length=str(gi.MAX_BODY + 1))),
+            "unknown event": (400, dict(extra={"X-GitHub-Event": "star"})),
+            "malformed delivery id": (400, dict(extra={"X-GitHub-Delivery": "../../etc"})),
+            "not json content type": (415, dict(extra={"Content-Type": "application/x-www-form-urlencoded"})),
+        }
+        for name, (code, kw) in arms.items():
+            with self.subTest(name):
+                status, _ = self.post(rec, **kw)
+                self.assertEqual(code, status)
+                self.assertEqual(b"", self.last_raw, "refusals carry no detail")
+        self.assertEqual({}, self.spool.counts())
+        self.assertNotIn("accepted", self.metrics.counts)
+
+    def test_chunked_body_without_length_is_refused(self):
+        import socket
+        sock = socket.create_connection(("127.0.0.1", self.server.server_address[1]), timeout=5)
+        sock.sendall(b"POST /hooks/github HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n")
+        reply = sock.recv(200)
+        sock.close()
+        self.assertTrue(b" 411 " in reply.split(b"\r\n")[0], reply)
+        self.assertEqual({}, self.spool.counts())
+
+    def test_signed_but_not_json_is_refused(self):
+        rec = delivery("pull_request.closed")
+        self.assertEqual(400, self.post(rec, body=b"not json")[0])
+        self.assertEqual({}, self.spool.counts())
+
+    def test_configured_body_cap(self):
+        self.restart(max_body=1024)
+        rec = delivery("pull_request.closed")
+        self.assertGreater(len(body_bytes(rec)), 1024)
+        self.assertEqual(413, self.post(rec)[0])
+        self.assertEqual({}, self.spool.counts())
+
+    def test_header_count_cap(self):
+        rec = delivery("pull_request.closed")
+        many = {f"X-Pad-{i}": "x" for i in range(gi.MAX_HEADERS)}
+        self.assertEqual(431, self.post(rec, extra=many)[0])
+        self.assertEqual({}, self.spool.counts())
+
+    def test_rejections_are_rate_limited_before_the_body_is_read(self):
+        clock = [0.0]
+        self.restart(limiter=gi.RejectLimiter(burst=3, rate=1.0, clock=lambda: clock[0]))
+        rec = delivery("pull_request.closed")
+        self.assertEqual([401, 401, 401, 429, 429], [self.post(rec, secret=b"bad")[0] for _ in range(5)])
+        self.assertEqual(429, self.post(rec)[0], "while spent, even a valid delivery waits (the poller backstops)")
+        clock[0] += 2.0  # two tokens back
+        self.assertEqual(202, self.post(rec)[0])
+        self.assertEqual({"pending": 1}, self.spool.counts())
+        self.assertEqual(3, self.metrics.counts["rate_limited"])
+
+    def test_metrics_textfile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "github_ingress.prom"
+            self.restart()
+            clock = [1600000000.0]
+            self.metrics = gi.Metrics(path, clock=lambda: clock[0])
+            self.metrics.record("started")
+            self.assertIn("camayoc_github_ingress_last_accepted_timestamp_seconds 1600000000", path.read_text())
+            clock[0] = 1700000000.0
+            self.tearDown()
+            handler = gi.make_handler(self.spool, SECRET, {"intigraph/camayoc"}, "/hooks/github", self.wake,
+                                      metrics=self.metrics)
+            self.server = gi.LimitedServer(("127.0.0.1", 0), handler)
+            threading.Thread(target=self.server.serve_forever, daemon=True).start()
+            rec = delivery("pull_request.closed")
+            self.post(rec, secret=b"bad")
+            self.post(rec)
+            text = path.read_text()
+            self.assertIn('camayoc_github_ingress_requests_total{verdict="signature"} 1', text)
+            self.assertIn('camayoc_github_ingress_requests_total{verdict="accepted"} 1', text)
+            self.assertIn("camayoc_github_ingress_last_accepted_timestamp_seconds 1700000000", text)
+
+    def test_metrics_rewrite_a_precreated_file_in_a_readonly_directory(self):
+        import os
+        if os.geteuid() == 0:
+            self.skipTest("root ignores directory permissions")
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "textfile"
+            d.mkdir()
+            path = d / "github_ingress.prom"
+            path.write_text("old\n")
+            d.chmod(0o555)  # like node_exporter's root-owned 0755 directory
+            try:
+                m = gi.Metrics(path, clock=lambda: 1700000000.0)
+                m.record("accepted")
+                text = path.read_text()
+            finally:
+                d.chmod(0o755)
+            self.assertIn('camayoc_github_ingress_requests_total{verdict="accepted"} 1', text)
+            self.assertNotIn("old", text)
+            self.assertEqual(["github_ingress.prom"], sorted(p.name for p in d.iterdir()))
+
+    def test_concurrency_cap_closes_extra_connections(self):
+        self.tearDown()
+        self.spool, self.wake = gi.Spool(":memory:"), threading.Event()
+        handler = gi.make_handler(self.spool, SECRET, {"intigraph/camayoc"}, "/hooks/github", self.wake)
+        self.server = gi.LimitedServer(("127.0.0.1", 0), handler, max_concurrent=1)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        import socket
+        slow = socket.create_connection(("127.0.0.1", self.server.server_address[1]))
+        slow.sendall(b"POST /hooks/github HTTP/1.1\r\nHost: x\r\n")  # holds the one slot
+        try:
+            import time as _t
+            _t.sleep(0.2)
+            with self.assertRaises((ConnectionError, http.client.RemoteDisconnected, OSError)):
+                self.post(delivery("pull_request.closed"))
+        finally:
+            slow.close()
+        self.assertEqual({}, self.spool.counts())
+
+    def test_trickling_clients_cannot_hold_every_slot(self):
+        """wu's reproduction: clients that send one header byte just inside the
+        per-read timeout held every slot. A whole-request deadline frees them."""
+        import socket
+        import time as _t
+        self.tearDown()
+        self.spool, self.wake, self.metrics = gi.Spool(":memory:"), threading.Event(), gi.Metrics()
+        handler = gi.make_handler(self.spool, SECRET, {"intigraph/camayoc"}, "/hooks/github", self.wake,
+                                  metrics=self.metrics, deadline=1.0)
+        self.server = gi.LimitedServer(("127.0.0.1", 0), handler, max_concurrent=2)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        port = self.server.server_address[1]
+        stop = threading.Event()
+
+        def trickle():
+            s = socket.create_connection(("127.0.0.1", port))
+            try:
+                s.sendall(b"POST /hooks/github HTTP/1.1\r\n")
+                while not stop.is_set():
+                    s.sendall(b"X")  # one byte, well inside the 10 s per-read timeout
+                    _t.sleep(0.2)
+            except OSError:
+                pass  # the deadline closed us
+            finally:
+                s.close()
+
+        trick = [threading.Thread(target=trickle, daemon=True) for _ in range(2)]
+        for th in trick:
+            th.start()
+        _t.sleep(1.6)  # past the deadline: both slots must be free again
+        try:
+            self.assertEqual(202, self.post(delivery("pull_request.closed"))[0])
+        finally:
+            stop.set()
+        self.assertEqual({"pending": 1}, self.spool.counts())
+        self.assertGreaterEqual(self.metrics.counts.get("deadline", 0), 2)
+
+    def test_slow_body_is_cut_at_the_deadline_and_spools_nothing(self):
+        import socket
+        import time as _t
+        self.restart(deadline=0.5)
+        rec = delivery("pull_request.closed")
+        body = body_bytes(rec)
+        sig = "sha256=" + hmac.new(SECRET, body, hashlib.sha256).hexdigest()
+        head = (f"POST /hooks/github HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+                f"X-GitHub-Event: pull_request\r\nX-GitHub-Delivery: {rec['headers']['X-GitHub-Delivery']}\r\n"
+                f"X-Hub-Signature-256: {sig}\r\nContent-Length: {len(body)}\r\n\r\n").encode()
+        s = socket.create_connection(("127.0.0.1", self.server.server_address[1]), timeout=5)
+        s.sendall(head + body[:10])
+        _t.sleep(1.0)
+        try:
+            s.sendall(body[10:])
+            reply = s.recv(100)
+        except OSError:
+            reply = b""
+        s.close()
+        self.assertEqual(b"", reply, "a request past its deadline gets no answer")
+        self.assertEqual({}, self.spool.counts())
+        self.assertEqual(1, self.metrics.counts["deadline"])
+
+    def test_captured_body_with_a_fresh_delivery_id_is_refused(self):
+        rec = delivery("pull_request.closed")
+        self.assertEqual(202, self.post(rec)[0])
+        fresh = copy.deepcopy(rec)
+        fresh["headers"]["X-GitHub-Delivery"] = "11111111-2222-3333-4444-555555555555"
+        self.assertEqual(409, self.post(fresh)[0])
+        self.assertEqual(b"", self.last_raw)
+        self.assertEqual({"pending": 1}, self.spool.counts())
+        self.assertEqual(1, self.metrics.counts["replay_body"])
+
+    def test_seen_bodies_is_bounded_and_expires(self):
+        clock = [0.0]
+        seen = gi.SeenBodies(limit=2, ttl=10, clock=lambda: clock[0])
+        self.assertTrue(seen.check_and_add(b"a"))
+        self.assertFalse(seen.check_and_add(b"a"))
+        self.assertTrue(seen.check_and_add(b"b"))
+        self.assertTrue(seen.check_and_add(b"c"))  # evicts the oldest past the limit on next call
+        self.assertTrue(seen.check_and_add(b"d"))
+        self.assertLessEqual(len(seen.seen), 3)
+        clock[0] = 100.0
+        self.assertTrue(seen.check_and_add(b"d"), "expired digests are forgotten")
+
+    def test_verdict_log_has_no_body_or_header_values(self):
+        import io
+        from contextlib import redirect_stderr
+        rec = delivery("pull_request.closed")
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            self.post(rec, secret=b"bad")
+            self.post(rec, extra={"X-GitHub-Delivery": "evil/../line"}, secret=None)
+            self.post(rec)
+        log = buf.getvalue()
+        self.assertIn("verdict=signature status=401 event=- delivery=-", log)
+        self.assertIn("verdict=accepted status=202 event=pull_request delivery=00000000-0000-0000-0000-00005eed0002", log)
+        self.assertNotIn("sha256=", log)
+        self.assertNotIn("full_name", log)
+        self.assertNotIn("evil", log)
+
+
+class SplitDrainTests(unittest.TestCase):
+    def test_group_shared_spool_is_0660_and_never_world_readable(self):
+        import os, stat
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "spool.db")
+            gi.Spool(path, group_shared=True).add("d1", "push", delivery("push")["body"])
+            for suffix in ("", "-wal", "-shm"):
+                if os.path.exists(path + suffix):
+                    self.assertEqual(0o660, stat.S_IMODE(os.stat(path + suffix).st_mode), suffix)
+
+    def test_no_drain_receiver_never_writes_and_drain_cli_does(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "spool.db")
+            spool = gi.Spool(path)
+            spool.add("00000000-0000-0000-0000-00005eed0007", "push", delivery("push")["body"])
+            out = subprocess.run([sys.executable, str(ROOT / "scripts/github_ingress.py"), "drain",
+                                  "--spool", path, "--actor", "tester", "--repo", "someone/else"],
+                                 capture_output=True, text=True, timeout=60)
+            self.assertEqual(0, out.returncode, out.stderr)
+            self.assertEqual({"foreign": 1}, json.loads(out.stdout.strip().splitlines()[-1]))
 
 
 class FakeTransport:
