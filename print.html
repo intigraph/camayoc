@@ -2961,7 +2961,20 @@ filter, so the receiver narrows what it accepts itself:</p>
 <ul>
 <li>Only <code>POST</code> on the one path. Any other method on that path gets 405, and any
 other path gets 404. Every refusal is bare: no body, <code>Connection: close</code>.</li>
-<li>Order of checks: rejected-request rate limit, path, header count (at most 64,
+<li>Source ranges (<code>serve --source-allowlist FILE</code>, optional). Behind Tailscale
+Funnel the TCP peer is always loopback. Funnel overwrites <code>X-Forwarded-For</code>
+with the real client address (measured: a forged value arrived replaced) and
+marks the request <code>Tailscale-Funnel-Request</code>. So the forwarded address is
+trusted only from a loopback peer on a Funnel-marked request, and only as one
+bare address. It must fall in GitHub's <code>hooks</code> ranges from
+<code>api.github.com/meta</code>. Anything else gets 403 (<code>source</code>) before the body is
+read. <code>meta-refresh --out FILE</code>, run on a timer, writes those ranges
+atomically. A failed fetch or an empty or invalid list leaves the old file in
+place. A missing, unreadable, empty or older-than-<code>--source-max-age</code> (default
+2 days) file refuses every request (<code>source_unknown</code>), so the check fails
+closed. This is a second layer: HMAC stays the gate.</li>
+<li>Order of checks: rejected-request rate limit, path, source ranges (when
+set), header count (at most 64,
 431), <code>Content-Length</code> (required, 411; at most <code>--max-body</code>, 413, unread),
 HMAC over the raw body (401), event and delivery headers, an event allowlist
 (the mapped events plus <code>ping</code>, else 400), <code>application/json</code> (415), and only
