@@ -381,6 +381,26 @@ class ReceiverTests(unittest.TestCase):
             self.assertIn('camayoc_github_ingress_requests_total{verdict="accepted"} 1', text)
             self.assertIn("camayoc_github_ingress_last_accepted_timestamp_seconds 1700000000", text)
 
+    def test_metrics_rewrite_a_precreated_file_in_a_readonly_directory(self):
+        import os
+        if os.geteuid() == 0:
+            self.skipTest("root ignores directory permissions")
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "textfile"
+            d.mkdir()
+            path = d / "github_ingress.prom"
+            path.write_text("old\n")
+            d.chmod(0o555)  # like node_exporter's root-owned 0755 directory
+            try:
+                m = gi.Metrics(path, clock=lambda: 1700000000.0)
+                m.record("accepted")
+                text = path.read_text()
+            finally:
+                d.chmod(0o755)
+            self.assertIn('camayoc_github_ingress_requests_total{verdict="accepted"} 1', text)
+            self.assertNotIn("old", text)
+            self.assertEqual(["github_ingress.prom"], sorted(p.name for p in d.iterdir()))
+
     def test_concurrency_cap_closes_extra_connections(self):
         self.tearDown()
         self.spool, self.wake = gi.Spool(":memory:"), threading.Event()

@@ -826,10 +826,20 @@ class Metrics:
             lines += ["# HELP camayoc_github_ingress_last_accepted_timestamp_seconds Last accepted delivery, or process start if none since.",
                       "# TYPE camayoc_github_ingress_last_accepted_timestamp_seconds gauge",
                       f"camayoc_github_ingress_last_accepted_timestamp_seconds {self.last_accepted:.0f}"]
+            data = ("\n".join(lines) + "\n").encode()
             tmp = self.path.with_name(self.path.name + ".tmp")
             try:
-                tmp.write_text("\n".join(lines) + "\n")
-                os.replace(tmp, self.path)
+                try:
+                    tmp.write_bytes(data)
+                    os.replace(tmp, self.path)
+                except PermissionError:
+                    # The scraped directory is not ours to create files in: rewrite
+                    # the one pre-created file we may write, in a single write.
+                    fd = os.open(self.path, os.O_WRONLY | os.O_TRUNC | os.O_NOFOLLOW)
+                    try:
+                        os.write(fd, data)
+                    finally:
+                        os.close(fd)
             except OSError as exc:  # metrics never break the receiver
                 sys.stderr.write(f"github-ingress metrics write failed: {type(exc).__name__}\n")
 
