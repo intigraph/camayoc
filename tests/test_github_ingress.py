@@ -403,9 +403,9 @@ class ReceiverTests(unittest.TestCase):
 
     # ---- aegis-xxoa.5 point 3: GitHub source ranges behind Tailscale Funnel
 
-    def _allowlist(self, tmp, hooks=("192.30.252.0/22", "2a0a:a440::/29"), age=0.0):
+    def _allowlist(self, tmp, hooks=("192.30.252.0/22", "2a0a:a440::/29"), age=0.0, name="meta-hooks.json"):
         import time as _t
-        path = Path(tmp) / "meta-hooks.json"
+        path = Path(tmp) / name
         path.write_text(json.dumps({"fetched_at": _t.time() - age, "hooks": list(hooks)}))
         return gi.SourceAllowlist(path, max_age=3600)
 
@@ -430,15 +430,20 @@ class ReceiverTests(unittest.TestCase):
                 self.assertEqual(403, self.post(delivery("release.published"),
                                                 extra={**funnel, "X-Forwarded-For": xff})[0], xff)
             self.assertEqual(403, self.post(delivery("release.published"), extra=funnel)[0])
+            # a marker with any other value is not Funnel's
+            self.assertEqual(403, self.post(delivery("release.published"),
+                                            extra={"Tailscale-Funnel-Request": "1",
+                                                   "X-Forwarded-For": "192.30.252.10"})[0])
             self.assertEqual({"pending": 2}, self.spool.counts())
-            self.assertEqual(6, self.metrics.counts["source"])
+            self.assertEqual(7, self.metrics.counts["source"])
 
     def test_source_allowlist_fails_closed(self):
         ok = {"Tailscale-Funnel-Request": "?1", "X-Forwarded-For": "192.30.252.10"}
         with tempfile.TemporaryDirectory() as tmp:
-            for name, src in (("stale", self._allowlist(tmp, age=7200)),
-                              ("empty", self._allowlist(tmp, hooks=())),
-                              ("missing", gi.SourceAllowlist(Path(tmp) / "absent.json"))):
+            for name, src in (("stale", self._allowlist(tmp, age=7200, name="stale.json")),
+                              ("empty", self._allowlist(tmp, hooks=(), name="empty.json")),
+                              ("missing", gi.SourceAllowlist(Path(tmp) / "absent.json")),
+                              ("future", self._allowlist(tmp, age=-3600, name="future.json"))):
                 self.restart(sources=src)
                 self.assertEqual(403, self.post(delivery("pull_request.closed"), extra=ok)[0], name)
                 self.assertEqual(1, self.metrics.counts["source_unknown"], name)

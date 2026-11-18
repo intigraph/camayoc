@@ -975,7 +975,7 @@ class SourceAllowlist:
                 return peer
         except ValueError:
             return None
-        if headers.get("Tailscale-Funnel-Request") is None:
+        if (headers.get_all("Tailscale-Funnel-Request") or []) != ["?1"]:
             return None
         forwarded = (headers.get_all("X-Forwarded-For") or [])
         if len(forwarded) != 1:
@@ -986,7 +986,9 @@ class SourceAllowlist:
         """None when the source is allowed, else the refusal verdict."""
         with self.lock:
             self._load()
-            if not self._nets or self.clock() - self._fetched > self.max_age:
+            age = self.clock() - self._fetched
+            # A fetched_at in the future (clock skew, bad file) never ages out: refuse it.
+            if not self._nets or age > self.max_age or age < -300:
                 return "source_unknown"
             addr = self.client(peer, headers)
             try:
