@@ -6,9 +6,9 @@ Admission data: mappings/github.json (its sha256 rides in every source).
 
     github_ingress.py map EVENT FILE --actor A          one payload -> /episode body
     github_ingress.py replay DIR --actor A [--post]     recorded deliveries, end to end
-    github_ingress.py serve --secret-file F --spool DB --repo O/N ... --actor A
+    github_ingress.py serve --secret-file F --spool DB --repo O/N ... --actor A [--no-drain]
     github_ingress.py poll  --spool DB --repo O/N ... --actor A [--once]
-    github_ingress.py drain --spool DB --actor A [--post]
+    github_ingress.py drain --spool DB --actor A [--post] [--loop SECONDS]
     github_ingress.py status --spool DB
 
 Every transport puts deliveries into ONE SQLite spool and one drain maps them,
@@ -16,13 +16,23 @@ so the webhook receiver and the budgeted poller cannot disagree about meaning:
 
 - receiver: HMAC-SHA256 (X-Hub-Signature-256) over the exact body, checked in
   constant time BEFORE any JSON parse; an empty or missing secret refuses
-  everything. Spool first, then 202; a known X-GitHub-Delivery answers 200.
+  everything. Spool first, then 202; a known X-GitHub-Delivery answers 409.
+  Internet-facing hardening (aegis-xxoa.5): only POST on the one path (405 for
+  other methods there, a bare 404 elsewhere), error answers carry no body, a
+  body cap, a header-count cap, a bounded number of concurrent requests, an
+  event allowlist (the mapped events + ping), and a token bucket on REJECTED
+  requests that answers 429 before reading the body once it is spent. Every
+  request logs one line: verdict, status, event and delivery id (each only if
+  well-formed), never a body or a header value. `--no-drain` holds no Quipu
+  credential: a separate `drain --post --loop` process writes.
 - poller: only through `gh` (it holds the credential; the aegis-izs shim meters
   it), ETag conditional reads, an hourly budget and a rate-limit reserve. A
   403/429 ends the cycle and persists a backoff; a failed object fetch stays
   retryable in the spool (state `hydrate`), never quarantined unless 404/410.
 - spool: REDACTED before it touches disk (no commits, pusher, emails or text;
-  a body becomes its @-mentions), mode 0600, kept --retain-days (default 2).
+  a body becomes its @-mentions), mode 0600 (0660 with --spool-group-shared,
+  for a receiver and a drain that run as different users), kept
+  --retain-days (default 2).
 - drain: payload -> episode in the ONE `github` operational graph. The activity key (payload fields only) is
   recorded in the spool, so the same change from both transports is written
   once. A re-sent body is byte-identical, so a lost Quipu response is safe to
@@ -59,6 +69,12 @@ MAX_PENDING = 10000  # above this the receiver answers 503 instead of filling th
 GROUP = "github"
 CLIENT = "camayoc-github-ingress"
 MAX_BODY = 5 * 1024 * 1024
+MAX_HEADERS = 64  # GitHub sends about 20; the stdlib's own ceiling is 100
+MAX_CONCURRENT = 8  # requests in flight; more are closed without an answer
+REJECT_BURST = 30  # rejected requests allowed back to back ...
+REJECT_RATE = 1.0  # ... then this many per second; beyond that, 429 before reading
+_EVENT = re.compile(r"[a-z_]{1,64}")
+_DELIVERY = re.compile(r"[0-9A-Fa-f-]{8,64}")
 API = "https://api.github.com"
 ZERO_SHA = "0" * 40
 OPEN_PAGE = 100  # one page of open PRs per repo per cycle; a full page is treated as truncated
@@ -492,12 +508,16 @@ CREATE TABLE IF NOT EXISTS pr_observations (repo TEXT NOT NULL, node_id TEXT NOT
 class Spool:
     """The one durable queue every transport feeds. Thread-safe by a lock."""
 
-    def __init__(self, path: str):
-        old = os.umask(0o077)  # the db and its -wal/-shm are owner-only (0600)
+    def __init__(self, path: str, *, group_shared: bool = False):
+        # The db and its -wal/-shm are owner-only (0600). group_shared (0660)
+        # lets a credential-free receiver and a separate drain user share it;
+        # the directory's group decides who that is. Never world-readable.
+        mode = 0o660 if group_shared else 0o600
+        old = os.umask(0o007 if group_shared else 0o077)
         try:
             if path != ":memory:":
-                os.close(os.open(path, os.O_CREAT | os.O_RDWR, 0o600))
-            self.conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+                os.close(os.open(path, os.O_CREAT | os.O_RDWR, mode))
+            self.conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10)
             self.lock = threading.Lock()
             with self.lock:
                 if path != ":memory:":
@@ -509,7 +529,7 @@ class Spool:
         if path != ":memory:":
             for suffix in ("", "-wal", "-shm"):
                 if os.path.exists(path + suffix):
-                    os.chmod(path + suffix, 0o600)
+                    os.chmod(path + suffix, mode)
 
     def add(self, delivery: str, event: str, payload: object, *, occurred_at: str | None = None,
             now: float | None = None, state: str = "pending") -> str:
@@ -751,58 +771,190 @@ def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = Non
 
 # ---- webhook receiver -------------------------------------------------------
 
-def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: threading.Event):
+class RejectLimiter:
+    """A token bucket spent only by REJECTED requests. While it is empty every
+    request gets 429 before its body is read, so a flood of forged deliveries
+    costs one header parse each, not a body read and an HMAC."""
+
+    def __init__(self, burst: int = REJECT_BURST, rate: float = REJECT_RATE, clock=time.monotonic):
+        self.burst, self.rate, self.clock = float(burst), float(rate), clock
+        self.tokens, self.at = float(burst), clock()
+        self.lock = threading.Lock()
+
+    def _refill(self) -> None:
+        now = self.clock()
+        self.tokens = min(self.burst, self.tokens + (now - self.at) * self.rate)
+        self.at = now
+
+    def exhausted(self) -> bool:
+        with self.lock:
+            self._refill()
+            return self.tokens < 1.0
+
+    def spend(self) -> None:
+        with self.lock:
+            self._refill()
+            self.tokens = max(0.0, self.tokens - 1.0)
+
+
+class Metrics:
+    """Verdict counters, optionally written as a node_exporter textfile
+    (atomic rename) so alerts can see a reject spike or no accepted delivery."""
+
+    def __init__(self, path: Path | None = None, clock=time.time):
+        self.path, self.clock = path, clock
+        self.counts: dict[str, int] = {}
+        self.last_accepted = 0.0
+        self.lock = threading.Lock()
+
+    def record(self, verdict: str) -> None:
+        with self.lock:
+            self.counts[verdict] = self.counts.get(verdict, 0) + 1
+            if verdict == "accepted":
+                self.last_accepted = self.clock()
+            if self.path is None:
+                return
+            lines = ["# HELP camayoc_github_ingress_requests_total Webhook requests by verdict since start.",
+                     "# TYPE camayoc_github_ingress_requests_total counter"]
+            lines += [f'camayoc_github_ingress_requests_total{{verdict="{v}"}} {n}'
+                      for v, n in sorted(self.counts.items())]
+            lines += ["# HELP camayoc_github_ingress_last_accepted_timestamp_seconds Last accepted delivery (0: none since start).",
+                      "# TYPE camayoc_github_ingress_last_accepted_timestamp_seconds gauge",
+                      f"camayoc_github_ingress_last_accepted_timestamp_seconds {self.last_accepted:.0f}"]
+            tmp = self.path.with_name(self.path.name + ".tmp")
+            try:
+                tmp.write_text("\n".join(lines) + "\n")
+                os.replace(tmp, self.path)
+            except OSError as exc:  # metrics never break the receiver
+                sys.stderr.write(f"github-ingress metrics write failed: {type(exc).__name__}\n")
+
+
+class LimitedServer(ThreadingHTTPServer):
+    """At most MAX_CONCURRENT requests in flight; the rest are closed unanswered."""
+
+    daemon_threads = True
+
+    def __init__(self, address, handler, max_concurrent: int = MAX_CONCURRENT):
+        self.slots = threading.BoundedSemaphore(max_concurrent)
+        super().__init__(address, handler)
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
+
+def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: threading.Event, *,
+                 events: set[str] | None = None, max_body: int | None = None,
+                 limiter: RejectLimiter | None = None, metrics: Metrics | None = None):
+    """The webhook handler. `events` is the allowlist (None: the mapped events + ping)."""
+    if events is None:
+        events = set(load_mapping()[0]["events"]) | {"ping"}
+    cap = MAX_BODY if max_body is None else max_body
+    limiter = limiter or RejectLimiter()
+    metrics = metrics or Metrics()
+
     class Handler(BaseHTTPRequestHandler):
         server_version = "camayoc-github-ingress"
+        sys_version = ""
         timeout = 10  # a slow client cannot hold a thread
 
-        def _send(self, code: int, payload: dict) -> None:
-            data = json.dumps(payload, sort_keys=True).encode()
-            self.send_response(code)
-            self.send_header("Content-Type", "application/json")
+        def _send(self, code: int, payload: dict | None = None) -> None:
+            data = b"" if payload is None else json.dumps(payload, sort_keys=True).encode()
+            self.send_response_only(code)
             self.send_header("Content-Length", str(len(data)))
+            if data:
+                self.send_header("Content-Type", "application/json")
+            if code >= 400:
+                self.send_header("Connection", "close")
+                self.close_connection = True
             self.end_headers()
-            self.wfile.write(data)
+            if data:
+                self.wfile.write(data)
 
-        def log_message(self, fmt, *args):  # never the body, never the secret
-            sys.stderr.write("github-ingress %s %s\n" % (self.address_string(), fmt % args))
+        def _verdict(self, verdict: str, code: int, event: str = "", delivery: str = "",
+                     payload: dict | None = None) -> None:
+            if code >= 400 and verdict != "rate_limited":
+                limiter.spend()
+            metrics.record(verdict)
+            ev = event if _EVENT.fullmatch(event or "") else "-"
+            dl = delivery if _DELIVERY.fullmatch(delivery or "") else "-"
+            sys.stderr.write(f"github-ingress verdict={verdict} status={code} event={ev} delivery={dl}\n")
+            self._send(code, payload)
 
-        def do_GET(self):
-            if self.path == "/healthz":
-                self._send(200, {"ok": True, "spool": spool.counts()})
-            else:
-                self._send(404, {"error": "not found"})
+        def log_message(self, fmt, *args):  # one verdict line per request instead; never the request line
+            pass
+
+        def log_error(self, fmt, *args):
+            pass
+
+        def send_error(self, code, message=None, explain=None):  # stdlib parse errors: bare, counted
+            self._verdict("malformed", code if code in (400, 408, 414, 431) else 400)
+
+        def _refuse_method(self) -> None:
+            if limiter.exhausted():
+                return self._verdict("rate_limited", 429)
+            if self.path == path:
+                return self._verdict("method", 405)
+            return self._verdict("path", 404)
+
+        do_GET = do_HEAD = do_PUT = do_PATCH = do_DELETE = do_OPTIONS = do_TRACE = do_CONNECT = _refuse_method
 
         def do_POST(self):
+            if limiter.exhausted():
+                return self._verdict("rate_limited", 429)
             if self.path != path:
-                return self._send(404, {"error": "not found"})
+                return self._verdict("path", 404)
+            if len(self.headers) > MAX_HEADERS:
+                return self._verdict("headers", 431)
             try:
                 length = int(self.headers.get("Content-Length", ""))
             except ValueError:
-                return self._send(411, {"error": "length required"})
-            if length < 0 or length > MAX_BODY:
-                return self._send(413, {"error": "body too large"})
+                return self._verdict("length", 411)
+            if length < 0 or length > cap:
+                return self._verdict("too_large", 413)
             body = self.rfile.read(length)
+            if len(body) != length:
+                return self._verdict("short_body", 400)
             if not verify_signature(secret, self.headers.get("X-Hub-Signature-256"), body):
-                return self._send(401, {"error": "signature"})
+                return self._verdict("signature", 401)
             event = self.headers.get("X-GitHub-Event", "")
             delivery = self.headers.get("X-GitHub-Delivery", "")
-            if not re.fullmatch(r"[a-z_]{1,64}", event) or not re.fullmatch(r"[0-9A-Fa-f-]{8,64}", delivery):
-                return self._send(400, {"error": "missing or malformed event/delivery header"})
+            if not _EVENT.fullmatch(event) or not _DELIVERY.fullmatch(delivery):
+                return self._verdict("headers", 400)
+            if event not in events:
+                return self._verdict("event", 400, event, delivery)
+            if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
+                return self._verdict("content_type", 415, event, delivery)
             try:
                 payload = json.loads(body)
             except ValueError:
-                return self._send(400, {"error": "body is not JSON"})
-            full = (payload.get("repository") or {}).get("full_name") if isinstance(payload, dict) else None
+                return self._verdict("json", 400, event, delivery)
             if event == "ping":
-                return self._send(200, {"outcome": "pong"})
+                return self._verdict("ping", 200, event, delivery, {"outcome": "pong"})
+            full = (payload.get("repository") or {}).get("full_name") if isinstance(payload, dict) else None
             if full not in repos:
-                return self._send(202, {"outcome": "ignored", "reason": "repository not watched"})
+                return self._verdict("ignored", 202, event, delivery,
+                                     {"outcome": "ignored", "reason": "repository not watched"})
             if spool.pending() >= MAX_PENDING:
-                return self._send(503, {"error": "spool full; GitHub will show the delivery as failed"})
+                return self._verdict("spool_full", 503, event, delivery)
             outcome = spool.add(delivery, event, payload)
+            if outcome != "accepted":
+                # A validly signed delivery id seen before is a replay: refused, never re-spooled.
+                return self._verdict("replay", 409, event, delivery)
             wake.set()
-            self._send(202 if outcome == "accepted" else 200, {"outcome": outcome, "delivery": delivery})
+            self._verdict("accepted", 202, event, delivery, {"outcome": outcome, "delivery": delivery})
 
     return Handler
 
@@ -1180,6 +1332,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--listen", default="127.0.0.1:3040")
     s.add_argument("--path", default="/hooks/github")
     s.add_argument("--secret-file", type=Path, required=True)
+    s.add_argument("--no-drain", action="store_true",
+                   help="receive and spool only; hold no Quipu credential (run `drain --loop` separately)")
+    s.add_argument("--max-body", type=int, default=MAX_BODY, help="bytes; larger bodies get 413 unread")
+    s.add_argument("--max-concurrent", type=int, default=MAX_CONCURRENT)
+    s.add_argument("--metrics-file", type=Path, help="node_exporter textfile for verdict counters")
     p = sub.add_parser("poll", help="budgeted poller + drain")
     p.add_argument("--budget-per-hour", type=int, default=300)
     p.add_argument("--reserve", type=int, default=1000)
@@ -1193,10 +1350,17 @@ def main(argv: list[str] | None = None) -> int:
         cmd.add_argument("--actor", required=True)
         cmd.add_argument("--dry-run", action="store_true", help="print episodes instead of posting")
         cmd.add_argument("--retain-days", type=float, default=RETAIN_DAYS)
-    d = sub.add_parser("drain", help="one drain pass over the spool")
+    d = sub.add_parser("drain", help="one drain pass over the spool, or a loop of them")
     d.add_argument("--spool", required=True)
     d.add_argument("--actor", required=True)
     d.add_argument("--post", action="store_true")
+    d.add_argument("--repo", action="append", help="owner/name; repeat (default: every repository)")
+    d.add_argument("--loop", type=float, metavar="SECONDS",
+                   help="keep draining every SECONDS, purging past --retain-days")
+    d.add_argument("--retain-days", type=float, default=RETAIN_DAYS)
+    for cmd in (s, p, d):
+        cmd.add_argument("--spool-group-shared", action="store_true",
+                         help="spool files 0660, for a receiver and a drain that run as different users")
     st = sub.add_parser("status", help="spool counts by state")
     st.add_argument("--spool", required=True)
     args = ap.parse_args(argv)
@@ -1221,14 +1385,24 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(Spool(args.spool).counts(), sort_keys=True))
         return 0
     if args.cmd == "drain":
-        print(json.dumps(drain_once(Spool(args.spool), actor=args.actor,
-                                    writer=Writer() if args.post else print_writer), sort_keys=True))
-        return 0
+        for full in args.repo or []:
+            if not _REPO.match(full):
+                ap.error(f"--repo {full!r} is not owner/name")
+        spool = Spool(args.spool, group_shared=args.spool_group_shared)
+        writer = Writer() if args.post else print_writer
+        repos = set(args.repo) if args.repo else None
+        while True:
+            print(json.dumps(drain_once(spool, actor=args.actor, writer=writer, repos=repos),
+                             sort_keys=True), flush=True)
+            if args.loop is None:
+                return 0
+            spool.purge(args.retain_days, time.time())
+            time.sleep(max(args.loop, 1.0))
 
     for full in args.repo:
         if not _REPO.match(full):
             ap.error(f"--repo {full!r} is not owner/name")
-    spool = Spool(args.spool)
+    spool = Spool(args.spool, group_shared=args.spool_group_shared)
     repos = set(args.repo)
     writer = print_writer if args.dry_run else Writer()
     wake, stop = threading.Event(), threading.Event()
@@ -1237,12 +1411,19 @@ def main(argv: list[str] | None = None) -> int:
         if not secret:
             sys.stderr.write("github-ingress: secret file empty or unreadable; every delivery will be refused\n")
         host, _, port = args.listen.rpartition(":")
-        server = ThreadingHTTPServer((host or "127.0.0.1", int(port)),
-                                     make_handler(spool, secret, repos, args.path, wake))
-        worker = threading.Thread(target=run_drain_loop, daemon=True, kwargs=dict(
-            spool=spool, actor=args.actor, writer=writer, repos=repos, wake=wake, stop=stop,
-            retain_days=args.retain_days))
-        worker.start()
+        if args.max_body < 1 or args.max_concurrent < 1:
+            ap.error("--max-body and --max-concurrent must be positive")
+        metrics = Metrics(args.metrics_file)
+        metrics.record("started")
+        server = LimitedServer((host or "127.0.0.1", int(port)),
+                               make_handler(spool, secret, repos, args.path, wake, max_body=args.max_body,
+                                            metrics=metrics),
+                               max_concurrent=args.max_concurrent)
+        if not args.no_drain:
+            worker = threading.Thread(target=run_drain_loop, daemon=True, kwargs=dict(
+                spool=spool, actor=args.actor, writer=writer, repos=repos, wake=wake, stop=stop,
+                retain_days=args.retain_days))
+            worker.start()
         try:
             server.serve_forever()
         finally:
