@@ -133,7 +133,23 @@ def completion_summary(status, write_id):
     obj = status if isinstance(status, dict) else {}
     state = obj.get('state')
     receipt = obj.get('receipt')
+    receipt_shape = 'missing' if 'receipt' not in obj else (
+        'object' if isinstance(receipt, dict) else 'other')
     receipt = receipt if isinstance(receipt, dict) else {}
+    def boolean_value(key):
+        if key not in receipt:
+            return 'absent'
+        if receipt[key] is True:
+            return 'true'
+        if receipt[key] is False:
+            return 'false'
+        return 'malformed'
+    if 'tx_id' not in receipt:
+        tx_kind = 'absent'
+    elif type(receipt['tx_id']) is not int:
+        tx_kind = 'malformed'
+    else:
+        tx_kind = 'nonnegative_integer' if receipt['tx_id'] >= 0 else 'negative_integer'
     truncated = control_summary(status)['truncated']
     return {'schema': 'workitem-completion-disposition/v1',
             'response': 'object' if isinstance(status, dict) else 'nonobject',
@@ -141,8 +157,12 @@ def completion_summary(status, write_id):
             'id_match': obj.get('write_id') == write_id,
             'truncated': truncated,
             'state': state if isinstance(state, str) and state in (
-                'not_started', 'stopped', 'running', 'finished', 'unknown', 'absent', 'evicted')
+                'not_started', 'stopped', 'queued', 'running', 'finished', 'unknown', 'absent', 'evicted')
                 else 'unrecognized' if 'state' in obj else 'missing',
+            'receipt_shape': receipt_shape,
+            'receipt_conforms_value': boolean_value('conforms'),
+            'receipt_replaced_value': boolean_value('replaced'),
+            'receipt_tx_kind': tx_kind,
             'receipt_conforms': receipt.get('conforms') is True,
             'receipt_replaced': receipt.get('replaced') is True,
             'receipt_tx_valid': type(receipt.get('tx_id')) is int and receipt['tx_id'] >= 0,

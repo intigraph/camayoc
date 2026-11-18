@@ -493,7 +493,13 @@ natural-tick acceptance remain separate from source tests.
 Pending-effect receipts include `completion_disposition` from the existing
 completion lookup, without an extra request. It records fixed response/state
 categories, contract and ID match bits, truncation, receipt proof bits and
-whether the independent absence proof ran and passed. Raw responses, request
+whether the independent absence proof ran and passed. Additive receipt markers
+distinguish a missing receipt, an object and another shape. Boolean proof values
+are classified as `absent`, `true`, `false` or `malformed`; the transaction ID
+is classified as absent, malformed, negative or nonnegative integer. The existing
+boolean proof bits remain available. `queued` is an observed state only and
+keeps the effect frozen. These markers never change a delivery decision.
+Raw responses, request
 IDs and arbitrary state strings are never retained. An `absent` or `evicted`
 state is only an observed server claim; it does not prove why evidence is
 missing or authorize a release. Missing legacy IDs, refused lookups and
