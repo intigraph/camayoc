@@ -124,25 +124,84 @@ def prove_absent(post,item):
     return True
 
 
-def completed_without_effect(post, journal, envelope, item):
+def completion_summary(status, write_id):
+    """Fixed, payload-free observations; absent/evicted are claims, not proofs.
+
+    Never retain arbitrary state strings, receipt values, request IDs or bodies.
+    This summary does not participate in any delivery or release decision.
+    """
+    obj = status if isinstance(status, dict) else {}
+    state = obj.get('state')
+    receipt = obj.get('receipt')
+    receipt_shape = 'missing' if 'receipt' not in obj else (
+        'object' if isinstance(receipt, dict) else 'other')
+    receipt = receipt if isinstance(receipt, dict) else {}
+    def boolean_value(key):
+        if key not in receipt:
+            return 'absent'
+        if receipt[key] is True:
+            return 'true'
+        if receipt[key] is False:
+            return 'false'
+        return 'malformed'
+    if 'tx_id' not in receipt:
+        tx_kind = 'absent'
+    elif type(receipt['tx_id']) is not int:
+        tx_kind = 'malformed'
+    else:
+        tx_kind = 'nonnegative_integer' if receipt['tx_id'] >= 0 else 'negative_integer'
+    truncated = control_summary(status)['truncated']
+    return {'schema': 'workitem-completion-disposition/v1',
+            'response': 'object' if isinstance(status, dict) else 'nonobject',
+            'contract_match': obj.get('contract') == 'quipu.knot-completion/v1',
+            'id_match': obj.get('write_id') == write_id,
+            'truncated': truncated,
+            'state': state if isinstance(state, str) and state in (
+                'not_started', 'stopped', 'queued', 'running', 'finished', 'unknown', 'absent', 'evicted')
+                else 'unrecognized' if 'state' in obj else 'missing',
+            'receipt_shape': receipt_shape,
+            'receipt_conforms_value': boolean_value('conforms'),
+            'receipt_replaced_value': boolean_value('replaced'),
+            'receipt_tx_kind': tx_kind,
+            'receipt_conforms': receipt.get('conforms') is True,
+            'receipt_replaced': receipt.get('replaced') is True,
+            'receipt_tx_valid': type(receipt.get('tx_id')) is int and receipt['tx_id'] >= 0,
+            'absence': 'not-attempted'}
+
+
+def completed_without_effect(post, journal, envelope, item, *, diagnostics=None):
     """A retained native fence plus exact effect absence, never elapsed time.
 
     Old journals, evicted receipts and unavailable capabilities stay UNKNOWN.
     A stopped worker may have committed: readback must still prove absence.
     """
+    summary = {'schema': 'workitem-completion-disposition/v1',
+               'response': 'not-attempted', 'absence': 'not-attempted'}
+    if diagnostics is not None:
+        diagnostics['completion_disposition'] = summary
     write_id = envelope.get('write_id')
     if not isinstance(write_id, str) or not re.fullmatch('[0-9a-f]{64}', write_id):
         return False
-    status = post('/knot/status', {'write_id': write_id, 'request': envelope['request']})
+    try:
+        status = post('/knot/status', {'write_id': write_id, 'request': envelope['request']})
+    except (ValueError, OSError, RuntimeError, TypeError, KeyError) as exc:
+        summary['response'] = ('refused' if type(exc).__name__ == 'PlaneError' and
+                               failure_reason(exc) in ('HTTP 401', 'HTTP 403', 'auth refused')
+                               else 'unavailable')
+        raise
+    summary.update(completion_summary(status, write_id))
     if (not isinstance(status, dict) or status.get('contract') != 'quipu.knot-completion/v1'
             or status.get('write_id') != write_id or status.get('truncated', False) is not False
             or status.get('state') not in ('not_started', 'stopped')):
         return False
     previous = journal.db.execute('SELECT version FROM verified WHERE id=?', (item,)).fetchone()
     if previous is None:
-        return prove_absent(post, item)
+        absent = prove_absent(post, item)
+        summary['absence'] = 'proved' if absent else 'unproved'
+        return absent
     if type(envelope.get('version')) is not int or envelope['version'] <= previous[0]:
         return False
+    summary['absence'] = 'unproved'
     # An update does not erase its previously verified snapshot on failure.
     # Permit that exact older version's canonical metadata, not arbitrary facts
     # or a conflicting/newer version, and never require the entire subject gone.
@@ -163,10 +222,12 @@ def completed_without_effect(post, journal, envelope, item):
         expected = json.loads(envelope['description'])
     except (ValueError, TypeError, AttributeError):
         return False
-    return (isinstance(prior, dict) and set(prior) == set(expected)
+    absent = (isinstance(prior, dict) and set(prior) == set(expected)
             and type(prior.get('source_version')) is int
             and prior['source_version'] == previous[0]
             and all(prior.get(k) == expected.get(k) for k in ('id', 'source_graph', 'native_action')))
+    summary['absence'] = 'proved' if absent else 'unproved'
+    return absent
 
 
 #: Serial deliveries per tick. aegis-ksd (wu ACK) set four deliveries and one feed
@@ -281,7 +342,7 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
         # A negative readback alone is not absence: partial or conflicting
         # facts keep the exact effect frozen. Native completion must precede
         # a fresh absence proof; HTTP timeout never proves worker termination.
-        if not completed_without_effect(call,journal,envelope,item):
+        if not completed_without_effect(call,journal,envelope,item,diagnostics=diagnostics):
             raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
         journal.release_unconfirmed(item,stored)
         return None
@@ -422,6 +483,7 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             receipt.pop('attempted_item',None)
             receipt.pop('control',None)
             receipt.pop('fused_control',None)
+            receipt.pop('completion_disposition',None)
             reset_witness()
             last=None
             # Diagnostic validation must not alter delivery or custody decisions.

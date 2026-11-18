@@ -31,6 +31,26 @@ class Tick(unittest.TestCase):
         return {'rows':[{'v':self.description}] if self.description else [],'truncated':False}
     def tick(self):
         return sync.tick(self.reader,self.j,self.post,changes=lambda **args:page() if args['since']<10 else page(records=[],next_tx=args['since'],watermark_tx=args['since']),plane='urn:private:knowledge',actor='fixture')
+    def test_pending_completion_summary_is_receipt_only_without_extra_calls(self):
+        self.drop=True
+        self.assertEqual(self.tick()['status'], 'UNKNOWN')
+        pending=self.j.next()
+        envelope=json.loads(pending[2]);envelope['write_id']='a'*64
+        self.j.db.execute('UPDATE pending SET body=? WHERE id=?', (json.dumps(envelope),pending[0]))
+        self.j.db.commit()
+        frozen=self.j.next()
+        calls=[]
+        def post(route,body):
+            calls.append(route)
+            if route=='/knot/status':
+                return {'contract':'quipu.knot-completion/v1','write_id':'a'*64,'state':'unknown'}
+            return {'result':False}
+        result=sync.tick(self.reader,self.j,post,changes=None,plane='urn:private:knowledge',actor='fixture')
+        self.assertEqual((result['status'],result['writes'],result['verified'],result['requests']),('UNKNOWN',0,0,2))
+        self.assertEqual(calls,['/query','/knot/status'])
+        self.assertEqual(result['completion_disposition']['state'],'unknown')
+        self.assertEqual(self.j.next(),frozen)
+        self.assertEqual(self.writes,1)
     def test_full_tick_five_calls_one_effect_and_ack(self):
         # The control tests the full IRI without consuming compact SELECT terms.
         original=self.post
