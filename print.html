@@ -2923,7 +2923,7 @@ acknowledged.</p>
 <li>
 <p><strong>Spool first.</strong> The receiver writes <code>(delivery id, event name, redacted body)</code> to a SQLite spool (WAL, <code>synchronous=FULL</code>), then answers 202. GitHub expects an
 answer within 10 s, and nothing slow happens before the answer. A delivery
-id already in the spool gets 200 <code>duplicate</code>. GitHub keeps
+id already in the spool gets 409 (a replay; see the hardening below). GitHub keeps
 <code>X-GitHub-Delivery</code> on manual and automatic redelivery, so this is the
 first idempotency layer. With more than 10,000 entries pending (a long Quipu
 outage, for example), the receiver answers 503 rather than fill the disk.
@@ -2955,6 +2955,41 @@ safe to resend, because the episode is byte-identical (§3). An event the
 mapping cannot place is marked <code>quarantined</code> with its reason, never
 dropped. The receiver's metrics report it, and it never blocks the queue.</p>
 </li>
+</ul>
+<p><strong>Internet-facing hardening (aegis-xxoa.5).</strong> The public route has no source
+filter, so the receiver narrows what it accepts itself:</p>
+<ul>
+<li>Only <code>POST</code> on the one path. Any other method on that path gets 405, and any
+other path gets 404. Every refusal is bare: no body, <code>Connection: close</code>.</li>
+<li>Order of checks: rejected-request rate limit, path, header count (at most 64,
+431), <code>Content-Length</code> (required, 411; at most <code>--max-body</code>, 413, unread),
+HMAC over the raw body (401), event and delivery headers, an event allowlist
+(the mapped events plus <code>ping</code>, else 400), <code>application/json</code> (415), and only
+then the JSON parse.</li>
+<li>A validly signed delivery whose id is already in the spool is a replay. It
+gets 409 and is not spooled again. The same signed body under a fresh
+delivery id (a captured body) also gets 409 (<code>replay_body</code>), from a bounded,
+expiring in-memory digest set. The spool keeps ids for <code>--retain-days</code>.
+After that, the activity-key ledger still stops a second write.</li>
+<li>Each connection has one wall-clock budget, <code>--request-deadline</code> (default
+10 s), for headers, body and answer. The socket timeout bounds only each
+read, so without it a client trickling a byte per read held a slot forever.
+A connection past its deadline is shut, counted as rejected (<code>deadline</code>) and
+spools nothing.</li>
+<li>At most <code>--max-concurrent</code> (default 32) requests are in flight; extra
+connections are closed unanswered. A token bucket is spent only by rejected requests. While
+it is empty, every request gets 429 before its body is read, so a flood of
+forgeries costs one header parse each. A real delivery refused this way is
+recovered by the poller.</li>
+<li>One stderr line per request: verdict, status, event and delivery id, each
+only when well-formed. The request line, header values and the body are
+never logged. <code>--metrics-file</code> writes verdict counters and the last accepted
+time as a node_exporter textfile, for the reject-spike and no-delivery
+alerts.</li>
+<li><code>serve --no-drain</code> holds no Quipu credential. A separate
+<code>drain --post --loop SECONDS</code> process, running as a different user, maps and
+writes. <code>--spool-group-shared</code> makes the spool files 0660, so the directory's
+group decides who may share them.</li>
 </ul>
 <p><strong>Hosting.</strong> The receiver runs on the chaski host as a systemd user unit next
 to chaski. The order is GitHub, then Quipu, then chaski: facts land in Quipu
