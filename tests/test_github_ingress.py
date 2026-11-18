@@ -399,6 +399,88 @@ class ReceiverTests(unittest.TestCase):
             slow.close()
         self.assertEqual({}, self.spool.counts())
 
+    def test_trickling_clients_cannot_hold_every_slot(self):
+        """wu's reproduction: clients that send one header byte just inside the
+        per-read timeout held every slot. A whole-request deadline frees them."""
+        import socket
+        import time as _t
+        self.tearDown()
+        self.spool, self.wake, self.metrics = gi.Spool(":memory:"), threading.Event(), gi.Metrics()
+        handler = gi.make_handler(self.spool, SECRET, {"intigraph/camayoc"}, "/hooks/github", self.wake,
+                                  metrics=self.metrics, deadline=1.0)
+        self.server = gi.LimitedServer(("127.0.0.1", 0), handler, max_concurrent=2)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        port = self.server.server_address[1]
+        stop = threading.Event()
+
+        def trickle():
+            s = socket.create_connection(("127.0.0.1", port))
+            try:
+                s.sendall(b"POST /hooks/github HTTP/1.1\r\n")
+                while not stop.is_set():
+                    s.sendall(b"X")  # one byte, well inside the 10 s per-read timeout
+                    _t.sleep(0.2)
+            except OSError:
+                pass  # the deadline closed us
+            finally:
+                s.close()
+
+        trick = [threading.Thread(target=trickle, daemon=True) for _ in range(2)]
+        for th in trick:
+            th.start()
+        _t.sleep(1.6)  # past the deadline: both slots must be free again
+        try:
+            self.assertEqual(202, self.post(delivery("pull_request.closed"))[0])
+        finally:
+            stop.set()
+        self.assertEqual({"pending": 1}, self.spool.counts())
+        self.assertGreaterEqual(self.metrics.counts.get("deadline", 0), 2)
+
+    def test_slow_body_is_cut_at_the_deadline_and_spools_nothing(self):
+        import socket
+        import time as _t
+        self.restart(deadline=0.5)
+        rec = delivery("pull_request.closed")
+        body = body_bytes(rec)
+        sig = "sha256=" + hmac.new(SECRET, body, hashlib.sha256).hexdigest()
+        head = (f"POST /hooks/github HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+                f"X-GitHub-Event: pull_request\r\nX-GitHub-Delivery: {rec['headers']['X-GitHub-Delivery']}\r\n"
+                f"X-Hub-Signature-256: {sig}\r\nContent-Length: {len(body)}\r\n\r\n").encode()
+        s = socket.create_connection(("127.0.0.1", self.server.server_address[1]), timeout=5)
+        s.sendall(head + body[:10])
+        _t.sleep(1.0)
+        try:
+            s.sendall(body[10:])
+            reply = s.recv(100)
+        except OSError:
+            reply = b""
+        s.close()
+        self.assertEqual(b"", reply, "a request past its deadline gets no answer")
+        self.assertEqual({}, self.spool.counts())
+        self.assertEqual(1, self.metrics.counts["deadline"])
+
+    def test_captured_body_with_a_fresh_delivery_id_is_refused(self):
+        rec = delivery("pull_request.closed")
+        self.assertEqual(202, self.post(rec)[0])
+        fresh = copy.deepcopy(rec)
+        fresh["headers"]["X-GitHub-Delivery"] = "11111111-2222-3333-4444-555555555555"
+        self.assertEqual(409, self.post(fresh)[0])
+        self.assertEqual(b"", self.last_raw)
+        self.assertEqual({"pending": 1}, self.spool.counts())
+        self.assertEqual(1, self.metrics.counts["replay_body"])
+
+    def test_seen_bodies_is_bounded_and_expires(self):
+        clock = [0.0]
+        seen = gi.SeenBodies(limit=2, ttl=10, clock=lambda: clock[0])
+        self.assertTrue(seen.check_and_add(b"a"))
+        self.assertFalse(seen.check_and_add(b"a"))
+        self.assertTrue(seen.check_and_add(b"b"))
+        self.assertTrue(seen.check_and_add(b"c"))  # evicts the oldest past the limit on next call
+        self.assertTrue(seen.check_and_add(b"d"))
+        self.assertLessEqual(len(seen.seen), 3)
+        clock[0] = 100.0
+        self.assertTrue(seen.check_and_add(b"d"), "expired digests are forgotten")
+
     def test_verdict_log_has_no_body_or_header_values(self):
         import io
         from contextlib import redirect_stderr

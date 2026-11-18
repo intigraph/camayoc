@@ -224,10 +224,17 @@ filter, so the receiver narrows what it accepts itself:
   (the mapped events plus `ping`, else 400), `application/json` (415), and only
   then the JSON parse.
 - A validly signed delivery whose id is already in the spool is a replay. It
-  gets 409 and is not spooled again. The spool keeps ids for `--retain-days`.
+  gets 409 and is not spooled again. The same signed body under a fresh
+  delivery id (a captured body) also gets 409 (`replay_body`), from a bounded,
+  expiring in-memory digest set. The spool keeps ids for `--retain-days`.
   After that, the activity-key ledger still stops a second write.
-- At most `--max-concurrent` requests are in flight; extra connections are
-  closed unanswered. A token bucket is spent only by rejected requests. While
+- Each connection has one wall-clock budget, `--request-deadline` (default
+  10 s), for headers, body and answer. The socket timeout bounds only each
+  read, so without it a client trickling a byte per read held a slot forever.
+  A connection past its deadline is shut, counted as rejected (`deadline`) and
+  spools nothing.
+- At most `--max-concurrent` (default 32) requests are in flight; extra
+  connections are closed unanswered. A token bucket is spent only by rejected requests. While
   it is empty, every request gets 429 before its body is read, so a flood of
   forgeries costs one header parse each. A real delivery refused this way is
   recovered by the poller.

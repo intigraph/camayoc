@@ -45,11 +45,13 @@ never comment, review or PR bodies, commit messages or logs.
 from __future__ import annotations
 
 import argparse
+import collections
 import hashlib
 import hmac
 import json
 import os
 import re
+import socket
 import sqlite3
 import subprocess
 import sys
@@ -70,7 +72,8 @@ GROUP = "github"
 CLIENT = "camayoc-github-ingress"
 MAX_BODY = 5 * 1024 * 1024
 MAX_HEADERS = 64  # GitHub sends about 20; the stdlib's own ceiling is 100
-MAX_CONCURRENT = 8  # requests in flight; more are closed without an answer
+MAX_CONCURRENT = 32  # requests in flight; more are closed without an answer
+REQUEST_DEADLINE = 10.0  # seconds for one whole request: headers, body and answer
 REJECT_BURST = 30  # rejected requests allowed back to back ...
 REJECT_RATE = 1.0  # ... then this many per second; beyond that, 429 before reading
 _EVENT = re.compile(r"[a-z_]{1,64}")
@@ -831,6 +834,37 @@ class Metrics:
                 sys.stderr.write(f"github-ingress metrics write failed: {type(exc).__name__}\n")
 
 
+class SeenBodies:
+    """Digests of recently accepted signed bodies, bounded and expiring.
+
+    The signature covers only the body, so a captured body re-sent under a
+    fresh X-GitHub-Delivery would otherwise be spooled again. GitHub's own
+    redelivery keeps the delivery id (409 above), so a known body under a new
+    id is a replay too. In memory only: a restart forgets, and the drain's
+    activity-key ledger still stops a second write."""
+
+    def __init__(self, limit: int = MAX_PENDING, ttl: float = RETAIN_DAYS * 86400, clock=time.time):
+        self.limit, self.ttl, self.clock = limit, ttl, clock
+        self.seen: collections.OrderedDict[str, float] = collections.OrderedDict()
+        self.lock = threading.Lock()
+
+    def check_and_add(self, body: bytes) -> bool:
+        """True when this body is new (and remembers it); False for a replay."""
+        digest = hashlib.sha256(body).hexdigest()
+        now = self.clock()
+        with self.lock:
+            while self.seen and (len(self.seen) > self.limit or next(iter(self.seen.values())) < now - self.ttl):
+                self.seen.popitem(last=False)
+            if digest in self.seen:
+                return False
+            self.seen[digest] = now
+            return True
+
+    def forget(self, body: bytes) -> None:
+        with self.lock:
+            self.seen.pop(hashlib.sha256(body).hexdigest(), None)
+
+
 class LimitedServer(ThreadingHTTPServer):
     """At most MAX_CONCURRENT requests in flight; the rest are closed unanswered."""
 
@@ -859,13 +893,21 @@ class LimitedServer(ThreadingHTTPServer):
 
 def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: threading.Event, *,
                  events: set[str] | None = None, max_body: int | None = None,
-                 limiter: RejectLimiter | None = None, metrics: Metrics | None = None):
-    """The webhook handler. `events` is the allowlist (None: the mapped events + ping)."""
+                 limiter: RejectLimiter | None = None, metrics: Metrics | None = None,
+                 deadline: float | None = None, bodies: SeenBodies | None = None):
+    """The webhook handler. `events` is the allowlist (None: the mapped events + ping).
+
+    `deadline` bounds one whole connection (headers, body, answer) in wall-clock
+    seconds. The socket timeout alone bounds each read, so a client trickling one
+    byte per read could hold a slot forever. When the deadline passes, the socket
+    is shut down, the request is counted as rejected and nothing is spooled."""
     if events is None:
         events = set(load_mapping()[0]["events"]) | {"ping"}
     cap = MAX_BODY if max_body is None else max_body
     limiter = limiter or RejectLimiter()
     metrics = metrics or Metrics()
+    budget = REQUEST_DEADLINE if deadline is None else deadline
+    bodies = bodies if bodies is not None else SeenBodies()
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "camayoc-github-ingress"
@@ -887,6 +929,9 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
 
         def _verdict(self, verdict: str, code: int, event: str = "", delivery: str = "",
                      payload: dict | None = None) -> None:
+            if self.expired:
+                return  # cut by the deadline: handle() records one deadline verdict, no answer
+            self.answered = True
             if code >= 400 and verdict != "rate_limited":
                 limiter.spend()
             metrics.record(verdict)
@@ -894,6 +939,39 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
             dl = delivery if _DELIVERY.fullmatch(delivery or "") else "-"
             sys.stderr.write(f"github-ingress verdict={verdict} status={code} event={ev} delivery={dl}\n")
             self._send(code, payload)
+
+        def setup(self):
+            super().setup()
+            self.expired = False
+            self.answered = False
+            self.watchdog = threading.Timer(budget, self._expire)
+            self.watchdog.daemon = True
+            self.watchdog.start()
+
+        def _expire(self):
+            self.expired = True
+            try:
+                self.connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+        def handle(self):
+            try:
+                super().handle()
+            except (OSError, ValueError):
+                if not self.expired:
+                    raise
+            if self.expired and not self.answered:
+                limiter.spend()
+                metrics.record("deadline")
+                sys.stderr.write("github-ingress verdict=deadline status=- event=- delivery=-\n")
+
+        def finish(self):
+            self.watchdog.cancel()
+            try:
+                super().finish()
+            except OSError:
+                pass
 
         def log_message(self, fmt, *args):  # one verdict line per request instead; never the request line
             pass
@@ -951,9 +1029,17 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
                                      {"outcome": "ignored", "reason": "repository not watched"})
             if spool.pending() >= MAX_PENDING:
                 return self._verdict("spool_full", 503, event, delivery)
+            if self.expired:
+                return  # the deadline already closed this connection; spool nothing
+            if spool.has(delivery):
+                # A validly signed delivery id seen before is a replay: refused, never re-spooled.
+                return self._verdict("replay", 409, event, delivery)
+            if not bodies.check_and_add(body):
+                # The same signed body under a fresh delivery id: a captured replay.
+                return self._verdict("replay_body", 409, event, delivery)
             outcome = spool.add(delivery, event, payload)
             if outcome != "accepted":
-                # A validly signed delivery id seen before is a replay: refused, never re-spooled.
+                bodies.forget(body)
                 return self._verdict("replay", 409, event, delivery)
             wake.set()
             self._verdict("accepted", 202, event, delivery, {"outcome": outcome, "delivery": delivery})
@@ -1338,6 +1424,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="receive and spool only; hold no Quipu credential (run `drain --loop` separately)")
     s.add_argument("--max-body", type=int, default=MAX_BODY, help="bytes; larger bodies get 413 unread")
     s.add_argument("--max-concurrent", type=int, default=MAX_CONCURRENT)
+    s.add_argument("--request-deadline", type=float, default=REQUEST_DEADLINE,
+                   help="seconds for one whole request (headers, body, answer)")
     s.add_argument("--metrics-file", type=Path, help="node_exporter textfile for verdict counters")
     p = sub.add_parser("poll", help="budgeted poller + drain")
     p.add_argument("--budget-per-hour", type=int, default=300)
@@ -1413,13 +1501,13 @@ def main(argv: list[str] | None = None) -> int:
         if not secret:
             sys.stderr.write("github-ingress: secret file empty or unreadable; every delivery will be refused\n")
         host, _, port = args.listen.rpartition(":")
-        if args.max_body < 1 or args.max_concurrent < 1:
-            ap.error("--max-body and --max-concurrent must be positive")
+        if args.max_body < 1 or args.max_concurrent < 1 or not 0 < args.request_deadline <= 60:
+            ap.error("--max-body and --max-concurrent must be positive; --request-deadline in (0, 60]")
         metrics = Metrics(args.metrics_file)
         metrics.record("started")
         server = LimitedServer((host or "127.0.0.1", int(port)),
                                make_handler(spool, secret, repos, args.path, wake, max_body=args.max_body,
-                                            metrics=metrics),
+                                            metrics=metrics, deadline=args.request_deadline),
                                max_concurrent=args.max_concurrent)
         if not args.no_drain:
             worker = threading.Thread(target=run_drain_loop, daemon=True, kwargs=dict(
