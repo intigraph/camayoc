@@ -485,6 +485,41 @@ class ReceiverTests(unittest.TestCase):
             self.assertEqual(2, gi.refresh_meta(out, fetch=boom))
             self.assertEqual(before, out.read_bytes())
 
+    def test_metrics_rewrites_in_place_when_directory_is_a_read_only_mount(self):
+        """ProtectSystem=strict binds only the .prom file writable: creating the
+        temp file fails with EROFS, not EACCES, and must take the same fallback."""
+        import errno as _errno
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "github_ingress.prom"
+            path.write_text("old\n")
+            real = Path.write_bytes
+
+            def ro_mount(self_path, data):
+                if self_path.name.endswith(".tmp"):
+                    raise OSError(_errno.EROFS, "Read-only file system")
+                return real(self_path, data)
+
+            with mock.patch.object(Path, "write_bytes", ro_mount), \
+                    mock.patch("sys.stderr") as err:
+                gi.Metrics(path, clock=lambda: 1700000000.0).record("accepted")
+            self.assertIn('camayoc_github_ingress_requests_total{verdict="accepted"} 1', path.read_text())
+            self.assertNotIn("old", path.read_text())
+            self.assertEqual(["github_ingress.prom"], sorted(p.name for p in Path(tmp).iterdir()))
+            err.write.assert_not_called()
+
+    def test_metrics_other_write_errors_are_reported_not_hidden(self):
+        import errno as _errno
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "github_ingress.prom"
+            path.write_text("old\n")
+            with mock.patch.object(Path, "write_bytes", side_effect=OSError(_errno.ENOSPC, "full")), \
+                    mock.patch("sys.stderr") as err:
+                gi.Metrics(path).record("accepted")  # never raises into the receiver
+            self.assertEqual("old\n", path.read_text())
+            err.write.assert_called_once_with("github-ingress metrics write failed: OSError\n")
+
     def test_concurrency_cap_closes_extra_connections(self):
         self.tearDown()
         self.spool, self.wake = gi.Spool(":memory:"), threading.Event()
