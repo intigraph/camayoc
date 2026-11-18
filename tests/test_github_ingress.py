@@ -401,6 +401,85 @@ class ReceiverTests(unittest.TestCase):
             self.assertNotIn("old", text)
             self.assertEqual(["github_ingress.prom"], sorted(p.name for p in d.iterdir()))
 
+    # ---- aegis-xxoa.5 point 3: GitHub source ranges behind Tailscale Funnel
+
+    def _allowlist(self, tmp, hooks=("192.30.252.0/22", "2a0a:a440::/29"), age=0.0):
+        import time as _t
+        path = Path(tmp) / "meta-hooks.json"
+        path.write_text(json.dumps({"fetched_at": _t.time() - age, "hooks": list(hooks)}))
+        return gi.SourceAllowlist(path, max_age=3600)
+
+    def test_source_allowlist_arms(self):
+        funnel = {"Tailscale-Funnel-Request": "?1"}
+        with tempfile.TemporaryDirectory() as tmp:
+            self.restart(sources=self._allowlist(tmp))
+            # GitHub address forwarded by Funnel: allowed through to the normal checks
+            self.assertEqual(202, self.post(delivery("pull_request.closed"),
+                                            extra={**funnel, "X-Forwarded-For": "192.30.252.10"})[0])
+            self.assertEqual(202, self.post(delivery("push"),
+                                            extra={**funnel, "X-Forwarded-For": "2a0a:a440::1"})[0])
+            # non-GitHub source, validly signed: refused before the body is read
+            self.assertEqual(403, self.post(delivery("release.published"),
+                                            extra={**funnel, "X-Forwarded-For": "203.0.113.77"})[0])
+            self.assertEqual(b"", self.last_raw)
+            # no Funnel marker: no provable origin, even with a GitHub address
+            self.assertEqual(403, self.post(delivery("release.published"),
+                                            extra={"X-Forwarded-For": "192.30.252.10"})[0])
+            # chained or garbage forwarded value: refused
+            for xff in ("203.0.113.77, 192.30.252.10", "not-an-ip", ""):
+                self.assertEqual(403, self.post(delivery("release.published"),
+                                                extra={**funnel, "X-Forwarded-For": xff})[0], xff)
+            self.assertEqual(403, self.post(delivery("release.published"), extra=funnel)[0])
+            self.assertEqual({"pending": 2}, self.spool.counts())
+            self.assertEqual(6, self.metrics.counts["source"])
+
+    def test_source_allowlist_fails_closed(self):
+        ok = {"Tailscale-Funnel-Request": "?1", "X-Forwarded-For": "192.30.252.10"}
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, src in (("stale", self._allowlist(tmp, age=7200)),
+                              ("empty", self._allowlist(tmp, hooks=())),
+                              ("missing", gi.SourceAllowlist(Path(tmp) / "absent.json"))):
+                self.restart(sources=src)
+                self.assertEqual(403, self.post(delivery("pull_request.closed"), extra=ok)[0], name)
+                self.assertEqual(1, self.metrics.counts["source_unknown"], name)
+            bad = Path(tmp) / "bad.json"
+            bad.write_text("{not json")
+            self.restart(sources=gi.SourceAllowlist(bad))
+            self.assertEqual(403, self.post(delivery("pull_request.closed"), extra=ok)[0])
+            self.assertEqual({}, self.spool.counts())
+
+    def test_source_allowlist_rereads_a_refreshed_file(self):
+        import os as _os
+        ok = {"Tailscale-Funnel-Request": "?1", "X-Forwarded-For": "198.51.100.5"}
+        with tempfile.TemporaryDirectory() as tmp:
+            src = self._allowlist(tmp)
+            self.restart(sources=src)
+            self.assertEqual(403, self.post(delivery("pull_request.closed"), extra=ok)[0])
+            self._allowlist(tmp, hooks=("198.51.100.0/24",))
+            _os.utime(src.path, (1, 2_000_000_000))  # a new mtime, as a timer refresh gives
+            self.assertEqual(202, self.post(delivery("pull_request.closed"), extra=ok)[0])
+
+    def test_direct_non_loopback_peer_is_judged_by_its_own_address(self):
+        src = gi.SourceAllowlist(Path("/nonexistent"))
+        self.assertEqual("203.0.113.9", src.client("203.0.113.9", {"X-Forwarded-For": "192.30.252.1"}))
+
+    def test_meta_refresh_writes_only_a_valid_nonempty_list(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "meta-hooks.json"
+            body = json.dumps({"hooks": ["192.30.252.0/22", "2a0a:a440::/29"], "web": ["1.2.3.0/24"]}).encode()
+            self.assertEqual(0, gi.refresh_meta(out, fetch=lambda: body, clock=lambda: 1700000000.0))
+            self.assertEqual({"fetched_at": 1700000000.0, "hooks": ["192.30.252.0/22", "2a0a:a440::/29"]},
+                             json.loads(out.read_text()))
+            before = out.read_bytes()
+            for bad in (b'{"hooks": []}', b'{"hooks": ["192.30.252.1/22"]}', b'{"web": []}', b"<html>"):
+                self.assertEqual(2, gi.refresh_meta(out, fetch=lambda b=bad: b), bad)
+                self.assertEqual(before, out.read_bytes(), bad)
+
+            def boom():
+                raise OSError("network down")
+            self.assertEqual(2, gi.refresh_meta(out, fetch=boom))
+            self.assertEqual(before, out.read_bytes())
+
     def test_concurrency_cap_closes_extra_connections(self):
         self.tearDown()
         self.spool, self.wake = gi.Spool(":memory:"), threading.Event()
