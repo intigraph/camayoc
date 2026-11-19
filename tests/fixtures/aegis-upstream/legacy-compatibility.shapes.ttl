@@ -2131,7 +2131,11 @@ aegis:MemberOfShape a sh:NodeShape ;
     sh:targetSubjectsOf aegis:member_of ;
     sh:property [
         sh:path aegis:member_of ;
-        sh:or ( [ sh:class aegis:Rig ] [ sh:class aegis:AnsibleGroup ] [ sh:class aegis:Skill ] ) ;
+        # The existing rulebook is a Document, not a Rig/AnsibleGroup/Skill.
+        # Admit that exact typed document without admitting arbitrary documents.
+        sh:or ( [ sh:class aegis:Rig ] [ sh:class aegis:AnsibleGroup ]
+                [ sh:class aegis:Skill ]
+                [ sh:class aegis:Document ; sh:in ( aegis:aegis-crew-process-rules ) ] ) ;
     ] .
 
 aegis:ReportsToShape a sh:NodeShape ;

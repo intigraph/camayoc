@@ -321,7 +321,8 @@ aegis:LocalCommandShape a sh:NodeShape ;
 
 aegis:MemberOfShape a sh:NodeShape ;
     quipu:onViolation "emit" ;
-    sh:property [ sh:or ( [ sh:class aegis:Rig ] [ sh:class aegis:AnsibleGroup ] [ sh:class aegis:Skill ] ) ;
+    sh:property [ sh:or ( [ sh:class aegis:Rig ] [ sh:class aegis:AnsibleGroup ] [ sh:class aegis:Skill ]
+                    [ sh:class aegis:Document ; sh:in ( aegis:aegis-crew-process-rules ) ] ) ;
             sh:path aegis:member_of ] ;
     sh:targetSubjectsOf aegis:member_of .
 
