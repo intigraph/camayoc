@@ -167,9 +167,11 @@ class PagedDiscovery(unittest.TestCase):
         self.addCleanup(planes.start_request_budget, None)
 
     def assertPinned(self, sent):
+        # Discovery reads current state (T >= W): a pinned tx timed out on the
+        # served store, so no discovery query may carry one.
         queries = [b for b in sent if "query" in b]
         self.assertTrue(queries)
-        self.assertEqual({b.get("tx") for b in queries}, {W})
+        self.assertFalse(any("tx" in b for b in queries))
 
     def test_blocked_pages_cover_every_candidate_exactly_once(self):
         pages, sent = drain("blocked", Keyset(blocked_store().post), 30)
@@ -297,8 +299,33 @@ class Process(unittest.TestCase):
         self.assertEqual(out["items"], [])
         self.assertTrue(out["complete"])
         self.assertEqual(out["cost"], {"quipu_requests": len(_Quipu.seen)})
-        self.assertEqual({b["tx"] for b in _Quipu.seen}, {W})
+        self.assertFalse(any("tx" in b for b in _Quipu.seen))
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ObservesAliases(unittest.TestCase):
+    """Review (aegis-ssvr C1): the batched readers expand every IRI of the
+    `observes` term, as the single-item reader's pattern() does."""
+
+    def test_batched_readers_query_every_observes_iri(self):
+        alias = bb.Q + "observes"
+        real = bb.term_iris
+        sent = []
+
+        def recording(endpoint, body):
+            sent.append(body.get("query", ""))
+            return {"rows": []}
+        with mock.patch.object(bb, "term_iris",
+                               lambda name: real(name) + [alias] if name == "observes" else real(name)):
+            bb.latest_observations(recording, ["aegis-x1", "aegis-x2"])
+            observes_queries = [q for q in sent if "observes" in q]
+            self.assertTrue(observes_queries)
+            self.assertTrue(all(f"<{alias}>" in q and f"<{bb.A}observes>" in q for q in observes_queries))
+
+    def test_run_disarms_the_cap_afterwards(self):
+        with mock.patch.object(ca, "evaluate", lambda kind, post, request: {"version": 1, "items": []}):
+            ca.run("blocked", {"discover": True, "now": 1, "budget": {"max_requests": 3}}, post)
+        self.assertIsNone(planes._request_cap)

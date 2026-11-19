@@ -279,11 +279,13 @@ refuses request k+1 before sending it: the process exits 3 with no output
 rather than exceed the cap. Every response carries
 `cost: {"quipu_requests": n}`, the exact count, with or without a budget.
 
-Discovery can also be paged against one snapshot:
+Discovery can also be paged at or after a watermark:
 `{"discover": true, "now": t, "as_of_tx": W, "cursor": null, "budget": {...}}`
-returns `items` plus either an opaque `next_cursor` or `complete: true`. Every
-discovery query reads as of transaction `W`, and across all pages of one
-snapshot each item appears exactly once. A page ends early at the last fully
+returns `items` plus either an opaque `next_cursor` or `complete: true`. Pages
+read current state (a time at or after `W`), not a pinned transaction: pinned
+reads were measured to exceed the query timeout. The consumer replays changes
+from `W`, so an item that changes during paging still reaches it, and an
+unchanged item appears exactly once across the pages of one run. A page ends early at the last fully
 processed key when the budget is spent; a call that cannot finish even one
 unit within its budget fails instead. Without `as_of_tx`, discovery answers in
 one response as before. `--describe` declares `budget_cap: 1` and

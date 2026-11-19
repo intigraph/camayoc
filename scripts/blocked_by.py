@@ -330,7 +330,9 @@ def latest_observations(post, items: list[str]) -> dict[str, str | None]:
     owned: dict[str, list[str]] = {w: [] for w in legacy}
     for start in range(0, len(legacy), 32):
         batch = legacy[start:start + 32]
-        branches = union([f"<{item_iri(w)}> <{A}observes> ?o{i}" for i, w in enumerate(batch)])
+        # Every IRI of the term, as _read_latest_observation's pattern() expands it.
+        branches = union([f"<{item_iri(w)}> <{iri}> ?o{i}" for i, w in enumerate(batch)
+                          for iri in term_iris("observes")])
         columns = " ".join(f"?o{i}" for i in range(len(batch)))
         for row in select(reads, f"SELECT {columns} WHERE {{ {branches} }}"):
             for i, w in enumerate(batch):

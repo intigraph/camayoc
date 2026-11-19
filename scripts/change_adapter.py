@@ -11,13 +11,20 @@ stdout, never exceeding k. Every successful response carries
 `"cost": {"quipu_requests": n}`, n <= k; without a budget the call is uncapped
 and still reports its cost.
 
-Paged, snapshot-pinned discovery. `{"discover": true, "now": t, "as_of_tx": W,
-"cursor": null | "<opaque>", "budget": {...}}` returns `{"version": 1,
-"items": [...], "next_cursor": "<opaque>"}` or `{..., "complete": true}`.
-Every discovery /query carries `"tx": W`, so every page reads the same
-snapshot. Pages are keyset pages over the full candidate IRI (`ORDER BY
-STR(?s)`, `FILTER(STR(?s) > after)`), merged across graphs and sources, so
-across all pages of one snapshot each item appears exactly once. A page stops
+Paged discovery at or after a watermark. `{"discover": true, "now": t,
+"as_of_tx": W, "cursor": null | "<opaque>", "budget": {...}}` returns
+`{"version": 1, "items": [...], "next_cursor": "<opaque>"}` or `{...,
+"complete": true}`. Pages read CURRENT state, which is always at some T >= W;
+they are not pinned with `"tx": W`. A pinned read was measured on the served
+store (aegis-ssvr, 2026-11-19): this keyset query took 323 ms on current state
+and exceeded the 10 s query timeout at a pinned tx. Reading current state is
+still complete for the consumer: an item that becomes actionable after its key
+was passed changed after W, and the consumer replays changes from W, so the
+change routes it. The consumer never clears a tracked verdict from a discover
+result, so a page that misses an item cannot clear it. The cursor stays bound
+to W. Pages are keyset pages over the full candidate IRI (`ORDER BY
+STR(?s)`, `FILTER(STR(?s) > after)`), merged across graphs and sources, so an
+unchanged item appears exactly once across the pages of one run. A page stops
 early, at the last fully processed key, when the request budget is spent; only
 a call that cannot make any progress within its budget fails. A legacy
 `{"discover": true, "now": t}` (no as_of_tx) is answered exactly as before:
@@ -313,8 +320,11 @@ def budget_of(request):
 def run(kind, request, post):
     """One --changes call: arm the cap, evaluate, attach the exact cost."""
     planes.start_request_budget(budget_of(request))
-    result = evaluate(kind, post, request)
-    return {**result, "cost": {"quipu_requests": planes.requests_sent()}}
+    try:
+        result = evaluate(kind, post, request)
+        return {**result, "cost": {"quipu_requests": planes.requests_sent()}}
+    finally:
+        planes.start_request_budget(None)   # no stale cap for an in-process caller
 
 
 def main(kind, describe=False):
@@ -338,7 +348,7 @@ def main(kind, describe=False):
     return 0
 
 
-# ---- paged, snapshot-pinned discovery (aegis-ssvr C1) ----------------------
+# ---- paged discovery at or after a watermark (aegis-ssvr C1) ----------------------
 #: Keys per graph per keyset query. Small enough to stay far below the
 #: server's row budget, large enough that an idle population is a few reads.
 PAGE = 200
@@ -428,7 +438,8 @@ def _phases(kind, post):
     def owners(chunk):
         names = [bb._local(k) for k, _ in chunk]
         columns = " ".join(f"?w{i}" for i in range(len(chunk)))
-        branches = bb.union([f"?w{i} <{bb.A}observes> <{k}>" for i, (k, _) in enumerate(chunk)])
+        branches = bb.union([f"?w{i} <{iri}> <{k}>" for i, (k, _) in enumerate(chunk)
+                             for iri in bb.term_iris("observes")])
         owned = {}
         for row in bb.select(post, f"SELECT {columns} WHERE {{ {branches} }}"):
             for i, obs in enumerate(names):
@@ -469,9 +480,10 @@ def _cursor_in(kind, tx, cursor, phases):
         state = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
     except ValueError as exc:
         raise ValueError("unreadable cursor") from exc
-    if not isinstance(state, dict) or state.get("v") != 1 or state.get("kind") != kind:
+    if (not isinstance(state, dict) or type(state.get("v")) is not int or state["v"] != 1
+            or state.get("kind") != kind):
         raise ValueError("cursor belongs to another adapter or version")
-    if state.get("tx") != tx:
+    if type(state.get("tx")) is not int or state["tx"] != tx:
         raise ValueError("cursor belongs to another snapshot (as_of_tx)")
     phase, after = state.get("phase"), state.get("after")
     if type(phase) is not int or not 0 <= phase < phases:
@@ -485,10 +497,9 @@ def discover_paged(kind, post, request):
     tx = request["as_of_tx"]
     if type(tx) is not int or tx < 0:
         raise ValueError("as_of_tx must be an integer >= 0")
-    def pinned(endpoint, body):
-        # Every discovery read is the same snapshot, whatever page it serves.
-        return post(endpoint, {**body, "tx": tx})
-    phases = _phases(kind, pinned)
+    # Current state (T >= W), not a pinned tx: pinned reads time out on the
+    # served store (see the module docstring). The cursor stays bound to W.
+    phases = _phases(kind, post)
     phase, after = _cursor_in(kind, tx, request.get("cursor"), len(phases))
     items, moved = [], False
     try:
