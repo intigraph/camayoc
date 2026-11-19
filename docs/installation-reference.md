@@ -273,6 +273,25 @@ queues bounded evaluation batches instead of scanning verdicts in one process.
 The command budgets graph reads at eight per second and caches identical reads
 within a request. The ordinary full-evaluation CLI remains the parity oracle.
 
+Any `--changes` request may carry `budget: {"max_requests": k}` (an integer of
+at least 1). The adapter counts every request it sends to the store and
+refuses request k+1 before sending it: the process exits 3 with no output
+rather than exceed the cap. Every response carries
+`cost: {"quipu_requests": n}`, the exact count, with or without a budget.
+
+Discovery can also be paged against one snapshot:
+`{"discover": true, "now": t, "as_of_tx": W, "cursor": null, "budget": {...}}`
+returns `items` plus either an opaque `next_cursor` or `complete: true`. Every
+discovery query reads as of transaction `W`, and across all pages of one
+snapshot each item appears exactly once. A page ends early at the last fully
+processed key when the budget is spent; a call that cannot finish even one
+unit within its budget fails instead. Without `as_of_tx`, discovery answers in
+one response as before. `--describe` declares `budget_cap: 1` and
+`reconcile_contract: 1`: any item whose evaluation at a later snapshot would be
+actionable, or would change a tracked verdict, is returned by discovery at
+that snapshot or is already tracked by the consumer. The directive adapters
+(`directive_edges.py adapter` and `lapse-adapter`) follow the same protocol.
+
 Future review ages and date blockers supply exact deadlines. Only external
 probes and arbitrary resolution queries retain individual 15-minute checks,
 because their dependencies cannot be enumerated from graph changes. Missing
