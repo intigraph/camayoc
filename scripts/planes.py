@@ -145,6 +145,49 @@ def provenance_headers(client: str, env=None) -> dict[str, str]:
     return out
 
 
+class RequestBudgetExceeded(BaseException):
+    """The next Quipu request would exceed this call's request cap; nothing was sent.
+
+    A BaseException on purpose. Verdict code turns ordinary failures into
+    UNKNOWN (an ASK that raised, a native reader that failed), and a refusal
+    to send must never become a verdict: it has to reach the process boundary,
+    which exits nonzero instead of exceeding the cap.
+    """
+
+
+#: Requests sent through `_post` since the last `start_request_budget`, and the
+#: cap that refuses the next one (None: uncapped, still counted).
+_request_cap: int | None = None
+_requests_sent = 0
+
+
+def start_request_budget(max_requests: int | None = None) -> None:
+    """Reset the request counter and arm (or disarm, with None) the hard cap."""
+    global _request_cap, _requests_sent
+    if max_requests is not None and (type(max_requests) is not int or max_requests < 1):
+        raise ValueError("max_requests must be an integer >= 1")
+    _request_cap, _requests_sent = max_requests, 0
+
+
+def requests_sent() -> int:
+    return _requests_sent
+
+
+def _charge(path: str) -> None:
+    """Count one request about to be sent; refuse it if the cap is spent.
+
+    The single choke point: every camayoc HTTP request to Quipu goes through
+    `_post`, and this runs immediately before the request leaves, so a request
+    refused for credentials (never sent) is not counted and a request that is
+    sent and then fails is.
+    """
+    global _requests_sent
+    if _request_cap is not None and _requests_sent >= _request_cap:
+        raise RequestBudgetExceeded(
+            f"{path}: request {_requests_sent + 1} refused, cap is {_request_cap}")
+    _requests_sent += 1
+
+
 def _post(path: str, body: dict, *, client: str, form: bool = False,
           response_limit: int | None = None, write_id: str | None = None) -> dict:
     if write_id is not None:
@@ -177,6 +220,7 @@ def _post(path: str, body: dict, *, client: str, form: bool = False,
             token = None  # Public reads stay available with a broken write credential.
         if token:
             req.add_header("Authorization", f"Bearer {token}")
+    _charge(path)
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             raw = r.read() if response_limit is None else r.read(response_limit + 1)

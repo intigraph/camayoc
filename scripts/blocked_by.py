@@ -91,7 +91,11 @@ def term_iris(name: str) -> list[str]:
 def pattern(subject: str, name: str, obj: str) -> str:
     """One triple pattern per IRI of `name`, as a UNION of single patterns.
     Each branch stays one bound pattern, so the never-a-join rule holds."""
-    branches = [f"{subject} <{iri}> {obj}" for iri in term_iris(name)]
+    return union([f"{subject} <{iri}> {obj}" for iri in term_iris(name)])
+
+
+def union(branches: list[str]) -> str:
+    """Single patterns as a UNION, or the bare pattern when there is one."""
     if len(branches) == 1:
         return branches[0]
     return " UNION ".join("{ " + b + " }" for b in branches)
@@ -259,26 +263,39 @@ def _read_latest_observation(post, item: str) -> str | None:
     # bound-subject two-pattern query from its unbound side and 408s it live.
     observations = [_local(row["obs"]) for row in select(post,
                     f"SELECT ?obs WHERE {{ {pattern(f'<{A}{item}>', 'observes', '?obs')} }}")]
-    stamped = []
     if isinstance(post, _EvaluationReads) and post.batch_history:
-        # Each UNION branch is still ONE bound pattern. Distinct output variables
-        # identify the observation without BIND, VALUES or a graph join. Keep the
-        # legacy evaluator unbatched as an independent parity oracle.
-        for start in range(0, len(observations), 32):
-            batch = observations[start:start + 32]
-            branches = [f"{{ <{A}{obs}> <{iri}> ?at{i} }}" for i, obs in enumerate(batch)
-                        for iri in term_iris("observedAt")]
-            columns = " ".join(f"?at{i}" for i in range(len(batch)))
-            rows = select(post, f"SELECT {columns} WHERE {{ {' UNION '.join(branches)} }}")
-            for i, obs in enumerate(batch):
-                first = next((r[f"at{i}"] for r in rows if r.get(f"at{i}") is not None), None)
-                if first is not None:
-                    stamped.append((str(first), obs))
+        stamps = _stamps(post, observations)
+        stamped = [(stamps[obs], obs) for obs in observations if obs in stamps]
     else:
+        stamped = []
         for obs in observations:
             at = select(post, f"SELECT ?at WHERE {{ {pattern(f'<{A}{obs}>', 'observedAt', '?at')} }}")
             if at:
                 stamped.append((str(at[0]["at"]), obs))
+    return _newest(post, stamped)
+
+
+def _stamps(post, observations: list[str]) -> dict[str, str]:
+    """observedAt of each observation, in bounded batches.
+
+    Each UNION branch is still ONE bound pattern. Distinct output variables
+    identify the observation without BIND, VALUES or a graph join. Keep the
+    legacy evaluator unbatched as an independent parity oracle."""
+    out: dict[str, str] = {}
+    for start in range(0, len(observations), 32):
+        batch = observations[start:start + 32]
+        branches = [f"{{ <{A}{obs}> <{iri}> ?at{i} }}" for i, obs in enumerate(batch)
+                    for iri in term_iris("observedAt")]
+        columns = " ".join(f"?at{i}" for i in range(len(batch)))
+        rows = select(post, f"SELECT {columns} WHERE {{ {' UNION '.join(branches)} }}")
+        for i, obs in enumerate(batch):
+            first = next((r[f"at{i}"] for r in rows if r.get(f"at{i}") is not None), None)
+            if first is not None and obs not in out:
+                out[obs] = str(first)
+    return out
+
+
+def _newest(post, stamped: list[tuple[str, str]]) -> str | None:
     if not stamped:
         return None
     newest = max(at for at, _ in stamped)
@@ -295,6 +312,37 @@ def _read_latest_observation(post, item: str) -> str | None:
     projected = [obs for obs in tied
                  if select(post, f"SELECT ?st WHERE {{ {pattern(f'<{A}{obs}>', 'observedStatus', '?st')} }}")]
     return (projected or tied)[0]
+
+
+def latest_observations(post, items: list[str]) -> dict[str, str | None]:
+    """`latest_observation` for many legacy WorkItems in bounded batches.
+
+    The same answer as the batched single-item path (same stamps, same tie
+    rule), but the observes reads and the observedAt reads are shared across
+    items: 32 bound single-pattern branches per query. Seeds keep their own
+    native single read."""
+    reads = post if isinstance(post, _EvaluationReads) else _EvaluationReads(post, batch_history=True)
+    out: dict[str, str | None] = {}
+    legacy = [w for w in dict.fromkeys(items) if not w.startswith(SEED_ITEM)]
+    for w in dict.fromkeys(items):
+        if w.startswith(SEED_ITEM):
+            out[w] = latest_observation(reads, w)
+    owned: dict[str, list[str]] = {w: [] for w in legacy}
+    for start in range(0, len(legacy), 32):
+        batch = legacy[start:start + 32]
+        # Every IRI of the term, as _read_latest_observation's pattern() expands it.
+        branches = union([f"<{item_iri(w)}> <{iri}> ?o{i}" for i, w in enumerate(batch)
+                          for iri in term_iris("observes")])
+        columns = " ".join(f"?o{i}" for i in range(len(batch)))
+        for row in select(reads, f"SELECT {columns} WHERE {{ {branches} }}"):
+            for i, w in enumerate(batch):
+                if row.get(f"o{i}") is not None and _local(row[f"o{i}"]) not in owned[w]:
+                    owned[w].append(_local(row[f"o{i}"]))
+    stamps = _stamps(reads, list(dict.fromkeys(o for w in legacy for o in owned[w])))
+    for w in legacy:
+        out[w] = _newest(reads, [(stamps[o], o) for o in owned[w] if o in stamps])
+        reads.latest[w] = out[w]
+    return out
 
 
 # ---- typed probes: FIXED code, parameters from the graph (aegis-c0awwp) ----
