@@ -1,0 +1,23 @@
+{
+  "release": "v0.1.8",
+  "previous_release": "v0.1.7",
+  "scope": "source preparation only; no published digest or runtime acceptance",
+  "reviewed_domain_source_revision": "a4c1964ccf441cc19d945c440a07c5ce0d0c2f51",
+  "source_rollback": "normal revert of release preparation; immutable published assets remain",
+  "consumer_rollback": "restore actual pre-operation producer/consumer pins and bytes, including any older compatibility pin; rehearse scoped shacl inverse before admission",
+  "domain": {
+    "node_shapes": 120,
+    "upstream_revision": "e715342b312f1832eaee7e1bfe08cd2b0664b91c",
+    "upstream_fixture_sha256": "9c13b96be881f9463ba109e769320e0ca8d29f3a28e4768cd6fea615bb82b4f6",
+    "constraint_delta": [
+      "MemberOfShape: additional exact branch [ sh:class aegis:Document ; sh:in ( aegis:aegis-crew-process-rules ) ]"
+    ],
+    "inference_manifest": "shapes/aegis/inference-placement.json",
+    "automatic_load": false,
+    "installed_snapshot_equivalence": "not established"
+  },
+  "publication": "existing Release workflow only, after complete CI and ONE independent review",
+  "artifact_identity": "source.json and carried compatibility manifest generated from exact selected Git revision; verify published checksums independently",
+  "runtime_acceptance": "separate reviewed Gold pin/adapter, read-only composed-shape validation against the live graph, and operator admission; no production removal",
+  "release_rollback": "retain independently verified v0.1.7 artifacts; never overwrite immutable release assets"
+}
