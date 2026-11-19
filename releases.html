@@ -180,6 +180,22 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="source-releases"><a class="header" href="#source-releases">Source releases</a></h1>
+<h2 id="v018-release-preparation"><a class="header" href="#v018-release-preparation">v0.1.8 release preparation</a></h2>
+<p>This source release carries the reviewed <code>MemberOfShape</code> change from
+<a href="https://github.com/intigraph/camayoc/pull/254">PR254</a>, merged at
+<code>a4c1964ccf441cc19d945c440a07c5ce0d0c2f51</code>. The release scope is recorded in
+<a href="release-notes/v0.1.8.json"><code>release-notes/v0.1.8.json</code></a>.</p>
+<p>The software-factory domain pack admits one more <code>member_of</code> target: the exact
+typed process rulebook <code>aegis:aegis-crew-process-rules</code> (a Document). Arbitrary
+Documents remain refused. The upstream fixture is re-pinned to Quipu <code>e715342b</code>,
+whose only change to the pinned file since the previous pin is that same branch;
+all NodeShape names are retained. This is a source delta relative to v0.1.7 and
+must not be represented as an isomorphic replacement of an installed snapshot.</p>
+<p>Use the existing source-release workflow after one independent peer and complete
+CI. Verify the published source revision, archive checksum, <code>source.json</code> and the
+carried compatibility manifest separately. Retain verified v0.1.7 artifacts as the
+previous release rollback. Runtime adoption needs a reviewed consumer pin change and
+its own admission; this release loads nothing.</p>
 <h2 id="v017-release-preparation"><a class="header" href="#v017-release-preparation">v0.1.7 release preparation</a></h2>
 <p>This source release includes the reviewed domain placement and raw alias controls
 from <a href="https://github.com/intigraph/camayoc/pull/231">PR231</a>, merged at
