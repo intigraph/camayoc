@@ -33,6 +33,14 @@ class NativeUnknown(ValueError):
     """Unproved native authority; callers must not consult stale legacy state."""
 
 
+class NativeMissing(NativeUnknown):
+    """A complete, untruncated live read returned NO facts for the subject.
+
+    Still UNKNOWN (an archived, unarchived or never-created seed all look like
+    this); only a separate positive archive proof may resolve it.
+    """
+
+
 def iri(value: str) -> str:
     if not isinstance(value, str):
         raise NativeUnknown('IRI is not text')
@@ -138,6 +146,8 @@ class Reader:
             if not isinstance(response, dict) or response.get('truncated') is not False:
                 raise NativeUnknown('native read is partial')
             rows = response.get('rows')
+            if rows == [] and len(json.dumps(response).encode()) <= MAX_BYTES:
+                raise NativeMissing('native record missing from the live board graph')
             if (not isinstance(rows, list) or not 0 < len(rows) <= MAX_ROWS
                     or len(json.dumps(response).encode()) > MAX_BYTES):
                 raise NativeUnknown('native record missing, malformed or exceeds read budget')

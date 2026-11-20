@@ -396,11 +396,13 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
     source=native.Reader(call,reader.board)
     try:
         canonical=source.get(item)
-    except native.NativeUnknown:
-        # A missing live record is not absence. Only a POSITIVE archive proof
-        # (sattler, aegis-j3q2) resolves a never-verified candidate, with no
-        # write; a verified projection of an archived seed stays UNKNOWN.
-        if previous is not None or not source.archived(item):
+    except native.NativeMissing:
+        # A complete empty live read is not absence. Only a POSITIVE archive
+        # proof (sattler, aegis-j3q2) resolves a never-verified candidate, and
+        # only when no projection of it exists anywhere (never-verified is not
+        # never-projected), so dropping it can leave no orphan. No write. Any
+        # other NativeUnknown, a verified seed or any doubt stays UNKNOWN.
+        if previous is not None or not source.archived(item) or not prove_absent(call,item):
             raise
         journal.drop_archived(item,tx)
         return ARCHIVED

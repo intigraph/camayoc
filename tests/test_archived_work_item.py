@@ -13,8 +13,9 @@ class Archived(unittest.TestCase):
     setUp = fixture.Tick.setUp
     tearDown = fixture.Tick.tearDown
 
-    def serve(self, *, live=False, archive_answer=None):
-        """Native read empty unless live; archive ASK answers as given."""
+    def serve(self, *, live=False, archive_answer=None, projected=False, native=None):
+        """Native read empty unless live; archive ASK answers as given;
+        projection absence (prove_absent) answers per `projected`."""
         self.queries = []
         def post(endpoint, body, **kwargs):
             if endpoint == '/knot':
@@ -27,7 +28,13 @@ class Archived(unittest.TestCase):
                     raise archive_answer
                 return archive_answer
             if 'BIND(' in query:
+                if native is not None:
+                    if isinstance(native, Exception):
+                        raise native
+                    return native
                 return {'rows': rows() if live else [], 'truncated': False}
+            if query.startswith('ASK') and '?p ?o' in query:
+                return {'result': projected, 'truncated': False}
             return {'rows': [], 'truncated': False}
         return post
 
@@ -81,6 +88,34 @@ class Archived(unittest.TestCase):
         self.assertNotIn('archived', receipt)
         self.assertEqual(self.writes, 1)
         self.assertFalse([q for q in self.queries if 'seeds-archive' in q])
+
+    def test_never_verified_but_projected_seed_is_never_dropped(self):
+        # malcolm review: never-verified is not never-projected (we0zuubl1).
+        receipt = self.tick(self.serve(archive_answer={'result': True, 'truncated': False},
+                                       projected=True))
+        self.assertEqual(receipt['status'], 'UNKNOWN')
+        self.assertNotIn('archived', receipt)
+        self.assertEqual(self.j.next()[0], ID)
+
+    def test_only_a_complete_empty_live_read_consults_the_archive(self):
+        # malcolm review: oversize, wrong identity, truncation and transport
+        # failures are not a missing record and never reach the archive.
+        wrong = rows()
+        for row in wrong:
+            row['s'] = nw.ITEM + 'demo-other'
+        for native in ({'rows': wrong, 'truncated': False}, {'rows': [], 'truncated': True},
+                       {'rows': None}, {'rows': [{}] * 200, 'truncated': False},
+                       RuntimeError('HTTP 403 TOKEN-CANARY')):
+            with self.subTest(native=type(native).__name__):
+                self.setUp()
+                try:
+                    receipt = self.tick(self.serve(native=native,
+                                                   archive_answer={'result': True, 'truncated': False}))
+                    self.assertEqual(receipt['status'], 'UNKNOWN')
+                    self.assertFalse([q for q in self.queries if 'seeds-archive' in q])
+                    self.assertEqual(self.j.next()[0], ID)
+                finally:
+                    self.tearDown()
 
     def test_journal_drop_refuses_prepared_changed_retired_or_verified_rows(self):
         self.j.retain(page())
