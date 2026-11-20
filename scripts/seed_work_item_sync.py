@@ -222,6 +222,12 @@ def effect_not_applied(post, journal, envelope, item):
     projection of an OLDER native version of this same item). This proves
     non-application of the effect only; it says nothing about whether a writer
     can still commit it. Callers must hold separate terminal-worker evidence.
+
+    Assumptions: this producer, under its state lock, is the only writer of the
+    WorkItem projection in the target graph, and one /knot replace is atomic
+    for the subject (all of a version's triples land, or none do). An older
+    complete projection therefore means this newer effect never applied.
+    Another writer of the same subject would void that inference.
     """
     previous = journal.db.execute('SELECT version FROM verified WHERE id=?', (item,)).fetchone()
     previous = None if previous is None else integer_literal(previous[0])
