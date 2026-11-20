@@ -104,6 +104,32 @@ class Custody(unittest.TestCase):
                 self.j.db.execute('UPDATE pending SET effect_tx=? WHERE id=?',(bad,ID))
                 with self.assertRaises(sc.CustodyUnknown):self.j.next()
                 self.assertEqual(self.j.db.execute('SELECT body FROM pending WHERE id=?',(ID,)).fetchone()[0],stored)
+    def test_one_whole_archive_transaction_over_512k_is_admitted(self):
+        """aegis-j3q2: the board archive move writes 100 seeds per transaction
+        (tx 1292421: 2080 retracts, 785,438 bytes). A transaction cannot be
+        split by the page limit, so a 512 KiB page budget refused it forever.
+        It is admitted whole; the feed budget is still a bound."""
+        records = []
+        seq = 0
+        for n in range(100):
+            subject = nw.ITEM + f'demo-a{n:03d}'
+            for k in range(21):
+                seq += 1
+                records.append({'graph': GRAPH, 'tx': 10, 'sequence': seq, 'entity': subject,
+                                'attribute': nw.SCHEMA + f'field{k}', 'op': 'retract',
+                                'value': {'lexical': 'x' * 330}})
+        big = page(records=records)
+        size = len(json.dumps(big).encode())
+        self.assertGreater(size, 512 * 1024)
+        self.assertLess(size, sc.FEED_MAX_BYTES)
+        end, items = sc.candidates(big, self.board, 9)
+        self.assertEqual((end, len(items)), (10, 100))
+        self.j.retain(big)
+        self.assertEqual(self.j.cursor, 10)
+        over = page(records=records, padding='x' * sc.FEED_MAX_BYTES)
+        with self.assertRaises(sc.CustodyUnknown):
+            sc.candidates(over, self.board, 9)
+
     def test_unknown_item_does_not_starve_other_candidates(self):
         self.j.retain(page())
         self.j.mark_attempt(ID,100)

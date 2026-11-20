@@ -14,6 +14,13 @@ import seed_work_items as nw
 MAX_TRANSACTIONS=4
 MAX_RECORDS=4096
 MAX_BYTES=512*1024
+#: Budget for one change-feed page or one streamed transaction (aegis-j3q2).
+#: A transaction cannot be split by the page limit, and the board archive move
+#: writes 100 seeds per transaction: tx 1292421 is 2080 retracts = 785,438
+#: bytes, so the 512 KiB budget refused it at limit=1 on every tick and held the
+#: work-item cursor still for 3.6 days. Still bounded; MAX_BYTES keeps guarding
+#: projection bodies and other responses.
+FEED_MAX_BYTES=8*1024*1024
 MAX_PENDING=256
 MAX_RETIRED=8
 
@@ -32,7 +39,7 @@ def integer(value):
 
 def candidates(page,board,since):
     """Validate the complete page before retaining any part or advancing."""
-    if not isinstance(page,dict) or len(json.dumps(page).encode())>MAX_BYTES:
+    if not isinstance(page,dict) or len(json.dumps(page).encode())>FEED_MAX_BYTES:
         raise CustodyUnknown('feed page exceeds byte budget or is malformed')
     records=page.get('records');end=integer(page.get('next_tx'));watermark=integer(page.get('watermark_tx'))
     if page.get('capture') not in ('new_values','old_and_new_values') or page.get('truncated') or not isinstance(records,list) or len(records)>MAX_RECORDS:

@@ -32,11 +32,11 @@ def admitted_page(page, identity):
     rows, size = [], 0
     for row in records:
         size += len(json.dumps(row).encode())
-        if size > custody.MAX_BYTES:
+        if size > custody.FEED_MAX_BYTES:
             raise custody.CustodyUnknown('whole transaction exceeds native custody budget')
         rows.append(row)
     out = {**page, 'records': rows}
-    if len(json.dumps(out).encode()) > custody.MAX_BYTES:
+    if len(json.dumps(out).encode()) > custody.FEED_MAX_BYTES:
         raise custody.CustodyUnknown('whole transaction exceeds native custody budget')
     return out
 
@@ -70,7 +70,7 @@ class Subscription:
                     if response.headers.get_content_type() != 'text/event-stream':
                         raise custody.CustodyUnknown('stream content type refused')
                     self.connected = True
-                    for stream_id, raw in change_frames.frames(response, max_transaction_bytes=custody.MAX_BYTES):
+                    for stream_id, raw in change_frames.frames(response, max_transaction_bytes=custody.FEED_MAX_BYTES):
                         try:
                             page = admitted_page(raw, self.identity)
                             self.source_verified = True
