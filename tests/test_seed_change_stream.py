@@ -154,7 +154,7 @@ class WireAdmission(unittest.TestCase):
 
     def test_native_budget_remains_bounded_and_whole(self):
         body = transaction()
-        body['records'][0]['value'] = {'text': 'x' * custody.MAX_BYTES}
+        body['records'][0]['value'] = {'text': 'x' * custody.FEED_MAX_BYTES}
         with self.assertRaises(custody.CustodyUnknown):
             stream.admitted_page(body, IDENTITY)
         body = transaction()

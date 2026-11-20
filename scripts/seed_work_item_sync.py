@@ -521,6 +521,16 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
                     # below the watermark. That empty page is the caught-up proof.
                     caught_up=(isinstance(page,dict) and (page.get('records')==[] or
                                integer_or_none(page.get('next_tx'))==integer_or_none(page.get('watermark_tx'))))
+                except custody.PageTooLarge:
+                    # The whole page is over the byte/record budget (aegis-j3q2:
+                    # four back-to-back archive txs = 8393 records). Nothing was
+                    # retained. Spend another EXISTING feed-read slot on fewer
+                    # whole txs; one transaction over budget stays a refusal.
+                    if page_limit>1:
+                        page_limit=max(1,page_limit//2)
+                        continue
+                    if not retained_pages and pending is None:raise
+                    feed_error='PageTooLarge';break
                 except custody.CustodyFull:
                     # retain() rolled back the entire page, including its cursor.
                     # Spend another EXISTING feed-read slot on fewer whole txs;

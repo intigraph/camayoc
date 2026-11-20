@@ -548,6 +548,39 @@ class AdaptiveFeed(unittest.TestCase):
         self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],0)
         self.assertEqual((result['status'],result['error'],result['writes']),('UNKNOWN','CustodyFull',0))
 
+    def archive_page(self,start,end,attrs=21,items=100):
+        """Board archive move shape (aegis-j3q2): 100 seeds x 21 retracts per tx."""
+        return dict(records=[dict(graph=GRAPH,tx=tx,sequence=item*attrs+k,
+                    entity=nw.ITEM+f'demo-arch-{tx}-{item}',
+                    attribute=nw.SCHEMA+f'field{k}',op='retract')
+                    for tx in range(start,end+1) for item in range(items) for k in range(attrs)],
+                    next_tx=end,watermark_tx=14,capture='new_values')
+
+    def test_oversized_archive_page_halves_to_whole_transactions(self):
+        # malcolm (#262): a limit=4 page of back-to-back archive txs was 8393
+        # records > MAX_RECORDS, refused every tick at the same limit. Halve to
+        # one whole transaction instead; custody backpressure still stops it.
+        calls=[]
+        def changes(**args):
+            calls.append((args['since'],args['limit']))
+            return self.archive_page(args['since']+1,min(14,args['since']+args['limit']))
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):result=self.tick(changes)
+        self.assertEqual(calls[:4],[(9,4),(9,2),(9,1),(10,1)])
+        self.assertEqual(self.j.cursor,11)       # 2 txs x 100 items; a 3rd exceeds MAX_PENDING
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],200)
+        self.assertEqual(result['writes'],0)
+
+    def test_single_transaction_over_record_budget_never_advances_or_splits(self):
+        calls=[]
+        def changes(**args):
+            calls.append((args['since'],args['limit']))
+            return self.archive_page(10,10,attrs=sc.MAX_RECORDS//100+1)
+        with mock.patch.object(sync,'MAX_DELIVERIES',0):result=self.tick(changes)
+        self.assertEqual(calls,[(9,4),(9,2),(9,1)])
+        self.assertEqual(self.j.cursor,9)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM pending').fetchone()[0],0)
+        self.assertEqual((result['status'],result['error']),('UNKNOWN','PageTooLarge'))
+
     def test_retries_consume_existing_feed_read_budget_and_remain_unknown(self):
         self.seed(171);calls=[]
         def changes(**args):
