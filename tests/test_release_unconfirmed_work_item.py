@@ -46,7 +46,7 @@ class ReleaseUnconfirmed(unittest.TestCase):
     def test_absent_unconfirmed_effect_becomes_a_fresh_candidate(self):
         post, calls = server(ABSENT, ABSENT)
         receipt = tool.release(self.j, post, ID)
-        self.assertEqual(receipt, {'status': 'RELEASED', 'item': ID, 'tx': 10})
+        self.assertEqual(receipt, {'status': 'RELEASED', 'item': ID, 'tx': 10, 'proof': 'absent'})
         # Both every named graph and the default graph were asked about the subject.
         self.assertEqual([q.startswith('ASK { GRAPH ?g') for _, q in calls], [True, False])
         # Fresh candidate: the next delivery prepares and writes once, as for new work.
@@ -102,6 +102,36 @@ class ReleaseUnconfirmed(unittest.TestCase):
         missing = Path(self.tmp.name) / 'absent.sqlite3'
         self.assertEqual(tool.main(['--enable', '--native-authority-stdin',
                                     '--state', str(missing), '--item', ID]), 2)
+
+    def test_batch_proves_each_item_and_one_refusal_stops_none(self):
+        other = 'demo-other'
+        self.j.retain(page(11, subject=nw.ITEM + other))
+        self.j.prepare(other, 11, {'other': 'body'})
+        kept = self.j.db.execute('SELECT * FROM pending WHERE id=?', (ID,)).fetchone()
+        # ID: present somewhere, no version -> refused. other: absent -> released.
+        post, _ = server(ABSENT, {'result': True}, ABSENT, ABSENT)
+        receipts = tool.release_many(self.j, post, [ID, other])
+        self.assertEqual([r['status'] for r in receipts], ['REFUSED', 'RELEASED'])
+        self.assertEqual(tool.aggregate(receipts), 'REFUSED')
+        self.assertEqual(self.j.db.execute('SELECT * FROM pending WHERE id=?', (ID,)).fetchone(), kept)
+        self.assertEqual(self.j.db.execute('SELECT body FROM pending WHERE id=?', (other,)).fetchone(), (None,))
+
+    def test_batch_error_is_unknown_for_that_item_only(self):
+        def broken(route, body):
+            raise AssertionError('must not be reached')
+        self.j.db.execute('DROP TABLE verified')  # custody read fails before any server read
+        receipts = tool.release_many(self.j, broken, [ID, 'demo-missing'])
+        self.assertEqual([r['status'] for r in receipts], ['UNKNOWN', 'REFUSED'])
+        self.assertEqual(tool.aggregate(receipts), 'UNKNOWN')
+        self.assertIsNotNone(self.j.db.execute('SELECT body FROM pending WHERE id=?', (ID,)).fetchone()[0])
+
+    def test_cli_bounds_the_batch_and_refuses_repeats_before_any_read(self):
+        too_many = [x for i in range(tool.MAX_ITEMS + 1) for x in ('--item', f'demo-{i}')]
+        for items in (too_many, ['--item', ID, '--item', ID]):
+            with self.subTest(n=len(items) // 2):
+                self.assertEqual(tool.main(['--enable', '--native-authority-stdin',
+                                            '--state', str(self.path), *items]), 2)
+        self.assertIsNotNone(self.j.next()[2])  # nothing released
 
 
 if __name__ == '__main__':

@@ -277,6 +277,74 @@ class Reconciliation(unittest.TestCase):
         self.assertEqual(self.j.next()[2], stored)
         self.assertEqual(self.writes, 1)
 
+    def served_post(self, dataset):
+        """Serve rdflib rows the way quipu does: xsd:integer as a JSON number."""
+        from rdflib import Literal, XSD
+        def value(term):
+            if isinstance(term, Literal) and term.datatype == XSD.integer:
+                return int(term)
+            return str(term)
+        def post(endpoint, body):
+            if endpoint == '/knot/status':
+                return {'contract': 'quipu.knot-completion/v1',
+                        'write_id': body['write_id'], 'state': 'stopped'}
+            result = dataset.query(body['query'])
+            if result.type == 'ASK':
+                return {'result': bool(result.askAnswer), 'truncated': False}
+            return {'rows': [{str(n): value(v) for n, v in row.asdict().items()}
+                             for row in result], 'truncated': False}
+        return post
+
+    def prior_projection(self):
+        from rdflib import Dataset, URIRef
+        self.assertEqual(self.tick()['verified'], 1)
+        prior = self.last_envelope
+        self.j.retain(page(11))
+        self.native_version = 4
+        envelope = json.loads(self.fail_write())
+        dataset = Dataset()
+        graph = dataset.graph(URIRef(prior['request']['graph']))
+        graph.parse(data=prior['request']['turtle'], format='turtle')
+        self.dataset = dataset
+        return envelope, graph
+
+    def test_served_integer_version_binding_proves_the_verified_prior_version(self):
+        # aegis-j3q2: served quipu answers ?version as 27, not "27"; the proof
+        # was unreachable in production while string fixtures passed.
+        envelope, graph = self.prior_projection()
+        post = self.served_post(self.dataset)
+        self.assertEqual(sync.effect_not_applied(post, self.j, envelope, ID), 'prior-version')
+        self.assertTrue(sync.completed_without_effect(post, self.j, envelope, ID))
+        graph.parse(data=envelope['request']['turtle'], format='turtle')  # effect present too
+        self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
+
+    def test_unverified_item_with_one_complete_older_projection_is_not_applied(self):
+        # aegis-j3q2 (we0zuubl1): an older version landed without a verified row.
+        from rdflib import URIRef, Literal
+        envelope, graph = self.prior_projection()
+        self.j.db.execute('DELETE FROM verified WHERE id=?', (ID,))
+        post = self.served_post(self.dataset)
+        self.assertFalse(sync.prove_absent(post, ID))
+        self.assertEqual(sync.effect_not_applied(post, self.j, envelope, ID), 'prior-version')
+        subject = URIRef(sync.projection.A + ID)
+        version = URIRef(native.SCHEMA + 'version')
+        for bad in (envelope['version'], envelope['version'] + 1, 0):  # not strictly older
+            with self.subTest(observed=bad):
+                old = graph.value(subject, version)
+                graph.set((subject, version, Literal(bad)))
+                self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
+                graph.set((subject, version, old))
+        self.assertEqual(sync.effect_not_applied(post, self.j, envelope, ID), 'prior-version')
+        graph.add((subject, version, Literal(1)))  # two versions: ambiguous
+        self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
+
+    def test_integer_literal_accepts_only_exact_integer_forms(self):
+        for value, expected in ((27, 27), ('27', 27), ({'value': '27', 'datatype': 'integer'}, 27),
+                                (True, None), (False, None), (2.0, None), ('2.0', None),
+                                ('', None), (None, None), ('1' * 19, None), ('-3', -3)):
+            with self.subTest(value=value):
+                self.assertEqual(sync.integer_literal(value), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
