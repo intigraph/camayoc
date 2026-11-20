@@ -60,6 +60,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -763,6 +764,15 @@ class Writer:
         planes._post("/episode", body, client=CLIENT)
 
 
+def permanent_refusal(exc: BaseException) -> bool:
+    """True only for an HTTP 400 answer to the write: a deterministic refusal of
+    fixed bytes. 401/403 (credentials), 404 (routing), 408/429/5xx and
+    transport or read timeouts stay retryable; an indeterminate write is
+    never quarantined."""
+    cause = exc.__cause__
+    return isinstance(cause, urllib.error.HTTPError) and cause.code == 400
+
+
 def print_writer(body: dict) -> None:
     print(json.dumps(body, sort_keys=True), flush=True)
 
@@ -802,6 +812,16 @@ def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = Non
         try:
             writer(body)
         except Exception as exc:  # noqa: BLE001 - a failed write stays pending, never lost
+            if permanent_refusal(exc):
+                # The store judged these exact bytes and refused them (aegis-n0wc:
+                # SHACL MaxCount on a repeated state change). A retry sends the
+                # same bytes and gets the same 400, so retrying forever only
+                # spends store time: 65 such rows cost ~43% of this client's
+                # /episode calls. Quarantine with the reason; nothing is lost
+                # that a retry could have written.
+                spool.settle(delivery, "quarantined", reason=f"permanent refusal: {exc}"[:500])
+                tally("refused")
+                continue
             spool.retry(delivery, attempts, now, f"{type(exc).__name__}: {exc}")
             tally("retry")
             continue
