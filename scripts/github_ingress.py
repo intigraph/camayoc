@@ -761,14 +761,27 @@ class Writer:
                                           "timestamp": body["nodes"][0]["properties"]["occurredAt"],
                                           **windows.WINDOW_LABEL}, client=CLIENT)
             self.ensured.add(graph)
-        planes._post("/episode", body, client=CLIENT)
+        try:
+            planes._post("/episode", body, client=CLIENT)
+        except planes.PlaneError as exc:
+            # Only the episode POST can be a permanent refusal of these exact
+            # bytes. A 400 from /graph/create or /graph/label is about the
+            # graph, not the delivery, and must keep retrying (wu, PR #261).
+            if permanent_refusal(exc):
+                raise EpisodeRefused(str(exc)) from exc
+            raise
+
+
+class EpisodeRefused(Exception):
+    """The /episode POST itself answered HTTP 400 for these exact bytes."""
 
 
 def permanent_refusal(exc: BaseException) -> bool:
-    """True only for an HTTP 400 answer to the write: a deterministic refusal of
-    fixed bytes. 401/403 (credentials), 404 (routing), 408/429/5xx and
-    transport or read timeouts stay retryable; an indeterminate write is
-    never quarantined."""
+    """True only for an HTTP 400 answer: a deterministic refusal of fixed bytes.
+    401/403 (credentials), 404 (routing), 408/429/5xx and transport or read
+    timeouts stay retryable; an indeterminate write is never quarantined.
+    The drain acts on it only through EpisodeRefused, which the Writer raises
+    for the /episode POST alone."""
     cause = exc.__cause__
     return isinstance(cause, urllib.error.HTTPError) and cause.code == 400
 
@@ -812,7 +825,7 @@ def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = Non
         try:
             writer(body)
         except Exception as exc:  # noqa: BLE001 - a failed write stays pending, never lost
-            if permanent_refusal(exc):
+            if isinstance(exc, EpisodeRefused):
                 # The store judged these exact bytes and refused them (aegis-n0wc:
                 # SHACL MaxCount on a repeated state change). A retry sends the
                 # same bytes and gets the same 400, so retrying forever only

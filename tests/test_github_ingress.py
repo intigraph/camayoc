@@ -200,41 +200,63 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual({"written": 1}, spool.counts())
 
     def test_http_400_refusal_is_quarantined_not_retried_forever(self):
-        """aegis-n0wc: a SHACL 400 refuses these exact bytes; retrying resends
-        them. Quarantine with the reason. Indeterminate and transient errors
-        (408, 5xx, 401, transport) keep the existing retry."""
+        """aegis-n0wc: a 400 from the /episode POST refuses these exact bytes;
+        quarantine with the reason. A 400 from /graph/create or /graph/label
+        (wu, PR #261), and 401/403/408/429/5xx or transport errors on any
+        call, keep the existing retry. Drives the real Writer."""
         import io
         import urllib.error
+        from unittest import mock
         import planes
 
-        def failing(code):
-            def writer(body):
+        def post_failing(path, code):
+            def _post(endpoint, body, **kwargs):
+                if endpoint != path:
+                    return {}
                 try:
-                    raise urllib.error.HTTPError("http://q/episode", code, "x", {},
-                                                 io.BytesIO(b'{"error":"SHACL validation failed"}'))
+                    raise urllib.error.HTTPError("http://q" + endpoint, code, "x", {},
+                                                 io.BytesIO(b'{"error":"refused"}'))
                 except urllib.error.HTTPError as e:
-                    raise planes.PlaneError(f"/episode failed: HTTP {code}") from e
-            return writer
+                    raise planes.PlaneError(f"{endpoint} failed: HTTP {code}") from e
+            return _post
 
-        spool = gi.Spool(":memory:")
-        spool.add("d1", "push", delivery("push")["body"], now=0)
-        self.assertEqual({"refused": 1}, gi.drain_once(spool, actor="t", writer=failing(400), now=1))
+        def spool_with(n):
+            spool = gi.Spool(":memory:")
+            for i, name in enumerate(("push", "pull_request.closed", "check_run.completed")[:n]):
+                rec = delivery(name)
+                spool.add(f"d{i}", rec["headers"]["X-GitHub-Event"], rec["body"], now=0)
+            return spool
+
+        spool = spool_with(1)
+        with mock.patch.object(planes, "_post", post_failing("/episode", 400)):
+            self.assertEqual({"refused": 1}, gi.drain_once(spool, actor="t", writer=gi.Writer(), now=1))
         self.assertEqual({"quarantined": 1}, spool.counts())
-        self.assertEqual({}, gi.drain_once(spool, actor="t", writer=failing(400), now=10_000))
-        reason, = spool.conn.execute("SELECT reason FROM deliveries WHERE id='d1'").fetchone()
+        reason, = spool.conn.execute("SELECT reason FROM deliveries WHERE id='d0'").fetchone()
         self.assertIn("permanent refusal", reason)
         self.assertIn("HTTP 400", reason)
+
+        for path in ("/graph/create", "/graph/label"):
+            with self.subTest(path=path):
+                spool = spool_with(3)
+                with mock.patch.object(planes, "_post", post_failing(path, 400)):
+                    counts = gi.drain_once(spool, actor="t", writer=gi.Writer(), now=1)
+                self.assertEqual({"retry": 3}, counts)
+                self.assertEqual({"pending": 3}, spool.counts())
+
         for code in (401, 403, 408, 429, 500, 503):
             with self.subTest(code=code):
-                spool = gi.Spool(":memory:")
-                spool.add("d1", "push", delivery("push")["body"], now=0)
-                self.assertEqual({"retry": 1}, gi.drain_once(spool, actor="t", writer=failing(code), now=1))
+                spool = spool_with(1)
+                with mock.patch.object(planes, "_post", post_failing("/episode", code)):
+                    self.assertEqual({"retry": 1}, gi.drain_once(spool, actor="t", writer=gi.Writer(), now=1))
                 self.assertEqual({"pending": 1}, spool.counts())
-        spool = gi.Spool(":memory:")
-        spool.add("d1", "push", delivery("push")["body"], now=0)
-        def transport(body):
-            raise planes.PlaneError("/episode gave no answer (TimeoutError)") from TimeoutError()
-        self.assertEqual({"retry": 1}, gi.drain_once(spool, actor="t", writer=transport, now=1))
+
+        def transport(endpoint, body, **kwargs):
+            if endpoint == "/episode":
+                raise planes.PlaneError("/episode gave no answer (TimeoutError)") from TimeoutError()
+            return {}
+        spool = spool_with(1)
+        with mock.patch.object(planes, "_post", transport):
+            self.assertEqual({"retry": 1}, gi.drain_once(spool, actor="t", writer=gi.Writer(), now=1))
 
     def test_unwatched_repository_is_not_written(self):
         spool = gi.Spool(":memory:")
