@@ -338,6 +338,25 @@ class Reconciliation(unittest.TestCase):
         graph.add((subject, version, Literal(1)))  # two versions: ambiguous
         self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
 
+    def test_verified_version_must_match_the_observed_prior_projection(self):
+        # aegis-j3q2 review R1: with a verified v3 and an effect v4, a complete
+        # v2 projection is older than the effect but is NOT the verified state.
+        from rdflib import URIRef, Literal
+        envelope, graph = self.prior_projection()
+        post = self.served_post(self.dataset)
+        self.assertEqual(sync.effect_not_applied(post, self.j, envelope, ID), 'prior-version')
+        subject = URIRef(sync.projection.A + ID)
+        comment = URIRef(native.RDFS + 'comment')
+        prior = json.loads(str(graph.value(subject, comment)))
+        verified = prior['source_version']
+        older = verified - 1
+        self.assertGreaterEqual(older, 1)
+        graph.set((subject, URIRef(native.SCHEMA + 'version'), Literal(older)))
+        graph.set((subject, comment, Literal(json.dumps({**prior, 'source_version': older}))))
+        self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
+        self.j.db.execute('DELETE FROM verified WHERE id=?', (ID,))  # unverified: older is enough
+        self.assertEqual(sync.effect_not_applied(post, self.j, envelope, ID), 'prior-version')
+
     def test_integer_literal_accepts_only_exact_integer_forms(self):
         for value, expected in ((27, 27), ('27', 27), ({'value': '27', 'datatype': 'integer'}, 27),
                                 (True, None), (False, None), (2.0, None), ('2.0', None),
