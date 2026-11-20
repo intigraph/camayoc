@@ -134,11 +134,33 @@ class Reader:
         self.cache = {}  # Only this evaluation/run; no retained stale authority.
 
     def get(self, item_id: str) -> Record:
+        return self._read(item_id, self.board.graph)
+
+    def get_archived(self, item_id: str) -> Record:
+        """Read a seed from the board ARCHIVE graph (aegis-j3q2).
+
+        Only for a seed that archived() has just POSITIVELY proven archived:
+        the archive keeps closed seeds immutable under unchanged IRIs, so its
+        record is the seed's final authoritative state. It must be closed; any
+        other status is not an archived seed and stays NativeUnknown. An empty
+        archive read is NativeUnknown, never NativeMissing: absence there is
+        not a second chance at a drop.
+        """
+        try:
+            record = self._read(item_id, self.board.archive_graph)
+        except NativeMissing as exc:
+            raise NativeUnknown('archived record missing from the archive graph') from exc
+        if record.status != 'closed':
+            raise NativeUnknown('archived record is not closed')
+        return record
+
+    def _read(self, item_id: str, graph: str) -> Record:
         subject = self.board.subject(item_id)
-        if subject in self.cache:
-            return self.cache[subject]
+        key = (graph, subject)
+        if key in self.cache:
+            return self.cache[key]
         props = ', '.join('<'+p+'>' for p in sorted(PROPERTIES))
-        query = (f'SELECT ?s ?p ?o WHERE {{ GRAPH <{self.board.graph}> {{ '
+        query = (f'SELECT ?s ?p ?o WHERE {{ GRAPH <{graph}> {{ '
                  f'BIND(<{subject}> AS ?s) <{subject}> ?p ?o . FILTER(?p IN ({props})) '
                  f'}} }} LIMIT {MAX_ROWS+1}')
         try:
@@ -162,7 +184,7 @@ class Reader:
             raise
         except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
             raise NativeUnknown('native read failed; no legacy fallback') from exc
-        self.cache[subject] = record
+        self.cache[key] = record
         return record
 
     def archived(self, item_id: str) -> bool:
@@ -232,6 +254,10 @@ class Reader:
             if self.board.subject(blocker) != target:
                 raise NativeUnknown('native blocker identity is ambiguous')
             blockers.append(blocker)
+        # The BOARD graph is the record's identity even when read from the
+        # archive: archived seeds keep their IRIs, and the projection snapshot
+        # is keyed on (graph, id), so an archive-graph identity would fork a
+        # second snapshot beside the stale one instead of replacing it.
         return Record(item_id,subject,self.board.graph,version,status,owner,created,modified,
                       title,text(SCHEMA+'description',optional=True) or '',
                       tuple(sorted({lexical(v) for v in values.get(SCHEMA+'keywords',[])})),

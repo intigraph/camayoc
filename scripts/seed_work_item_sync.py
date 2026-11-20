@@ -408,10 +408,19 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
         # only when no projection of it exists anywhere (never-verified is not
         # never-projected), so dropping it can leave no orphan. No write. Any
         # other NativeUnknown, a verified seed or any doubt stays UNKNOWN.
-        if previous is not None or not source.archived(item) or not prove_absent(call,item):
+        if previous is not None or not source.archived(item):
             raise
-        journal.drop_archived(item,tx)
-        return ARCHIVED
+        if prove_absent(call,item):
+            journal.drop_archived(item,tx)
+            return ARCHIVED
+        # Archived but ALREADY PROJECTED, never verified (aegis-j3q2,
+        # we0zuubl1): an earlier effect landed a now-stale version whose
+        # verification was never recorded. Dropping would orphan a projection
+        # that claims the seed is still open; retracting it would delete data.
+        # The archive holds the seed's final immutable record, so project THAT
+        # through the normal path below (version check, pending custody,
+        # read-back). Any doubt in the archive read stays NativeUnknown.
+        canonical=source.get_archived(item)
     if previous and canonical.version<previous[0]:
         raise custody.CustodyUnknown('native source version regressed')
     request=projection.body(canonical,plane=plane,actor=actor)

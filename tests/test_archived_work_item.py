@@ -13,16 +13,22 @@ class Archived(unittest.TestCase):
     setUp = fixture.Tick.setUp
     tearDown = fixture.Tick.tearDown
 
-    def serve(self, *, live=False, archive_answer=None, projected=False, native=None):
+    def serve(self, *, live=False, archive_answer=None, projected=False, native=None,
+              archive_rows=None):
         """Native read empty unless live; archive ASK answers as given;
-        projection absence (prove_absent) answers per `projected`."""
+        projection absence (prove_absent) answers per `projected`; the archive
+        record SELECT returns `archive_rows` (empty when not given)."""
         self.queries = []
+        self.knots = []
         def post(endpoint, body, **kwargs):
             if endpoint == '/knot':
                 self.writes += 1
+                self.knots.append(body)
                 return {'replaced': True, 'tx_id': 99, 'conforms': True}
             query = body['query']
             self.queries.append(query)
+            if 'BIND(' in query and 'seeds-archive' in query:
+                return {'rows': archive_rows or [], 'truncated': False}
             if 'seeds-archive' in query:
                 if isinstance(archive_answer, Exception):
                     raise archive_answer
@@ -96,6 +102,46 @@ class Archived(unittest.TestCase):
         self.assertEqual(receipt['status'], 'UNKNOWN')
         self.assertNotIn('archived', receipt)
         self.assertEqual(self.j.next()[0], ID)
+
+    def test_archived_and_stale_projected_seed_is_updated_from_the_archive(self):
+        # aegis-j3q2 we0zuubl1: projected v1 (open), archived v2 (closed), never
+        # verified. Project the archive's final record through the normal path.
+        closed = rows(**{nw.SEEDS + 'status': 'closed'})
+        receipt = self.tick(self.serve(archive_answer={'result': True, 'truncated': False},
+                                       projected=True, archive_rows=closed))
+        self.assertNotIn('archived', receipt)
+        self.assertEqual(self.writes, 1)
+        archive_read, = [q for q in self.queries if 'BIND(' in q and 'seeds-archive' in q]
+        self.assertIn(f'GRAPH <{GRAPH}#seeds-archive>', archive_read)
+        knot, = self.knots
+        # Same snapshot identity as a live-graph read: replaces the stale
+        # projection instead of forking a second one beside it.
+        live = nw.Reader(lambda e, b: {'rows': closed, 'truncated': False}, nw.Board(GRAPH, 'demo')).get(ID)
+        self.assertEqual(live.graph, GRAPH)
+        self.assertIn(f'source_graph\\":\\"{GRAPH}\\"', knot['turtle'])
+        self.assertNotIn('seeds-archive', knot['turtle'])
+        self.assertNotIn('seeds-archive', knot['snapshot'])
+        self.assertEqual(knot['snapshot'], sync.projection.body(live, plane='urn:private:knowledge',
+                                                                actor='fixture')['snapshot'])
+
+    def test_archive_read_that_is_empty_or_not_closed_stays_unknown(self):
+        for archive_rows in ([], rows(), rows(**{nw.SCHEMA + 'identifier': 'demo-other'})):
+            with self.subTest(rows=len(archive_rows)):
+                self.setUp()
+                try:
+                    receipt = self.tick(self.serve(archive_answer={'result': True, 'truncated': False},
+                                                   projected=True, archive_rows=archive_rows))
+                    self.assertEqual(receipt['status'], 'UNKNOWN')
+                    self.assertEqual(self.writes, 0)
+                    self.assertEqual(self.j.next()[0], ID)
+                finally:
+                    self.tearDown()
+
+    def test_unproven_archive_never_reads_the_archive_record(self):
+        receipt = self.tick(self.serve(archive_answer={'result': False, 'truncated': False},
+                                       projected=True, archive_rows=rows(**{nw.SEEDS + 'status': 'closed'})))
+        self.assertEqual((receipt['status'], self.writes), ('UNKNOWN', 0))
+        self.assertFalse([q for q in self.queries if 'BIND(' in q and 'seeds-archive' in q])
 
     def test_only_a_complete_empty_live_read_consults_the_archive(self):
         # malcolm review: oversize, wrong identity, truncation and transport
