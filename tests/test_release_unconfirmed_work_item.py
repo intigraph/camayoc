@@ -125,6 +125,18 @@ class ReleaseUnconfirmed(unittest.TestCase):
         self.assertEqual(tool.aggregate(receipts), 'UNKNOWN')
         self.assertIsNotNone(self.j.db.execute('SELECT body FROM pending WHERE id=?', (ID,)).fetchone()[0])
 
+    def test_failed_prior_version_read_is_unknown_not_refused(self):
+        # aegis-j3q2 review N1: absence unproved, then the exact readback fails.
+        self.j.db.execute("UPDATE pending SET body=? WHERE id=?", (json.dumps(
+            {'version': 4, 'request': {'graph': GRAPH}, 'description': '{}'}), ID))
+        self.j.db.commit()
+        before = self.dump()
+        post, _ = server(ABSENT, {'result': True}, OSError('down'))
+        receipts = tool.release_many(self.j, post, [ID])
+        self.assertEqual(receipts[0]['status'], 'UNKNOWN')
+        self.assertNotIn('down', json.dumps(receipts))
+        self.assertEqual(self.dump(), before)
+
     def test_cli_bounds_the_batch_and_refuses_repeats_before_any_read(self):
         too_many = [x for i in range(tool.MAX_ITEMS + 1) for x in ('--item', f'demo-{i}')]
         for items in (too_many, ['--item', ID, '--item', ID]):

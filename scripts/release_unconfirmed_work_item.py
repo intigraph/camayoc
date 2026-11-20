@@ -49,10 +49,9 @@ def release(journal, post, item):
     previous = journal.db.execute('SELECT version FROM verified WHERE id=?', (item,)).fetchone()
     if previous and (type(envelope.get('version')) is not int or envelope['version'] <= previous[0]):
         return {'status': 'REFUSED', 'item': item, 'reason': 'already verified'}
-    try:
-        proof = sync.effect_not_applied(post, journal, envelope, item)
-    except (ValueError, OSError, RuntimeError, TypeError, KeyError):
-        proof = None
+    # A failed read is not a refusal: it propagates, and release_many reports
+    # this item UNKNOWN (exit 2) rather than REFUSED (exit 3). Nothing changed.
+    proof = sync.effect_not_applied(post, journal, envelope, item)
     if proof is None:
         return {'status': 'REFUSED', 'item': item, 'reason': 'non-application not proved'}
     tx = journal.release_unconfirmed(item, row[0])
