@@ -34,6 +34,39 @@ class Tick(unittest.TestCase):
         return {'rows':[{'v':self.description}] if self.description else [],'truncated':False}
     def tick(self):
         return sync.tick(self.reader,self.j,self.post,changes=lambda **args:page() if args['since']<10 else page(records=[],next_tx=args['since'],watermark_tx=args['since']),plane='urn:private:knowledge',actor='fixture')
+    def test_no_effect_is_prepared_without_budget_to_send_and_verify(self):
+        """aegis-4feg: the budget ran out after prepare() and before /knot, so an
+        unsent effect froze as indeterminate. Below WRITE_REQUESTS nothing is
+        prepared, nothing is counted as written and the candidate stays fresh."""
+        self.j.retain(page(self.j.cursor+1))
+        pending=self.j.next()
+        counted=[]
+        for left in range(sync.WRITE_REQUESTS):
+            with self.subTest(left=left):
+                with self.assertRaises(sync.TickBudgetReached):
+                    sync.deliver(self.reader,self.j,self.post,pending,plane='urn:private:knowledge',
+                                 actor='fixture',wrote=lambda:counted.append(1),budget=lambda:left)
+                self.assertIsNone(self.j.db.execute('SELECT body FROM pending WHERE id=?',(pending[0],)).fetchone()[0])
+        self.assertEqual((counted,self.writes),([],0))
+        version=sync.deliver(self.reader,self.j,self.post,self.j.next(),plane='urn:private:knowledge',actor='fixture',
+                             wrote=lambda:counted.append(1),budget=lambda:sync.WRITE_REQUESTS)
+        self.assertEqual((version,counted,self.writes),(3,[1],1))
+        self.assertIsNone(self.j.next())
+
+    def test_tick_stops_cleanly_at_the_write_budget(self):
+        real=sync.deliver
+        def tight(*args,**kwargs):
+            kwargs['budget']=lambda:sync.WRITE_REQUESTS-1
+            return real(*args,**kwargs)
+        with mock.patch.object(sync,'deliver',tight):
+            result=self.tick()
+        self.assertEqual((result['status'],result['writes'],result.get('deferred')),('OK',0,1))
+        self.assertNotIn('error',result)
+        self.assertEqual(self.writes,0)
+        self.assertIsNone(self.j.next()[2])  # fresh candidate, no stored effect
+        self.assertEqual(self.tick()['verified'],1)
+        self.assertEqual(self.writes,1)
+
     def test_pending_completion_summary_is_receipt_only_without_extra_calls(self):
         self.drop=True
         self.assertEqual(self.tick()['status'], 'UNKNOWN')

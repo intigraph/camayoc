@@ -115,13 +115,26 @@ class Reconciliation(unittest.TestCase):
 
     def test_ambiguous_absence_stays_frozen(self):
         stored = self.fail_write()
-        for answer in ({}, {'result': True}, {'result': False, 'truncated': True},
+        for answer in ({}, {'result': False, 'truncated': True},
                        {'result': False, 'truncated': 0}, ['not-an-object']):
             with self.subTest(answer=answer):
                 self.absence_answer = answer
                 self.assertEqual(self.tick()['status'], 'UNKNOWN')
                 self.assertEqual(self.j.next()[2], stored)
                 self.assertEqual(self.writes, 1)
+
+    def test_present_facts_without_snapshot_release_after_stopped_completion(self):
+        # aegis-4feg: facts about the subject exist (the legacy observation) but
+        # no version and no description: with the writer proven stopped, the
+        # effect never applied ('no-snapshot'), so it is released and written once.
+        # Before, presence alone kept it frozen forever.
+        self.fail_write()
+        self.absence_answer = {'result': True, 'truncated': False}
+        receipt = self.tick()
+        self.assertEqual((receipt['status'], receipt['writes']), ('OK', 0))
+        self.assertEqual(self.j.next(), (ID, 10, None))
+        self.assertEqual(self.tick()['verified'], 1)
+        self.assertEqual((self.writes, self.commits), (2, 1))
 
     def test_conflicting_or_partial_facts_stay_frozen(self):
         stored = self.fail_write(committed=True)
@@ -356,6 +369,69 @@ class Reconciliation(unittest.TestCase):
         self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
         self.j.db.execute('DELETE FROM verified WHERE id=?', (ID,))  # unverified: older is enough
         self.assertEqual(sync.effect_not_applied(post, self.j, envelope, ID), 'prior-version')
+
+    def legacy_only(self):
+        """A never-verified item whose subject holds only the legacy tracker
+        observation: typed, labelled, a bare id comment, no snapshot."""
+        from rdflib import Dataset, URIRef, Literal, RDF, RDFS
+        envelope = json.loads(self.fail_write())
+        self.assertIsNone(self.j.db.execute('SELECT 1 FROM verified WHERE id=?', (ID,)).fetchone())
+        dataset = Dataset()
+        graph = dataset.graph(URIRef(envelope['request']['graph']))
+        subject = URIRef(sync.projection.A + ID)
+        graph.add((subject, RDF.type, URIRef(sync.projection.A + 'WorkItem')))
+        graph.add((subject, RDFS.label, Literal(ID)))
+        graph.add((subject, RDFS.comment, Literal(ID)))
+        graph.add((subject, URIRef(sync.projection.A + 'sourceKind'), Literal('observed')))
+        self.dataset = dataset
+        return envelope, graph, subject
+
+    def test_legacy_only_subject_proves_no_snapshot_and_releases(self):
+        # aegis-4feg (aegis-0xu7, aegis-31km4): an effect prepared and never
+        # sent, on a subject with only legacy facts. Neither 'absent' (facts
+        # exist) nor 'prior-version' (no snapshot) could prove it, so release
+        # refused and the producer stayed frozen.
+        import release_unconfirmed_work_item as release
+        envelope, graph, subject = self.legacy_only()
+        post = self.served_post(self.dataset)
+        self.assertFalse(sync.prove_absent(post, ID))
+        self.assertEqual(sync.effect_not_applied(post, self.j, envelope, ID), 'no-snapshot')
+        receipt = release.release(self.j, post, ID)
+        self.assertEqual((receipt['status'], receipt['proof']), ('RELEASED', 'no-snapshot'))
+        row = self.j.db.execute('SELECT body,effect_tx FROM pending WHERE id=?', (ID,)).fetchone()
+        self.assertEqual(row, (None, None))
+
+    def test_any_snapshot_trace_is_not_no_snapshot(self):
+        from rdflib import URIRef, Literal
+        envelope, graph, subject = self.legacy_only()
+        post = self.served_post(self.dataset)
+        version = (subject, URIRef(native.SCHEMA + 'version'), Literal(1))
+        described = (subject, URIRef(native.RDFS + 'comment'), Literal(envelope['description']))
+        for name, triple in (('a version', version), ('the exact description', described)):
+            with self.subTest(name):
+                graph.add(triple)
+                self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
+                graph.remove(triple)
+        graph.parse(data=envelope['request']['turtle'], format='turtle')  # effect applied
+        self.assertIsNone(sync.effect_not_applied(post, self.j, envelope, ID))
+
+    def test_no_snapshot_needs_exact_complete_answers(self):
+        envelope, graph, subject = self.legacy_only()
+        served = self.served_post(self.dataset)
+        def bad(kind):
+            def post(endpoint, body):
+                answer = served(endpoint, body)
+                if kind == 'ask-missing' and body['query'].startswith('ASK') and 'version' in body['query']:
+                    return {'truncated': False}
+                if kind == 'select-truncated' and body['query'].startswith('SELECT ?v'):
+                    return dict(answer, truncated=True)
+                if kind == 'select-error' and body['query'].startswith('SELECT ?v'):
+                    raise TimeoutError('fault-injected')
+                return answer
+            return post
+        for kind in ('ask-missing', 'select-truncated', 'select-error'):
+            with self.subTest(kind):
+                self.assertFalse(sync.no_snapshot(bad(kind), envelope, ID))
 
     def test_integer_literal_accepts_only_exact_integer_forms(self):
         for value, expected in ((27, 27), ('27', 27), ({'value': '27', 'datatype': 'integer'}, 27),

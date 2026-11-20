@@ -214,6 +214,46 @@ def integer_literal(value):
     return int(text) if re.fullmatch('-?[0-9]{1,18}', text) else None
 
 
+def no_snapshot(post, envelope, item):
+    """True only when the target graph holds NO metadata snapshot of the item.
+
+    For a never-verified item whose subject carries other facts (aegis-4feg:
+    the legacy tracker observation, 8 triples with no schema:version and no
+    canonical description). A snapshot write sets schema:version and the
+    canonical description together in one atomic /knot replace, so an exact
+    `false` for any version AND no comment equal to this effect's description
+    proves this effect never applied. Anything else, including a truncated,
+    partial or non-canonical answer, is not proof and returns False.
+    """
+    request = envelope.get('request')
+    expected = envelope.get('description')
+    if not isinstance(request, dict) or not isinstance(expected, str):
+        return False
+    try:
+        graph = projection.safe_iri(request.get('graph'))
+        subject = projection.safe_iri(projection.A + item)
+        # The legacy facts themselves must be positively observed: an
+        # ambiguous presence/absence answer keeps the effect frozen.
+        present = post('/query', {'query': f'ASK {{ GRAPH {graph} {{ {subject} ?p ?o }} }}'})
+        if (not isinstance(present, dict) or present.get('truncated', False) is not False
+                or present.get('result') is not True):
+            return False
+        versioned = post('/query', {'query': f'ASK {{ GRAPH {graph} {{ {subject} <{native.SCHEMA}version> ?x }} }}'})
+        if (not isinstance(versioned, dict) or versioned.get('truncated', False) is not False
+                or versioned.get('result') is not False):
+            return False
+        found = post('/query', {'query': f'SELECT ?v WHERE {{ GRAPH {graph} {{ {subject} <{native.RDFS}comment> ?v }} }} LIMIT 129'})
+    except (native.NativeUnknown, ValueError, OSError, RuntimeError, TypeError, KeyError):
+        return False
+    rows = found.get('rows') if isinstance(found, dict) else None
+    if not isinstance(rows, list) or found.get('truncated') is not False or len(rows) > 128:
+        return False
+    try:
+        return not any(native.lexical(row.get('v')) == expected for row in rows)
+    except (AttributeError, TypeError, ValueError, native.NativeUnknown):
+        return False
+
+
 def effect_not_applied(post, journal, envelope, item):
     """Exact readback proving this pending effect is NOT applied, or None.
 
@@ -233,6 +273,8 @@ def effect_not_applied(post, journal, envelope, item):
     previous = None if previous is None else integer_literal(previous[0])
     if previous is None and prove_absent(post, item):
         return 'absent'
+    if previous is None and no_snapshot(post, envelope, item):
+        return 'no-snapshot'
     version = envelope.get('version')
     if type(version) is not int or (previous is not None and version <= previous):
         return None
@@ -372,8 +414,23 @@ def envelope_witness(witness,request):
 #: removed from custody, nothing projected (aegis-j3q2).
 ARCHIVED='archived'
 
+#: Requests one new write needs after its effect is durably prepared: the /knot
+#: write and verify()'s two read-backs (aegis-4feg). The delivery loop admits an
+#: item when ITEM_REQUESTS remain, but the archived path spends ~7 requests, so
+#: the budget used to run out AFTER prepare() and BEFORE the /knot call. The
+#: effect was then stored, counted as written and never sent; with no receiver
+#: receipt it froze as indeterminate on the next tick (aegis-0xu7, aegis-31km4).
+WRITE_REQUESTS=3
 
-def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None,diagnostics=None):
+
+class TickBudgetReached(custody.CustodyUnknown):
+    """Not enough tick requests left to write AND verify; nothing was prepared.
+
+    The candidate stays fresh (no stored effect) and is delivered by a later
+    tick. A CustodyUnknown to any caller that does not handle it."""
+
+
+def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None,diagnostics=None,budget=None):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
@@ -436,6 +493,9 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
         journal.prepare(item,tx,envelope)
     else:
         if witness is not None:witness['branch']='new-write'
+        # Never prepare an effect this tick cannot also send and read back.
+        if budget is not None and budget()<WRITE_REQUESTS:
+            raise TickBudgetReached('tick request budget reached before write')
         journal.prepare(item,tx,envelope)
         wrote()
         if witness is not None:witness['own_write']='attempted'
@@ -573,8 +633,15 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             except native.NativeUnknown:pass
             else:receipt['attempted_item']=pending[0]
             receipt['status']='UNKNOWN'
-            version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,completion=completion,
-                            witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None,diagnostics=receipt)
+            try:
+                version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,completion=completion,
+                                witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None,diagnostics=receipt,
+                                budget=lambda:TICK_REQUESTS-requests)
+            except TickBudgetReached:
+                # Clean stop: nothing prepared, the candidate stays fresh for the
+                # next tick. Earlier items this tick stay acknowledged.
+                receipt.update(status='OK',deferred=receipt.get('deferred',0)+1)
+                break
             if version == ARCHIVED:
                 receipt.update(status='OK',archived=receipt.get('archived',0)+1)
             elif version is None:
