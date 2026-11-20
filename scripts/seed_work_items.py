@@ -82,6 +82,15 @@ class Board:
             raise NativeUnknown('item is outside the selected board prefix')
         return item_iri(item_id)
 
+    @property
+    def archive_graph(self) -> str:
+        """Seeds' board archive side graph (seeds vocab::archive_graph).
+
+        The archive moves closed seeds past an age cutoff, with their comments,
+        out of the live project graph under unchanged IRIs; they are immutable.
+        """
+        return self.graph + ('-seeds-archive' if '#' in self.graph else '#seeds-archive')
+
 
 @dataclass(frozen=True)
 class Record:
@@ -145,6 +154,21 @@ class Reader:
             raise NativeUnknown('native read failed; no legacy fallback') from exc
         self.cache[subject] = record
         return record
+
+    def archived(self, item_id: str) -> bool:
+        """POSITIVE proof the seed was archived: True only on one exact answer.
+
+        One bounded ASK: the subject has facts in the board archive graph AND
+        none in the live graph (unarchive moves seeds back). An empty or failed
+        live read alone is never absence; anything but an untruncated boolean
+        true is False, and the caller keeps its NativeUnknown.
+        """
+        subject = self.board.subject(item_id)
+        query = (f'ASK {{ GRAPH <{self.board.archive_graph}> {{ <{subject}> ?p ?o }} '
+                 f'FILTER NOT EXISTS {{ GRAPH <{self.board.graph}> {{ <{subject}> ?q ?v }} }} }}')
+        response = self.post('/query', {'query': query})
+        return (isinstance(response, dict) and response.get('truncated', False) is False
+                and response.get('result') is True)
 
     def _record(self, item_id, subject, values):
         def one(prop, *, optional=False):

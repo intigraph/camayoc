@@ -27,6 +27,9 @@ class Tick(unittest.TestCase):
         if query.startswith('SELECT ?has_type ?v '):
             return {'rows':[dict(has_type=True,**({'v':self.description} if self.description else {}))],'truncated':False}
         if 'BIND(' in query:return {'rows':rows(),'truncated':False}
+        # No scenario here archives a seed (aegis-j3q2): a blanket true would
+        # be a positive archive proof the fixture never meant to give.
+        if 'seeds-archive' in query:return {'result':False,'truncated':False}
         if query.startswith('ASK '):return {'result':True}
         return {'rows':[{'v':self.description}] if self.description else [],'truncated':False}
     def tick(self):
@@ -185,6 +188,9 @@ class SerialTicks(unittest.TestCase):
         if 'BIND(' in query:
             found=rows(**{nw.SCHEMA+'identifier':item})
             return {'rows':[dict(row,s=nw.ITEM+item) for row in found],'truncated':False}
+        # No scenario here archives a seed (aegis-j3q2): a blanket true would
+        # be a positive archive proof the fixture never meant to give.
+        if 'seeds-archive' in query:return {'result':False,'truncated':False}
         if query.startswith('ASK '):return {'result':True}
         if item in self.drop:raise TimeoutError('readback unavailable')
         value=self.descriptions.get(item)
