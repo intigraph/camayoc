@@ -130,6 +130,55 @@ class Custody(unittest.TestCase):
         with self.assertRaises(sc.CustodyUnknown):
             sc.candidates(over, self.board, 9)
 
+    def test_archive_move_retracts_are_passed_not_retained(self):
+        """aegis-4feg: an archive transaction (every row op=retract,
+        source=seeds:archive, comments included) is validated and passed by
+        the cursor, and creates no pending work."""
+        records=[];seq=0
+        for n in range(100):
+            subject=nw.ITEM+f'demo-a{n:03d}'
+            for attribute,entity in (('name',subject),('identifier',subject),
+                                     ('text',subject+'/comment/1')):
+                seq+=1
+                records.append({'graph':GRAPH,'tx':10,'sequence':seq,'entity':entity,
+                                'attribute':nw.SCHEMA+attribute,'op':'retract',
+                                'source':sc.ARCHIVE_SOURCE})
+        archive=page(records=records)
+        self.assertEqual(sc.candidates(archive,self.board,9),(10,{}))
+        self.j.retain(archive)
+        self.assertEqual(self.j.cursor,10)
+        self.assertEqual(self.j.backlog_count(),0)
+        self.assertIsNone(self.j.next())
+
+    def test_archive_rows_are_still_validated(self):
+        bad={'graph':'urn:elsewhere','tx':10,'sequence':1,'entity':SUBJECT,
+             'attribute':nw.SCHEMA+'name','op':'retract','source':sc.ARCHIVE_SOURCE}
+        with self.assertRaises(sc.CustodyUnknown):
+            sc.candidates(page(records=[bad]),self.board,9)
+        late=dict(bad,graph=GRAPH,tx=11)
+        with self.assertRaises(sc.CustodyUnknown):
+            sc.candidates(page(records=[late]),self.board,9)
+
+    def test_unarchive_other_ops_and_other_sources_stay_candidates(self):
+        """Only the archive move's retracts are passed. An unarchive assert,
+        a retract from any other source, and a live change sharing the archive
+        transaction are all still work."""
+        def row(seq,item,op,source):
+            return {'graph':GRAPH,'tx':10,'sequence':seq,'entity':nw.ITEM+item,
+                    'attribute':nw.SCHEMA+'name','op':op,'source':source}
+        cases={
+            'unarchive':([row(1,'demo-u','assert',sc.ARCHIVE_SOURCE)],{'demo-u'}),
+            'tombstone':([row(1,'demo-t','tombstone',sc.ARCHIVE_SOURCE)],{'demo-t'}),
+            'other retract':([row(1,'demo-r','retract','seeds:update')],{'demo-r'}),
+            'no source':([dict(row(1,'demo-n','retract',None),source=None)],{'demo-n'}),
+            'mixed':([row(1,'demo-a','retract',sc.ARCHIVE_SOURCE),
+                      row(2,'demo-b','assert','seeds:update')],{'demo-b'}),
+        }
+        for name,(records,expected) in cases.items():
+            with self.subTest(name):
+                end,items=sc.candidates(page(records=records),self.board,9)
+                self.assertEqual((end,set(items)),(10,expected))
+
     def test_unknown_item_does_not_starve_other_candidates(self):
         self.j.retain(page())
         self.j.mark_attempt(ID,100)

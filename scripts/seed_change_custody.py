@@ -23,6 +23,16 @@ MAX_BYTES=512*1024
 FEED_MAX_BYTES=8*1024*1024
 MAX_PENDING=256
 MAX_RETIRED=8
+#: Feed `source` of the seeds board archive move (aegis-4feg). The move retracts
+#: a closed seed from the live graph and keeps its final, immutable record under
+#: the same IRI in the board archive graph. It changes no seed content: every
+#: content change, including the close, is an earlier transaction that custody
+#: already took in order. Its retracts are read, validated and passed by the
+#: cursor like any row, but they are not work. As candidates they turned
+#: 2,310 archive txs (~231k old items) into a per-item backfill at about 7
+#: items/min, ~23 days, queuing live changes behind it. An unarchive (assert),
+#: any other op and any other source remain candidates.
+ARCHIVE_SOURCE='seeds:archive'
 
 class CustodyUnknown(ValueError):pass
 
@@ -70,6 +80,8 @@ def candidates(page,board,since):
         if not since<tx<=end or key<=last or key in seen or row.get('op') not in ('assert','retract','tombstone'):
             raise CustodyUnknown('feed order or transaction boundary unproved')
         last=key;seen.add(key);transactions.add(tx)
+        if row.get('op')=='retract' and row.get('source')==ARCHIVE_SOURCE:
+            continue
         refs=[row.get('entity')]
         # A Comment may change a parent's searchable/dated metadata. This is
         # exact parent identity, never a text/title search or fuzzy binding.
