@@ -368,12 +368,18 @@ def envelope_witness(witness,request):
     except (TypeError,ValueError,UnicodeError):pass
 
 
+#: deliver() result for a fresh candidate whose seed is proven archived:
+#: removed from custody, nothing projected (aegis-j3q2).
+ARCHIVED='archived'
+
+
 def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None,diagnostics=None):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
     is lost is still counted. None means an absent effect was released, not
     verified; its fresh write waits for the next normal tick's request budget.
+    ARCHIVED means a never-verified seed was proven archived and dropped.
     """
     item,tx,stored=pending
     journal.mark_attempt(item,time.time())
@@ -392,8 +398,20 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
         journal.release_unconfirmed(item,stored)
         return None
     # Reader's own request gets the same total budget accounting.
-    canonical=native.Reader(call,reader.board).get(item)
     previous=journal.db.execute('SELECT version FROM verified WHERE id=?',(item,)).fetchone()
+    source=native.Reader(call,reader.board)
+    try:
+        canonical=source.get(item)
+    except native.NativeMissing:
+        # A complete empty live read is not absence. Only a POSITIVE archive
+        # proof (sattler, aegis-j3q2) resolves a never-verified candidate, and
+        # only when no projection of it exists anywhere (never-verified is not
+        # never-projected), so dropping it can leave no orphan. No write. Any
+        # other NativeUnknown, a verified seed or any doubt stays UNKNOWN.
+        if previous is not None or not source.archived(item) or not prove_absent(call,item):
+            raise
+        journal.drop_archived(item,tx)
+        return ARCHIVED
     if previous and canonical.version<previous[0]:
         raise custody.CustodyUnknown('native source version regressed')
     request=projection.body(canonical,plane=plane,actor=actor)
@@ -538,7 +556,9 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             receipt['status']='UNKNOWN'
             version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,completion=completion,
                             witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None,diagnostics=receipt)
-            if version is None:
+            if version == ARCHIVED:
+                receipt.update(status='OK',archived=receipt.get('archived',0)+1)
+            elif version is None:
                 receipt.update(status='OK',reconciled=receipt.get('reconciled',0)+1)
             else:
                 receipt.update(status='OK',verified=receipt['verified']+1,item=pending[0],version=version)

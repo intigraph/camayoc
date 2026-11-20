@@ -234,6 +234,26 @@ class Journal:
         except Exception:self.db.execute('ROLLBACK');raise
         return integer(row[0])
 
+    def drop_archived(self,item,tx):
+        """Remove ONE fresh, never-verified candidate whose seed is archived.
+
+        Only after a positive archive proof (seed_work_items.Reader.archived).
+        Nothing was or will be written for it: there is no stored effect and no
+        verified projection. Refuses a retired, prepared, changed or verified row.
+        """
+        self.assert_not_retired(item)
+        tx=integer(tx)
+        self.db.execute('BEGIN IMMEDIATE')
+        try:
+            self.assert_not_retired(item)
+            if self.db.execute('SELECT 1 FROM verified WHERE id=?',(item,)).fetchone():
+                raise CustodyUnknown('archived seed has a verified projection; no automatic removal')
+            row=self.db.execute('SELECT tx,body FROM pending WHERE id=?',(item,)).fetchone()
+            if row!=(tx,None):raise CustodyUnknown('archived candidate changed or holds a stored effect')
+            self.db.execute('DELETE FROM pending WHERE id=? AND tx=? AND body IS NULL',(item,tx))
+            self.db.execute('COMMIT')
+        except Exception:self.db.execute('ROLLBACK');raise
+
     def acknowledge(self,item,tx,version):
         """Caller may ack only after independently controlled effect readback."""
         self.assert_not_retired(item)
