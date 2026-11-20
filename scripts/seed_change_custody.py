@@ -26,6 +26,15 @@ MAX_RETIRED=8
 
 class CustodyUnknown(ValueError):pass
 
+class PageTooLarge(CustodyUnknown):
+    """A whole feed page is over the byte or record budget (aegis-j3q2).
+
+    Still CustodyUnknown to every existing caller. The feed loop alone asks
+    again with fewer whole transactions, down to one; a single transaction
+    over budget is a real refusal. Mirrors quipu's follower, which asks an
+    oversized page again smaller instead of retrying it forever.
+    """
+
 class CustodyFull(CustodyUnknown):
     """Admitting this transaction would exceed MAX_PENDING; nothing was retained.
 
@@ -39,11 +48,15 @@ def integer(value):
 
 def candidates(page,board,since):
     """Validate the complete page before retaining any part or advancing."""
-    if not isinstance(page,dict) or len(json.dumps(page).encode())>FEED_MAX_BYTES:
-        raise CustodyUnknown('feed page exceeds byte budget or is malformed')
+    if not isinstance(page,dict):
+        raise CustodyUnknown('feed page is malformed')
+    if len(json.dumps(page).encode())>FEED_MAX_BYTES:
+        raise PageTooLarge('feed page exceeds byte budget')
     records=page.get('records');end=integer(page.get('next_tx'));watermark=integer(page.get('watermark_tx'))
-    if page.get('capture') not in ('new_values','old_and_new_values') or page.get('truncated') or not isinstance(records,list) or len(records)>MAX_RECORDS:
+    if page.get('capture') not in ('new_values','old_and_new_values') or page.get('truncated') or not isinstance(records,list):
         raise CustodyUnknown('feed page is partial or outside bounds')
+    if len(records)>MAX_RECORDS:
+        raise PageTooLarge('feed page exceeds record budget')
     if end<since or watermark<end:raise CustodyUnknown('feed cursor regressed')
     if not records:
         if end!=since:raise CustodyUnknown('empty page cannot advance using global watermark')

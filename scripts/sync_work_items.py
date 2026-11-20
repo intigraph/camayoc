@@ -594,7 +594,7 @@ def native_main(args):
                     headers={'X-Quipu-Client':'camayoc-ingress',**planes.provenance_headers('camayoc-ingress')})
                 with urllib.request.urlopen(request,timeout=15) as response:
                     payload=response.read(custody.FEED_MAX_BYTES+1)
-                if len(payload)>custody.FEED_MAX_BYTES:raise custody.CustodyUnknown('feed exceeds response budget')
+                if len(payload)>custody.FEED_MAX_BYTES:raise custody.PageTooLarge('feed exceeds response budget')
                 return json.loads(payload)
             def cursor_time(tx):
                 # The exact cursor transaction's timestamp (aegis-etv cursor age).
