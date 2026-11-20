@@ -224,6 +224,12 @@ def no_snapshot(post, envelope, item):
     `false` for any version AND no comment equal to this effect's description
     proves this effect never applied. Anything else, including a truncated,
     partial or non-canonical answer, is not proof and returns False.
+
+    PRECONDITION (caller-held): no send of this effect can still be in flight.
+    The three reads are separate queries, not one snapshot, so a concurrent
+    commit could land between them. Callers establish this first: the operator
+    release tool requires terminal-worker evidence, and the in-tick path only
+    reaches here after native completion proves the writer stopped.
     """
     request = envelope.get('request')
     expected = envelope.get('description')
@@ -415,7 +421,9 @@ def envelope_witness(witness,request):
 ARCHIVED='archived'
 
 #: Requests one new write needs after its effect is durably prepared: the /knot
-#: write and verify()'s two read-backs (aegis-4feg). The delivery loop admits an
+#: write and verify()'s two read-backs (aegis-4feg). Keep this equal to 1 plus
+#: verify()'s request count; if verify() grows, raise it with it (a shortfall
+#: fails safe after the send, but no longer prevents the unsent freeze). The delivery loop admits an
 #: item when ITEM_REQUESTS remain, but the archived path spends ~7 requests, so
 #: the budget used to run out AFTER prepare() and BEFORE the /knot call. The
 #: effect was then stored, counted as written and never sent; with no receiver
