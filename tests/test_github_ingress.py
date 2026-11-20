@@ -137,6 +137,32 @@ class MappingTests(unittest.TestCase):
         rel = episode("release.published")
         self.assertEqual("v0.1.3", rel["nodes"][1]["properties"]["githubTagName"])
 
+    def test_repeat_workflow_in_progress_is_ignored_first_and_terminal_kept(self):
+        """aegis-n0wc: workflow_run.in_progress repeats the pending state that
+        requested already recorded; it is acknowledged without a write. The
+        first non-terminal transition of each run and every completed stay."""
+        def run(action, status, conclusion=None):
+            body = copy.deepcopy(delivery("workflow_run.completed")["body"])
+            body["action"] = action
+            body["workflow_run"].update(status=status, conclusion=conclusion)
+            return body
+        with self.assertRaisesRegex(gi.Ignored, "workflow_run.in_progress"):
+            gi.episode_for("workflow_run", run("in_progress", "in_progress"), actor="t")
+        requested = activity(gi.episode_for("workflow_run", run("requested", "queued"), actor="t")[0])
+        self.assertEqual("queued", requested["githubStatus"])
+        created = copy.deepcopy(delivery("check_run.completed")["body"])
+        created["action"] = "created"
+        created["check_run"].update(status="queued", conclusion=None)
+        self.assertEqual("queued", activity(gi.episode_for("check_run", created, actor="t")[0])["githubStatus"])
+        self.assertEqual("completed", activity(episode("workflow_run.completed"))["githubStatus"])
+        # Through the drain: settled 'ignored', nothing written, nothing retried.
+        spool = gi.Spool(":memory:")
+        spool.add("ip", "workflow_run", run("in_progress", "in_progress"))
+        writer = Collect()
+        self.assertEqual({"ignored": 1}, gi.drain_once(spool, actor="t", writer=writer))
+        self.assertEqual([], writer.bodies)
+        self.assertEqual({}, gi.drain_once(spool, actor="t", writer=writer))
+
     def test_ping_is_ignored_and_unknowns_are_quarantined(self):
         with self.assertRaises(gi.Ignored):
             episode("ping")

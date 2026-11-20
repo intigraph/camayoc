@@ -93,6 +93,14 @@ _FENCE = re.compile(r"```.*?```|`[^`\n]*`", re.S)
 _MENTION = re.compile(r"(?<![A-Za-z0-9_`/.@-])@([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})(?![A-Za-z0-9_/-])")
 _REVIEW_STATES = {"approved", "changes_requested", "commented", "dismissed"}
 _STATUSES = {"queued", "in_progress", "completed", "requested", "waiting", "pending"}
+#: Deliveries acknowledged without a write (aegis-n0wc): a second non-terminal
+#: transition of one run. Readers take the latest fact per run and treat any
+#: non-completed status as pending (Chaski ci_state), so `workflow_run.requested`
+#: already records "pending" and `completed` records the outcome. The repeat
+#: cost one Quipu /episode per run during CI bursts. Kept: check_run.created,
+#: workflow_run.requested and every completed. Residual risk (ian, n0wc): if a
+#: requested delivery is lost, the run is unseen until it completes.
+_REPEAT_TRANSITIONS = {("workflow_run", "in_progress")}
 _CONCLUSIONS = {"success", "failure", "neutral", "cancelled", "skipped", "timed_out",
                 "action_required", "stale", "startup_failure"}
 
@@ -249,6 +257,8 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
         kind = f"{event}.{action}"
     else:
         raise Quarantined(f"action {action!r} of {event!r} is not mapped")
+    if (event, action) in _REPEAT_TRANSITIONS:
+        raise Ignored(f"{event}.{action} repeats a non-terminal state already recorded")
 
     repo = _repository(payload)
     full = repo["properties"]["githubFullName"]
