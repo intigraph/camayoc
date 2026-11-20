@@ -194,40 +194,79 @@ def completed_without_effect(post, journal, envelope, item, *, diagnostics=None)
             or status.get('write_id') != write_id or status.get('truncated', False) is not False
             or status.get('state') not in ('not_started', 'stopped')):
         return False
+    proof = effect_not_applied(post, journal, envelope, item)
+    summary['absence'] = 'proved' if proof else 'unproved'
+    return proof is not None
+
+
+def integer_literal(value):
+    """An xsd:integer binding as int, else None. Never a bool.
+
+    Served quipu projects a typed integer as a JSON number; older fixtures and
+    other serializers use the lexical form. Both denote the same literal.
+    """
+    if type(value) is int:
+        return value
+    try:
+        text = native.lexical(value)
+    except (ValueError, TypeError):
+        return None
+    return int(text) if re.fullmatch('-?[0-9]{1,18}', text) else None
+
+
+def effect_not_applied(post, journal, envelope, item):
+    """Exact readback proving this pending effect is NOT applied, or None.
+
+    Returns 'absent' (no triple about the subject in any graph) or
+    'prior-version' (the target graph holds exactly one complete canonical
+    projection of an OLDER native version of this same item). This proves
+    non-application of the effect only; it says nothing about whether a writer
+    can still commit it. Callers must hold separate terminal-worker evidence.
+    """
     previous = journal.db.execute('SELECT version FROM verified WHERE id=?', (item,)).fetchone()
-    if previous is None:
-        absent = prove_absent(post, item)
-        summary['absence'] = 'proved' if absent else 'unproved'
-        return absent
-    if type(envelope.get('version')) is not int or envelope['version'] <= previous[0]:
-        return False
-    summary['absence'] = 'unproved'
-    # An update does not erase its previously verified snapshot on failure.
-    # Permit that exact older version's canonical metadata, not arbitrary facts
-    # or a conflicting/newer version, and never require the entire subject gone.
-    graph = projection.safe_iri(envelope['request']['graph'])
-    subject = projection.safe_iri(projection.A + item)
+    previous = None if previous is None else integer_literal(previous[0])
+    if previous is None and prove_absent(post, item):
+        return 'absent'
+    version = envelope.get('version')
+    if type(version) is not int or (previous is not None and version <= previous):
+        return None
+    # A failed write does not erase the snapshot it would have replaced. Permit
+    # one exact older version's canonical metadata (the verified one when the
+    # journal holds it), never arbitrary facts, a conflicting or newer version,
+    # and never require the entire subject gone.
+    request = envelope.get('request')
+    if not isinstance(request, dict) or not isinstance(envelope.get('description'), str):
+        return None
+    try:
+        graph = projection.safe_iri(request.get('graph'))
+        subject = projection.safe_iri(projection.A + item)
+    except native.NativeUnknown:
+        return None
     found = post('/query', {'query': f'SELECT ?version ?v ?datatype WHERE {{ GRAPH {graph} {{ {subject} a <{projection.A}WorkItem> ; <{native.SCHEMA}version> ?version ; <{native.RDFS}comment> ?v }} BIND(IF(DATATYPE(?version) = <http://www.w3.org/2001/XMLSchema#integer>, \"integer\", \"other\") AS ?datatype) }} LIMIT 129'})
     if (not isinstance(found, dict) or found.get('truncated') is not False
             or not isinstance(found.get('rows'), list) or len(found['rows']) != 1):
-        return False
+        return None
     row = found['rows'][0]
     if not isinstance(row, dict) or set(row) != {'version', 'v', 'datatype'}:
-        return False
+        return None
+    observed = integer_literal(row.get('version'))
+    if observed is None or not 1 <= observed < version:
+        return None
+    if previous is not None and observed != previous:
+        return None
     try:
-        if (native.lexical(row.get('version')) != str(previous[0])
-                or native.lexical(row.get('datatype')) != 'integer'):
-            return False
+        if native.lexical(row.get('datatype')) != 'integer':
+            return None
         prior = json.loads(native.lexical(row.get('v')))
         expected = json.loads(envelope['description'])
     except (ValueError, TypeError, AttributeError):
-        return False
-    absent = (isinstance(prior, dict) and set(prior) == set(expected)
+        return None
+    if (isinstance(prior, dict) and isinstance(expected, dict) and set(prior) == set(expected)
             and type(prior.get('source_version')) is int
-            and prior['source_version'] == previous[0]
-            and all(prior.get(k) == expected.get(k) for k in ('id', 'source_graph', 'native_action')))
-    summary['absence'] = 'proved' if absent else 'unproved'
-    return absent
+            and prior['source_version'] == observed
+            and all(prior.get(k) == expected.get(k) for k in ('id', 'source_graph', 'native_action'))):
+        return 'prior-version'
+    return None
 
 
 #: Serial deliveries per tick. aegis-ksd (wu ACK) set four deliveries and one feed
