@@ -168,6 +168,15 @@ def precheck(entity: dict, args: dict) -> list[str]:
                 what = "a topic name or IRI" if f["name"] == "topic" else "an entity IRI or local name"
                 out.append(f"Not recorded: {f['flag']} {_shown(bad[0])} is not {what}.")
                 continue
+        if f.get("datatype") == "xsd:dateTime":
+            try:
+                for value in vals:
+                    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})", value):
+                        raise ValueError("timezone-bearing dateTime required")
+                    _dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                out.append(f["message"])
+                continue
         if f["maxCount"] is not None and len(vals) > f["maxCount"]:
             out.append(f["message"])
         elif f["enum"] and any(v not in f["enum"] for v in vals):
@@ -389,7 +398,10 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
         for name in sorted(resolved, key=lambda n: [f["name"] for f in entity["fields"]].index(n)):
             f = by_name[name]
             pred = f"<{definitions.expand(f['path'])}>"
-            objs = [iri_ref(v) if f["kind"] == "iri" else lit(v) for v in resolved[name]]
+            objs = [iri_ref(v) if f["kind"] == "iri" else
+                    lit(v) + ("^^" + iri_ref(definitions.expand(f["datatype"]))
+                              if f.get("datatype") == "xsd:dateTime" else "")
+                    for v in resolved[name]]
             triples.append(f"{pred} {', '.join(objs)}")
         turtle = f"{iri_ref(version)}\n    " + " ;\n    ".join(triples) + " .\n"
         graph = planes.plane_for(source_kind)

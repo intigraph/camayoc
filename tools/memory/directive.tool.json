@@ -18,6 +18,7 @@
     "issuedBy": "person-stiwi",
     "appliesTo": "crew",
     "topic": "deploy-window",
-    "issuedOn": "2026-10-27"
+    "issuedOn": "2026-10-27",
+    "traceabilityDueAt": "2030-11-28T08:00:00Z"
   }
 }
