@@ -458,7 +458,6 @@ verdicts, work-item binding, contributor scope, holds and governor checks are
 required before the scoped spawn path can run. The receiver holds no admin
 credential. Merge recruitment stays disabled until verdict signing is trusted.
 
-
 ### Separate recruitment consumer source
 
 `github_recruitment_drain.py` consumes a bounded batch of verified inbox rows
