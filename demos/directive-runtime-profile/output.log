@@ -1,0 +1,13 @@
+Script started on 2026-11-21 06:02:07-05:00 [COMMAND=".venv/bin/python docs/demos/directive-runtime-profile/run.py" <not executed on terminal>]
+Isolated source fixtures; no loaded-set claim
+Base: 663d307b7da61c74431817a348246dffb74df333
+Candidate: software-factory compatibility SHA256 fd82a0e0533a772ada0f9945b4b986c5b1a79781030b662a2fe7606b0d391cc3
+Input: three Directives, typed zoned deadline
+  before: admitted=True, severities=['Warning']
+  candidate: admitted=True, severities=[]
+Input: three Directives, missing deadline
+  before: admitted=True, severities=['Warning']
+  candidate: admitted=False, severities=['Violation']
+PASS: dated admission retained; undated untraced directives now refused
+
+Script done on 2026-11-21 06:02:22-05:00 [COMMAND_EXIT_CODE="0"]
