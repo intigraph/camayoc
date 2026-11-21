@@ -64,13 +64,14 @@ Record a standing rule: one imperative sentence, who issued it, who it binds.
 | issuedOn | `--issued-on` | `issuedOn` | no | The date the rule was given, YYYY-MM-DD. |
 | why | `--why` | `why` | no | Why the rule exists, in one sentence. |
 | verbatim | `--verbatim` | `verbatim` | no | The rule in the issuer's own words. |
+| traceabilityDueAt | `--traceability-due-at` | `traceabilityDueAt` | no | Explicit timezone-bearing evaluation deadline when policy/work-item traceability is deferred; no automatic date is chosen. |
 
 - Natural key: --applies-to + --topic; the same key supersedes.
 - Record: `cy record directive` (MCP `record_directive`)
 - Recall: `cy recall directive [--applies-to]` (MCP `recall_directive`): Current directives binding one agent, role or repo, plus crew-wide ones.
 
 ```bash
-cy record directive --rule "Run disruptive deploys between 02:00 and 09:00 ET; never ask for a window." --issued-by "person-stiwi" --applies-to "crew" --topic "deploy-window" --issued-on "2026-10-27"
+cy record directive --rule "Run disruptive deploys between 02:00 and 09:00 ET; never ask for a window." --issued-by "person-stiwi" --applies-to "crew" --topic "deploy-window" --issued-on "2026-10-27" --traceability-due-at "2030-11-28T08:00:00Z"
 ```
 
 When policy/work-item evaluation is deferred, retain the directive with one
@@ -80,8 +81,8 @@ an explicit UTC instant. This is an evaluation deadline, not expiration or
 permission to execute. Missing both alternatives remains refused.
 
 First verify the receiving store has adopted the Quechua deadline shape
-and episode typed literals. If the installed `cy` exposes no date field,
-do not invent a flag: use the governed episode writer with this entry in
+and episode typed literals. This release exposes `--traceability-due-at`;
+it emits the typed literal. For older CLIs use the governed episode writer with this entry in
 the Directive node's `properties` object:
 
 ```json

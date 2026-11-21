@@ -237,7 +237,8 @@
         "issuedBy": "person-stiwi",
         "issuedOn": "2026-10-27",
         "rule": "Run disruptive deploys between 02:00 and 09:00 ET; never ask for a window.",
-        "topic": "deploy-window"
+        "topic": "deploy-window",
+        "traceabilityDueAt": "2030-11-28T08:00:00Z"
       },
       "fields": [
         {
@@ -334,6 +335,20 @@
           "message": "Not recorded: give one --verbatim quote.",
           "name": "verbatim",
           "path": "aegis:verbatim",
+          "pattern": null,
+          "repeatable": false,
+          "required": false
+        },
+        {
+          "datatype": "xsd:dateTime",
+          "description": "Explicit timezone-bearing evaluation deadline when policy/work-item traceability is deferred; no automatic date is chosen.",
+          "enum": null,
+          "flag": "--traceability-due-at",
+          "kind": "text",
+          "maxCount": 1,
+          "message": "Not recorded: --traceability-due-at needs one valid timezone-bearing dateTime.",
+          "name": "traceabilityDueAt",
+          "path": "https://w3id.org/intigraph/quechua/ns#traceabilityDueAt",
           "pattern": null,
           "repeatable": false,
           "required": false

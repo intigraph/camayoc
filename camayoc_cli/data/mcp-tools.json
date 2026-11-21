@@ -131,6 +131,10 @@
             "description": "The registered memory topic the rule governs (cy topic add registers one).",
             "type": "string"
           },
+          "traceabilityDueAt": {
+            "description": "Explicit timezone-bearing evaluation deadline when policy/work-item traceability is deferred; no automatic date is chosen.",
+            "type": "string"
+          },
           "verbatim": {
             "description": "The rule in the issuer's own words.",
             "type": "string"

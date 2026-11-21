@@ -170,7 +170,13 @@ aegis:MemoryDirectiveShape a sh:NodeShape ;
         sh:path aegis:verbatim ; sh:maxCount 1 ; sh:datatype xsd:string ;
         sh:order 7 ; sh:name "verbatim" ;
         sh:description "The rule in the issuer's own words." ;
-        sh:message "Not recorded: give one --verbatim quote." ] .
+        sh:message "Not recorded: give one --verbatim quote." ] ;
+    sh:property [
+        sh:path <https://w3id.org/intigraph/quechua/ns#traceabilityDueAt> ;
+        sh:maxCount 1 ; sh:datatype xsd:dateTime ;
+        sh:order 8 ; sh:name "traceabilityDueAt" ;
+        sh:description "Explicit timezone-bearing evaluation deadline when policy/work-item traceability is deferred; no automatic date is chosen." ;
+        sh:message "Not recorded: --traceability-due-at needs one valid timezone-bearing dateTime." ] .
 
 # ---- Preference: how a person wants things done -----------------------------
 
