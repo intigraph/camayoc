@@ -125,6 +125,45 @@ class MappingTests(unittest.TestCase):
         self.assertEqual(["donna-box"], activity(body)["githubMentions"])
         self.assertEqual("GitHubPullRequest", body["nodes"][3]["type"])  # issue.pull_request present
 
+    def test_recruitment_inbox_only_records_verified_webhooks_atomically(self):
+        spool = gi.Spool(":memory:")
+        payload = delivery("check_run.completed")["body"]
+        spool.add("poll-row", "check_run", payload)
+        spool.add("webhook-row", "check_run", payload, verified_webhook=True)
+        spool.add("webhook-row", "check_run", payload, verified_webhook=True)
+        rows = spool.conn.execute("SELECT delivery,event FROM recruitment_events").fetchall()
+        self.assertEqual([("webhook-row", "check_run")], rows)
+        spool.conn.execute("CREATE TRIGGER refuse_recruit BEFORE INSERT ON recruitment_events "
+                           "BEGIN SELECT RAISE(ABORT, 'test disk failure'); END")
+        with self.assertRaises(sqlite3.IntegrityError):
+            spool.add("failed-row", "check_run", payload, verified_webhook=True)
+        self.assertFalse(spool.has("failed-row"))
+
+    def test_check_suite_completed_survives_redaction_and_deduplicates(self):
+        payload = copy.deepcopy(delivery("check_run.completed")["body"])
+        run = payload.pop("check_run")
+        payload["check_suite"] = {k: v for k, v in run.items()
+                                  if k in ("node_id", "id", "head_sha", "status", "conclusion")}
+        payload["check_suite"].update(updated_at="2026-11-21T12:00:00Z",
+                                     head_branch="main", secret="discard this")
+        redacted = gi.redact(payload)
+        self.assertNotIn("secret", redacted["check_suite"])
+        before, key = gi.episode_for("check_suite", payload, actor="tester")
+        after, after_key = gi.episode_for("check_suite", redacted, actor="tester")
+        self.assertEqual((before, key), (after, after_key))
+        self.assertEqual("GitHubCheckSuite", after["nodes"][1]["type"])
+        self.assertEqual("check_suite.completed", activity(after)["githubEventKind"])
+        spool = gi.Spool(":memory:")
+        spool.add("suite-one", "check_suite", redacted)
+        spool.add("suite-two", "check_suite", redacted)
+        writer = Collect()
+        counts = gi.drain_once(spool, actor="tester", writer=writer)
+        self.assertEqual({"written": 1, "duplicate": 1}, counts)
+        self.assertEqual(1, len(writer.bodies))
+        redacted["check_suite"]["head_sha"] = "invalid"
+        with self.assertRaises(gi.Quarantined):
+            gi.episode_for("check_suite", redacted, actor="tester")
+
     def test_runs_checks_push_release(self):
         wr = activity(episode("workflow_run.completed"))
         self.assertEqual(("completed", "success", 1, "main"),

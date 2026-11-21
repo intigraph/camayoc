@@ -361,13 +361,15 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                     state["commitSha"] = obj["commit_id"]
                 when = obj.get("created_at") if action == "created" else obj.get("updated_at")
                 key = _digest(kind, node_id, "" if action == "created" else obj.get("updated_at"))
-        elif event in ("check_run", "workflow_run"):
+        elif event in ("check_run", "check_suite", "workflow_run"):
             head = _sha(_need(obj, "head_sha", rule["object"]))
             if not head:
                 raise Quarantined(f"{rule['object']}.head_sha is not 40-hex")
-            subject = _entity(cls, obj, rule["object"], repo, extra={
-                "githubName": _need(obj, "name", rule["object"]), "commitSha": head},
-                label=f"{full} {obj.get('name')} {node_id}")
+            extra = {"commitSha": head}
+            if event != "check_suite":
+                extra["githubName"] = _need(obj, "name", rule["object"])
+            subject = _entity(cls, obj, rule["object"], repo, extra=extra,
+                              label=f"{full} {event} {node_id}")
             status = _need(obj, "status", rule["object"])
             if status not in _STATUSES:
                 raise Quarantined(f"{rule['object']}.status {status!r} is not mapped")
@@ -385,8 +387,9 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                         "in_progress": obj.get("run_started_at") or obj.get("updated_at")}.get(action, obj.get("updated_at"))
                 key = _digest(kind, node_id, attempt, status, conclusion)
             else:
-                branch = _opt(obj.get("check_suite") or {}, "head_branch")
-                when = obj.get("completed_at") if action == "completed" else obj.get("started_at")
+                branch = _opt(obj if event == "check_suite" else obj.get("check_suite") or {}, "head_branch")
+                when = (obj.get("updated_at") if event == "check_suite" else
+                        obj.get("completed_at") if action == "completed" else obj.get("started_at"))
                 key = _digest(kind, node_id, status, conclusion)
             if branch:
                 state["githubBaseRef"] = branch
@@ -498,7 +501,7 @@ def redact(payload: object) -> object:
         if k == "sender" and isinstance(v, dict):
             out[k] = {"login": v.get("login")} if isinstance(v.get("login"), str) else {}
         elif k in ("repository", "pull_request", "review", "comment", "issue", "check_run",
-                 "workflow_run", "release"):
+                 "check_suite", "workflow_run", "release"):
             out[k] = _slim(v)
     return out
 
@@ -512,6 +515,10 @@ CREATE TABLE IF NOT EXISTS deliveries (
   next_at REAL NOT NULL DEFAULT 0, activity TEXT, reason TEXT);
 CREATE INDEX IF NOT EXISTS deliveries_due ON deliveries (state, next_at);
 CREATE TABLE IF NOT EXISTS activities (key TEXT PRIMARY KEY, delivery TEXT NOT NULL, written_at REAL NOT NULL);
+-- Only the verified webhook receiver inserts here, never poll/replay hydration.
+CREATE TABLE IF NOT EXISTS recruitment_events (
+  delivery TEXT PRIMARY KEY, event TEXT NOT NULL, body BLOB NOT NULL,
+  received_at REAL NOT NULL, state TEXT NOT NULL DEFAULT 'pending', reason TEXT);
 CREATE TABLE IF NOT EXISTS etags (url TEXT PRIMARY KEY, etag TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS repos (full_name TEXT PRIMARY KEY, body TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS budget (hour INTEGER PRIMARY KEY, spent INTEGER NOT NULL);
@@ -585,14 +592,25 @@ class Spool:
                 raise
 
     def add(self, delivery: str, event: str, payload: object, *, occurred_at: str | None = None,
-            now: float | None = None, state: str = "pending") -> str:
+            now: float | None = None, state: str = "pending",
+            verified_webhook: bool = False) -> str:
         """Spool one delivery, REDACTED first: raw bodies never touch disk."""
         now = time.time() if now is None else now
         body = json.dumps(redact(payload), sort_keys=True).encode()
         with self.lock:
-            cur = self.conn.execute(
-                "INSERT OR IGNORE INTO deliveries (id, event, body, occurred_at, received_at, state) "
-                "VALUES (?,?,?,?,?,?)", (delivery, event, body, occurred_at, now, state))
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                cur = self.conn.execute(
+                    "INSERT OR IGNORE INTO deliveries (id, event, body, occurred_at, received_at, state) "
+                    "VALUES (?,?,?,?,?,?)", (delivery, event, body, occurred_at, now, state))
+                if cur.rowcount == 1 and verified_webhook:
+                    self.conn.execute(
+                        "INSERT INTO recruitment_events (delivery,event,body,received_at) VALUES (?,?,?,?)",
+                        (delivery, event, body, now))
+                self.conn.execute("COMMIT")
+            except BaseException:
+                self.conn.execute("ROLLBACK")
+                raise
         return "accepted" if cur.rowcount == 1 else "duplicate"
 
     def pending(self) -> int:
@@ -1231,7 +1249,7 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
             if not bodies.check_and_add(body):
                 # The same signed body under a fresh delivery id: a captured replay.
                 return self._verdict("replay_body", 409, event, delivery)
-            outcome = spool.add(delivery, event, payload)
+            outcome = spool.add(delivery, event, payload, verified_webhook=True)
             if outcome != "accepted":
                 bodies.forget(body)
                 return self._verdict("replay", 409, event, delivery)

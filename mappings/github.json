@@ -34,6 +34,11 @@
       "class": "GitHubCheckRun",
       "object": "check_run"
     },
+    "check_suite": {
+      "actions": ["completed"],
+      "class": "GitHubCheckSuite",
+      "object": "check_suite"
+    },
     "workflow_run": {
       "actions": ["requested", "in_progress", "completed"],
       "class": "GitHubWorkflowRun",

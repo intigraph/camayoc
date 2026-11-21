@@ -1,0 +1,8 @@
+Script started on 2026-11-21 08:03:58-05:00 [COMMAND="python3 docs/demos/github-recruitment/run.py" <not executed on terminal>]
+base b2845fcbb3eaac6a0c17ea5f4ccfde3c80b15fed REFUSED: no mapping for GitHub event 'check_suite'
+candidate source-sha256=d401b9ab29c53de3efeac9f333394c214b364a8067be9ed96b7379c6b9f1f31f MAPPED: GitHubCheckSuite check_suite.completed
+fixture transport first spawned
+fixture transport duplicate-event duplicate
+Actual ledger readback: [('spawned', 'fixture-receipt')]
+
+Script done on 2026-11-21 08:03:58-05:00 [COMMAND_EXIT_CODE="0"]

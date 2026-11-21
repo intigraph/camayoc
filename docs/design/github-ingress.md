@@ -432,3 +432,26 @@ Q3) belongs to chaski's review rule and lands with c01c.4.
 aegis-c01c (epic), c01c.4 (chaski rules), c01c.5 (tambo verify), aegis-2no,
 aegis-izs, aegis-j09 (bobbin webhook), `docs/design/ingress.md`,
 `scripts/ingest_cdevents.py`, quipu `docs/design/event-push.md`.
+
+## Event-driven recruitment foundation
+
+`check_suite.completed` is admitted alongside completed check runs. A suite is
+its own `GitHubCheckSuite` entity, with its GitHub node ID and exact commit; it
+is not a check run and does not have a run name. A successful suite is a wake,
+not proof that every required PR check passed. Deploy the matching GitHub shape
+profile before enabling this mapper revision on an installed ingress.
+
+Verified webhook acceptance atomically appends a redacted recruitment inbox
+row with the ordinary delivery. Poller, replay and hydration paths cannot mark
+rows as verified webhooks. The inbox is independent of episode-drain outcomes,
+and is retained independently of normal delivery purging. This foundation does
+not consume it or spawn jobs.
+
+`github_recruitment.py` provides the separate drain's attempt ledger, keyed by
+repository, PR, exact head and job. Reservation commits before admission and
+spawn. A refusal, unknown response or interrupted attempted row cannot replay
+automatically, even under another delivery ID. Admission and spawn transports
+remain explicit dependencies: authoritative required-check state, exact-head
+verdicts, work-item binding, contributor scope, holds and governor checks are
+required before the scoped spawn path can run. The receiver holds no admin
+credential. Merge recruitment stays disabled until verdict signing is trusted.

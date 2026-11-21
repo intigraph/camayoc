@@ -92,6 +92,17 @@ class GitHubShapes(unittest.TestCase):
         if path:
             self.assertRegex(out, rf"path: [^)]*{re.escape(path)}\)")
 
+    def test_check_suite_has_its_own_type_and_requires_head_and_status(self):
+        suite = (CONTEXT + 'aegis:suite a aegis:GitHubCheckSuite ; rdfs:label "suite" ; '
+                 'aegis:githubNodeId "CS_example" ; aegis:inGitHubRepository aegis:repo ; '
+                 'aegis:commitSha "' + 'a' * 40 + '" .\n')
+        self.assertTrue(self.valid(suite))
+        self.assert_one_violation(suite.replace('a' * 40, 'short'), 'Pattern', 'commitSha')
+        self.assertTrue(self.valid(activity(aegis__githubEventKind='"check_suite.completed"',
+                                          aegis__githubStatus='"completed"')))
+        self.assert_one_violation(activity(aegis__githubEventKind='"check_suite.completed"'),
+                                  'OR', None)
+
     def test_example_data_set_is_valid(self):
         out = self.report(EXAMPLE.read_text(), prefix=False)
         self.assertTrue(out.lstrip().startswith("valid"), out)
