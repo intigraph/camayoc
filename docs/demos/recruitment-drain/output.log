@@ -1,0 +1,12 @@
+Script started on 2026-11-21 11:00:38-05:00 [COMMAND="python3 docs/demos/recruitment-drain/run.py" <not executed on terminal>]
+BASE bd752d0bce33844a67cb6d7f0f15cef164828651 same verified replay after graph retention -> IntegrityError
+CANDIDATE ingress SHA256=256572366aff7eead8bc76d47133563adc6aff33a877282a1c5feca01f76ff65 same replay -> duplicate
+FIXTURE consumer wake-1 {'spawned': 1}
+FIXTURE consumer wake-2 {'duplicate': 1}
+FAKE controller calls: 1 graph rows still pending: 2
+Retention bodies cleared: 2
+Preserved candidate ledger: [('spawned', 'fake-controller-receipt')]
+Preserved tombstones: [('spawned', 0), ('duplicate', 0)]
+Drain source SHA256=c467315b3d294dcb181d8f16ac004d48124e51d5946b1fbaf958314dd1846f05
+
+Script done on 2026-11-21 11:00:38-05:00 [COMMAND_EXIT_CODE="0"]
