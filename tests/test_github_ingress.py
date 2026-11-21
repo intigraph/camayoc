@@ -388,6 +388,16 @@ class ReceiverTests(unittest.TestCase):
         conn.close()
         return out
 
+    def test_recruitment_inbox_is_opt_in_and_only_after_signature_verification(self):
+        rec = delivery("check_run.completed")
+        self.assertEqual(202, self.post(rec)[0])
+        self.assertEqual(0, self.spool.conn.execute("SELECT COUNT(*) FROM recruitment_events").fetchone()[0])
+        self.restart(recruitment_inbox=True)
+        self.assertEqual(401, self.post(rec, secret=b"wrong")[0])
+        self.assertEqual(0, self.spool.conn.execute("SELECT COUNT(*) FROM recruitment_events").fetchone()[0])
+        self.assertEqual(202, self.post(rec)[0])
+        self.assertEqual(1, self.spool.conn.execute("SELECT COUNT(*) FROM recruitment_events").fetchone()[0])
+
     def test_accept_then_signed_replay_is_refused(self):
         rec = delivery("pull_request.closed")
         self.assertEqual((202, "accepted"), (lambda r: (r[0], r[1]["outcome"]))(self.post(rec)))
@@ -1304,7 +1314,9 @@ class QuipuRoundTripTests(unittest.TestCase):
             path = Path(cls.tmp.name) / f"ep{i}.json"
             path.write_text(json.dumps(body))
             out = subprocess.run([str(QUIPU), "episode", str(path), "--db", cls.db,
-                                  "--timestamp", "2026-10-28T00:00:00Z"], capture_output=True, text=True, check=True)
+                                  "--timestamp", "2026-10-28T00:00:00Z",
+                                  "--base-ns", "http://aegis.gastown.local/ontology/"],
+                                 capture_output=True, text=True, check=True)
             cls.outputs.append(out.stdout)
 
     @classmethod

@@ -441,11 +441,13 @@ is not a check run and does not have a run name. A successful suite is a wake,
 not proof that every required PR check passed. Deploy the matching GitHub shape
 profile before enabling this mapper revision on an installed ingress.
 
-Verified webhook acceptance atomically appends a redacted recruitment inbox
+With explicit `serve --recruitment-inbox` (default off), verified webhook
+acceptance atomically appends a redacted recruitment inbox
 row with the ordinary delivery. Poller, replay and hydration paths cannot mark
 rows as verified webhooks. The inbox is independent of episode-drain outcomes,
 and is retained independently of normal delivery purging. This foundation does
-not consume it or spawn jobs.
+not consume it or spawn jobs. The existing pending ceiling also bounds the
+recruitment inbox when enabled; install the separate drain before enabling it.
 
 `github_recruitment.py` provides the separate drain's attempt ledger, keyed by
 repository, PR, exact head and job. Reservation commits before admission and

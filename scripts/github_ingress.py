@@ -618,6 +618,11 @@ class Spool:
             return self.conn.execute(
                 "SELECT COUNT(*) FROM deliveries WHERE state IN ('pending','hydrate')").fetchone()[0]
 
+    def recruitment_pending(self) -> int:
+        with self.lock:
+            return self.conn.execute(
+                "SELECT COUNT(*) FROM recruitment_events WHERE state='pending'").fetchone()[0]
+
     def observe_pr(self, repo: str, node: str, state_key: str, payload: dict, now: float) -> str:
         """Atomically queue a transition and remember only its consecutive state.
 
@@ -1102,7 +1107,7 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
                  events: set[str] | None = None, max_body: int | None = None,
                  limiter: RejectLimiter | None = None, metrics: Metrics | None = None,
                  deadline: float | None = None, bodies: SeenBodies | None = None,
-                 sources: SourceAllowlist | None = None):
+                 sources: SourceAllowlist | None = None, recruitment_inbox: bool = False):
     """The webhook handler. `events` is the allowlist (None: the mapped events + ping).
 
     `deadline` bounds one whole connection (headers, body, answer) in wall-clock
@@ -1239,7 +1244,8 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
             if full not in repos:
                 return self._verdict("ignored", 202, event, delivery,
                                      {"outcome": "ignored", "reason": "repository not watched"})
-            if spool.pending() >= MAX_PENDING:
+            if (spool.pending() >= MAX_PENDING or recruitment_inbox and
+                    spool.recruitment_pending() >= MAX_PENDING):
                 return self._verdict("spool_full", 503, event, delivery)
             if self.expired:
                 return  # the deadline already closed this connection; spool nothing
@@ -1249,7 +1255,7 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
             if not bodies.check_and_add(body):
                 # The same signed body under a fresh delivery id: a captured replay.
                 return self._verdict("replay_body", 409, event, delivery)
-            outcome = spool.add(delivery, event, payload, verified_webhook=True)
+            outcome = spool.add(delivery, event, payload, verified_webhook=recruitment_inbox)
             if outcome != "accepted":
                 bodies.forget(body)
                 return self._verdict("replay", 409, event, delivery)
@@ -1632,6 +1638,8 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--listen", default="127.0.0.1:3040")
     s.add_argument("--path", default="/hooks/github")
     s.add_argument("--secret-file", type=Path, required=True)
+    s.add_argument("--recruitment-inbox", action="store_true",
+                   help="append verified webhook recruitment wakes (off until separate drain is installed)")
     s.add_argument("--no-drain", action="store_true",
                    help="receive and spool only; hold no Quipu credential (run `drain --loop` separately)")
     s.add_argument("--max-body", type=int, default=MAX_BODY, help="bytes; larger bodies get 413 unread")
@@ -1728,6 +1736,7 @@ def main(argv: list[str] | None = None) -> int:
         server = LimitedServer((host or "127.0.0.1", int(port)),
                                make_handler(spool, secret, repos, args.path, wake, max_body=args.max_body,
                                             metrics=metrics, deadline=args.request_deadline,
+                                            recruitment_inbox=args.recruitment_inbox,
                                             sources=(SourceAllowlist(args.source_allowlist, args.source_max_age)
                                                      if args.source_allowlist else None)),
                                max_concurrent=args.max_concurrent)
