@@ -410,18 +410,41 @@ aegis:DirectiveShape a sh:NodeShape ;
     sh:targetClass aegis:Directive .
 
 aegis:DirectiveTraceabilityShape a sh:NodeShape ;
-    quipu:onViolation "emit" ;
-    sh:message "Untraced directive: it needs aegis:trackedBy a WorkItem and aegis:governedBy a Policy (aegis-q9m5mp)" ;
-    sh:or ( [ sh:class aegis:Policy ] [ sh:class aegis:AlertRule ] [ sh:property [ sh:class aegis:WorkItem ;
-                        sh:minCount 1 ;
-                        sh:path aegis:trackedBy ],
-                    [ sh:class aegis:Policy ;
-                        sh:minCount 1 ;
-                        sh:path aegis:governedBy ] ] ) ;
-    sh:property [ sh:minCount 1 ;
-            sh:path rdfs:label ] ;
-    sh:severity sh:Warning ;
-    sh:targetClass aegis:Directive .
+    quipu:onViolation "reject" ;
+    sh:severity sh:Violation ;
+    sh:targetClass aegis:Directive ;
+    # I2 label floor. DirectiveShape already requires it, so this asserts
+    # nothing new about the data; it keeps every targetClass shape honest.
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( <https://w3id.org/intigraph/quechua/ns#traceabilityDueAt> <https://scbrown.github.io/quechua/ns#traceabilityDueAt> ) ] ;
+        sh:datatype xsd:dateTime ; sh:maxCount 1 ;
+        sh:pattern "(Z|[+-][0-9]{2}:[0-9]{2})$" ;
+    ] ;
+    sh:or (
+        [ sh:property [
+            sh:path [ sh:alternativePath ( <https://w3id.org/intigraph/quechua/ns#traceabilityDueAt> <https://scbrown.github.io/quechua/ns#traceabilityDueAt> ) ] ;
+            sh:minCount 1 ;
+        ] ]
+        [ sh:class aegis:Policy ]
+        [ sh:class aegis:AlertRule ]
+        [
+            sh:property [
+                sh:path aegis:trackedBy ;
+                sh:minCount 1 ;
+                sh:class aegis:WorkItem ;
+            ] ;
+            sh:property [
+                sh:path aegis:governedBy ;
+                sh:minCount 1 ;
+                sh:class aegis:Policy ;
+            ] ;
+        ]
+    ) ;
+    sh:message "Untraced directive: supply trackedBy a WorkItem AND governedBy a Policy, OR one traceabilityDueAt xsd:dateTime for evaluating those links" .
 
 aegis:FailureModeShape a sh:NodeShape ;
     sh:property [ sh:minCount 1 ;
