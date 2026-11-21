@@ -836,8 +836,8 @@ aegis:DirectiveShape a sh:NodeShape ;
 # textrule_patent-application-number (projected and executed by yupana).
 
 aegis:DirectiveTraceabilityShape a sh:NodeShape ;
-    quipu:onViolation "emit" ;
-    sh:severity sh:Warning ;
+    quipu:onViolation "reject" ;
+    sh:severity sh:Violation ;
     sh:targetClass aegis:Directive ;
     # I2 label floor. DirectiveShape already requires it, so this asserts
     # nothing new about the data; it keeps every targetClass shape honest.
@@ -845,7 +845,16 @@ aegis:DirectiveTraceabilityShape a sh:NodeShape ;
         sh:path rdfs:label ;
         sh:minCount 1 ;
     ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( <https://w3id.org/intigraph/quechua/ns#traceabilityDueAt> <https://scbrown.github.io/quechua/ns#traceabilityDueAt> ) ] ;
+        sh:datatype xsd:dateTime ; sh:maxCount 1 ;
+        sh:pattern "(Z|[+-][0-9]{2}:[0-9]{2})$" ;
+    ] ;
     sh:or (
+        [ sh:property [
+            sh:path [ sh:alternativePath ( <https://w3id.org/intigraph/quechua/ns#traceabilityDueAt> <https://scbrown.github.io/quechua/ns#traceabilityDueAt> ) ] ;
+            sh:minCount 1 ;
+        ] ]
         [ sh:class aegis:Policy ]
         [ sh:class aegis:AlertRule ]
         [
@@ -861,7 +870,7 @@ aegis:DirectiveTraceabilityShape a sh:NodeShape ;
             ] ;
         ]
     ) ;
-    sh:message "Untraced directive: it needs aegis:trackedBy a WorkItem and aegis:governedBy a Policy (aegis-q9m5mp)" .
+    sh:message "Untraced directive: supply trackedBy a WorkItem AND governedBy a Policy, OR one traceabilityDueAt xsd:dateTime for evaluating those links" .
 
 # ── Observation ─────���────────────────────────────────────────────
 #
