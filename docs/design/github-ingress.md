@@ -457,3 +457,35 @@ remain explicit dependencies: authoritative required-check state, exact-head
 verdicts, work-item binding, contributor scope, holds and governor checks are
 required before the scoped spawn path can run. The receiver holds no admin
 credential. Merge recruitment stays disabled until verdict signing is trusted.
+
+
+### Separate recruitment consumer source
+
+`github_recruitment_drain.py` consumes a bounded batch of verified inbox rows
+independently of episode writing. Claims commit before authority callbacks;
+SQLite uniqueness reserves the candidate key before admission or transport.
+Receiver locks cover only short database operations, so authority reads cannot
+block webhook acceptance. Concurrent consumers, process death and lost replies
+retain terminal delivery/candidate reservations. No implicit retry exists.
+
+The explicit allowlist, maximum batch (50), maximum redacted body (256 KiB),
+and maximum event age (two days) are checked before a candidate attempt. A
+reviewed `resolve_ready` adapter must return a candidate only after fresh
+readiness and custody checks; returning no ready candidate spends no candidate
+key. The separate admission adapter rechecks after reservation. The event head
+constrains the result: old-head wakes cannot request a newer head. Event check
+conclusions never authorize a job. Merge requests are refused even if a
+resolver nominates one. Refusal free text is replaced by a fixed label.
+
+`purge_terminal_bodies` clears old terminal payloads in bounded batches while
+retaining delivery tombstones and candidate attempt keys. Pending/interrupted
+claims retain evidence; retention never resets a claim or deletes a key. This
+is logical payload retention, not forensic erasure or database compaction.
+Tiny tombstones/attempt metadata remain durable; their eventual compaction
+needs a separate reviewed policy that cannot silently reopen replay. Verified
+redelivery remains a duplicate after ordinary graph delivery history is pruned.
+
+This PR exposes no CLI, transport, service or scheduled loop. The resolver,
+controller signature/handoff integration and adapter deadlines still need
+source qualification before installation. The production inbox flag remains
+off; enabling ingress or any live recruitment requires its separate approval.
