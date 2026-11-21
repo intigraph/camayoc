@@ -56,6 +56,10 @@ aegis:GitHubWorkflowRun a rdfs:Class ;
     rdfs:label "GitHub Actions workflow run" ;
     rdfs:comment "One GitHub Actions workflow run, keyed by node id. NOT aegis:WorkflowRun, which is a shuttle workflow execution." .
 
+aegis:GitHubCheckSuite a rdfs:Class ;
+    rdfs:label "GitHub check suite" ;
+    rdfs:comment "One suite of check runs on a commit, keyed by node id. Suite success alone does not establish PR complete-green admission." .
+
 aegis:GitHubCheckRun a rdfs:Class ;
     rdfs:label "GitHub check run" ;
     rdfs:comment "One check run on a commit, keyed by node id." .
@@ -284,6 +288,15 @@ aegis:GitHubRunShape a sh:NodeShape ;
     sh:property [ sh:path aegis:commitSha ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
     sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] .
 
+aegis:GitHubCheckSuiteShape a sh:NodeShape ;
+    sh:targetClass aegis:GitHubCheckSuite ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:githubNodeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:githubDatabaseId ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
+    sh:property [ sh:path aegis:commitSha ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{40}$" ] ;
+    sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] .
+
 aegis:GitHubReleaseShape a sh:NodeShape ;
     sh:targetClass aegis:GitHubRelease ;
     sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
@@ -315,6 +328,7 @@ aegis:GitHubActivityShape a sh:NodeShape ;
         "issues.opened" "issues.reopened" "issues.closed" "issues.edited"
         "issue_comment.created" "issue_comment.edited"
         "check_run.created" "check_run.completed" "check_run.rerequested"
+        "check_suite.completed"
         "workflow_run.requested" "workflow_run.in_progress" "workflow_run.completed"
         "release.published" "release.released" "release.prereleased" "release.edited"
         "release.unpublished" "release.deleted"
@@ -357,6 +371,7 @@ aegis:GitHubActivityShape a sh:NodeShape ;
     sh:or (
         [ sh:not [ sh:property [ sh:path aegis:githubEventKind ; sh:minCount 1 ; sh:in (
             "check_run.created" "check_run.completed" "check_run.rerequested"
+            "check_suite.completed"
             "workflow_run.requested" "workflow_run.in_progress" "workflow_run.completed" ) ] ] ]
         [ sh:property [ sh:path aegis:githubStatus ; sh:minCount 1 ] ]
     ) ;

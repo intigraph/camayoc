@@ -125,6 +125,45 @@ class MappingTests(unittest.TestCase):
         self.assertEqual(["donna-box"], activity(body)["githubMentions"])
         self.assertEqual("GitHubPullRequest", body["nodes"][3]["type"])  # issue.pull_request present
 
+    def test_recruitment_inbox_only_records_verified_webhooks_atomically(self):
+        spool = gi.Spool(":memory:")
+        payload = delivery("check_run.completed")["body"]
+        spool.add("poll-row", "check_run", payload)
+        spool.add("webhook-row", "check_run", payload, verified_webhook=True)
+        spool.add("webhook-row", "check_run", payload, verified_webhook=True)
+        rows = spool.conn.execute("SELECT delivery,event FROM recruitment_events").fetchall()
+        self.assertEqual([("webhook-row", "check_run")], rows)
+        spool.conn.execute("CREATE TRIGGER refuse_recruit BEFORE INSERT ON recruitment_events "
+                           "BEGIN SELECT RAISE(ABORT, 'test disk failure'); END")
+        with self.assertRaises(sqlite3.IntegrityError):
+            spool.add("failed-row", "check_run", payload, verified_webhook=True)
+        self.assertFalse(spool.has("failed-row"))
+
+    def test_check_suite_completed_survives_redaction_and_deduplicates(self):
+        payload = copy.deepcopy(delivery("check_run.completed")["body"])
+        run = payload.pop("check_run")
+        payload["check_suite"] = {k: v for k, v in run.items()
+                                  if k in ("node_id", "id", "head_sha", "status", "conclusion")}
+        payload["check_suite"].update(updated_at="2026-11-21T12:00:00Z",
+                                     head_branch="main", secret="discard this")
+        redacted = gi.redact(payload)
+        self.assertNotIn("secret", redacted["check_suite"])
+        before, key = gi.episode_for("check_suite", payload, actor="tester")
+        after, after_key = gi.episode_for("check_suite", redacted, actor="tester")
+        self.assertEqual((before, key), (after, after_key))
+        self.assertEqual("GitHubCheckSuite", after["nodes"][1]["type"])
+        self.assertEqual("check_suite.completed", activity(after)["githubEventKind"])
+        spool = gi.Spool(":memory:")
+        spool.add("suite-one", "check_suite", redacted)
+        spool.add("suite-two", "check_suite", redacted)
+        writer = Collect()
+        counts = gi.drain_once(spool, actor="tester", writer=writer)
+        self.assertEqual({"written": 1, "duplicate": 1}, counts)
+        self.assertEqual(1, len(writer.bodies))
+        redacted["check_suite"]["head_sha"] = "invalid"
+        with self.assertRaises(gi.Quarantined):
+            gi.episode_for("check_suite", redacted, actor="tester")
+
     def test_runs_checks_push_release(self):
         wr = activity(episode("workflow_run.completed"))
         self.assertEqual(("completed", "success", 1, "main"),
@@ -348,6 +387,16 @@ class ReceiverTests(unittest.TestCase):
         out = (resp.status, json.loads(raw or b"{}"))
         conn.close()
         return out
+
+    def test_recruitment_inbox_is_opt_in_and_only_after_signature_verification(self):
+        rec = delivery("check_run.completed")
+        self.assertEqual(202, self.post(rec)[0])
+        self.assertEqual(0, self.spool.conn.execute("SELECT COUNT(*) FROM recruitment_events").fetchone()[0])
+        self.restart(recruitment_inbox=True)
+        self.assertEqual(401, self.post(rec, secret=b"wrong")[0])
+        self.assertEqual(0, self.spool.conn.execute("SELECT COUNT(*) FROM recruitment_events").fetchone()[0])
+        self.assertEqual(202, self.post(rec)[0])
+        self.assertEqual(1, self.spool.conn.execute("SELECT COUNT(*) FROM recruitment_events").fetchone()[0])
 
     def test_accept_then_signed_replay_is_refused(self):
         rec = delivery("pull_request.closed")
@@ -1265,7 +1314,9 @@ class QuipuRoundTripTests(unittest.TestCase):
             path = Path(cls.tmp.name) / f"ep{i}.json"
             path.write_text(json.dumps(body))
             out = subprocess.run([str(QUIPU), "episode", str(path), "--db", cls.db,
-                                  "--timestamp", "2026-10-28T00:00:00Z"], capture_output=True, text=True, check=True)
+                                  "--timestamp", "2026-10-28T00:00:00Z",
+                                  "--base-ns", "http://aegis.gastown.local/ontology/"],
+                                 capture_output=True, text=True, check=True)
             cls.outputs.append(out.stdout)
 
     @classmethod
