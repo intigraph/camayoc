@@ -82,7 +82,9 @@ CONTRACTS = {"budget_cap": 1, "reconcile_contract": 1}
 def description(kind, *, native_reader=None):
     if kind in DIRECTIVE_KINDS:
         import directive_edges as de
-        return {"version": 1, "attributes": sorted(bb.A + p for p in DIRECTIVE),
+        return {"version": 1, "attributes": sorted({bb.A + p for p in DIRECTIVE} | {
+                    "https://w3id.org/intigraph/quechua/ns#traceabilityDueAt",
+                    "https://scbrown.github.io/quechua/ns#traceabilityDueAt"}),
                 "graphs": ["ROOT", de.DECLARED, de.INFERRED],
                 "types": [bb.A + "Directive"], **CONTRACTS}
     props = WORK | OBS | BLOCKER if kind == "blocked" else REVIEW | REVIEW_ACTIVITY
