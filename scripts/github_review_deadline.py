@@ -87,8 +87,8 @@ class Deadlines:
         connection.executescript(SCHEMA)
 
     def _sequence(self, wake):
-        return self.connection.execute("SELECT COALESCE(MAX(seq),0) FROM review_deadline_cancels WHERE repo=? AND pr=? AND (kind='push' OR head=?)",
-                                       (wake.repo, wake.pr, wake.head)).fetchone()[0]
+        return self.connection.execute("SELECT COALESCE(MAX(seq),0) FROM review_deadline_cancels WHERE repo=? AND pr=? AND ((kind='push' AND head<>?) OR (kind='review' AND head=?))",
+                                       (wake.repo, wake.pr, wake.head, wake.head)).fetchone()[0]
 
     def _cancelled(self, wake):
         conn, target = self.connection, (wake.repo, wake.pr)
@@ -132,9 +132,8 @@ class Deadlines:
                              (wake.repo, wake.pr, wake.head, wake.kind))
                 sql = "UPDATE review_deadlines SET state='cancelled' WHERE repo=? AND pr=? AND state='armed'"
                 args = (wake.repo, wake.pr)
-                if wake.kind == 'review':
-                    sql += ' AND head=?'
-                    args += (wake.head,)
+                sql += ' AND head<>?' if wake.kind == 'push' else ' AND head=?'
+                args += (wake.head,)
                 conn.execute(sql, args)
                 conn.commit()
                 result = {'state': 'cancelled'}

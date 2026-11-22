@@ -105,6 +105,18 @@ class DeadlineTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=1)
 
+    def test_same_head_push_preserves_deadline_and_cancellation_fences(self):
+        self.arm()
+        self.arm(replace(self.wake, delivery='late-same-head-push', kind='push'))
+        self.assertEqual(1, len(self.reads))  # Cancellation wake has no authority IO.
+        self.now = 7300.
+        def same_head_during_admission(candidate):
+            self.arm(replace(self.wake, delivery='same-head-during-admit', kind='push'))
+            return self.admit(candidate)
+        self.assertEqual('spawned', self.fire(admit=same_head_during_admission))
+        self.assertEqual('duplicate', self.fire())
+        self.assertEqual(1, len(self.jobs))
+
     def test_push_to_new_head_cancels_old_deadline(self):
         self.arm()
         self.arm(replace(self.wake, delivery='push-1', kind='push', head='b' * 40))

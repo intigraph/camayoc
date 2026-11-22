@@ -21,8 +21,10 @@ exact key. It must not periodically scan Quipu or GitHub for stale PRs. This
 library exposes neither a due-list scan nor a service, timer or CLI installer.
 An early callback makes no authority read and does not consume the deadline.
 
-Push events cancel armed deadlines for the PR; review events cancel the matching
-head. Persistent cancellation markers also fence a late arm or a callback that
+Push events cancel armed deadlines for other heads of the PR; review events
+cancel the matching head. A delayed push for the current head preserves its
+deadline and does not advance its cancellation fence. Persistent cancellation
+markers also fence a late arm or a callback that
 has already reserved its launch. A review of a different head cannot cancel the
 current head. Cancelled deadlines do not rearm for the same head. Cancellation
 and delivery receipts are retained; deleting them requires a separate policy.
