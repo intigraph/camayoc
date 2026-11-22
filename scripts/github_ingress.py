@@ -605,6 +605,13 @@ class Spool:
         with self.lock:
             self.conn.execute("BEGIN IMMEDIATE")
             try:
+                # Recruitment retains delivery tombstones after ordinary graph
+                # history is pruned. A verified redelivery is still a replay;
+                # do not reinsert it or collide with the independent inbox.
+                if verified_webhook and self.conn.execute(
+                        "SELECT 1 FROM recruitment_events WHERE delivery=?", (delivery,)).fetchone():
+                    self.conn.execute("COMMIT")
+                    return "duplicate"
                 cur = self.conn.execute(
                     "INSERT OR IGNORE INTO deliveries (id, event, body, occurred_at, received_at, state) "
                     "VALUES (?,?,?,?,?,?)", (delivery, event, body, occurred_at, now, state))
