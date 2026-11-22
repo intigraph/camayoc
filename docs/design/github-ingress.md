@@ -457,3 +457,18 @@ remain explicit dependencies: authoritative required-check state, exact-head
 verdicts, work-item binding, contributor scope, holds and governor checks are
 required before the scoped spawn path can run. The receiver holds no admin
 credential. Merge recruitment stays disabled until verdict signing is trusted.
+
+## Discussion source coverage (za4f.7)
+
+Source support adds `discussion.created`, `discussion.edited`,
+`discussion_comment.created` and `discussion_comment.edited`. Discussion
+threads have their own `GitHubDiscussion` type; their comments reuse
+`GitHubComment` and `onGitHubThread`. Bodies remain redacted to mentions.
+Other discussion actions remain quarantined until their occurrence identity
+and timestamp semantics are qualified. This is explicit partial coverage,
+not a claim to support every GitHub action.
+
+The existing nine event mappings remain admitted. No Events API fallback is
+added for discussions. Shapes activation, reviewed deployment pins and IaC
+webhook subscription precede live delivery. This source change does not
+install hooks, enable Discussions, notify a phone, or launch a draft job.

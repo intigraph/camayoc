@@ -215,9 +215,9 @@ def _entity(cls: str, obj: dict, where: str, repo: dict, *, number: bool = False
     if _opt(obj, "html_url"):
         props["githubUrl"] = obj["html_url"]
     author = _login(obj.get("user") or obj.get("author"))
-    if author and cls in ("GitHubPullRequest", "GitHubIssue", "GitHubComment", "GitHubReview"):
+    if author and cls in ("GitHubPullRequest", "GitHubIssue", "GitHubDiscussion", "GitHubComment", "GitHubReview"):
         props["githubAuthorLogin"] = author
-    if cls in ("GitHubPullRequest", "GitHubIssue") and _opt(obj, "created_at"):
+    if cls in ("GitHubPullRequest", "GitHubIssue", "GitHubDiscussion") and _opt(obj, "created_at"):
         props["githubCreatedAt"] = _instant(obj["created_at"], f"{where}.created_at")
     props.update(extra or {})
     return {"name": node_name(node_id), "type": cls,
@@ -228,7 +228,7 @@ def _entity(cls: str, obj: dict, where: str, repo: dict, *, number: bool = False
 def _thread(payload: dict, key: str, repo: dict) -> dict:
     obj = payload.get(key)
     is_pr = key == "pull_request" or (isinstance(obj, dict) and "pull_request" in obj)
-    cls = "GitHubPullRequest" if is_pr else "GitHubIssue"
+    cls = "GitHubDiscussion" if key == "discussion" else "GitHubPullRequest" if is_pr else "GitHubIssue"
     full = repo["properties"]["githubFullName"]
     number = _need(obj, "number", key, int)
     return _entity(cls, obj, key, repo, number=True, label=f"{full}#{number}")
@@ -340,7 +340,12 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                 texts.append(obj.get("body"))
             when = {"opened": obj.get("created_at"), "closed": obj.get("closed_at")}.get(action, obj.get("updated_at"))
             key = _digest(kind, node_id, {"opened": "", "closed": obj.get("closed_at")}.get(action, obj.get("updated_at")))
-        elif event in ("pull_request_review", "pull_request_review_comment", "issue_comment"):
+        elif event == "discussion":
+            subject = _thread(payload, "discussion", repo)
+            texts.append(obj.get("body"))
+            when = obj.get("created_at") if action == "created" else obj.get("updated_at")
+            key = _digest(kind, node_id, "" if action == "created" else obj.get("updated_at"))
+        elif event in ("pull_request_review", "pull_request_review_comment", "issue_comment", "discussion_comment"):
             thread = _thread(payload, rule["thread"], repo)
             nodes.append(thread)
             subject = _entity(cls, obj, rule["object"], repo)
@@ -501,7 +506,7 @@ def redact(payload: object) -> object:
         if k == "sender" and isinstance(v, dict):
             out[k] = {"login": v.get("login")} if isinstance(v.get("login"), str) else {}
         elif k in ("repository", "pull_request", "review", "comment", "issue", "check_run",
-                 "check_suite", "workflow_run", "release"):
+                 "check_suite", "workflow_run", "release", "discussion"):
             out[k] = _slim(v)
     return out
 

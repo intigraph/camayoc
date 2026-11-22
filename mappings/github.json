@@ -29,6 +29,17 @@
       "object": "comment",
       "thread": "issue"
     },
+    "discussion": {
+      "actions": ["created", "edited"],
+      "class": "GitHubDiscussion",
+      "object": "discussion"
+    },
+    "discussion_comment": {
+      "actions": ["created", "edited"],
+      "class": "GitHubComment",
+      "object": "comment",
+      "thread": "discussion"
+    },
     "check_run": {
       "actions": ["created", "completed", "rerequested"],
       "class": "GitHubCheckRun",
