@@ -1,0 +1,13 @@
+Script started on 2026-11-22 17:37:05-05:00 [COMMAND="python3 docs/demos/review-deadline/run.py" <not executed on terminal>]
+BEFORE f712c17ca785f44766bcfdf28606f7375c129aa7 has no persisted review-deadline adapter
+AFTER: real SQLite/ledger; synthetic authenticated source, authority and launcher
+green event: {'state': 'armed', 'due_at': 7300.0}
+before two hours: not-due launcher calls: 0
+at two hours: spawned launcher calls: 1
+replay: duplicate launcher calls: 1
+authority reads: ['resolver', 'resolver', 'native-custody']
+review event: {'state': 'cancelled'}
+cancelled fire: duplicate
+No HTTP, scheduler installation or actual job launch.
+
+Script done on 2026-11-22 17:37:05-05:00 [COMMAND_EXIT_CODE="0"]

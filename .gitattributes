@@ -1,4 +1,5 @@
 # Preserve terminal recording bytes for scriptreplay.
+docs/demos/review-deadline/output.log -text whitespace=cr-at-eol
 bench/scheduled-work/output.log -text -whitespace
 # Preserve terminal recording bytes; CRLF belongs to the captured output.
 docs/demos/inferred-memory-review/output.log -text whitespace=cr-at-eol
@@ -8,3 +9,4 @@ docs/demos/native-feed-capacity/output.log -text whitespace=cr-at-eol
 docs/demos/native-busy-reason/output.log -text whitespace=cr-at-eol
 docs/demos/native-minute-admission/output.log -text whitespace=cr-at-eol
 docs/demos/knot-response-loss/output.log -text whitespace=cr-at-eol
+docs/demos/native-closure-record.txt -text whitespace=cr-at-eol
