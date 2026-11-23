@@ -26,7 +26,8 @@ MAX_BYTES = 256 * 1024
 PROPERTIES = {RDF+'type', RDFS+'label', SCHEMA+'name', SCHEMA+'identifier',
               SCHEMA+'description', SCHEMA+'keywords', SCHEMA+'dateCreated',
               SCHEMA+'dateModified', SCHEMA+'version', SCHEMA+'agent', SCHEMA+'about',
-              SEEDS+'status', SEEDS+'priority', SEEDS+'issueType', QUECHUA+'blockedOn'}
+              SEEDS+'status', SEEDS+'priority', SEEDS+'issueType', QUECHUA+'blockedOn',
+              SCHEMA+'endTime', SCHEMA+'result'}
 
 
 class NativeUnknown(ValueError):
@@ -117,6 +118,8 @@ class Record:
     priority: int
     about: tuple[str, ...]
     blocked_on: tuple[str, ...]
+    closed_at: str | None = None
+    close_reason: str | None = None
 
     def tracker_record(self) -> dict:
         return {'id':self.id,'title':self.title,'description':self.description,
@@ -125,6 +128,30 @@ class Record:
                 'priority':self.priority,'native_iri':self.action,'source_graph':self.graph,
                 'source_version':self.version,'native_about':list(self.about),
                 'blocked_on':list(self.blocked_on)}
+
+    def closure_record(self) -> dict:
+        """Explicit current-closure projection; never infer a close from modification.
+
+        Older records without a close time remain usable as metadata, but cannot
+        supply lifecycle evidence. This proves the hydrated record is closed;
+        it is not an event feed or proof of intermediate close/reopen transitions.
+        """
+        if self.status != 'closed' or self.closed_at is None:
+            raise NativeUnknown('native closure requires closed status and stored close time')
+        def position(value):
+            # instant() compares at Python's microsecond precision. Native
+            # timestamps retain nanoseconds: keep the remaining digits too.
+            stamp = instant(value)
+            fraction = re.search(r'\.(\d+)', value)
+            digits = fraction.group(1) if fraction else ''
+            if len(digits) > 9:
+                raise NativeUnknown('native closure timestamp exceeds nanosecond precision')
+            return stamp, int((digits + '0'*9)[:9]) % 1000
+        when = position(self.closed_at)
+        if not position(self.created) <= when <= position(self.modified):
+            raise NativeUnknown('native close time is outside the record history')
+        return {**self.tracker_record(), 'closed_at': self.closed_at,
+                'close_reason': self.close_reason}
 
 
 class Reader:
@@ -261,7 +288,9 @@ class Reader:
         return Record(item_id,subject,self.board.graph,version,status,owner,created,modified,
                       title,text(SCHEMA+'description',optional=True) or '',
                       tuple(sorted({lexical(v) for v in values.get(SCHEMA+'keywords',[])})),
-                      text(SEEDS+'issueType'),priority,about,tuple(sorted(set(blockers))))
+                      text(SEEDS+'issueType'),priority,about,tuple(sorted(set(blockers))),
+                      text(SCHEMA+'endTime',optional=True),
+                      text(SCHEMA+'result',optional=True))
 
 
 AUTHORITY_FILE = '/etc/camayoc/tracker-authority.json'
