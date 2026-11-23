@@ -3249,6 +3249,18 @@ redelivery remains a duplicate after ordinary graph delivery history is pruned.<
 controller signature/handoff integration and adapter deadlines still need
 source qualification before installation. The production inbox flag remains
 off; enabling ingress or any live recruitment requires its separate approval.</p>
+<h2 id="discussion-source-coverage-za4f7"><a class="header" href="#discussion-source-coverage-za4f7">Discussion source coverage (za4f.7)</a></h2>
+<p>Source support adds <code>discussion.created</code>, <code>discussion.edited</code>,
+<code>discussion_comment.created</code> and <code>discussion_comment.edited</code>. Discussion
+threads have their own <code>GitHubDiscussion</code> type; their comments reuse
+<code>GitHubComment</code> and <code>onGitHubThread</code>. Bodies remain redacted to mentions.
+Other discussion actions remain quarantined until their occurrence identity
+and timestamp semantics are qualified. This is explicit partial coverage,
+not a claim to support every GitHub action.</p>
+<p>The existing nine event mappings remain admitted. No Events API fallback is
+added for discussions. Shapes activation, reviewed deployment pins and IaC
+webhook subscription precede live delivery. This source change does not
+install hooks, enable Discussions, notify a phone, or launch a draft job.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-jev--typed-decisions-in-the-ingress-path-exploration"><a class="header" href="#design-jev--typed-decisions-in-the-ingress-path-exploration">Design: Jev — typed decisions in the ingress path (exploration)</a></h1>
 <blockquote>
 <p><strong>Status: EXPLORATION, FIRST ARM BUILT (2026-09-21).</strong> Stiwi has a TypeSafe
