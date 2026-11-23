@@ -1,0 +1,8 @@
+Script started on 2026-11-22 21:23:07-05:00 [COMMAND="python3 docs/demos/native-closure-record.py" <not executed on terminal>]
+Private exact-record fixture; no server, stream or producer is started.
+Input close time: 2026-10-10T12:00:00.123456789Z
+BASE e86c5da2 closed_at= None reason= None queries= 1
+HEAD closed_at= 2026-10-10T12:00:00.123456789Z reason= Completed private fixture queries= 1
+Missing close time: UNKNOWN; modification time is never substituted.
+
+Script done on 2026-11-22 21:23:07-05:00 [COMMAND_EXIT_CODE="0"]
