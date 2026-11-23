@@ -538,6 +538,7 @@ COVERAGE_GH: dict[int, dict] = {
     4: {"query": None, "gap": "camayoc_github_default_branch_ci is written (and answers on a test store) but its classes are not yet in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
     5: {"query": None, "gap": "Needs GitHubRelease, GitHubPush and GitHubActivity in the ontology.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
     6: {"query": None, "gap": "camayoc_github_participating_threads is written (and answers on a test store) but its classes are not yet in the ontology; participation is judged at read time, never stored.", "needs": ["aegis:GitHubActivity (Quipu schema proposal)"]},
+    7: {"query": None, "gap": "Discussion source mapping and shapes are qualified locally; runtime profile adoption and a stored discussion activity query remain open.", "needs": ["aegis:GitHubDiscussion (profile activation)", "discussion activity stored query"]},
 }
 
 COVERAGE_WB: dict[int, dict] = {

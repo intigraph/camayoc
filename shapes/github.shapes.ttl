@@ -44,9 +44,13 @@ aegis:GitHubIssue a rdfs:Class ;
     rdfs:label "GitHub issue" ;
     rdfs:comment "An issue (not a pull request), keyed by node id." .
 
+aegis:GitHubDiscussion a rdfs:Class ;
+    rdfs:label "GitHub discussion" ;
+    rdfs:comment "A repository discussion, keyed by node id; distinct from an issue or pull request." .
+
 aegis:GitHubComment a rdfs:Class ;
     rdfs:label "GitHub comment" ;
-    rdfs:comment "An issue comment or a pull request review comment, keyed by node id. Its body is never stored; only its @-mentions ride on the activity." .
+    rdfs:comment "An issue comment, discussion comment or pull request review comment, keyed by node id. Its body is never stored; only its @-mentions ride on the activity." .
 
 aegis:GitHubReview a rdfs:Class ;
     rdfs:label "GitHub review" ;
@@ -253,7 +257,7 @@ aegis:GitHubRepositoryShape a sh:NodeShape ;
     sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] .
 
 aegis:GitHubThreadShape a sh:NodeShape ;
-    sh:targetClass aegis:GitHubPullRequest, aegis:GitHubIssue ;
+    sh:targetClass aegis:GitHubPullRequest, aegis:GitHubIssue, aegis:GitHubDiscussion ;
     sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
     sh:property [ sh:path aegis:githubNodeId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
     sh:property [ sh:path aegis:githubNumber ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ;
@@ -270,7 +274,7 @@ aegis:GitHubThreadItemShape a sh:NodeShape ;
     sh:property [ sh:path aegis:githubDatabaseId ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
     sh:property [ sh:path aegis:inGitHubRepository ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRepository ] ;
     sh:property [ sh:path aegis:onGitHubThread ; sh:minCount 1 ; sh:maxCount 1 ;
-                  sh:or ( [ sh:class aegis:GitHubPullRequest ] [ sh:class aegis:GitHubIssue ] ) ] ;
+                  sh:or ( [ sh:class aegis:GitHubPullRequest ] [ sh:class aegis:GitHubIssue ] [ sh:class aegis:GitHubDiscussion ] ) ] ;
     sh:property [ sh:path aegis:githubUrl ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^https://" ] ;
     sh:property [ sh:path aegis:githubAuthorLogin ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] .
 
@@ -327,6 +331,8 @@ aegis:GitHubActivityShape a sh:NodeShape ;
         "pull_request_review_comment.created" "pull_request_review_comment.edited"
         "issues.opened" "issues.reopened" "issues.closed" "issues.edited"
         "issue_comment.created" "issue_comment.edited"
+        "discussion.created" "discussion.edited"
+        "discussion_comment.created" "discussion_comment.edited"
         "check_run.created" "check_run.completed" "check_run.rerequested"
         "check_suite.completed"
         "workflow_run.requested" "workflow_run.in_progress" "workflow_run.completed"

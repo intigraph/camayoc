@@ -38,3 +38,9 @@ keyed by GitHub node id. Every changing state rides on an append-only
 6. On which pull requests and issues did login `<l>` author, act or get
    @-mentioned, and which of those threads had activity by someone else after
    `<l>`'s latest activity? (aegis-2no's GitHub half)
+
+## Discussions
+
+7. Which repository discussions and discussion comments were created or edited
+   after `<t>`, by which observed sender, and on which distinct discussion
+   thread? This earns `GitHubDiscussion`; a discussion is not an issue.

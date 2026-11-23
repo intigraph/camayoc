@@ -488,3 +488,18 @@ This PR exposes no CLI, transport, service or scheduled loop. The resolver,
 controller signature/handoff integration and adapter deadlines still need
 source qualification before installation. The production inbox flag remains
 off; enabling ingress or any live recruitment requires its separate approval.
+
+## Discussion source coverage (za4f.7)
+
+Source support adds `discussion.created`, `discussion.edited`,
+`discussion_comment.created` and `discussion_comment.edited`. Discussion
+threads have their own `GitHubDiscussion` type; their comments reuse
+`GitHubComment` and `onGitHubThread`. Bodies remain redacted to mentions.
+Other discussion actions remain quarantined until their occurrence identity
+and timestamp semantics are qualified. This is explicit partial coverage,
+not a claim to support every GitHub action.
+
+The existing nine event mappings remain admitted. No Events API fallback is
+added for discussions. Shapes activation, reviewed deployment pins and IaC
+webhook subscription precede live delivery. This source change does not
+install hooks, enable Discussions, notify a phone, or launch a draft job.
