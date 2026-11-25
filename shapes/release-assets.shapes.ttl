@@ -1,0 +1,69 @@
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# Release asset check: ONE judgment per release that its required assets are
+# present (aegis-7zkl), written by scripts/release_asset_check.py on the
+# release's own verification check run, or at a backstop deadline. It replaces
+# a timer that re-observed the latest release every five minutes. STANDALONE:
+# own prefixes and declarations; reuses rdfs:label, aegis:sourceKind and
+# aegis:occurredAt and links to aegis:GitHubRelease from github.shapes.ttl.
+#
+# What a shape cannot prove (the rule's asset list, key derivation, one fact
+# per release) is the producer's and the reaction's guarantee, tested in
+# tests/test_release_asset_check.py.
+
+aegis:ReleaseAssetCheck a rdfs:Class ;
+    rdfs:label "Release asset check" ;
+    rdfs:comment "One judgment that a GitHub release carries every asset its reviewed rule requires: complete, or incomplete naming each missing asset. Only an incomplete check recruits a fix." .
+
+aegis:assetCheckOf a rdf:Property ;
+    rdfs:label "asset check of" ;
+    rdfs:comment "The GitHubRelease judged." .
+
+aegis:assetCheckOutcome a rdf:Property ;
+    rdfs:label "asset check outcome" ;
+    rdfs:comment "Closed set: complete, incomplete." ;
+    rdfs:range xsd:string .
+
+aegis:missingAsset a rdf:Property ;
+    rdfs:label "missing asset" ;
+    rdfs:comment "Exact name of one required asset absent at judgment time. Present only on an incomplete check." ;
+    rdfs:range xsd:string .
+
+aegis:assetCheckKey a rdf:Property ;
+    rdfs:label "asset check key" ;
+    rdfs:comment "SHA-256 of the release node id and the rule digest: the idempotency key." ;
+    rdfs:range xsd:string .
+
+aegis:assetRuleDigest a rdf:Property ;
+    rdfs:label "asset rule digest" ;
+    rdfs:comment "SHA-256 of the reviewed rule file (mappings/release-assets.json) the judgment applied." ;
+    rdfs:range xsd:string .
+
+aegis:assetCheckTrigger a rdf:Property ;
+    rdfs:label "asset check trigger" ;
+    rdfs:comment "Closed set: check-run (the release's verification check run completed) or backstop (the deadline after publication passed without one)." ;
+    rdfs:range xsd:string .
+
+aegis:ReleaseAssetCheckShape a sh:NodeShape ;
+    sh:targetClass aegis:ReleaseAssetCheck ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path aegis:assetCheckOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:GitHubRelease ] ;
+    sh:property [ sh:path aegis:assetCheckOutcome ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("complete" "incomplete") ] ;
+    sh:property [ sh:path aegis:missingAsset ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:assetCheckKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path aegis:assetRuleDigest ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path aegis:assetCheckTrigger ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("check-run" "backstop") ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] ;
+    # complete <=> no missing asset; incomplete <=> at least one.
+    sh:or (
+        [ sh:property [ sh:path aegis:assetCheckOutcome ; sh:hasValue "complete" ] ;
+          sh:property [ sh:path aegis:missingAsset ; sh:maxCount 0 ] ]
+        [ sh:property [ sh:path aegis:assetCheckOutcome ; sh:hasValue "incomplete" ] ;
+          sh:property [ sh:path aegis:missingAsset ; sh:minCount 1 ] ]
+    ) .

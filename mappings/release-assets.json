@@ -1,0 +1,17 @@
+{
+  "_comment": "Reviewed release asset rules (aegis-7zkl). An asset name is {prefix}{tag}{suffix}. The check runs once on the release's own trigger_check_run completion; backstop_seconds after publication is the only time arm (producer runs take 14-80m and v0.19.4 assets landed ~4h after publish, so no short fixed grace). provenance.json is not required: releases before the trusted producer carry none.",
+  "version": 1,
+  "repositories": {
+    "intigraph/quipu": {
+      "prefix": "quipu-",
+      "trigger_check_run": "Verify repository pendant",
+      "backstop_seconds": 10800,
+      "required_suffixes": [
+        "-repository.pendant.tar.gz",
+        "-repository.pendant.tar.gz.sha256",
+        "-repository.qpack.tar.gz",
+        "-repository.qpack.tar.gz.sha256"
+      ]
+    }
+  }
+}
