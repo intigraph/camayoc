@@ -390,6 +390,40 @@ first producer.
    which keeps 30 days and 300 events. A long outage can be replayed from the
    GitHub "recent deliveries" API (follow-up).
 
+7. **Repository metadata, once per change (aegis-xxoa.5.1).** Quipu dedups
+   facts per source, and every delivery is its own source. When each episode
+   re-asserted the repository node, intigraph/quipu's node grew to 12,500
+   sources x 8 rows (100,000 active rows; 7 values identical 12,500 times),
+   which hit the post-state verify cap behind aegis-ov41. The drain now keeps
+   the digest of the repository node it last saw WRITTEN (spool table
+   `repo_assertions`) and leaves the node out of any episode whose repository
+   content matches that digest. The edges still name the repository by IRI. A
+   change to any repository value asserts it again. A failed write records
+   nothing. If the store refuses a body that was sent without the repository
+   node (for example a rebuilt store where `sh:class aegis:GitHubRepository`
+   no longer resolves), the drain forgets the digest and retries with the full
+   node, so only a full body's refusal is quarantined as permanent. Because of
+   this, a resend can differ from a lost first attempt only by that node.
+   After a deploy, each repository is asserted once more (the spool starts
+   with no digests). From then on its row count stays flat.
+
+   **Retracting the existing duplicates is a separate, reviewed, one-way step.
+   It is planned here and not run.**
+   1. Measure each repository node: `COUNT(*)` of active rows against
+      `COUNT(DISTINCT predicate, value)`, and record the numbers on the item.
+   2. Keep exactly one source per repository: the newest episode that
+      asserted the current values. Only sources whose ONLY facts on that
+      node are the duplicated metadata are candidates. An episode's activity,
+      subject and edge facts are never candidates, so episode-scoped
+      retraction (`quipu_retract_episode`) is the wrong tool. It would close
+      the activity too.
+   3. Do a dry run through the governed retraction path. It must name the rows,
+      show that the distinct (predicate, value) set on the node is unchanged,
+      and show that `rdfs:label`/`rdf:type` stay.
+   4. Get the plan reviewed (the store owner), run it in a maintenance window,
+      and re-run the step 1 probe. Rows should fall to the distinct count and
+      stay flat across N new deliveries.
+
 ## 7. Registration Steve approves (not done here)
 
 Both of these are outward changes and wait for approval:

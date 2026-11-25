@@ -254,6 +254,63 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual({"written": 1}, gi.drain_once(spool, actor="t", writer=writer))
         self.assertEqual({}, gi.drain_once(spool, actor="t", writer=writer))
 
+    def test_repository_metadata_is_asserted_once_not_per_delivery(self):
+        """aegis-xxoa.5.1: 12,500 deliveries re-asserted the same 7 repository
+        values under 12,500 sources. Across N deliveries the repository node
+        rides in ONE body; every body still names it by IRI in its edges."""
+        _, bodies = replay()
+        repo = "github.R_kgDOTvaTnA"
+        carrying = [b for b in bodies if any(n["type"] == "GitHubRepository" for n in b["nodes"])]
+        self.assertEqual(1, len(carrying))
+        self.assertGreater(len(bodies), 1)
+        for b in bodies:
+            self.assertTrue(any(e["target"] == repo and e["relation"] == "inGitHubRepository"
+                                for e in b["edges"]), b["name"])
+
+    def test_changed_repository_metadata_is_written_again(self):
+        spool = gi.Spool(":memory:")
+        first, second = delivery("push")["body"], delivery("pull_request.closed")["body"]
+        changed = copy.deepcopy(delivery("check_run.completed")["body"])
+        changed["repository"]["html_url"] = "https://github.com/intigraph/camayoc-renamed"
+        for i, (event, payload) in enumerate((("push", first), ("pull_request", second),
+                                              ("check_run", changed))):
+            spool.add(f"d{i}", event, payload, now=i)
+        writer = Collect()
+        self.assertEqual({"written": 3}, gi.drain_once(spool, actor="t", writer=writer, now=10))
+        repos = [[n for n in b["nodes"] if n["type"] == "GitHubRepository"] for b in writer.bodies]
+        self.assertEqual([1, 0, 1], [len(r) for r in repos])
+        self.assertEqual("https://github.com/intigraph/camayoc-renamed", repos[2][0]["properties"]["githubUrl"])
+
+    def test_a_failed_write_does_not_mark_the_repository_written(self):
+        spool = gi.Spool(":memory:")
+        spool.add("d1", "push", delivery("push")["body"], now=0)
+        self.assertEqual({"retry": 1}, gi.drain_once(spool, actor="t", writer=Collect(fail=1), now=1))
+        self.assertIsNone(spool.repo_asserted("github.R_kgDOTvaTnA"))
+        writer = Collect()
+        self.assertEqual({"written": 1}, gi.drain_once(spool, actor="t", writer=writer, now=1000))
+        self.assertTrue(any(n["type"] == "GitHubRepository" for n in writer.bodies[0]["nodes"]))
+
+    def test_refusal_without_repository_retries_with_it(self):
+        """If the store refuses a body that relied on the repository already
+        being there (rebuilt store), the next attempt asserts it in full;
+        only a full body's refusal is quarantined as permanent."""
+        spool = gi.Spool(":memory:")
+        spool.add("d0", "push", delivery("push")["body"], now=0)
+        gi.drain_once(spool, actor="t", writer=Collect(), now=1)
+        spool.add("d1", "pull_request", delivery("pull_request.closed")["body"], now=2)
+        seen: list[dict] = []
+
+        def refuse(body):
+            seen.append(body)
+            raise gi.EpisodeRefused("sh:class GitHubRepository")
+        self.assertEqual({"retry": 1}, gi.drain_once(spool, actor="t", writer=refuse, now=3))
+        self.assertFalse(any(n["type"] == "GitHubRepository" for n in seen[0]["nodes"]))
+        self.assertIsNone(spool.repo_asserted("github.R_kgDOTvaTnA"))
+        writer = Collect()
+        self.assertEqual({"written": 1}, gi.drain_once(spool, actor="t", writer=writer, now=1000))
+        self.assertTrue(any(n["type"] == "GitHubRepository" for n in writer.bodies[0]["nodes"]))
+        self.assertIsNotNone(spool.repo_asserted("github.R_kgDOTvaTnA"))
+
     def test_failed_write_stays_pending_then_lands(self):
         spool = gi.Spool(":memory:")
         rec = delivery("push")
@@ -1285,8 +1342,13 @@ class SpoolPrivacyTests(unittest.TestCase):
         gi.drain_once(spool, actor="t", writer=writer)
         raw = [gi.episode_for(e, p, actor="t")[0] for e, p in
                (("push", push), ("issue_comment", comment), ("workflow_run", run))]
-        self.assertEqual(sorted(json.dumps(b, sort_keys=True) for b in raw),
-                         sorted(json.dumps(b, sort_keys=True) for b in writer.bodies))
+        # The drain asserts the (one, unchanged) repository node once (aegis-xxoa.5.1);
+        # every other byte of each body is what the raw payload maps to.
+        def no_repo(b):
+            return json.dumps(dict(b, nodes=[n for n in b["nodes"] if n["type"] != "GitHubRepository"]),
+                              sort_keys=True)
+        self.assertEqual(sorted(no_repo(b) for b in raw), sorted(no_repo(b) for b in writer.bodies))
+        self.assertEqual(1, sum(n["type"] == "GitHubRepository" for b in writer.bodies for n in b["nodes"]))
 
     def test_retention_is_short(self):
         self.assertLessEqual(gi.RETAIN_DAYS, 2)
@@ -1336,6 +1398,14 @@ class QuipuRoundTripTests(unittest.TestCase):
                               "--data", str(data)], capture_output=True, text=True)
         self.assertTrue(out.stdout.lstrip().startswith("valid"), out.stdout + out.stderr)
         self.assertEqual(8, ttl.count("aegis:GitHubActivity") or ttl.count("GitHubActivity>"))
+
+    def test_repository_node_has_one_provenance_row_across_deliveries(self):
+        """The item's probe, in a real store: per repo node, rows do not grow
+        with deliveries. Before aegis-xxoa.5.1 each of the replayed deliveries
+        added its own prov:wasGeneratedBy (and the 7 values beside it)."""
+        out = self.read("SELECT ?e WHERE { GRAPH ?g { <http://aegis.gastown.local/ontology/github.R_kgDOTvaTnA> "
+                        "<http://www.w3.org/ns/prov#wasGeneratedBy> ?e } }")
+        self.assertIn("1 results", out)
 
     def test_reingest_writes_nothing(self):
         self.assertIn("0 facts (tx 0)", self.outputs[-1])

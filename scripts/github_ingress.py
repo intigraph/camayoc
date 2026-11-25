@@ -37,6 +37,11 @@ so the webhook receiver and the budgeted poller cannot disagree about meaning:
   recorded in the spool, so the same change from both transports is written
   once. A re-sent body is byte-identical, so a lost Quipu response is safe to
   retry. An event the mapping cannot place is QUARANTINED with its reason.
+  The repository node is asserted only when its content differs from the
+  digest last written (spool table repo_assertions); otherwise the episode
+  names it by IRI in its edges alone (aegis-xxoa.5.1). A retry may therefore
+  drop the repository node that a lost first attempt carried, and the
+  activity facts stay the same.
 
 Only identifiers, times, verdict words and @-mentions leave the payload:
 never comment, review or PR bodies, commit messages or logs.
@@ -532,6 +537,9 @@ CREATE TABLE IF NOT EXISTS open_prs (repo TEXT NOT NULL, node_id TEXT NOT NULL, 
   number INTEGER, updated_at TEXT, PRIMARY KEY (repo, node_id));
 CREATE TABLE IF NOT EXISTS pr_observations (repo TEXT NOT NULL, node_id TEXT NOT NULL,
   state_key TEXT NOT NULL, sequence INTEGER NOT NULL, PRIMARY KEY (repo, node_id));
+-- aegis-xxoa.5.1: digest of the repository node last WRITTEN to the store, so
+-- its metadata is asserted once per change instead of once per delivery.
+CREATE TABLE IF NOT EXISTS repo_assertions (node TEXT PRIMARY KEY, digest TEXT NOT NULL);
 """
 
 
@@ -754,6 +762,21 @@ class Spool:
             self.conn.execute("INSERT OR REPLACE INTO repos (full_name, body) VALUES (?,?)",
                               (full_name, json.dumps(body, sort_keys=True)))
 
+    def repo_asserted(self, node: str) -> str | None:
+        """Digest of the repository node this spool last saw written, if any."""
+        with self.lock:
+            row = self.conn.execute("SELECT digest FROM repo_assertions WHERE node=?", (node,)).fetchone()
+        return row[0] if row else None
+
+    def set_repo_asserted(self, node: str, digest: str | None) -> None:
+        """Record (or with None, forget) the written repository digest."""
+        with self.lock:
+            if digest is None:
+                self.conn.execute("DELETE FROM repo_assertions WHERE node=?", (node,))
+            else:
+                self.conn.execute("INSERT OR REPLACE INTO repo_assertions (node, digest) VALUES (?,?)",
+                                  (node, digest))
+
     def open_prs(self, repo: str) -> dict[str, tuple]:
         """node_id -> (url, number, updated_at) of the PRs the last full sweep saw open."""
         with self.lock:
@@ -836,6 +859,29 @@ def print_writer(body: dict) -> None:
     print(json.dumps(body, sort_keys=True), flush=True)
 
 
+def repository_digest(body: dict) -> tuple[str, str] | None:
+    """(name, content digest) of the episode's repository node, or None."""
+    for node in body.get("nodes", []):
+        if node.get("type") == "GitHubRepository":
+            return node["name"], _digest(json.dumps(node, sort_keys=True))
+    return None
+
+
+def elide_repository(body: dict, written_digest: str | None) -> tuple[dict, bool]:
+    """The body without its repository node when that node's content is the
+    one already written (aegis-xxoa.5.1).
+
+    Quipu dedups facts per SOURCE, and every delivery is its own source, so
+    re-asserting the repository's unchanged metadata on every delivery added
+    a full copy of it each time: 12,500 sources x 8 rows on one repository.
+    The edges still name the repository by IRI; only its metadata is left
+    out, and it is written again as soon as any of it changes."""
+    found = repository_digest(body)
+    if found is None or written_digest is None or found[1] != written_digest:
+        return body, False
+    return dict(body, nodes=[n for n in body["nodes"] if n.get("type") != "GitHubRepository"]), True
+
+
 def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = None,
                now: float | None = None, mapping: tuple[dict, str] | None = None) -> dict:
     """Map and write every due delivery once. Returns counts by outcome."""
@@ -868,9 +914,23 @@ def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = Non
             spool.settle(delivery, "duplicate", activity=key, reason="activity already written")
             tally("duplicate")
             continue
+        repo = repository_digest(body)
+        if repo is not None:
+            body, elided = elide_repository(body, spool.repo_asserted(repo[0]))
+        else:
+            elided = False
         try:
             writer(body)
         except Exception as exc:  # noqa: BLE001 - a failed write stays pending, never lost
+            if isinstance(exc, EpisodeRefused) and elided:
+                # The store refused a body that relied on the repository already
+                # being there (e.g. sh:class on inGitHubRepository after a store
+                # rebuild). Forget the digest and retry: the next attempt asserts
+                # the repository in full, and only that one can be judged permanent.
+                spool.set_repo_asserted(repo[0], None)
+                spool.retry(delivery, attempts, now, f"refused without repository metadata: {exc}")
+                tally("retry")
+                continue
             if isinstance(exc, EpisodeRefused):
                 # The store judged these exact bytes and refused them (aegis-n0wc:
                 # SHACL MaxCount on a repeated state change). A retry sends the
@@ -885,6 +945,8 @@ def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = Non
             tally("retry")
             continue
         spool.written(delivery, key, now)
+        if repo is not None and not elided:
+            spool.set_repo_asserted(*repo)
         tally("written")
     return out
 
