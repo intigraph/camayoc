@@ -4,20 +4,20 @@
 @prefix sh:    <http://www.w3.org/ns/shacl#> .
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
 
-# Release asset check: ONE judgment per release that its required assets are
-# present (aegis-7zkl), written by scripts/release_asset_check.py on the
+# Release asset check: one judgment that a release's required assets are
+# present (aegis-7zkl), one record per judgment, written by scripts/release_asset_check.py on the
 # release's own verification check run, or at a backstop deadline. It replaces
 # a timer that re-observed the latest release every five minutes. STANDALONE:
 # own prefixes and declarations; reuses rdfs:label, aegis:sourceKind and
 # aegis:occurredAt and links to aegis:GitHubRelease from github.shapes.ttl.
 #
-# What a shape cannot prove (the rule's asset list, key derivation, one fact
-# per release) is the producer's and the reaction's guarantee, tested in
-# tests/test_release_asset_check.py.
+# What a shape cannot prove (the rule's asset list, key derivation, which
+# judgment is latest) is the producer's guarantee or a read-time query,
+# tested in tests/test_release_asset_check.py.
 
 aegis:ReleaseAssetCheck a rdfs:Class ;
     rdfs:label "Release asset check" ;
-    rdfs:comment "One judgment that a GitHub release carries every asset its reviewed rule requires: complete, or incomplete naming each missing asset. Only an incomplete check recruits a fix." .
+    rdfs:comment "One judgment, at one trigger instant, that a GitHub release carries every asset its reviewed rule requires: complete, or incomplete naming each missing asset. A release may have several (a backstop, then a late check run); its current verdict is the latest by occurredAt, read at query time, never an overwritten value." .
 
 aegis:assetCheckOf a rdf:Property ;
     rdfs:label "asset check of" ;
@@ -35,7 +35,7 @@ aegis:missingAsset a rdf:Property ;
 
 aegis:assetCheckKey a rdf:Property ;
     rdfs:label "asset check key" ;
-    rdfs:comment "SHA-256 of the release node id and the rule digest: the idempotency key." ;
+    rdfs:comment "SHA-256 of the release node id, rule digest, trigger and trigger instant: one key per judgment, so re-running a trigger is idempotent and two triggers never collide." ;
     rdfs:range xsd:string .
 
 aegis:assetRuleDigest a rdf:Property ;

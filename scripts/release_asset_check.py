@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One deterministic asset check per release (aegis-7zkl).
+"""Deterministic release asset checks: one fact per judgment (aegis-7zkl).
 
 Two triggers, both events or event-armed: the release's own
 ``trigger_check_run`` completing (the producer's "Verify repository pendant"
@@ -22,12 +22,13 @@ Exit codes: 0 complete, 3 incomplete (the caller recruits a fix job), 4 too
 early (a backstop before its deadline; nothing written, the arm is not
 consumed), 2 quarantined (the input cannot be judged without guessing).
 
-The fact is keyed by release node id + rule digest and stamped with the
-trigger's own instant (the check run's completed_at, or the backstop
-deadline), never wall-clock now: re-running the same trigger writes the same
-bytes. One fact per release is the reaction's guarantee (the backstop fires
-only while no check exists), not this script's. Assets are judged by exact
-name only.
+Each JUDGMENT is its own fact, keyed by release node id + rule digest +
+trigger + the trigger's own instant (the check run's completed_at, or the
+backstop deadline), never wall-clock now: re-running the same trigger writes
+the same bytes, and a backstop judgment followed by a late check-run judgment
+are two facts, not a conflict. A release's current verdict is its latest
+judgment by occurredAt, read at query time. Assets are judged by exact name
+only.
 """
 
 from __future__ import annotations
@@ -108,7 +109,11 @@ def episode_for(repo: str, release: object, *, actor: str, trigger: str, as_of: 
         rules, rules_sha = load_rules()
     outcome, missing, facts = judge(repo, release, rules, trigger=trigger, as_of=as_of,
                                     now=time.time() if now is None else now)
-    key = hashlib.sha256(f"{facts['node_id']}\0{rules_sha}".encode()).hexdigest()
+    # One record per JUDGMENT, not per release: a backstop judgment and a later
+    # check-run judgment of the same release are two facts, never two values on
+    # one node. The latest judgment is a read-time question (max occurredAt).
+    key = hashlib.sha256(
+        f"{facts['node_id']}\0{rules_sha}\0{facts['trigger']}\0{facts['stamp']}".encode()).hexdigest()
     checked_at = facts["stamp"]
     name = f"release-asset-check-{key[:16]}"
     props: dict[str, object] = {

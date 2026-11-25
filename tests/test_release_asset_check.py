@@ -101,6 +101,28 @@ class Judgment(unittest.TestCase):
         b = self.props(release(node_id="RE_kwDOOther"))["assetCheckKey"]
         self.assertNotEqual(a, b)
 
+    def test_backstop_then_late_check_run_are_two_judgments(self) -> None:
+        # v0.19.4's assets landed ~4h after publish: the 180m backstop judges
+        # incomplete, then the producer's check run judges complete. Two facts
+        # on two nodes; neither overwrites the other.
+        early = check(release(drop=("repository.pendant.tar.gz",)), trigger="backstop", as_of=None,
+                      now=PUBLISHED_EPOCH + 4 * 3600)
+        late = check(release())
+        (a,), (b,) = early["nodes"], late["nodes"]
+        self.assertNotEqual(a["name"], b["name"])
+        self.assertNotEqual(early["name"], late["name"])
+        self.assertEqual((a["properties"]["assetCheckOutcome"], b["properties"]["assetCheckOutcome"]),
+                         ("incomplete", "complete"))
+        # The current verdict is the latest judgment, chosen at read time.
+        latest = max((a, b), key=lambda n: n["properties"]["occurredAt"])
+        self.assertIs(latest, b)
+        self.assertEqual(early["edges"][0]["target"], late["edges"][0]["target"])
+
+    def test_two_check_runs_at_different_instants_are_two_judgments(self) -> None:
+        a = self.props(release())
+        b = self.props(release(), as_of="2026-11-25T04:00:00Z")
+        self.assertNotEqual(a["assetCheckKey"], b["assetCheckKey"])
+
     def test_backstop_waits_180_minutes_then_judges_at_its_deadline(self) -> None:
         deadline = PUBLISHED_EPOCH + 180 * 60
         with self.assertRaises(rc.TooEarly):
@@ -180,6 +202,14 @@ class RecordConforms(unittest.TestCase):
         silent = check(release(drop=("repository.pendant.tar.gz",)))
         silent["nodes"][0]["properties"].pop("missingAsset")
         self.assertTrue(self.report(turtle(silent)).lstrip().startswith("invalid"))
+
+    def test_backstop_and_late_check_run_conform_together(self) -> None:
+        # Both judgments of one release in one graph: no maxCount collision.
+        early = check(release(drop=("repository.pendant.tar.gz",)), trigger="backstop", as_of=None,
+                      now=PUBLISHED_EPOCH + 4 * 3600)
+        ttl = turtle(early) + turtle(check(release())).split("\n", 2)[2]
+        out = self.report(ttl)
+        self.assertTrue(out.lstrip().startswith("valid"), out)
 
     def test_check_must_point_at_a_release(self) -> None:
         body = check(release())
