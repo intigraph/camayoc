@@ -1,0 +1,167 @@
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# Alert vocabulary: Alertmanager notifications written into Quipu by one
+# Camayoc ingress, so Chaski can react to alert facts and st can route them
+# (aegis-dc5, gap G2). STANDALONE like delivery.shapes.ttl and
+# github.shapes.ttl: own prefixes and declarations, loadable as one shape set.
+# It reuses existing predicates (rdfs:label, aegis:sourceKind,
+# aegis:occurredAt, aegis:severity, aegis:keeper) without redeclaring them.
+#
+# Same split as the GitHub vocabulary:
+#   - AlertInstance is the ENTITY: one Alertmanager alert, keyed by its
+#     fingerprint (a hash of its label set). It carries only facts that never
+#     change for that fingerprint: name, labels digest, severity, keeper, host.
+#     Re-asserting it is byte-identical, so maxCount 1 never sees two values.
+#   - AlertTransition, AlertAcknowledgement and AlertDelivery are append-only
+#     EVENTS. Firing/resolved state, acknowledgement and the escalation tier
+#     reached are read-time judgments over the latest events (stored queries),
+#     never a stored, overwritten status. Two writers can never conflict.
+#
+# What a shape cannot prove (fingerprint and key derivation, byte-identical
+# replay, calendar validity of instants) is the producer's guarantee, tested
+# with the ingress.
+
+# ---- Classes -----------------------------------------------------------
+
+aegis:AlertInstance a rdfs:Class ;
+    rdfs:label "Alert instance" ;
+    rdfs:comment "One Alertmanager alert, keyed by its fingerprint (the hash of its label set). Whether it is firing is read from its latest AlertTransition, never stored on it. Distinct from aegis:AlertRule (the Prometheus rule) and aegis:Incident (a human-declared incident)." .
+
+aegis:AlertTransition a rdfs:Class ;
+    rdfs:label "Alert transition" ;
+    rdfs:comment "One observed firing or resolved transition of one AlertInstance, append-only, keyed by alertTransitionKey. occurredAt is the alert's own startsAt (firing) or endsAt (resolved). It carries no receive time: Alertmanager re-sends a firing alert every repeat interval, and the re-send must be the SAME record, byte-identical. Ingest latency is read from the write transaction time." .
+
+aegis:AlertAcknowledgement a rdfs:Class ;
+    rdfs:label "Alert acknowledgement" ;
+    rdfs:comment "One acknowledgement of one AlertInstance by a named actor, append-only. Stops further escalation of the firing it follows; a later firing transition needs its own acknowledgement." .
+
+aegis:AlertDelivery a rdfs:Class ;
+    rdfs:label "Alert delivery" ;
+    rdfs:comment "One delivery of one AlertInstance to a recipient at an escalation tier, written by the routing consumer, append-only. The highest tier delivered since the latest firing transition is the current escalation state." .
+
+# ---- Predicates --------------------------------------------------------
+
+aegis:alertFingerprint a rdf:Property ;
+    rdfs:label "alert fingerprint" ;
+    rdfs:comment "Alertmanager's fingerprint for the alert: 16 lowercase hex digits." ;
+    rdfs:range xsd:string .
+
+aegis:alertName a rdf:Property ;
+    rdfs:label "alert name" ;
+    rdfs:comment "The alertname label." ;
+    rdfs:range xsd:string .
+
+aegis:alertLabelsDigest a rdf:Property ;
+    rdfs:label "alert labels digest" ;
+    rdfs:comment "SHA-256 of the alert's canonical label set (sorted key=value lines). Label values themselves are not stored." ;
+    rdfs:range xsd:string .
+
+aegis:alertHost a rdf:Property ;
+    rdfs:label "alert host" ;
+    rdfs:comment "The host or instance label the alert names, when it has one." ;
+    rdfs:range xsd:string .
+
+aegis:instanceOfAlertRule a rdf:Property ;
+    rdfs:label "instance of alert rule" ;
+    rdfs:comment "The aegis:AlertRule this alert was raised by, when the ingress can resolve it." .
+
+aegis:transitionOf a rdf:Property ;
+    rdfs:label "transition of" ;
+    rdfs:comment "The AlertInstance this transition belongs to." .
+
+aegis:alertStatus a rdf:Property ;
+    rdfs:label "alert status" ;
+    rdfs:comment "Closed set: firing, resolved." ;
+    rdfs:range xsd:string .
+
+aegis:alertTransitionKey a rdf:Property ;
+    rdfs:label "alert transition key" ;
+    rdfs:comment "SHA-256 of fingerprint, status, startsAt and endsAt: the idempotency key, so a re-sent notification is the same record." ;
+    rdfs:range xsd:string .
+
+aegis:acknowledgementOf a rdf:Property ;
+    rdfs:label "acknowledgement of" ;
+    rdfs:comment "The AlertInstance acknowledged." .
+
+aegis:acknowledgesTransition a rdf:Property ;
+    rdfs:label "acknowledges transition" ;
+    rdfs:comment "Optional: the firing AlertTransition this acknowledgement answers. Without it the match is by time order." .
+
+aegis:acknowledgedBy a rdf:Property ;
+    rdfs:label "acknowledged by" ;
+    rdfs:comment "The crew member or human who acknowledged, by name." ;
+    rdfs:range xsd:string .
+
+aegis:deliveryOf a rdf:Property ;
+    rdfs:label "delivery of" ;
+    rdfs:comment "The AlertInstance delivered." .
+
+aegis:deliveredTier a rdf:Property ;
+    rdfs:label "delivered tier" ;
+    rdfs:comment "Escalation tier of this delivery, 0 for the first recipient." ;
+    rdfs:range xsd:integer .
+
+aegis:deliveredTo a rdf:Property ;
+    rdfs:label "delivered to" ;
+    rdfs:comment "Recipient of this delivery: a crew name, a lane or a channel." ;
+    rdfs:range xsd:string .
+
+aegis:deliveryRoute a rdf:Property ;
+    rdfs:label "delivery route" ;
+    rdfs:comment "The routing rule that chose this recipient, from st configuration or a Quipu routing node." .
+
+aegis:alertEventKey a rdf:Property ;
+    rdfs:label "alert event key" ;
+    rdfs:comment "SHA-256 idempotency key of an acknowledgement or delivery, derived by its producer." ;
+    rdfs:range xsd:string .
+
+# ---- Shapes ------------------------------------------------------------
+
+aegis:AlertInstanceShape a sh:NodeShape ;
+    sh:targetClass aegis:AlertInstance ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path aegis:alertFingerprint ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{16}$" ] ;
+    sh:property [ sh:path aegis:alertName ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:alertLabelsDigest ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path aegis:severity ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:keeper ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:alertHost ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:instanceOfAlertRule ; sh:maxCount 1 ; sh:class aegis:AlertRule ] .
+
+aegis:AlertTransitionShape a sh:NodeShape ;
+    sh:targetClass aegis:AlertTransition ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path aegis:transitionOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:AlertInstance ] ;
+    sh:property [ sh:path aegis:alertStatus ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("firing" "resolved") ] ;
+    sh:property [ sh:path aegis:alertTransitionKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] .
+
+aegis:AlertAcknowledgementShape a sh:NodeShape ;
+    sh:targetClass aegis:AlertAcknowledgement ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed" "declared") ] ;
+    sh:property [ sh:path aegis:acknowledgementOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:AlertInstance ] ;
+    sh:property [ sh:path aegis:acknowledgesTransition ; sh:maxCount 1 ; sh:class aegis:AlertTransition ] ;
+    sh:property [ sh:path aegis:acknowledgedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:alertEventKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] .
+
+aegis:AlertDeliveryShape a sh:NodeShape ;
+    sh:targetClass aegis:AlertDelivery ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path aegis:deliveryOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:AlertInstance ] ;
+    sh:property [ sh:path aegis:deliveredTier ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ] ;
+    sh:property [ sh:path aegis:deliveredTo ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path aegis:deliveryRoute ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path aegis:alertEventKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] .
