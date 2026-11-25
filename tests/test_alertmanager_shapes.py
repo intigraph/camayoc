@@ -43,7 +43,6 @@ RECORDS = {
         "aegis:alertStatus": '"firing"',
         "aegis:alertTransitionKey": HEX64,
         "aegis:occurredAt": WHEN,
-        "aegis:receivedAt": '"2026-11-25T04:00:03.250Z"',
     }),
     "ack": ("aegis:alert-1-ack1", {
         "a": "aegis:AlertAcknowledgement",
@@ -51,6 +50,7 @@ RECORDS = {
         "aegis:sourceKind": '"declared"',
         "aegis:acknowledgementOf": "aegis:alert-1",
         "aegis:acknowledgedBy": '"harding"',
+        "aegis:acknowledgesTransition": "aegis:alert-1-t1",
         "aegis:alertEventKey": HEX64,
         "aegis:occurredAt": WHEN,
     }),
@@ -117,7 +117,8 @@ class AlertShapes(unittest.TestCase):
     def test_optional_instance_facts_may_be_absent(self) -> None:
         self.assertConforms(render({"instance": {k: None for k in (
             "aegis:severity", "aegis:keeper", "aegis:alertHost", "aegis:instanceOfAlertRule")},
-            "delivery": {"aegis:deliveryRoute": None}}))
+            "delivery": {"aegis:deliveryRoute": None},
+            "ack": {"aegis:acknowledgesTransition": None}}))
 
     def test_resolved_is_a_transition_status(self) -> None:
         self.assertConforms(render({"transition": {"aegis:alertStatus": '"resolved"'}}))
@@ -143,7 +144,7 @@ class AlertShapes(unittest.TestCase):
         self.assertViolates(render({"transition": {"aegis:transitionOf": None}}), "transitionOf")
 
     def test_transition_needs_its_key_and_instants(self) -> None:
-        for key in ("aegis:alertTransitionKey", "aegis:occurredAt", "aegis:receivedAt"):
+        for key in ("aegis:alertTransitionKey", "aegis:occurredAt"):
             with self.subTest(key=key):
                 self.assertViolates(render({"transition": {key: None}}), key.split(":")[1])
         self.assertViolates(render({"transition": {"aegis:occurredAt": '"2026-11-25 04:00:00"'}}), "occurredAt")
@@ -157,6 +158,7 @@ class AlertShapes(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertViolates(render({"ack": {key: None}}), key.split(":")[1])
         self.assertViolates(render({"ack": {"aegis:sourceKind": '"inferred"'}}), "sourceKind")
+        self.assertViolates(render({"ack": {"aegis:acknowledgesTransition": "aegis:alert-1"}}), "acknowledgesTransition")
 
     def test_delivery_tier_is_a_nonnegative_integer(self) -> None:
         for bad in ("-1", '"0"', "1.5"):

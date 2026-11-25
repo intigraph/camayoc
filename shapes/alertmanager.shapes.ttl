@@ -33,7 +33,7 @@ aegis:AlertInstance a rdfs:Class ;
 
 aegis:AlertTransition a rdfs:Class ;
     rdfs:label "Alert transition" ;
-    rdfs:comment "One observed firing or resolved notification for one AlertInstance, append-only, keyed by alertTransitionKey." .
+    rdfs:comment "One observed firing or resolved transition of one AlertInstance, append-only, keyed by alertTransitionKey. occurredAt is the alert's own startsAt (firing) or endsAt (resolved). It carries no receive time: Alertmanager re-sends a firing alert every repeat interval, and the re-send must be the SAME record, byte-identical. Ingest latency is read from the write transaction time." .
 
 aegis:AlertAcknowledgement a rdfs:Class ;
     rdfs:label "Alert acknowledgement" ;
@@ -83,14 +83,13 @@ aegis:alertTransitionKey a rdf:Property ;
     rdfs:comment "SHA-256 of fingerprint, status, startsAt and endsAt: the idempotency key, so a re-sent notification is the same record." ;
     rdfs:range xsd:string .
 
-aegis:receivedAt a rdf:Property ;
-    rdfs:label "received at" ;
-    rdfs:comment "RFC 3339 instant the ingress received the notification; occurredAt is the alert's own startsAt (firing) or endsAt (resolved)." ;
-    rdfs:range xsd:string .
-
 aegis:acknowledgementOf a rdf:Property ;
     rdfs:label "acknowledgement of" ;
     rdfs:comment "The AlertInstance acknowledged." .
+
+aegis:acknowledgesTransition a rdf:Property ;
+    rdfs:label "acknowledges transition" ;
+    rdfs:comment "Optional: the firing AlertTransition this acknowledgement answers. Without it the match is by time order." .
 
 aegis:acknowledgedBy a rdf:Property ;
     rdfs:label "acknowledged by" ;
@@ -142,8 +141,6 @@ aegis:AlertTransitionShape a sh:NodeShape ;
     sh:property [ sh:path aegis:alertStatus ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("firing" "resolved") ] ;
     sh:property [ sh:path aegis:alertTransitionKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
     sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
-                  sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] ;
-    sh:property [ sh:path aegis:receivedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
                   sh:pattern "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$" ] .
 
 aegis:AlertAcknowledgementShape a sh:NodeShape ;
@@ -151,6 +148,7 @@ aegis:AlertAcknowledgementShape a sh:NodeShape ;
     sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
     sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed" "declared") ] ;
     sh:property [ sh:path aegis:acknowledgementOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:AlertInstance ] ;
+    sh:property [ sh:path aegis:acknowledgesTransition ; sh:maxCount 1 ; sh:class aegis:AlertTransition ] ;
     sh:property [ sh:path aegis:acknowledgedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
     sh:property [ sh:path aegis:alertEventKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
     sh:property [ sh:path aegis:occurredAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
