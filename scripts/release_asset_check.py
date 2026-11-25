@@ -2,8 +2,8 @@
 """Deterministic release asset checks: one fact per judgment (aegis-7zkl).
 
 Two triggers, both events or event-armed: the release's own
-``trigger_check_run`` completing (the producer's "Verify repository pendant"
-check_run.completed), or the backstop, published + ``backstop_seconds``, armed
+``trigger_check_run`` completing (quipu release.yml job "Trusted repository
+share", which waits for the pendant and is re-run after a late upload), or the backstop, published + ``backstop_seconds``, armed
 by the release.published fact and used only when no check has been written.
 Either writes ONE ReleaseAssetCheck fact: complete, or incomplete naming each
 missing asset. It replaces a timer that re-observed the latest release every

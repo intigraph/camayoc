@@ -56,7 +56,7 @@ class Judgment(unittest.TestCase):
     def test_rule_file_is_the_reviewed_quipu_rule(self) -> None:
         rules, _ = rc.load_rules()
         rule = rules["repositories"]["intigraph/quipu"]
-        self.assertEqual(rule["trigger_check_run"], "Verify repository pendant")
+        self.assertEqual(rule["trigger_check_run"], "Trusted repository share")
         self.assertEqual(rule["backstop_seconds"], 180 * 60)
         self.assertEqual(sorted(rule["required_suffixes"]), sorted([
             "-repository.pendant.tar.gz", "-repository.pendant.tar.gz.sha256",
