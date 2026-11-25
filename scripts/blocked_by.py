@@ -275,6 +275,16 @@ def _read_latest_observation(post, item: str) -> str | None:
     return _newest(post, stamped)
 
 
+#: Observations per observedAt read. Each read fans out to every graph in
+#: graphs(), so a WorkItem with N Observations costs ceil(N/STAMP_BATCH) x
+#: len(graphs()) requests. At 32 an item with 323 Observations needed 44
+#: requests, more than a whole 40-request reconcile page (aegis-ssvr,
+#: 2026-11-25). A 128-subject bound UNION answered in ~20 ms on every served
+#: graph; a bound observes/observedAt join with ORDER BY ... LIMIT does not
+#: (it timed out on the seeds board graph), so the read stays single-pattern.
+STAMP_BATCH = 128
+
+
 def _stamps(post, observations: list[str]) -> dict[str, str]:
     """observedAt of each observation, in bounded batches.
 
@@ -282,8 +292,8 @@ def _stamps(post, observations: list[str]) -> dict[str, str]:
     identify the observation without BIND, VALUES or a graph join. Keep the
     legacy evaluator unbatched as an independent parity oracle."""
     out: dict[str, str] = {}
-    for start in range(0, len(observations), 32):
-        batch = observations[start:start + 32]
+    for start in range(0, len(observations), STAMP_BATCH):
+        batch = observations[start:start + STAMP_BATCH]
         branches = [f"{{ <{A}{obs}> <{iri}> ?at{i} }}" for i, obs in enumerate(batch)
                     for iri in term_iris("observedAt")]
         columns = " ".join(f"?at{i}" for i in range(len(batch)))

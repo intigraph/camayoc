@@ -212,6 +212,20 @@ class PagedDiscovery(unittest.TestCase):
             self.assertEqual([i for p in pages for i in p["items"]], [f"dir{i}" for i in range(8)])
             self.assertPinned(sent)
 
+    def test_a_heavily_observed_item_fits_the_production_cap(self):
+        # aegis-ssvr 2026-11-25: one WorkItem carried 323 Observations, and the
+        # newest-observation read cost 11 batches x every graph, so no unit of
+        # the observed phase fitted the 40-request reconcile page and discovery
+        # failed every retry. The unit must fit the unchanged production cap.
+        triples = item("busy", "open", at="2026-09-20T00:00:00Z", obs="o-busy-0")
+        for i in range(1, 323):
+            triples += [("busy", "observes", f"o-busy-{i}"),
+                        ("o-busy-%d" % i, "observedAt", "2026-09-20T00:%02d:%02dZ" % (i // 60, i % 60))]
+        triples += [("o-busy-322", "observedBlockedOn", "d"), ("o-busy-5", "observedBlockedOn", "d")]
+        pages, sent = drain("blocked", Keyset(Store(triples).post), 40)
+        self.assertEqual([i for p in pages for i in p["items"]], ["busy"])
+        self.assertPinned(sent)
+
     def test_a_budget_that_fits_no_unit_fails(self):
         with wire(Keyset(blocked_store().post)), self.assertRaises(planes.RequestBudgetExceeded):
             ca.run("blocked", {"discover": True, "now": NOW, "as_of_tx": W, "cursor": None,
