@@ -550,24 +550,72 @@ first producer.</p>
 </div>
 <h2 id="6-idempotency-and-failure-end-to-end"><a class="header" href="#6-idempotency-and-failure-end-to-end">6. Idempotency and failure, end to end</a></h2>
 <ol>
-<li><strong>Same delivery twice.</strong> The spool refuses it by delivery id and answers
-200.</li>
-<li><strong>Same change from webhook and poller.</strong> The activity key is the same, and
+<li>
+<p><strong>Same delivery twice.</strong> The spool refuses it by delivery id and answers
+200.</p>
+</li>
+<li>
+<p><strong>Same change from webhook and poller.</strong> The activity key is the same, and
 the spool's activity ledger marks the second one <code>duplicate</code>. Where the
 two transports disagree on the timestamp a key uses (a reopen, an edit),
-both are written. Consumers treat activities as at-least-once.</li>
-<li><strong>Lost Quipu response.</strong> Resend. The body is byte-identical, so Quipu's
-content hash makes the second write a no-op.</li>
-<li><strong>Mapping change.</strong> The mapping sha in <code>source</code> changes, so a re-mapped
+both are written. Consumers treat activities as at-least-once.</p>
+</li>
+<li>
+<p><strong>Lost Quipu response.</strong> Resend. The body is byte-identical, so Quipu's
+content hash makes the second write a no-op.</p>
+</li>
+<li>
+<p><strong>Mapping change.</strong> The mapping sha in <code>source</code> changes, so a re-mapped
 activity is a NEW episode over the same activity node. It is replayable
 from the spool, which keeps redacted bodies for <code>--retain-days</code> (default
-2).</li>
-<li><strong>Unknown event or action.</strong> The entry is quarantined with a reason and
-counted. It is never guessed or dropped.</li>
-<li><strong>Receiver down.</strong> GitHub marks the delivery failed and does not retry
+2).</p>
+</li>
+<li>
+<p><strong>Unknown event or action.</strong> The entry is quarantined with a reason and
+counted. It is never guessed or dropped.</p>
+</li>
+<li>
+<p><strong>Receiver down.</strong> GitHub marks the delivery failed and does not retry
 automatically. The poller's next cycle covers the gap from the Events API,
 which keeps 30 days and 300 events. A long outage can be replayed from the
-GitHub "recent deliveries" API (follow-up).</li>
+GitHub "recent deliveries" API (follow-up).</p>
+</li>
+<li>
+<p><strong>Repository metadata, once per change (aegis-xxoa.5.1).</strong> Quipu dedups
+facts per source, and every delivery is its own source. When each episode
+re-asserted the repository node, intigraph/quipu's node grew to 12,500
+sources x 8 rows (100,000 active rows; 7 values identical 12,500 times),
+which hit the post-state verify cap behind aegis-ov41. The drain now keeps
+the digest of the repository node it last saw WRITTEN (spool table
+<code>repo_assertions</code>) and leaves the node out of any episode whose repository
+content matches that digest. The edges still name the repository by IRI. A
+change to any repository value asserts it again. A failed write records
+nothing. If the store refuses a body that was sent without the repository
+node (for example a rebuilt store where <code>sh:class aegis:GitHubRepository</code>
+no longer resolves), the drain forgets the digest and retries with the full
+node, so only a full body's refusal is quarantined as permanent. Because of
+this, a resend can differ from a lost first attempt only by that node.
+After a deploy, each repository is asserted once more (the spool starts
+with no digests). From then on its row count stays flat.</p>
+<p><strong>Retracting the existing duplicates is a separate, reviewed, one-way step.
+It is planned here and not run.</strong></p>
+<ol>
+<li>Measure each repository node: <code>COUNT(*)</code> of active rows against
+<code>COUNT(DISTINCT predicate, value)</code>, and record the numbers on the item.</li>
+<li>Keep exactly one source per repository: the newest episode that
+asserted the current values. Only sources whose ONLY facts on that
+node are the duplicated metadata are candidates. An episode's activity,
+subject and edge facts are never candidates, so episode-scoped
+retraction (<code>quipu_retract_episode</code>) is the wrong tool. It would close
+the activity too.</li>
+<li>Do a dry run through the governed retraction path. It must name the rows,
+show that the distinct (predicate, value) set on the node is unchanged,
+and show that <code>rdfs:label</code>/<code>rdf:type</code> stay.</li>
+<li>Get the plan reviewed (the store owner), run it in a maintenance window,
+and re-run the step 1 probe. Rows should fall to the distinct count and
+stay flat across N new deliveries.</li>
+</ol>
+</li>
 </ol>
 <h2 id="7-registration-steve-approves-not-done-here"><a class="header" href="#7-registration-steve-approves-not-done-here">7. Registration Steve approves (not done here)</a></h2>
 <p>Both of these are outward changes and wait for approval:</p>
