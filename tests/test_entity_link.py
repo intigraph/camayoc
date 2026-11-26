@@ -196,6 +196,7 @@ class EntityLinkTest(unittest.TestCase):
         fake = type(sys)("planes")
         fake.ensure_planes = lambda ts: ensured.append(ts)
         fake.plane_for = lambda kind: f"urn:plane:{kind}"
+        fake.instance_ns = lambda: "urn:deploy:"
         answers = list(responses)
 
         def post(path, body, token=""):
@@ -216,6 +217,8 @@ class EntityLinkTest(unittest.TestCase):
         self.assertEqual(body["graph"], "urn:plane:inferred")
         self.assertIn(f"<{el.ONTOLOGY}about> <{el.ONTOLOGY}svc-a>", body["turtle"])
         self.assertIn('"inferred"', body["turtle"])
+        self.assertTrue(body["turtle"].startswith("<urn:deploy:workitem/aegis-x1> "),
+                        "the work-item subject is on the configured instance base")
         self.assertEqual(ensured, [], "an existing plane is not re-registered")
 
     def test_an_unregistered_plane_is_registered_once_then_written(self):

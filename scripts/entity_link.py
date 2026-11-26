@@ -39,8 +39,17 @@ import jev  # noqa: E402
 from search_context import ContextUnknown, context_rows  # noqa: E402
 
 SERVER = os.environ.get("QUIPU_SERVER", "http://localhost:3030").rstrip("/")
+#: VOCABULARY (aegis:about, aegis:sourceKind). Held on the namespace the live
+#: shapes gate on; the w3id crosswalk (namespaces/intigraph/) is unpublished,
+#: so moving the terms waits on the shapes move (aegis-m5s.3).
 ONTOLOGY = "http://aegis.gastown.local/ontology/"
-WORKITEM_NS = ONTOLOGY + "workitem/"
+
+
+def workitem_ns() -> str:
+    """DEPLOYMENT INSTANCE base for work-item subjects: configured, neutral by
+    default (planes.instance_ns, CAMAYOC_INSTANCE_NS), never a private host."""
+    import planes
+    return planes.instance_ns() + "workitem/"
 CLIENT = "camayoc-entity-link"
 TOP_K = 20
 #: One fixed retry, then the item is an ERROR, counted apart from "none"
@@ -178,7 +187,7 @@ def write_link(item: str, entity: str, token: str, timestamp: str) -> dict:
     import urllib.error
 
     import planes
-    subject = f"<{WORKITEM_NS}{item}>"
+    subject = f"<{workitem_ns()}{item}>"
     turtle = (f"{subject} <{ONTOLOGY}about> <{_full(entity)}> .\n"
               f"{subject} <{ONTOLOGY}sourceKind> \"inferred\" .\n")
     body = {"turtle": turtle, "graph": planes.plane_for("inferred")}

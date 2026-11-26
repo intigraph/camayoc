@@ -375,7 +375,7 @@ class LocalStoreRedirectTests(unittest.TestCase):
                 self.assertEqual(0, memory.add_topic(topic, [], env=self.env).code)
         got = self.copy("push-policy.md")
         self.assertEqual(("recorded", "directive"), (got["event"], got["entity"]), got)
-        self.assertRegex(got["lines"][0], rf"^recorded directive {A}mem/directive/repo-goldblum/push-policy/")
+        self.assertRegex(got["lines"][0], rf"^recorded directive {cy_planes.DEFAULT_INSTANCE_NS}mem/directive/repo-goldblum/push-policy/")
         got = self.copy("deploy-window.md")
         self.assertEqual("recorded", got["event"], got)
         with mock.patch.dict(os.environ, self.env):

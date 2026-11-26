@@ -130,6 +130,16 @@ the agent-memory shapes and the registered planes (`scripts/planes.py ensure`).
 When Quipu is unreachable, a record is queued under
 `$XDG_STATE_HOME/camayoc/` and `cy flush` replays it.
 
+Record keys and versions, topics and captures are minted under
+`$CAMAYOC_INSTANCE_NS` (default `https://camayoc.local/id/`, a neutral
+placeholder). A deployment that already holds records sets it to the base
+they were minted under, so existing keys keep their IRIs: the aegis
+deployment sets `CAMAYOC_INSTANCE_NS=http://aegis.gastown.local/ontology/`.
+Reads accept both bases, and a key that already has a current record under
+the former aegis base is superseded on that key. `scripts/entity_link.py`
+takes its work-item subjects from the same setting. Class and property
+names are not affected; they stay on the namespace the loaded shapes check.
+
 #### Memory-file redirect hook (off by default)
 
 `cy hook memory-redirect` is a `PreToolUse` hook for writes to

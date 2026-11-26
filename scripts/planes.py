@@ -58,6 +58,15 @@ def auth_token() -> str | None:
 #: The namespace planes live under. A parameter, never a hardcoded hostname —
 #: camayoc's own convention (CLAUDE.md).
 PLANE_NS = os.environ.get("CAMAYOC_PLANE_NS", "https://camayoc.local/plane/")
+#: Instance-IRI base, the same rule as camayoc_cli/planes.py (tests hold the
+#: two equal): neutral default, the deployment's own base by configuration.
+DEFAULT_INSTANCE_NS = "https://camayoc.local/id/"
+#: FORMER-NAME ALIAS for reads only; see camayoc_cli/planes.py.
+LEGACY_INSTANCE_NS = "http://aegis.gastown.local/ontology/"
+
+
+def instance_ns() -> str:
+    return os.environ.get("CAMAYOC_INSTANCE_NS") or DEFAULT_INSTANCE_NS
 
 #: The trust chain these ranks are comparable within. A rank without its chain
 #: is not comparable, which is why quipu's label API demands both.

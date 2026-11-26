@@ -390,7 +390,9 @@ def _event_id(item: str) -> str:
 
 
 def _is_capture(iri) -> bool:
-    return isinstance(iri, str) and iri.startswith(memory.ns() + "mem/capture/") and memory._IRI.match(iri)
+    # Accepts captures under the configured base and the former one (aegis-55ya).
+    return isinstance(iri, str) and memory._IRI.match(iri) is not None and \
+        any(iri.startswith(b + "mem/capture/") for b in planes.instance_bases())
 
 
 def adapter(describe: bool, request: dict | None, client: quipu.Client | None = None) -> dict:
