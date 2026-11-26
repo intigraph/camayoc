@@ -127,6 +127,11 @@ class Journal:
         self.db.execute('CREATE TABLE IF NOT EXISTS authority(graph TEXT,prefix TEXT,cursor INTEGER,server TEXT)')
         self.db.execute('CREATE TABLE IF NOT EXISTS pending(id TEXT PRIMARY KEY,tx INTEGER,body TEXT,effect_tx INTEGER,last_attempt REAL)')
         self.db.execute('CREATE TABLE IF NOT EXISTS verified(id TEXT PRIMARY KEY,version INTEGER)')
+        # aegis-xdvg.5: when each completion-bound /knot attempt ENDED (returned or
+        # raised). Recorded after the call, so it bounds the send from above. A
+        # receiving process that started later cannot hold that attempt's
+        # process-local worker. Additive; no row means no proof.
+        self.db.execute('CREATE TABLE IF NOT EXISTS effect_send(write_id TEXT PRIMARY KEY,id TEXT NOT NULL,attempt_ended REAL NOT NULL)')
         self.db.execute('BEGIN IMMEDIATE')
         try:
             row=self.db.execute('SELECT graph,prefix,cursor,server FROM authority').fetchall()
@@ -309,6 +314,18 @@ class Journal:
         if self.db.execute('SELECT 1 FROM retired_effect WHERE id=? AND active=1',(item,)).fetchone():
             raise CustodyUnknown('effect is retired; explicit operator release required')
 
+    def record_send_ended(self,item,write_id,now):
+        import math
+        if (not isinstance(write_id,str) or not re.fullmatch('[0-9a-f]{64}',write_id)
+                or type(now) not in (int,float) or not math.isfinite(now) or now<0):
+            raise CustodyUnknown('send record binding unproved')
+        self.db.execute('INSERT INTO effect_send VALUES(?,?,?) ON CONFLICT(write_id) DO UPDATE SET '
+                        'attempt_ended=MAX(attempt_ended,excluded.attempt_ended)',(write_id,item,now))
+
+    def send_ended(self,item,write_id):
+        row=self.db.execute('SELECT attempt_ended FROM effect_send WHERE write_id=? AND id=?',(write_id,item)).fetchone()
+        return None if row is None else row[0]
+
     def retired_count(self):
         return self.db.execute('SELECT COUNT(*) FROM retired_effect WHERE active=1').fetchone()[0]
 
@@ -317,8 +334,14 @@ class Journal:
         return self.db.execute('SELECT COUNT(*) FROM pending WHERE NOT EXISTS '
                                '(SELECT 1 FROM retired_effect r WHERE r.active=1 AND r.id=pending.id)').fetchone()[0]
 
-    def retire_effect(self,item,*,write_id,request_sha256,version,effect_tx,reason,now,prove_absent=None):
-        """One explicit operator CAS with fresh absence, never UNKNOWN recovery."""
+    def retire_effect(self,item,*,write_id,request_sha256,version,effect_tx,reason,now,prove_absent=None,
+                      prove_superseded=None):
+        """One explicit operator CAS, never UNKNOWN recovery.
+
+        Exactly one proof: fresh two-graph absence, or (aegis-xdvg.5) a superseded
+        proof: the subject holds an OLDER complete version AND the receiving
+        process started after the attempt ended. Both are scheduling exclusion only.
+        """
         import hashlib
         import math
         self.board.subject(item)
@@ -346,7 +369,12 @@ class Journal:
                     or type(envelope.get('version')) is not int or envelope['version']!=version
                     or digest!=request_sha256):
                 raise CustodyUnknown('retirement effect binding changed')
-            if not callable(prove_absent) or prove_absent(item,envelope) is not True:
+            if (prove_absent is None)==(prove_superseded is None):
+                raise CustodyUnknown('exactly one retirement proof required')
+            if prove_superseded is not None:
+                if not callable(prove_superseded) or prove_superseded(item,envelope) is not True:
+                    raise CustodyUnknown('superseded proof unproved: older complete version and later receiving process required')
+            elif not callable(prove_absent) or prove_absent(item,envelope) is not True:
                 raise CustodyUnknown('fresh exact two-graph effect absence unproved; present effects must complete')
             slot=self.db.execute('SELECT COALESCE(MAX(slot),0)+1 FROM retired_effect').fetchone()[0]
             self.db.execute('INSERT INTO retired_effect VALUES(?,?,?,?,?,?,?,?,?,?,1,NULL)',
