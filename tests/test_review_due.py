@@ -204,6 +204,31 @@ class LifecycleHeartbeat(unittest.TestCase):
         r = run(self.facts("other-fact"))["other-fact"]
         self.assertEqual(r["verdict"], "DUE")
 
+    def judge(self, triples, name):
+        # Discovery hands judge() the name as Quipu returned it; the facts are
+        # stored under the one entity IRI that every spelling denotes.
+        return rd.judge(Store(triples).post, name, NOW)
+
+    def test_the_compact_and_full_iri_spellings_are_the_same_heartbeat(self):
+        # aegis-g68w.14: discovery returns Quipu's compact "a:" names; the guard
+        # missed every one of them and they paged their (stopped) owners.
+        for name in ("a:" + self.HB, "aegis:" + self.HB, rd.A + self.HB):
+            with self.subTest(name=name):
+                r = self.judge(self.facts(self.HB), name)
+                self.assertEqual(r["verdict"], "NOT_DUE")
+                self.assertNotIn("event_id", r)
+                self.assertEqual(r["basis"][0]["age"], "lifecycle-lease")
+
+    def test_the_compact_spelling_still_needs_the_producer(self):
+        for kind, source in (('"observed"', '"urn:other:producer"'),
+                             ('"declared"', '"urn:shantytown:owned-work:abc"')):
+            with self.subTest(kind=kind, source=source):
+                r = self.judge(self.facts(self.HB, kind, source), "a:" + self.HB)
+                self.assertEqual(r["verdict"], "DUE")
+
+    def test_a_compact_name_of_another_kind_is_judged_normally(self):
+        self.assertEqual(self.judge(self.facts("other-fact"), "a:other-fact")["verdict"], "DUE")
+
     def test_two_sources_are_not_a_heartbeat(self):
         triples = self.facts(self.HB) + [(self.HB, "source", '"urn:other:producer"')]
         self.assertEqual(run(triples)[self.HB]["verdict"], "DUE")

@@ -240,8 +240,10 @@ def _literal(raw: str) -> str:
 
 def lifecycle_heartbeat(post, entity: str) -> bool:
     """True only for a shantytown owned-work lifecycle observation: the local
-    name, an observed source kind and the producer's source prefix must all agree."""
-    if not entity.startswith("owned-work-"):
+    name, an observed source kind and the producer's source prefix must all agree.
+    The name is compared as a local name: discovery returns Quipu's compact
+    "a:owned-work-..." spelling (or a full IRI), which is the same entity."""
+    if not _local(entity).startswith("owned-work-"):
         return False
     if [_literal(v) for v in _values(post, entity, "sourceKind")] != ["observed"]:
         return False
