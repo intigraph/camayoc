@@ -6,6 +6,16 @@ bindings; full frozen envelopes remain queryable in retired_effect.body. Release
 undoes exclusion only: the pending body must still pass native reconciliation.
 Retire performs two bounded absence reads; inspect/release perform no HTTP calls.
 No journal creation, cursor reset or automatic retirement.
+
+retire --superseded (aegis-xdvg.5) is the bounded exception for a PRESENT
+subject: the target graph must hold exactly one complete canonical projection of
+an OLDER version (effect_not_applied == 'prior-version'), and the receiving
+server's process must have started AFTER the attempt ended. Completion receipts
+are process-local, so a worker in an exited process cannot commit. The start
+time is read twice and must not change. The send bound is the journal's
+recorded attempt end, or for effects older than that record, an operator bound
+(--sent-before) with --ruling. Same scheduling exclusion, envelope retained,
+no resend.
 """
 from __future__ import annotations
 import argparse
@@ -16,6 +26,8 @@ from pathlib import Path
 import sys
 import time
 import planes
+import re
+import urllib.request
 import seed_change_custody as custody
 import seed_work_items as native
 import seed_work_item_sync as sync
@@ -44,9 +56,16 @@ def operate(journal,args,post=None):
                     raise custody.CustodyUnknown('bounded absence response unproved')
                 return response
             return sync.prove_absent(bounded_query,item)
-        journal.retire_effect(args.item,write_id=args.write_id,request_sha256=args.request_sha256,
-                             version=args.version,effect_tx=args.effect_tx,reason=args.reason,now=time.time(),
-                             prove_absent=absent)
+        now=time.time()
+        if getattr(args,'superseded',False):
+            proof,reason=superseded_proof(journal,args,post,now)
+            journal.retire_effect(args.item,write_id=args.write_id,request_sha256=args.request_sha256,
+                                 version=args.version,effect_tx=args.effect_tx,reason=reason,now=now,
+                                 prove_superseded=proof)
+        else:
+            journal.retire_effect(args.item,write_id=args.write_id,request_sha256=args.request_sha256,
+                                 version=args.version,effect_tx=args.effect_tx,reason=args.reason,now=now,
+                                 prove_absent=absent)
     elif args.action=='release':
         journal.release_retired(args.item,write_id=args.write_id,
                                 request_sha256=args.request_sha256,reason=args.reason)
@@ -64,6 +83,56 @@ def operate(journal,args,post=None):
             'history_has_more':more,'history_next_after':rows[-1][0] if more else None}
 
 
+METRICS_LIMIT=1048576
+
+
+def process_start(get):
+    """The receiving server's own process_start_time_seconds, exactly one sample."""
+    raw=get('/metrics')
+    if not isinstance(raw,bytes) or len(raw)>METRICS_LIMIT:
+        raise custody.CustodyUnknown('receiving process start unproved')
+    found=re.findall(rb'^process_start_time_seconds ([0-9]+(?:\.[0-9]+)?)$',raw,re.M)
+    if len(found)!=1:raise custody.CustodyUnknown('receiving process start unproved')
+    return float(found[0])
+
+
+def server_get(path):
+    with urllib.request.urlopen(planes.SERVER+path,timeout=10) as r:
+        return r.read(METRICS_LIMIT+1)
+
+
+def superseded_proof(journal,args,post,now,get=server_get):
+    ruling=getattr(args,'ruling',None)
+    if not isinstance(ruling,str) or not re.fullmatch('[a-z]+-[a-z0-9.]+',ruling):
+        raise custody.CustodyUnknown('superseded retirement needs a ruling item')
+    if not isinstance(args.reason,str) or not args.reason.strip():
+        raise custody.CustodyUnknown('exact retirement binding or operator reason unproved')
+    recorded=journal.send_ended(args.item,args.write_id)
+    operator=getattr(args,'sent_before',None)
+    if recorded is None and operator is None:
+        raise custody.CustodyUnknown('no send bound: no recorded attempt end and no --sent-before')
+    if operator is not None and (type(operator) not in (int,float) or not 0<operator<=now
+                                 or (recorded is not None and operator<recorded)):
+        raise custody.CustodyUnknown('operator send bound contradicts the journal')
+    bound=recorded if recorded is not None else operator
+    first=process_start(get)
+    if not bound<first<=now:
+        raise custody.CustodyUnknown('receiving process did not start after the attempt ended')
+    def proof(item,envelope):
+        if post is None:return False
+        def bounded(endpoint,body):
+            response=post(endpoint,body)
+            if not isinstance(response,dict) or len(json.dumps(response).encode())>65536:
+                raise custody.CustodyUnknown('bounded superseded read unproved')
+            return response
+        if sync.effect_not_applied(bounded,journal,envelope,item)!='prior-version':return False
+        # Read the start again after the graph read: a restart in between is not proof.
+        return process_start(get)==first
+    reason=(f"{ruling} superseded: older complete version present; receiving process start "
+            f"{first:.0f} > send bound {bound:.0f} ({'journal' if recorded is not None else 'operator'}); "
+            f"{args.reason.strip()}")[:512]
+    return proof,reason
+
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
@@ -75,7 +144,14 @@ def main(argv=None):
     p.add_argument('--state',type=Path,required=True)
     p.add_argument('--item');p.add_argument('--write-id');p.add_argument('--request-sha256')
     p.add_argument('--version',type=int);p.add_argument('--effect-tx',type=int);p.add_argument('--reason')
+    p.add_argument('--superseded',action='store_true',help='retire a PRESENT older-version subject after a receiving-process restart')
+    p.add_argument('--ruling',help='ruling item that admits this one superseded retirement')
+    p.add_argument('--sent-before',type=float,help='operator upper bound (unix seconds) on the send, for effects with no recorded attempt end')
     args=p.parse_args(argv)
+    if (args.superseded or args.ruling or args.sent_before is not None) and args.action!='retire':
+        p.error('--superseded, --ruling and --sent-before apply to retire only')
+    if (args.ruling or args.sent_before is not None) and not args.superseded:
+        p.error('--ruling and --sent-before need --superseded')
     if not args.enable:
         print('{"status":"OFF"}');return 0
     journal=None
@@ -94,7 +170,8 @@ def main(argv=None):
                     raise custody.CustodyUnknown('backfill custody is not standing ingress')
             finally:probe.close()
             journal=custody.Journal(args.state,reader.board,server=planes.SERVER)
-            result=operate(journal,args,post=lambda endpoint,body: planes._post(endpoint,body,client='camayoc-ingress',response_limit=4096))
+            limit=65536 if args.superseded else 4096
+            result=operate(journal,args,post=lambda endpoint,body: planes._post(endpoint,body,client='camayoc-ingress',response_limit=limit))
     except (custody.CustodyUnknown,native.NativeUnknown) as exc:
         result={'status':'REFUSED','error':type(exc).__name__}
     except Exception as exc:

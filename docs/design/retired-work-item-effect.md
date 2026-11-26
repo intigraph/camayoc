@@ -90,3 +90,36 @@ use its per-item release when an exclusion must be reversed.
 
 The [recorded fixture comparison](retirement-list-demo.md) shows the explicit
 list boundary and preserved UNKNOWN freeze without contacting a live receiver.
+
+## Superseded retirement of a present effect (aegis-xdvg.5)
+
+The ordinary retirement above requires fresh two-graph absence. It cannot help
+when the subject is present at an OLDER version: the frozen effect did not
+land, but the subject exists, so absence is false. On 2026-11-26 the
+`aegis-aml` v13 effect froze across two Quipu restarts while the graph held v4.
+Every later item stalled behind it.
+
+`retire --superseded` admits exactly that case, for one exact bound effect:
+
+1. every envelope binding matches (write id, request sha256, version, effect tx);
+2. `effect_not_applied` returns `prior-version`: the target graph holds exactly
+   one complete canonical projection of a strictly OLDER version. Absent
+   subjects use the ordinary retirement; same, newer or partial versions refuse;
+3. worker-gone: the receiving server's own `process_start_time_seconds`
+   (`/metrics`) is LATER than the send bound, and reads the same before and
+   after the graph read. `/knot/status` receipts and their workers are
+   process-local, so an attempt held by an exited process cannot commit;
+4. `--ruling` names the ruling item that admits this use, and `--reason` is
+   operator text. Both are stored in the retirement record.
+
+The send bound is the journal's `effect_send.attempt_ended` for the write id.
+The producer records it after every completion-bound `/knot` call returns or
+raises, so it bounds the send from above. Effects frozen before that record
+existed need an operator bound, `--sent-before` (unix seconds), which may not
+precede a recorded value or lie in the future. `last_attempt` is the per-tick
+status poll time and is never a send bound.
+
+The outcome is identical to the ordinary retirement: scheduling exclusion only.
+The envelope is retained, nothing is resent, and release follows the same rules.
+Worker-gone is checked before any graph read. Controls:
+`tests/test_retire_superseded.py`.

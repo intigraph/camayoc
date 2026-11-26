@@ -508,7 +508,11 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
         wrote()
         if witness is not None:witness['own_write']='attempted'
         try:
-            response=call('/knot',request,**({'write_id':envelope['write_id']} if completion else {}))
+            try:
+                response=call('/knot',request,**({'write_id':envelope['write_id']} if completion else {}))
+            finally:
+                # aegis-xdvg.5: an upper bound on the send, for worker-gone proofs.
+                if completion:journal.record_send_ended(item,envelope['write_id'],time.time())
         except (OSError,RuntimeError) as exc:
             if not completion or not response_lost(exc):
                 raise
