@@ -16,8 +16,11 @@ QUERY = ROOT / "queries/repo_review_mode.json"
 PROPOSAL_63_SHA256 = "840e42cf73f32227e34e549ccda8b2834a4076647a1dd88549a3dc3509b210f2"
 
 try:
-    import pyshacl
     from rdflib import Graph
+except ImportError:  # pragma: no cover
+    Graph = None
+try:
+    import pyshacl
 except ImportError:  # pragma: no cover
     pyshacl = None
 
@@ -51,47 +54,61 @@ class RepoReviewModeShape(unittest.TestCase):
 GRAPH = """@prefix aegis: <http://aegis.gastown.local/ontology/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-aegis:repo_quipu a aegis:GitRepo ; rdfs:label "repo_quipu" ; skos:altLabel "quipu" , "repo_quipu" ;
+aegis:repo_quipu a aegis:GitRepo ; rdfs:label "repo_quipu" ; skos:altLabel "quipu" , "intigraph/quipu" ;
     aegis:reviewMode "non-author" .
 aegis:quipu a aegis:GitRepo ; rdfs:label "quipu" ; aegis:reviewMode "non-author" .
-aegis:repo_cv a aegis:GitRepo ; rdfs:label "repo_cv" ; aegis:reviewMode "none" .
-aegis:split a aegis:GitRepo ; rdfs:label "split" ; aegis:reviewMode "none" .
-aegis:split2 a aegis:GitRepo ; skos:altLabel "split" ; aegis:reviewMode "non-author" .
-aegis:unset a aegis:GitRepo ; rdfs:label "unset" .
+aegis:repo_cv a aegis:GitRepo ; rdfs:label "repo_cv" ; skos:altLabel "stiwi/cv" ; aegis:reviewMode "none" .
+aegis:stiwi_foo a aegis:GitRepo ; rdfs:label "foo" ; skos:altLabel "stiwi/foo" ; aegis:reviewMode "none" .
+aegis:intigraph_foo a aegis:GitRepo ; rdfs:label "foo" ; skos:altLabel "intigraph/foo" .
+aegis:split a aegis:GitRepo ; skos:altLabel "x/split" ; aegis:reviewMode "none" .
+aegis:split2 a aegis:GitRepo ; skos:altLabel "x/split" ; aegis:reviewMode "non-author" .
 """
 
 
+def quipu_text(raw: str) -> str:
+    """Quipu's own text-param escaping (src/mcp/named_query.rs ParamKind::Text)."""
+    return raw.replace("\\", "\\\\").replace("'", "\\'")
+
+
+@unittest.skipUnless(Graph, "rdflib not installed")
 class RepoReviewModeQuery(unittest.TestCase):
-    """The stored query text, run by rdflib with Quipu's '{repo}' substitution."""
+    """The stored query text, run by rdflib with Quipu's escaped '{repo}' substitution."""
 
     @classmethod
     def setUpClass(cls) -> None:
-        from rdflib import Graph as G
-
         cls.definition = json.loads(QUERY.read_text())
-        cls.graph = G().parse(data=GRAPH, format="turtle")
+        cls.graph = Graph().parse(data=GRAPH, format="turtle")
 
     def rows(self, repo: str) -> set:
-        text = self.definition["template"].replace("{repo}", repo)
+        text = self.definition["template"].replace("{repo}", quipu_text(repo))
         return {(str(n).rsplit("/", 1)[-1], str(m)) for n, m in self.graph.query(text)}
 
     def test_definition_shape(self) -> None:
         self.assertEqual(self.definition["name"], "repo_review_mode")
-        self.assertEqual([p["name"] for p in self.definition["params"]], ["repo"])
+        self.assertEqual(self.definition["params"], [{
+            "name": "repo", "type": "text", "required": True,
+            "description": "Repository as 'owner/name' (e.g. 'intigraph/quipu')."}])
         self.assertIn("LIMIT 64", self.definition["template"])
+        self.assertTrue(QUERY.read_text().endswith("\n"))
 
-    def test_owner_slash_name_and_bare_label_match_every_alias_once(self) -> None:
-        expected = {("repo_quipu", "non-author"), ("quipu", "non-author")}
-        self.assertEqual(self.rows("intigraph/quipu"), expected)
-        self.assertEqual(self.rows("quipu"), expected)
+    def test_owner_qualified_match(self) -> None:
+        self.assertEqual(self.rows("intigraph/quipu"), {("repo_quipu", "non-author")})
+        self.assertEqual(self.rows("stiwi/cv"), {("repo_cv", "none")})
 
-    def test_none_and_unknown_and_unset(self) -> None:
-        self.assertEqual(self.rows("repo_cv"), {("repo_cv", "none")})
+    def test_another_owners_none_never_answers(self) -> None:
+        # Reviewer's case: none on stiwi/foo, unset on intigraph/foo -> no rows (non-author).
+        self.assertEqual(self.rows("intigraph/foo"), set())
+        self.assertEqual(self.rows("stiwi/foo"), {("stiwi_foo", "none")})
+
+    def test_unknown_returns_no_rows(self) -> None:
         self.assertEqual(self.rows("stiwi/nonexistent"), set())
-        self.assertEqual(self.rows("unset"), set())
 
-    def test_conflicting_aliases_return_both_rows(self) -> None:
-        self.assertEqual(self.rows("split"), {("split", "none"), ("split2", "non-author")})
+    def test_conflicting_nodes_return_both_rows(self) -> None:
+        self.assertEqual(self.rows("x/split"), {("split", "none"), ("split2", "non-author")})
+
+    def test_quote_cannot_rewrite_the_query(self) -> None:
+        # Unescaped, this would close the literal and add 'stiwi/cv' as a second key.
+        self.assertEqual(self.rows("x' 'stiwi/cv"), set())
 
 
 if __name__ == "__main__":
