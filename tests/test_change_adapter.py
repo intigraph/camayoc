@@ -146,6 +146,78 @@ class Incremental(unittest.TestCase):
             self.assertEqual(state, {r["item"]: r for r in bb.evaluate(store.post)}, (subject, prop, new))
 
 
+class FailureHead(unittest.TestCase):
+    """aegis-ztja: chaski keeps the head of stderr, so the cause must lead it."""
+
+    def run_main(self, exc=None, stdin=None, result=None):
+        import io
+        import json
+        from unittest import mock
+        request = {"now": NOW, "changes": [change("weird name", "reviewAfter")] * 3}
+        stderr, stdout = io.StringIO(), io.StringIO()
+        run = mock.patch.object(ca, "run", side_effect=exc) if exc is not None \
+            else mock.patch.object(ca, "run", return_value=result)
+        with run, \
+                mock.patch.object(sys, "stdin", io.StringIO(json.dumps(request) if stdin is None else stdin)), \
+                mock.patch.object(sys, "stdout", stdout), \
+                mock.patch.object(sys, "stderr", stderr):
+            code = ca.main("directive")
+        return code, stderr.getvalue()
+
+    def assert_named(self, err, cause):
+        head = err.encode()[:150].decode(errors="replace")
+        self.assertIn(cause, head)
+        self.assertTrue(err.startswith("camayoc adapter: "), err[:200])
+        self.assertIn("Traceback", err)
+        return err.splitlines()[0]
+
+    def test_unexpected_exception_is_named_in_the_first_150_bytes(self):
+        code, err = self.run_main(ValueError("unsafe entity IRI"))
+        self.assertEqual(code, 1)
+        first = self.assert_named(err, "ValueError: unsafe entity IRI")
+        self.assertIn("kind=directive", first)
+        self.assertIn("changes=3", first)
+
+    def test_a_request_that_is_not_json_is_named(self):
+        code, err = self.run_main(stdin="{not json")
+        self.assertEqual(code, 1)
+        first = self.assert_named(err, "JSONDecodeError")
+        self.assertIn("keys=NoneType changes=-", first)
+
+    def test_a_result_json_cannot_encode_is_named(self):
+        code, err = self.run_main(result={"records": [{"at": dt.datetime(2026, 11, 27)}]})
+        self.assertEqual(code, 1)
+        first = self.assert_named(err, "TypeError")
+        self.assertIn("changes=3", first)
+
+    def test_a_closed_stdout_is_named(self):
+        import io
+        from unittest import mock
+        class Closed(io.StringIO):
+            def write(self, text):
+                raise BrokenPipeError(32, "Broken pipe")
+        stderr = io.StringIO()
+        with mock.patch.object(ca, "run", return_value={}), \
+                mock.patch.object(sys, "stdin", io.StringIO('{"now": 0, "changes": []}')), \
+                mock.patch.object(sys, "stdout", Closed()), \
+                mock.patch.object(sys, "stderr", stderr):
+            code = ca.main("directive")
+        self.assertEqual(code, 1)
+        first = self.assert_named(stderr.getvalue(), "BrokenPipeError")
+        self.assertIn("changes=0", first)
+
+    def test_failure_head_without_a_parsed_request(self):
+        line = ca.failure_head("directive", None, ValueError("x"))
+        self.assertEqual(line, "camayoc adapter: ValueError: x | kind=directive keys=NoneType changes=-")
+
+    def test_budget_exhaustion_keeps_exit_3(self):
+        # ca.planes, not a fresh `import planes`: the suite may load planes
+        # under another module object, and the except must match its class.
+        code, err = self.run_main(ca.planes.RequestBudgetExceeded("k=20"))
+        self.assertEqual(code, 3)
+        self.assertTrue(err.startswith("camayoc adapter: request budget exhausted"))
+
+
 if __name__ == "__main__":
     unittest.main()
 
