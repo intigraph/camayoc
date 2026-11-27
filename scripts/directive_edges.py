@@ -30,6 +30,7 @@ Directive needs a human ruling, as the backfill's low-confidence rows did.
     python3 scripts/directive_edges.py adapter --describe  # chaski adapter (also --changes)
     python3 scripts/directive_edges.py lapse-adapter --changes < request.json
     echo '<event>' | python3 scripts/directive_edges.py propose [--dry-run]
+    python3 scripts/directive_edges.py repair [<name>...] [--apply]  # aegis-1e5
 """
 from __future__ import annotations
 
@@ -79,8 +80,20 @@ def _iri(term: str) -> str:
     return bb._iri(str(term))
 
 
+#: An object counts as an edge only when its STORED string is an absolute
+#: http(s)/urn IRI. Quipu compacts full IRIs to `a:x` in query rows, so a row's
+#: text cannot tell `<http://.../x>` from a malformed `<a:x>` (an IRI whose
+#: scheme is "a"); only STR() inside the query can (aegis-1e5).
+_ABSOLUTE = ('(STRSTARTS(STR(?o), "http://") || STRSTARTS(STR(?o), "https://") || '
+             'STRSTARTS(STR(?o), "urn:"))')
+WELL_FORMED = f"FILTER(isIRI(?o) && {_ABSOLUTE})"
+MALFORMED = f"FILTER(isIRI(?o) && !{_ABSOLUTE})"
+
+
 def _has(post, entity: str, prop: str, graphs) -> bool:
-    q = f"SELECT ?o WHERE {{ <{bb.A}{entity}> <{bb.A}{prop}> ?o }}"
+    """A malformed object is no edge: such a Directive reads UNTRACED, never a
+    PROPOSED that promote_plane can only refuse (aegis-1e5)."""
+    q = f"SELECT ?o WHERE {{ <{bb.A}{entity}> <{bb.A}{prop}> ?o . {WELL_FORMED} }}"
     return any(_rows(post, q, g) for g in graphs)
 
 
@@ -88,8 +101,8 @@ def _typed_link(post, entity: str, prop: str, expected: str) -> bool:
     """A dangling or wrongly typed link cannot hide an overdue directive."""
     graphs = (ROOT_GRAPH, DECLARED)
     targets = {_iri(row["o"]) for graph in graphs for row in _rows(
-        post, f"SELECT ?o WHERE {{ <{bb.A}{entity}> <{bb.A}{prop}> ?o . "
-        "FILTER(isIRI(?o)) }", graph)}
+        post, f"SELECT ?o WHERE {{ <{bb.A}{entity}> <{bb.A}{prop}> ?o . {WELL_FORMED} }}",
+        graph)}
     for target in targets:
         if (not target.startswith(("http://", "https://", "urn:")) or
                 any(c.isspace() or c in '<>"{}|\\^`' for c in target)):
@@ -303,6 +316,76 @@ def propose(post, write, client, event: dict, now: dt.datetime | None = None) ->
     return {**{k: v for k, v in p.items() if k != "turtle"}, "outcome": "proposed", "verdict": after}
 
 
+_UNSAFE = set('<>"{}|\\^`')
+
+
+def malformed(post, entity: str) -> list[tuple[str, str, str]]:
+    """(prop, stored, expanded) for each traceability edge in crew/inferred whose
+    object was stored as a compact name (`<a:x>`), not its full IRI (aegis-1e5).
+    Raises on an object it cannot expand to the SAME target unambiguously."""
+    out = []
+    for prop in EDGES:
+        for row in _rows(post, f"SELECT (STR(?o) AS ?so) WHERE {{ <{bb.A}{entity}> "
+                               f"<{bb.A}{prop}> ?o . {MALFORMED} }}", INFERRED):
+            stored = str(row["so"])
+            full = _iri(stored)
+            if (full == stored or not full.startswith(("http://", "https://"))
+                    or any(c.isspace() or c in _UNSAFE for c in stored + full)):
+                raise ValueError(f"{entity} {prop}: cannot expand {stored!r}; needs a ruling")
+            out.append((prop, stored, full))
+    return out
+
+
+def repair_update(entity: str, fixes) -> str:
+    """One same-graph compare-and-swap: close each malformed triple (quipu's
+    DELETE is a bitemporal interval close, never an erase) and assert the same
+    target as its full IRI. The WHERE makes a re-run or a raced repair a no-op."""
+    subject = f"<{bb.A}{entity}>"
+    old = " ".join(f"{subject} <{bb.A}{p}> <{stored}> ." for p, stored, _ in fixes)
+    new = " ".join(f"{subject} <{bb.A}{p}> <{full}> ." for p, _, full in fixes)
+    g = f"GRAPH <{INFERRED}>"
+    return (f"DELETE {{ {g} {{ {old} }} }}\nINSERT {{ {g} {{ {new} }} }}\n"
+            f"WHERE {{ {g} {{ {old} }} }}")
+
+
+def repair(post, update, entity: str, apply: bool = False) -> dict:
+    """Rewrite one Directive's malformed inferred edges as full IRIs, then read
+    back. Same targets, same plane: ingress still never promotes its output."""
+    fixes = malformed(post, entity)
+    base = {"entity": entity, "fixes": [{"prop": p, "from": s, "to": f} for p, s, f in fixes]}
+    if not fixes:
+        return {**base, "outcome": "noop", "verdict": judge(post, entity)["verdict"]}
+    if not is_directive(post, entity):
+        return {**base, "outcome": "noop", "verdict": "NOT_A_DIRECTIVE"}
+    body = {"update": repair_update(entity, fixes), "actor": ACTOR,
+            "source": f"aegis-1e5 directive-edges repair {entity}"}
+    if not apply:
+        return {**base, "outcome": "would-repair", "update": body["update"]}
+    result = update("/update", body)
+    n = len(fixes)
+    if (not isinstance(result, dict) or type(result.get("tx")) is not int
+            or result.get("retracted") != n or result.get("asserted") != n):
+        raise ConnectionError(f"{entity}: repair not confirmed ({result!r}); verify before retrying")
+    left = malformed(post, entity)
+    fixed = all(_has(post, entity, p, (INFERRED,)) for p, _, _ in fixes)
+    if left or not fixed:
+        raise ConnectionError(f"{entity}: repair tx {result['tx']} committed but read-back failed")
+    return {**base, "outcome": "repaired", "tx": result["tx"],
+            "verdict": judge(post, entity)["verdict"]}
+
+
+def discover_malformed(post) -> list[str]:
+    """Every subject with a malformed traceability edge in crew/inferred."""
+    names = set()
+    for prop in EDGES:
+        for row in _rows(post, f"SELECT DISTINCT ?s WHERE {{ ?s <{bb.A}{prop}> ?o . "
+                               f"{MALFORMED} }}", INFERRED):
+            iri = _iri(str(row["s"]))
+            if iri.startswith(bb.A):
+                names.add(iri[len(bb.A):])
+    return sorted(names)
+
+
 def _post(endpoint: str, body: dict) -> dict:
     return planes._post(endpoint, body, client=CLIENT)
 
@@ -323,6 +406,11 @@ def main(argv: list[str] | None = None) -> int:
     # Credentials as FILES, never argv or a launcher export (jev.py, aegis-6qau3t).
     pr.add_argument("--token-file", help="quipu bearer for the crew/inferred write")
     pr.add_argument("--jev-key-file", help="Jev key; else jev.py's own resolution")
+    rp = sub.add_parser("repair", help="rewrite malformed a:-scheme inferred edges as full "
+                                       "IRIs (aegis-1e5); a dry run unless --apply")
+    rp.add_argument("entity", nargs="*", help="Directive names; default: every malformed one")
+    rp.add_argument("--apply", action="store_true")
+    rp.add_argument("--token-file", help="quipu bearer for the crew/inferred write")
     a = ap.parse_args(argv)
     if a.cmd in ("adapter", "lapse-adapter"):
         import change_adapter
@@ -331,6 +419,19 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "judge":
         print(json.dumps(judge(_post, a.entity)))
         return 0
+    if a.cmd == "repair":
+        if a.token_file:
+            with open(a.token_file) as f:
+                planes.AUTH = f.read().strip() or None
+        update = lambda path, body: planes._post(path, body, client=CLIENT, form=True)  # noqa: E731
+        failed = 0
+        for entity in a.entity or discover_malformed(_post):
+            try:
+                print(json.dumps(repair(_post, update, entity, apply=a.apply)))
+            except (ValueError, ConnectionError, planes.PlaneError) as exc:
+                failed += 1
+                print(json.dumps({"entity": entity, "outcome": "failed", "why": str(exc)}))
+        return 1 if failed else 0
     import os
 
     import jev

@@ -30,7 +30,21 @@ class FakeQuipu:
     def __init__(self):
         self.g = {None: set(), de.DECLARED: set(), de.INFERRED: set()}
         self.knots = []
+        self.updates = []
         self.drop_writes = False
+
+    def apply_update(self, text):
+        """DELETE/INSERT/WHERE over one named graph, WHERE == DELETE (repair)."""
+        graph = re.search(r"GRAPH <([^>]+)>", text).group(1)
+        parts = re.findall(r"\{ GRAPH <[^>]+> \{ (.*?) \} \}", text)
+        old, new = ([tuple(re.match(r"<([^>]+)> <([^>]+)> <([^>]+)>", t.strip()).groups())
+                     for t in part.split(" .") if t.strip()] for part in parts[:2])
+        if not all(t in self.g[graph] for t in old):
+            return {"tx": 7, "retracted": 0, "asserted": 0}
+        if not self.drop_writes:
+            self.g[graph] -= set(old)
+            self.g[graph] |= set(new)
+        return {"tx": 7, "retracted": len(old), "asserted": len(new)}
 
     def add(self, s, p, o, graph=None):
         self.g[graph].add((s, p, o))
@@ -44,18 +58,25 @@ class FakeQuipu:
                     self.add(s, p, o[1:-1] if o.startswith("<") else o.split("^^")[0].strip('"'),
                              body["graph"])
             return {"tx_id": 1, "conforms": True}
+        if endpoint == "/update":
+            self.updates.append(body)
+            return self.apply_update(body["update"])
         q, graph = body["query"], body.get("graph")
         if graph == de.ROOT_GRAPH:
             graph = None
         if "traceabilityDueAt" in q:
             return {"rows": []}
         triples = self.g.get(graph, set())
-        if "FILTER(isIRI(?o))" in q:
-            match = re.search(r"\{ <([^>]+)> <([^>]+)> \?o", q)
+        if de.WELL_FORMED in q or de.MALFORMED in q:
+            good = de.WELL_FORMED in q
+            match = re.search(r"\{ (\?s|<[^>]+>) <([^>]+)> \?o", q)
             subject, predicate = match.groups()
-            return {"rows": [{"o": value} for s, p, value in triples
-                             if s == subject and p == predicate and
-                             value.startswith(("https://", "http://", "urn:"))]}
+            hits = [(s, value) for s, p, value in triples
+                    if p == predicate and (subject == "?s" or s == subject.strip("<>"))
+                    and value.startswith(("https://", "http://", "urn:")) == good]
+            if subject == "?s":
+                return {"rows": [{"s": s} for s in sorted({s for s, _ in hits})]}
+            return {"rows": [{"so" if "?so" in q else "o": v} for _, v in hits]}
         m = re.search(r"(\?\w+|<[^>]+>) a \?t \. FILTER\(\?t = <([^>]+)>\)", q)
         if m:
             subj, cls = m.groups()
@@ -265,6 +286,70 @@ class Propose(unittest.TestCase):
         client, calls = jev_answering("policy_measurement-needs-a-control", 0.91)
         out = de.propose(q, q, client, {"item": "old", "event_id": "x"}, NOW)
         self.assertEqual((out["outcome"], calls), ("noop", []))
+
+
+class MalformedInferredEdges(unittest.TestCase):
+    """aegis-1e5: an older writer stored `<a:x>` (scheme "a"), not the full IRI."""
+
+    def malformed_board(self):
+        q = board()
+        q.add(A + "new", A + "governedBy", "a:policy_measurement-needs-a-control", de.INFERRED)
+        q.add(A + "new", A + "trackedBy", "a:aegis-q9m5mp.10", de.INFERRED)
+        q.add(A + "new", A + "inferredAt", "2026-11-04T00:00:00Z", de.INFERRED)
+        return q
+
+    def test_a_malformed_object_is_no_edge_so_it_reads_untraced(self):
+        q = self.malformed_board()
+        self.assertEqual(de.judge(q, "new", NOW)["verdict"], de.UNTRACED)
+
+    def test_malformed_ones_in_root_cannot_fake_traced(self):
+        q = board()
+        q.add(A + "new", A + "governedBy", "a:policy_measurement-needs-a-control")
+        q.add(A + "new", A + "trackedBy", "a:aegis-q9m5mp.10")
+        self.assertEqual(de.judge(q, "new", NOW)["verdict"], de.UNTRACED)
+
+    def test_dry_run_writes_nothing_and_names_same_targets(self):
+        q = self.malformed_board()
+        self.assertEqual(de.discover_malformed(q), ["new"])
+        out = de.repair(q, q, "new")
+        self.assertEqual(out["outcome"], "would-repair")
+        self.assertEqual(q.updates, [])
+        self.assertEqual({f["to"] for f in out["fixes"]}, {POLICY, TRACKER})
+
+    def test_repair_closes_malformed_and_asserts_full_iris_in_inferred(self):
+        q = self.malformed_board()
+        out = de.repair(q, q, "new", apply=True)
+        self.assertEqual((out["outcome"], out["verdict"]), ("repaired", de.PROPOSED))
+        inferred = q.g[de.INFERRED]
+        self.assertIn((A + "new", A + "governedBy", POLICY), inferred)
+        self.assertIn((A + "new", A + "trackedBy", TRACKER), inferred)
+        self.assertFalse(any(o.startswith("a:") for _, _, o in inferred))
+        # Same plane only: ingress never promotes its own output.
+        self.assertEqual(q.g[de.DECLARED], board().g[de.DECLARED])
+        self.assertIn(f"GRAPH <{de.INFERRED}>", q.updates[0]["update"])
+        self.assertEqual(de.discover_malformed(q), [])
+
+    def test_rerun_is_a_noop(self):
+        q = self.malformed_board()
+        de.repair(q, q, "new", apply=True)
+        self.assertEqual(de.repair(q, q, "new", apply=True)["outcome"], "noop")
+        self.assertEqual(len(q.updates), 1)
+
+    def test_unconfirmed_or_unread_repair_raises(self):
+        q = self.malformed_board()
+        q.drop_writes = True
+        with self.assertRaises(ConnectionError):
+            de.repair(q, q, "new", apply=True)
+        q = self.malformed_board()
+        with self.assertRaises(ConnectionError):
+            de.repair(q, lambda *_: {"tx": 1, "retracted": 0, "asserted": 0}, "new", apply=True)
+
+    def test_unexpandable_object_needs_a_ruling(self):
+        q = board()
+        q.add(A + "new", A + "trackedBy", "mailto:someone", de.INFERRED)
+        with self.assertRaises(ValueError):
+            de.repair(q, q, "new", apply=True)
+        self.assertEqual(q.updates, [])
 
 
 if __name__ == "__main__":
