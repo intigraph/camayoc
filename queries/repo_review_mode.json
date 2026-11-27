@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "repo_review_mode",
+  "description": "aegis-za4f.17.1: review mode of one repository (aegis:reviewMode on aegis:GitRepo: non-author or none). Param repo = 'owner/name', matched EXACTLY against rdfs:label or skos:altLabel; the owner is never discarded, so a fact on another owner's node cannot answer (fail closed). Returns every matching row: the caller treats no rows or conflicting rows as non-author. 64 rows is an overflow sentinel.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nSELECT DISTINCT ?node ?mode WHERE {\n  VALUES ?key { '{repo}' }\n  ?node a aegis:GitRepo ; aegis:reviewMode ?mode .\n  { ?node rdfs:label ?term } UNION { ?node skos:altLabel ?term }\n  FILTER(STR(?term) = ?key)\n}\nORDER BY ?node ?mode\nLIMIT 64",
+  "params": [
+    {
+      "name": "repo",
+      "type": "text",
+      "required": true,
+      "description": "Repository as 'owner/name' (e.g. 'intigraph/quipu')."
+    }
+  ]
+}
