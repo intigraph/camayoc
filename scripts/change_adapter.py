@@ -57,6 +57,7 @@ import json
 import re
 import sys
 import time
+import traceback
 
 import blocked_by as bb
 import planes
@@ -332,30 +333,33 @@ def run(kind, request, post):
 def main(kind, describe=False):
     if describe:
         print(json.dumps(description(kind)))
-    else:
+        return 0
+    request = None
+    last_read = 0.0
+    def post(endpoint, body):
+        nonlocal last_read
+        # At most eight reads/second, including catalogue reconciliation.
+        time.sleep(max(0, last_read + 0.125 - time.monotonic()))
+        last_read = time.monotonic()
+        return planes._post(endpoint, body, client=bb.CLIENT)
+    # chaski keeps only the HEAD of a failed adapter's stderr (~150 bytes;
+    # aegis-ztja: 134 exits whose only trace was the traceback's first frame).
+    # Parse, run AND serialize sit inside one guard, because the crash depends
+    # on the exact request chaski builds: a malformed request, a value
+    # json.dumps cannot encode, or a closed stdout must be named too. The
+    # cause line comes first, then the request shape, then the traceback.
+    try:
         request = json.load(sys.stdin)
-        last_read = 0.0
-        def post(endpoint, body):
-            nonlocal last_read
-            # At most eight reads/second, including catalogue reconciliation.
-            time.sleep(max(0, last_read + 0.125 - time.monotonic()))
-            last_read = time.monotonic()
-            return planes._post(endpoint, body, client=bb.CLIENT)
-        try:
-            result = run(kind, request, post)
-        except planes.RequestBudgetExceeded as exc:
-            print(f"camayoc adapter: request budget exhausted: {exc}", file=sys.stderr)
-            return 3
-        except Exception as exc:
-            # chaski keeps only the HEAD of a failed adapter's stderr (~150 bytes;
-            # aegis-ztja: 134 exits whose only trace was the traceback's first
-            # frame). Name the exception on the first line, then where the
-            # request was, then the full traceback. Exit 1 is unchanged.
-            print(failure_head(kind, request, exc), file=sys.stderr, flush=True)
-            import traceback
-            traceback.print_exc()
-            return 1
-        print(json.dumps(result))
+        result = run(kind, request, post)
+        out = json.dumps(result)
+        print(out, flush=True)
+    except planes.RequestBudgetExceeded as exc:
+        print(f"camayoc adapter: request budget exhausted: {exc}", file=sys.stderr)
+        return 3
+    except Exception as exc:
+        print(failure_head(kind, request, exc), file=sys.stderr, flush=True)
+        traceback.print_exc()
+        return 1
     return 0
 
 
