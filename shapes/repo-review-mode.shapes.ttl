@@ -13,8 +13,7 @@
 
 aegis:reviewMode a rdf:Property ;
     rdfs:label "review mode" ;
-    rdfs:comment "Closed set: non-author (a pull request needs one review by someone other than its author before landing) or none (no review required). At most one per repository." ;
-    rdfs:domain aegis:GitRepo ;
+    rdfs:comment "Closed set: non-author (a pull request needs one review by someone other than its author before landing) or none (no review required). At most one per repository. No rdfs:domain: under RDFS entailment a domain would type every carrier an aegis:GitRepo; the shape targets aegis:GitRepo instead." ;
     rdfs:range xsd:string .
 
 aegis:GitRepoReviewModeShape a sh:NodeShape ;

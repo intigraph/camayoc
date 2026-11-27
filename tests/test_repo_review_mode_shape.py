@@ -1,8 +1,10 @@
 """aegis-za4f.17.1: aegis:reviewMode on aegis:GitRepo is a closed set, at most one.
 
-The file is the exact bytes of Quipu schema proposal 63 (set
-aegis-repo-review-mode); its SHA-256 is pinned here so a Gold declaration can
-pin the same bytes. pyshacl validates the four controls; the suite skips them
+The file is the exact bytes to re-propose as Quipu shape set
+aegis-repo-review-mode, superseding pending proposal 63, whose bytes carried an
+rdfs:domain (CLAUDE.md: rdfs:range only, never rdfs:domain on shared
+predicates). Its SHA-256 is pinned here so the proposal and a Gold declaration
+can pin the same bytes. pyshacl validates the four controls; the suite skips them
 when pyshacl is absent, as the other shape tests do.
 """
 import hashlib
@@ -13,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHAPES = ROOT / "shapes/repo-review-mode.shapes.ttl"
 QUERY = ROOT / "queries/repo_review_mode.json"
-PROPOSAL_63_SHA256 = "840e42cf73f32227e34e549ccda8b2834a4076647a1dd88549a3dc3509b210f2"
+SHAPES_SHA256 = "2116f5e66cce211c4d69a33740d2359eb02bb264858b6090e888c7b2a66edc4c"
 
 try:
     from rdflib import Graph
@@ -31,8 +33,11 @@ DATA = """@prefix aegis: <http://aegis.gastown.local/ontology/> .
 
 
 class RepoReviewModeShape(unittest.TestCase):
-    def test_bytes_are_proposal_63(self) -> None:
-        self.assertEqual(hashlib.sha256(SHAPES.read_bytes()).hexdigest(), PROPOSAL_63_SHA256)
+    def test_bytes_are_pinned(self) -> None:
+        self.assertEqual(hashlib.sha256(SHAPES.read_bytes()).hexdigest(), SHAPES_SHA256)
+
+    def test_no_rdfs_domain(self) -> None:
+        self.assertNotIn("rdfs:domain aegis:", SHAPES.read_text())
 
     @unittest.skipUnless(pyshacl, "pyshacl not installed")
     def test_closed_set_and_max_one(self) -> None:
