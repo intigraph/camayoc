@@ -1,0 +1,26 @@
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# Repository review mode (aegis-za4f.17.1, S1 graph half). Whether a pull request
+# on this repository needs a non-author review before it lands. Read by the
+# stored query repo_review_mode; shantytown#754 treats conflicting or absent rows
+# as non-author (fail safe). STANDALONE: an additional shape on aegis:GitRepo, so
+# the byte-pinned aegis-ontology GitRepoShape is unchanged. Precedent:
+# aegis:landingPolicy, a literal on aegis:GitRepo.
+
+aegis:reviewMode a rdf:Property ;
+    rdfs:label "review mode" ;
+    rdfs:comment "Closed set: non-author (a pull request needs one review by someone other than its author before landing) or none (no review required). At most one per repository. No rdfs:domain: under RDFS entailment a domain would type every carrier an aegis:GitRepo; the shape targets aegis:GitRepo instead." ;
+    rdfs:range xsd:string .
+
+aegis:GitRepoReviewModeShape a sh:NodeShape ;
+    sh:targetClass aegis:GitRepo ;
+    sh:property [
+        sh:path aegis:reviewMode ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "non-author" "none" ) ;
+    ] .
