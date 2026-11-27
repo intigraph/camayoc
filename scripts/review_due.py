@@ -301,6 +301,7 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
                f"last verified {anchor.isoformat()}")
         basis.append({"age": "maxAge", "value": raw.strip('"'),
                       "due_at": when.isoformat() if when else None, "why": why})
+    tracker_status = None
     for raw in _values(post, entity, "idleLimit"):
         span = parse_duration(raw)
         if native_record is not None:
@@ -310,6 +311,7 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
             anchor,status=None,None  # Failed native authority cannot use stale Observation.
         else:
             anchor,status=latest_activity(post,entity) if span else (None,None)
+        tracker_status = status
         resolved = status in RESOLVING_STATUS
         when = anchor + span if anchor and span and not resolved else None
         why = ("unreadable duration" if span is None else
@@ -321,6 +323,16 @@ def judge(post, entity: str, now: dt.datetime, *, native_reader=None) -> dict:
         basis.append({"age": "idleLimit", "value": raw.strip('"'),
                       "due_at": when.isoformat() if when else None, "why": why,
                       **({"resolved": True} if resolved else {})})
+    # aegis-g68w.14: a CLOSED work item has no review obligation of any age.
+    # Closed ends every declared age (reviewAfter, maxAge, idleLimit), not only
+    # the idle one; deferred keeps its idle-only meaning. The status is the one
+    # already read (native record, or the tracker status the idle age used), so
+    # this adds no query.
+    closed_status = (native_record.status if native_record is not None
+                     else None if native_failed else tracker_status)
+    if closed_status == "closed" and basis:
+        basis = [{**b, "due_at": None, "resolved": True,
+                  "why": "resolved: the work item is closed"} for b in basis]
     known = [dt.datetime.fromisoformat(b["due_at"]) for b in basis if b["due_at"]]
     settled = len(known) + sum(1 for b in basis if b.get("resolved"))
     if any(t <= now for t in known):
