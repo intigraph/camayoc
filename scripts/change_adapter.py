@@ -346,8 +346,30 @@ def main(kind, describe=False):
         except planes.RequestBudgetExceeded as exc:
             print(f"camayoc adapter: request budget exhausted: {exc}", file=sys.stderr)
             return 3
+        except Exception as exc:
+            # chaski keeps only the HEAD of a failed adapter's stderr (~150 bytes;
+            # aegis-ztja: 134 exits whose only trace was the traceback's first
+            # frame). Name the exception on the first line, then where the
+            # request was, then the full traceback. Exit 1 is unchanged.
+            print(failure_head(kind, request, exc), file=sys.stderr, flush=True)
+            import traceback
+            traceback.print_exc()
+            return 1
         print(json.dumps(result))
     return 0
+
+
+def failure_head(kind, request, exc):
+    """One bounded line: exception class and message first, then the request shape."""
+    message = " ".join(str(exc).split())[:120]
+    changes = request.get("changes") if isinstance(request, dict) else None
+    first = ""
+    if isinstance(changes, list) and changes and isinstance(changes[0], dict):
+        first = " first=" + " ".join(str(changes[0].get("entity", "")).split())[:160]
+    shape = ",".join(sorted(k for k in request)) if isinstance(request, dict) else type(request).__name__
+    count = len(changes) if isinstance(changes, list) else "-"
+    return (f"camayoc adapter: {type(exc).__name__}: {message} | kind={kind}"
+            f" keys={shape} changes={count}{first}")
 
 
 # ---- paged discovery at or after a watermark (aegis-ssvr C1) ----------------------

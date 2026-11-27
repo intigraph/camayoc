@@ -146,6 +146,38 @@ class Incremental(unittest.TestCase):
             self.assertEqual(state, {r["item"]: r for r in bb.evaluate(store.post)}, (subject, prop, new))
 
 
+class FailureHead(unittest.TestCase):
+    """aegis-ztja: chaski keeps the head of stderr, so the cause must lead it."""
+
+    def run_main(self, exc):
+        import io
+        from unittest import mock
+        request = {"now": NOW, "changes": [change("weird name", "reviewAfter")] * 3}
+        stderr = io.StringIO()
+        with mock.patch.object(ca, "run", side_effect=exc), \
+                mock.patch.object(sys, "stdin", io.StringIO(__import__("json").dumps(request))), \
+                mock.patch.object(sys, "stderr", stderr):
+            code = ca.main("directive")
+        return code, stderr.getvalue()
+
+    def test_unexpected_exception_is_named_in_the_first_150_bytes(self):
+        code, err = self.run_main(ValueError("unsafe entity IRI"))
+        self.assertEqual(code, 1)
+        head = err.encode()[:150].decode(errors="replace")
+        self.assertIn("ValueError: unsafe entity IRI", head)
+        self.assertTrue(err.startswith("camayoc adapter: ValueError"))
+        first = err.splitlines()[0]
+        self.assertIn("kind=directive", first)
+        self.assertIn("changes=3", first)
+        self.assertIn("Traceback", err)
+
+    def test_budget_exhaustion_keeps_exit_3(self):
+        import planes
+        code, err = self.run_main(planes.RequestBudgetExceeded("k=20"))
+        self.assertEqual(code, 3)
+        self.assertTrue(err.startswith("camayoc adapter: request budget exhausted"))
+
+
 if __name__ == "__main__":
     unittest.main()
 
