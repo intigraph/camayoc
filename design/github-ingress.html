@@ -572,7 +572,11 @@ from the spool, which keeps redacted bodies for <code>--retain-days</code> (defa
 </li>
 <li>
 <p><strong>Unknown event or action.</strong> The entry is quarantined with a reason and
-counted. It is never guessed or dropped.</p>
+counted. It is never guessed or dropped. An action that is known but
+carries no modelled fact is listed under the event's <code>ignored</code> key in
+<code>mappings/github.json</code> and settles <code>ignored</code> with its reason (aegis-ov41:
+<code>pull_request</code> labeled/unlabeled/enqueued/dequeued, no label or merge-queue
+shape; <code>release.created</code>, whose fact is <code>published</code>).</p>
 </li>
 <li>
 <p><strong>Receiver down.</strong> GitHub marks the delivery failed and does not retry
