@@ -384,7 +384,11 @@ first producer.
    from the spool, which keeps redacted bodies for `--retain-days` (default
    2).
 5. **Unknown event or action.** The entry is quarantined with a reason and
-   counted. It is never guessed or dropped.
+   counted. It is never guessed or dropped. An action that is known but
+   carries no modelled fact is listed under the event's `ignored` key in
+   `mappings/github.json` and settles `ignored` with its reason (aegis-ov41:
+   `pull_request` labeled/unlabeled/enqueued/dequeued, no label or merge-queue
+   shape; `release.created`, whose fact is `published`).
 6. **Receiver down.** GitHub marks the delivery failed and does not retry
    automatically. The poller's next cycle covers the gap from the Events API,
    which keeps 30 days and 300 events. A long outage can be replayed from the

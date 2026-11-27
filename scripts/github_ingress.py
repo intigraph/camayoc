@@ -243,8 +243,8 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
                 mapping: dict | None = None, mapping_sha: str | None = None) -> tuple[dict, str]:
     """(the governed /episode body, the activity key digest) for one delivery.
 
-    Raises Ignored (ping, or a repeat non-terminal transition in
-    _REPEAT_TRANSITIONS), Quarantined (unmapped, malformed) or MissingField
+    Raises Ignored (ping, an action the mapping lists as 'ignored', or a
+    repeat non-terminal transition in _REPEAT_TRANSITIONS), Quarantined (unmapped, malformed) or MissingField
     (a Quarantined that names the object to hydrate). `occurred_at` overrides
     the payload's own time, for the poller (Events API created_at)."""
     if mapping is None or mapping_sha is None:
@@ -261,6 +261,8 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
         kind = event
     elif action in rule["actions"]:
         kind = f"{event}.{action}"
+    elif action in rule.get("ignored", ()):
+        raise Ignored(f"{event}.{action} carries no modelled fact (mapping 'ignored')")
     else:
         raise Quarantined(f"action {action!r} of {event!r} is not mapped")
     if (event, action) in _REPEAT_TRANSITIONS:

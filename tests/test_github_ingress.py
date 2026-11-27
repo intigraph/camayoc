@@ -208,8 +208,8 @@ class MappingTests(unittest.TestCase):
         with self.assertRaisesRegex(gi.Quarantined, "no mapping for GitHub event 'star'"):
             episode("star.created")
         rec = delivery("pull_request.closed")
-        rec["body"]["action"] = "labeled"
-        with self.assertRaisesRegex(gi.Quarantined, "action 'labeled'"):
+        rec["body"]["action"] = "assigned"
+        with self.assertRaisesRegex(gi.Quarantined, "action 'assigned'"):
             gi.episode_for("pull_request", rec["body"], actor="t")
         trimmed = copy.deepcopy(rec["body"])
         trimmed["action"] = "closed"
@@ -222,6 +222,30 @@ class MappingTests(unittest.TestCase):
         bad["pull_request"]["closed_at"] = "2026-02-30T00:00:00Z"
         with self.assertRaisesRegex(gi.Quarantined, "calendar-valid"):
             gi.episode_for("pull_request", bad, actor="t")
+
+    def test_reviewed_ignored_actions_settle_ignored_not_quarantined(self):
+        # aegis-ov41: ~130 deliveries of these actions were quarantined in
+        # production. They carry no modelled fact, so the mapping records the
+        # decision to acknowledge them without a write.
+        mapping, _ = gi.load_mapping()
+        for event, actions in {"pull_request": ["labeled", "unlabeled", "enqueued", "dequeued"],
+                               "release": ["created"]}.items():
+            self.assertEqual(actions, mapping["events"][event]["ignored"])
+            for action in actions:
+                body = {"action": action}
+                with self.assertRaisesRegex(gi.Ignored, f"{event}.{action}"):
+                    gi.episode_for(event, body, actor="t")
+        # An ignored action is never also admitted (the two lists are disjoint).
+        for event, rule in mapping["events"].items():
+            self.assertFalse(set(rule.get("ignored", ())) & set(rule["actions"] or ()), event)
+        # Through the drain: settled 'ignored', nothing written, not retried.
+        spool = gi.Spool(":memory:")
+        rec = delivery("pull_request.closed")
+        rec["body"]["action"] = "labeled"
+        spool.add("lb", "pull_request", rec["body"])
+        writer = Collect()
+        self.assertEqual({"ignored": 1}, gi.drain_once(spool, actor="t", writer=writer))
+        self.assertEqual([], writer.bodies)
 
     def test_legacy_node_ids_are_hashed_not_sanitized(self):
         a, b = gi.node_name("MDEwOlJlcG9zaXRvcnkx+/="), gi.node_name("MDEwOlJlcG9zaXRvcnkx/+=")

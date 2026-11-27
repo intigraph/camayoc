@@ -1,8 +1,9 @@
 {
-  "_README": "GitHub webhook -> native graph record admission (aegis-c01c.3, docs/design/github-ingress.md). Governed DATA: admitting an event or an action is a reviewed edit here. 'events' keys are X-GitHub-Event names; 'actions' lists the admitted payload actions (push has none); 'class' is the subject entity's class; 'object' is the payload key holding the subject; 'thread' is the payload key holding the pull request or issue a review or comment belongs to. Every admitted <event>.<action> must also be in GitHubActivityShape's githubEventKind sh:in list (tests/test_github_ingress.py holds the two together). An event or action not listed is QUARANTINED with its reason, never dropped and never guessed; 'ping' is acknowledged and writes nothing. 'events_api' maps the poller's Events API types onto webhook event names, and renames the actions the Events API spells differently. The sha256 of this file rides in every episode's source.",
+  "_README": "GitHub webhook -> native graph record admission (aegis-c01c.3, docs/design/github-ingress.md). Governed DATA: admitting an event or an action is a reviewed edit here. 'events' keys are X-GitHub-Event names; 'actions' lists the admitted payload actions (push has none); 'class' is the subject entity's class; 'object' is the payload key holding the subject; 'thread' is the payload key holding the pull request or issue a review or comment belongs to; 'ignored' lists actions that are reviewed and deliberately acknowledged without a write, because no shape models the fact they carry (aegis-ov41) — settled 'ignored' with that reason, so an ignored action is a decision recorded here, not a drop. Every admitted <event>.<action> must also be in GitHubActivityShape's githubEventKind sh:in list (tests/test_github_ingress.py holds the two together). An event or action listed in neither is QUARANTINED with its reason, never dropped and never guessed; 'ping' is acknowledged and writes nothing. 'events_api' maps the poller's Events API types onto webhook event names, and renames the actions the Events API spells differently. The sha256 of this file rides in every episode's source.",
   "events": {
     "pull_request": {
       "actions": ["opened", "reopened", "closed", "synchronize", "ready_for_review", "converted_to_draft", "edited", "observed"],
+      "ignored": ["labeled", "unlabeled", "enqueued", "dequeued"],
       "class": "GitHubPullRequest",
       "object": "pull_request"
     },
@@ -57,6 +58,7 @@
     },
     "release": {
       "actions": ["published", "released", "prereleased", "edited", "unpublished", "deleted"],
+      "ignored": ["created"],
       "class": "GitHubRelease",
       "object": "release"
     },
