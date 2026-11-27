@@ -289,6 +289,24 @@ class IdleLimit(unittest.TestCase):
     def obs(self, name, at, status="in_progress"):
         return [("w", "observes", name), (name, "observedAt", f'"{at}"'), (name, "observedStatus", f'"{status}"')]
 
+    def test_closed_resolves_every_age_not_only_idle(self):
+        # aegis-g68w.14: a closed item with an overdue reviewAfter used to page.
+        triples = ([("w", "idleLimit", '"P3D"'), ("w", "reviewAfter", '"2026-09-01T00:00:00Z"')]
+                   + self.obs("o1", "2026-09-20T00:00:00Z", status="closed"))
+        r = run_obs(triples)["w"]
+        self.assertEqual(r["verdict"], "NOT_DUE")
+        self.assertTrue(all(b.get("resolved") for b in r["basis"]))
+
+    def test_open_item_with_the_same_overdue_review_still_pages(self):
+        triples = ([("w", "idleLimit", '"P30D"'), ("w", "reviewAfter", '"2026-09-01T00:00:00Z"')]
+                   + self.obs("o1", "2026-09-20T00:00:00Z", status="in_progress"))
+        self.assertEqual(run_obs(triples)["w"]["verdict"], "DUE")
+
+    def test_deferred_resolves_only_the_idle_age(self):
+        triples = ([("w", "idleLimit", '"P3D"'), ("w", "reviewAfter", '"2026-09-01T00:00:00Z"')]
+                   + self.obs("o1", "2026-09-20T00:00:00Z", status="deferred"))
+        self.assertEqual(run_obs(triples)["w"]["verdict"], "DUE")
+
     def test_silence_past_the_limit_is_due_from_the_last_activity(self):
         r = run_obs([("w", "idleLimit", '"P3D"')] + self.obs("o1", "2026-09-20T06:32:51Z"))["w"]
         self.assertEqual((r["verdict"], r["due_at"]), ("DUE", "2026-09-23T06:32:51+00:00"))
