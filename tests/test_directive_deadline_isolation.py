@@ -27,24 +27,52 @@ def post_with(deadlines):
 
 
 class Isolation(unittest.TestCase):
-    def test_conflicting_item_is_unknown_and_rest_is_judged(self):
+    def test_conflicting_item_keeps_its_verdict_and_rest_is_judged(self):
+        # Review finding 1: the proposer view keeps the verdict judge() knows.
         post = post_with({'new': ([row(NOW)], [row(NOW + dt.timedelta(days=1))])})
-        for kind in ('directive', 'directive-lapse'):
-            with self.subTest(kind=kind):
-                out = ca._directive(kind, post, {'items': ['new', 'old']}, NOW, NOW.timestamp())
-                by = {r['entity']: r for r in out['records']}
-                self.assertEqual(set(by), {'new', 'old'})
-                self.assertEqual(by['new']['verdict'], 'UNKNOWN')
-                self.assertIsNone(by['new']['event_id'])
-                self.assertIn('conflicting traceability deadlines', by['new']['evidence'])
-                self.assertEqual(by['old']['verdict'], 'TRACED' if kind == 'directive' else 'NOT_LAPSED')
-                self.assertIsNone(out['next_checks']['new'])
+        plain = de.judge(board(), 'new', NOW)
+        out = ca._directive('directive', post, {'items': ['new', 'old']}, NOW, NOW.timestamp())
+        by = {r['entity']: r for r in out['records']}
+        self.assertEqual(set(by), {'new', 'old'})
+        want = de.UNTRACED if plain['verdict'] == de.PROPOSED else plain['verdict']
+        self.assertNotEqual(want, de.TRACED)
+        self.assertEqual(by['new']['verdict'], want)
+        self.assertEqual(by['new']['event_id'], de.event_id('new'))
+        self.assertIn('conflicting traceability deadlines', by['new']['evidence'])
+        self.assertEqual(by['old']['verdict'], de.TRACED)
+
+    def test_conflicting_item_lapses_now_and_rest_is_judged(self):
+        # Review finding 2: no UNKNOWN reaches the lapse emitter; the item
+        # reaches a person now (like an unanchored one) with the reason.
+        post = post_with({'new': ([row(NOW)], [row(NOW + dt.timedelta(days=1))])})
+        out = ca._directive('directive-lapse', post, {'items': ['new', 'old']}, NOW, NOW.timestamp())
+        by = {r['entity']: r for r in out['records']}
+        self.assertEqual(set(by), {'new', 'old'})
+        self.assertEqual(by['new']['verdict'], de.LAPSED)
+        self.assertTrue(by['new']['event_id'])
+        self.assertIsNone(by['new']['due_at'])
+        self.assertFalse(by['new']['explicit_deadline'])
+        self.assertIn('conflicting traceability deadlines', by['new']['evidence'])
+        self.assertEqual(by['old']['verdict'], de.NOT_LAPSED)
+        verdicts = {r['verdict'] for r in out['records']}
+        self.assertLessEqual(verdicts, {de.LAPSED, de.NOT_LAPSED})
+
+    def test_unreadable_lapse_event_is_stable_and_distinct(self):
+        post = post_with({'new': ([row(NOW)], [row(NOW + dt.timedelta(days=1))])})
+        a = de.judge(post, 'new', NOW, isolate_deadline=True)
+        b = de.judge(post, 'new', NOW + dt.timedelta(hours=1), isolate_deadline=True)
+        self.assertEqual(a['lapse_event_id'], b['lapse_event_id'])
+        self.assertNotEqual(a['lapse_event_id'], de.event_id(f"new\0{a['verdict']}\0unanchored"))
 
     def test_full_run_survives_a_conflicting_item(self):
         post = post_with({'new': ([row(NOW), row(NOW + dt.timedelta(days=1))], [])})
-        out = ca._directive('directive', post, {'full': True}, NOW, NOW.timestamp())
-        self.assertIn('UNKNOWN', {r['verdict'] for r in out['records'] if r['entity'] == 'new'})
-        self.assertTrue(any(r['verdict'] != 'UNKNOWN' for r in out['records']))
+        for kind in ('directive', 'directive-lapse'):
+            with self.subTest(kind=kind):
+                out = ca._directive(kind, post, {'full': True}, NOW, NOW.timestamp())
+                by = {r['entity']: r for r in out['records']}
+                self.assertIn('new', by)
+                self.assertIn('deadline UNKNOWN', by['new']['evidence'])
+                self.assertNotIn('UNKNOWN', {r['verdict'] for r in out['records']})
 
     def test_one_instant_spelled_twice_is_not_a_conflict(self):
         post = post_with({'new': ([row('2026-10-08T00:00:00Z')], [row('2026-10-08T00:00:00+00:00')])})

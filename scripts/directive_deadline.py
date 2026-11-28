@@ -13,7 +13,9 @@ class DeadlineUnknown(ValueError):
     This is a fact about that item's data, not about the store: the caller may
     report that item as UNKNOWN and judge the rest (aegis-b9k). A failed read
     (the `rows` callable raising) is NOT this class and still fails the batch,
-    because it says nothing about any one item."""
+    because it says nothing about any one item. A read that reaches its bound
+    (3+ rows for one entity in one graph) is also classed here: the rows were
+    read, and too many stored values is item data, not a store failure."""
 
 
 def deadline(rows, entity_iri, declared_graph, parse):

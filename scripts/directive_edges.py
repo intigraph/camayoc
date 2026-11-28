@@ -50,9 +50,6 @@ TRACED, PROPOSED, UNTRACED = "TRACED", "PROPOSED", "UNTRACED"
 #: an explicit traceability deadline replaces the legacy GRACE fallback.
 #: A still-untraced directive reaches a person when its deadline passes.
 LAPSED, NOT_LAPSED = "LAPSED", "NOT_LAPSED"
-#: One Directive whose stored facts cannot be judged (aegis-b9k): reported
-#: per item so the rest of the batch is still evaluated.
-UNKNOWN = "UNKNOWN"
 GRACE = dt.timedelta(days=2)
 EDGES = ("governedBy", "trackedBy")
 PROV = "http://www.w3.org/ns/prov#"
@@ -148,18 +145,35 @@ def anchor(post, entity: str, verdict: str) -> dt.datetime | None:
     return min(times) if times else None
 
 
-def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
+def judge(post, entity: str, now: dt.datetime | None = None, *,
+          isolate_deadline: bool = False) -> dict:
     """Both views of one Directive. `verdict` drives the proposer; `lapse`
-    drives the alert. A TRACED Directive never lapses."""
+    drives the alert. A TRACED Directive never lapses.
+
+    A stored deadline that cannot be read as one instant (conflicting values,
+    malformed cell, bound reached) raises DeadlineUnknown. With
+    `isolate_deadline` (the batch adapter, aegis-b9k) it is a fact about this
+    item only: the verdict does not depend on it and is kept, and the lapse
+    view treats the deadline like an unanchored one, LAPSED now with the reason
+    in evidence, so it reaches a person instead of failing the batch or
+    waiting forever. There is no grace fallback either way. A failed read is
+    not DeadlineUnknown and always propagates."""
     now = now or dt.datetime.now(dt.timezone.utc)
     traced = all(_typed_link(post, entity, prop, cls) for prop, cls in
                  (("governedBy", "Policy"), ("trackedBy", "WorkItem")))
     proposed = not traced and all(_has(post, entity, p, (INFERRED,)) for p in EDGES)
     verdict = TRACED if traced else PROPOSED if proposed else UNTRACED
-    from directive_deadline import deadline
-    explicit_due = None if verdict == TRACED else deadline(
-        lambda q, g: _rows(post, q, g), bb.A + entity, DECLARED, _instant)
-    start = None if verdict == TRACED or explicit_due else anchor(post, entity, verdict)
+    from directive_deadline import DeadlineUnknown, deadline
+    unreadable = None
+    try:
+        explicit_due = None if verdict == TRACED else deadline(
+            lambda q, g: _rows(post, q, g), bb.A + entity, DECLARED, _instant)
+    except DeadlineUnknown as exc:
+        if not isolate_deadline:
+            raise
+        explicit_due, unreadable = None, str(exc)
+    start = (None if verdict == TRACED or explicit_due or unreadable
+             else anchor(post, entity, verdict))
     due = explicit_due or (start + GRACE if start else None)
     # UNANCHORED counts as LAPSED (wu, [wu-cm84-review] item 1): measured, 407 of
     # 868 Directives have no datable capture episode. A stateless adapter cannot
@@ -176,19 +190,12 @@ def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
             # A lapse is a NEW event each time the anchor moves: a proposal that
             # lapses, is withdrawn and re-proposed is a second lapse, not a replay.
             "lapse_event_id": (event_id(f"{entity}\0{verdict}\0"
-                                        f"{(explicit_due or start).isoformat() if (explicit_due or start) else 'unanchored'}")
+                                        f"{(explicit_due or start).isoformat() if (explicit_due or start) else 'unreadable-deadline' if unreadable else 'unanchored'}")
                                if lapse == LAPSED else None),
             "due_at": due.isoformat() if due else None,
             "explicit_deadline": explicit_due is not None,
-            "evidence": verdict, "owner": None}
-
-
-def unknown(entity: str, reason: str) -> dict:
-    """The record for a Directive whose deadline cannot be read as one
-    instant. Neither view guesses: no grace fallback, no lapse, no event."""
-    return {"entity": entity, "verdict": UNKNOWN, "event_id": None,
-            "lapse": UNKNOWN, "lapse_event_id": None, "due_at": None,
-            "explicit_deadline": False, "evidence": f"{UNKNOWN}: {reason}",
+            "evidence": (f"{verdict}; traceability deadline UNKNOWN: {unreadable}"
+                         if unreadable else verdict),
             "owner": None}
 
 
