@@ -50,10 +50,10 @@ find_or_install_binary() {
   if [ "$os" = "Linux" ] && [ "$arch" = "x86_64" ]; then
     say "binary: downloading latest quipu release (linux x86_64)..." >&2
     local api tag asset url
-    api=$(curl -sf -m 15 https://api.github.com/repos/scbrown/quipu/releases/latest) || { say "binary: release API unreachable" >&2; return 1; }
+    api=$(curl -sf -m 15 https://api.github.com/repos/intigraph/quipu/releases/latest) || { say "binary: release API unreachable" >&2; return 1; }
     tag=$(printf '%s' "$api" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
     asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
-    url="https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+    url="https://github.com/intigraph/quipu/releases/download/${tag}/${asset}"
     mkdir -p "$QUIPU_DIR/bin"
     curl -sfL -m 300 -o "$QUIPU_DIR/$asset" "$url" || { say "binary: download failed: $url" >&2; return 1; }
     curl -sfL -m 30 -o "$QUIPU_DIR/$asset.sha256" "$url.sha256" 2>/dev/null && \

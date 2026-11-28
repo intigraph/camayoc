@@ -17,7 +17,7 @@
 [Watch the 90-second native bootstrap recording](https://github.com/intigraph/camayoc/blob/main/docs/demos/bootstrap-v0.1.2/README.md).
 
 **Camayoc gives AI coding agents a governed memory: a starter vocabulary for
-work, decisions and outcomes, loaded into a [quipu](https://github.com/scbrown/quipu)
+work, decisions and outcomes, loaded into a [quipu](https://github.com/intigraph/quipu)
 knowledge graph that refuses any record that does not say how it was learned
 (observed, declared or inferred).** It is for teams whose agents keep
 re-deciding things a past session already settled. It comes as a Claude Code

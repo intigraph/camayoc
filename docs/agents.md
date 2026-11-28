@@ -19,7 +19,7 @@ That gets you, immediately:
 - **`/camayoc:bootstrap`** — from nothing to governed memory, idempotently:
   if no quipu is reachable it **installs one** (writes `.bobbin/config.toml`
   with `validate_on_write = true`, downloads the latest
-  [quipu release](https://github.com/scbrown/quipu/releases) binary —
+  [quipu release](https://github.com/intigraph/quipu/releases) binary —
   sha256-checked — or cargo-installs it, starts it against
   `.quipu/store.db`, gitignores `.quipu/`), loads the core ontology +
   SHACL shapes, registers and labels the quarantine planes (both or
@@ -40,10 +40,10 @@ merges the session status hook into `.claude/settings.json`.)
 After the core succeeds, **bootstrap offers the rest of the stack** — your
 choice, per component, never assumed:
 
-- **[bobbin](https://github.com/scbrown/bobbin)** — semantic code search +
+- **[bobbin](https://github.com/intigraph/bobbin)** — semantic code search +
   context bundles; installed from crates.io, project indexed, `bobbin serve`
   added to `.mcp.json`.
-- **[Yupana](https://github.com/scbrown/yupana)** — defs/refs, call graph,
+- **[Yupana](https://github.com/intigraph/yupana)** — defs/refs, call graph,
   blast radius, and change-time policy checks; installed from git
   (pre-release), `yupana serve` added to `.mcp.json` (`hank` remains a
   compatibility alias).
@@ -51,7 +51,7 @@ choice, per component, never assumed:
   work-item tracker (`bd`). Dual role: shantytown's first-class tracker
   backend, and a deterministic observed-tier **ingress path** — a bead is a
   `WorkItem` record camayoc can govern into the graph.
-- **[shantytown](https://github.com/scbrown/shantytown)** — the crew
+- **[shantytown](https://github.com/intigraph/shantytown)** — the crew
   harness; pip-installed, then `st init` is *left to you* — it asks its five
   questions itself and shows every path before writing.
 

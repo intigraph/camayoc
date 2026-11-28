@@ -1,110 +1,171 @@
 <p align="center"><img src="assets/thread-workshop/camayoc.png" width="704" alt="camayoc: Loose strands pass through a checked gate. Original pixel art in the Thread Workshop style."/></p>
 
+<h1 align="center">camayoc</h1>
+
 <p align="center">
-  <img src="assets/logo.svg" width="200" alt="Camayoc logo — loose gray strands enter from the left, the keeper's yupana counting board hangs from the main cord at center, and ordered, colored, knotted quipu pendants emerge on the right"/>
+  <em>🪢 Memory your agents can trust: every fact says how it was learned.</em>
 </p>
 
-# camayoc
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"/></a>
+  <a href="https://github.com/intigraph/camayoc/actions/workflows/ci.yml"><img src="https://github.com/intigraph/camayoc/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  <a href="https://github.com/intigraph/tambo"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the Quipu stack"/></a>
+</p>
 
-**Camayoc gives AI coding agents a governed memory: a starter vocabulary for
-work, decisions and outcomes, loaded into a [quipu](https://github.com/scbrown/quipu)
-knowledge graph that refuses any record that does not say how it was learned
-(observed, declared or inferred).** It is for teams whose agents keep
-re-deciding things a past session already settled. It comes as a Claude Code
-plugin (a skill, a session-start status hook and a bootstrap command), and as
-plain scripts any agent that speaks HTTP can use.
+**Camayoc gives AI agents a memory that is checked on the way in, for teams
+whose agents keep re-deciding what an earlier session settled. It comes as a
+CLI (`cy`), two MCP servers and a Claude Code plugin.** It defines what a
+decision, a directive, a handoff or a deployment means in a
+[Quipu](https://github.com/intigraph/quipu) store, and Quipu then refuses any
+record that does not fit, including one that does not say whether it was
+observed, declared or inferred.
 
 The *quipucamayoc* was the Inca official who kept the quipus and certified what
 was read back out of them.
 
-<p align="center"><img src="docs/demos/terminal/demo.svg" width="1000" alt="Check an event before admitting it: native commands and their complete output."/></p>
-
-This 20-second recording calls the existing adapter source API with two public synthetic CloudEvents. A deployment maps to DeploymentEvent; an unknown type is quarantined with exit 2. The documentation helper prints selected mapped fields without posting an episode or contacting Quipu. [Reproduce the recording](docs/demos/terminal.md).
+<p align="center"><img src="docs/diagrams/governed-memory.svg" width="900" alt="How a fact gets into governed memory. A ruling or a handoff arrives through cy record, a delivery event through an ingress adapter, and text an agent read through extraction. Camayoc maps each one onto the shared vocabulary, tags how it was learned and writes it through Quipu's shapes. An unknown name or a record that breaks a shape is refused. Quipu keeps declared, observed and inferred facts apart, and inferred never overrides declared. cy recall, an agent's session start and stored queries read the record back."/></p>
 
 ## Why you would want it
 
-- **Keep decisions between sessions:** give agents shared knowledge they can read back.
-- **Check how a fact was learned:** admit records with explicit provenance.
-- **Normalize event input:** map supported events and quarantine unknown types.
+- **Stop re-deciding.** An agent asks what was decided about a service, a
+  repository or a person before it acts, and gets the ruling, who made it and
+  why.
+- **Know how each fact was learned.** Every record is observed, declared or
+  inferred. What an agent concluded never overrides what a person said.
+- **Refuse bad records at the door.** A decision with no source, a
+  verification with nothing that could prove it wrong, and an event of an
+  unknown type are all refused or quarantined, with the reason.
+- **Bring delivery history in.** Deployments, changes and reviews from GitHub,
+  Forgejo, Ansible and Terraform land in the same store as the decisions
+  behind them.
 
-[The Camayoc book](https://intigraph.github.io/camayoc/) explains memory, vocabulary and ingress.
+The full case, and how Camayoc compares with the alternatives:
+[Why Camayoc](https://intigraph.github.io/camayoc/why-camayoc.html).
 
 ## Install
+
+The memory CLI needs Python 3.10 or newer and
+[uv](https://docs.astral.sh/uv/):
+
+```sh
+uv tool install git+https://github.com/intigraph/camayoc
+cy --version
+```
+
+This installs `cy` and `camayoc`, which are the same command. The vocabulary,
+shapes, queries and ingress adapters come as a checked source release:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/intigraph/camayoc/main/install.sh | sh
 ```
 
-Python 3.9+, curl, and a Linux or macOS shell. Downloads and verifies the latest source package into `~/.local/share/camayoc/TAG`.
-No native executable, server or agent enrollment is installed.
-
-The agent-memory CLI (`camayoc`, alias `cy`) installs separately with
-`uv tool install git+https://github.com/intigraph/camayoc`; see the
-[reference](docs/installation-reference.md#agent-memory-cli-camayoc-alias-cy).
-
-Set `STACK_INSTALL_ROOT` on the receiving shell for another prefix.
-Pinned releases, alternatives, configuration and removal are in the
-[installation and usage reference](docs/installation-reference.md).
+That needs `curl` and Linux or macOS. It downloads the latest release, checks
+it against the published checksum and unpacks it into
+`~/.local/share/camayoc/TAG`. The
+[installation reference](docs/installation-reference.md) covers pinned
+releases, another prefix and removal.
 
 ## First success in three commands
 
-From an empty directory, bootstrap a governed memory and watch it prove its gate:
+This needs `git`, `curl`, Python 3 and a Quipu server binary. With
+[Quipu installed](https://github.com/intigraph/quipu#install), run this from
+an empty directory:
 
-```bash
+```sh
 git clone -q --depth 1 https://github.com/intigraph/camayoc
 QUIPU_SERVER=http://127.0.0.1:3030 bash camayoc/scripts/bootstrap.sh > bootstrap.log 2>&1
-grep -E '^(ontology|shapes|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
+grep -E '^(ontology|gate: PROVEN — an untagged|camayoc:)' bootstrap.log
 ```
+
+You should see:
 
 ```text
 ontology: loaded (core.ttl)
-shapes: loaded (camayoc-core)
 gate: PROVEN — an untagged Decision refused, as it must be.
 camayoc: governed memory ready. Query first; record at the moment; tag honestly.
 ```
 
-With no quipu on your machine, bootstrap downloaded one (sha256-checked),
-started it, loaded the vocabulary and shapes, and then tried to write a
-Decision with no provenance tag. The store refused it. That refusal is the
-guarantee everything else rests on. Stop the server with
+The bootstrap started a Quipu server on a store in `.quipu/`, loaded the
+vocabulary, the shapes and the stored queries, and then tried to write a
+decision that does not say how it was learned. The store refused it. Every
+other guarantee rests on that refusal. On Linux x86_64 the bootstrap downloads
+a Quipu release when none is installed. Stop the server with
 `kill "$(cat .quipu/server.pid)"`; the full log is in `bootstrap.log`.
 
 ## On your own data
 
-Choose a vocabulary and profile before admitting records. The
-[installation reference](docs/installation-reference.md) covers agent memory;
-the [ingress design](docs/design/ingress.md) covers event normalization.
-The terminal fixture maps a supported deployment event and refuses an unknown
-type without posting either to a server.
+`cy` records and recalls five kinds of memory: a decision, a directive, a
+preference, a handoff and a reference to where a system lives.
+
+| you want to | run |
+|---|---|
+| Read the agent primer and this machine's state | `cy prime` |
+| Ask what was decided about something | `cy recall decision --about orders-service` |
+| Record a ruling when it is made | `cy record decision --chose "Use Postgres." --by alex --about orders-service --topic database-choice` |
+| See every field a record takes | `cy record decision --help` |
+| Read your last handoff | `cy recall handoff --agent my-agent` |
+| Replay records made while Quipu was unreachable | `cy flush` |
+| List the questions the vocabulary can answer | `python3 scripts/competency.py --list` |
+
+`cy` writes to the server in `QUIPU_SERVER`. A record names people, systems
+and topics that are already in the store, and `cy` refuses a name it cannot
+find and suggests the nearest ones. A new record on the same subject and topic
+supersedes the old one, which stays in the history.
+
+`cy` needs a store that has the agent-memory shapes and the entities your
+records name. The bootstrap above does not load them: see
+[the agent-memory CLI](docs/installation-reference.md#agent-memory-cli-camayoc-alias-cy)
+for what the store needs.
 
 ## Wire it into your agent
 
-Start with the [Camayoc skill](skills/camayoc/SKILL.md) and
-[agent setup reference](docs/installation-reference.md). Configure the graph
-endpoint and credentials through your deployment. Query existing knowledge
-before adding facts; record provenance when writing. Installing source files
-does not enroll an agent or activate a producer.
+In Claude Code, install the plugin:
+
+```text
+/plugin marketplace add intigraph/camayoc
+/plugin install camayoc@camayoc
+```
+
+The plugin brings four things:
+
+- **A skill** that tells the agent to query before deciding and to record a
+  ruling when it is made.
+- **A session-start hook** that reports whether memory is reachable. A store
+  it could not reach is reported as "could not look", never as "nothing
+  exists".
+- **The `camayoc-memory` MCP server,** with one `record_` and one `recall_`
+  tool for each kind of memory. Any MCP client can run it with `cy mcp`.
+- **The `jev` MCP server,** which maps a question to the stored query that
+  answers it. It needs a TypeSafe API key.
+
+[Using it with agents](https://intigraph.github.io/camayoc/agents.html) has
+the details, and [Tambo](https://github.com/intigraph/tambo) can wire the
+capture hooks for you with `tambo memory`.
 
 ## Before you start
 
-The source installer needs Python 3.9+, curl and a Linux or macOS shell.
-The bootstrap example starts a local Quipu server and writes vocabulary and
-shapes; run it in a disposable directory and stop its server afterward.
-Agent-memory CLI installation is separate from the source package. Review
-write rules and event coverage before connecting live producers.
+- `cy` needs Python 3.10 or newer. It has no dependencies outside the standard
+  library.
+- Everything needs a Quipu server. The bootstrap starts a local one, writes
+  `.bobbin/config.toml` and `.quipu/` in the current directory and fetches one
+  shape profile from GitHub, so run it in a scratch directory.
+- When Quipu is unreachable, `cy record` queues the record on this machine and
+  `cy flush` replays the queue in order. A queued record is pending, not
+  stored.
+- An ingress adapter is source you run. Installing Camayoc does not start one.
 
 ## What's next
 
-- [The Camayoc book](https://intigraph.github.io/camayoc/): concepts and setup.
-- [Installation reference](docs/installation-reference.md): choose the required components.
-- [Ingress design](docs/design/ingress.md): event mapping and quarantine.
+- [The Camayoc book](https://intigraph.github.io/camayoc/): concepts, setup and design notes.
+- [Getting started](https://intigraph.github.io/camayoc/getting-started.html): from an empty directory to a governed store.
+- [Ingress design](https://intigraph.github.io/camayoc/design/ingress.html): how an event is mapped, checked and quarantined.
+- [Agent-memory entities](https://intigraph.github.io/camayoc/design/agent-memory-entities.html): the five kinds of memory and their rules.
 
-### Related tools and repository knowledge
-
-- [Tambo](https://github.com/intigraph/tambo): guided installation of the complete stack.
-- [Detailed examples and agent setup](docs/installation-reference.md).
-
-**Load this repository’s graph:** public repository-pendant assets have not yet been verified. When a release supplies the archive, checksum and provenance, follow the [verified import workflow](https://intigraph.github.io/quipu/sharing/index.html): extract the share directory and use `quipu import SHARE_DIR --db repository.db`. Import stages knowledge; ROOT stays unchanged.
+**Load this repository's graph:** each release publishes a repository pendant
+with its checksum and provenance. To query Camayoc's own documentation and
+design as a graph, follow the
+[verified import workflow](https://intigraph.github.io/quipu/sharing/index.html):
+extract the share directory and run `quipu import SHARE_DIR --db repository.db`.
 
 <!-- delivery-catalog:start -->
 
@@ -159,45 +220,15 @@ when.
 
 ## Contributing
 
-Run `just check` and `just test` before submitting changes.
+```sh
+just check
+just test
+```
+
+`just check` lints the Markdown and `just test` runs the unit suite.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the RDF review environment, and
+[AGENTS.md](AGENTS.md) has the conventions.
 
 ## 📜 License
 
-[License](LICENSE).
-
-### Repository pendant provider
-
-Repository pendant builders require explicitly pinned model and tokenizer bytes
-and an embedding dimension. The input contract is in
-[`repository_share_embedding.py`](scripts/repository_share_embedding.py). This
-source plumbing does not enable publication or qualify a provider.
-
-## RDF review environment
-
-Use the locked project environment when reviewing RDF, SHACL or stored queries.
-It declares RDFLib, pySHACL, pytest and the existing test-suite dependencies;
-it does not install packages into the system interpreter.
-
-```bash
-uv sync --frozen --python 3.11 --group review
-just review-preflight
-just review-test tests/test_dual_read_queries.py
-```
-
-The preflight prints the selected interpreter and installed dependency versions.
-It refuses missing imports before the review test recipe runs. Both steps use
-Python 3.11 and the same frozen dependency group. Use that interpreter for
-ad-hoc review scripts too:
-
-```bash
-uv run --frozen --python 3.11 --group review python -c \
-  'import pyshacl, rdflib; print(pyshacl.__version__, rdflib.__version__)'
-uv run --frozen --python 3.11 --group review python -c \
-  'from rdflib import Graph, URIRef; from rdflib.namespace import RDF, SKOS'
-```
-
-For a script outside the repository, add `--project /path/to/camayoc` to `uv run`
-and pass the script's path after `python`. Do not bootstrap an unrelated global
-Python or interpret skipped query suites as review success. The existing
-`just test` and CI's missing-RDFLib refusal remain available and unchanged;
-this environment is for review, not for deployed adapters.
+[Apache-2.0](LICENSE).

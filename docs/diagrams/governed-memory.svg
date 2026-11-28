@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img" aria-label="How a fact gets into governed memory. On the left, three things arrive: a ruling or a handoff through cy record, a delivery event through an ingress adapter, and text an agent read through extraction. Camayoc checks each one in three steps. Map: it is put onto the shared vocabulary, and an unknown name or event type stops here. Tag: it must say how it was learned, which is declared, observed or inferred. Write: it goes through Quipu&#x27;s shapes, and a record that breaks one is refused. Quipu keeps each kind in its own graph: declared for what a person said, observed for what a tool measured, and inferred for what an agent concluded, which ranks lowest and never overrides declared. cy recall, an agent&#x27;s session start and stored queries read the record back, and each answer says how the fact was learned.">
+  <style>
+    .t{font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif}
+    .m{font-family:JetBrains Mono,Menlo,Consolas,monospace}
+    .card{fill:#20203a;stroke:#2e2e4d}
+    .pipe{stroke:#ff8a70;stroke-width:2.5;fill:none;stroke-dasharray:6 6;opacity:.75;animation:flow 1.2s linear infinite}
+    .up{stroke:#ffc24d;stroke-width:2;fill:none;stroke-dasharray:4 5;opacity:.8;animation:flow 1.6s linear infinite}
+    .down{stroke:#ff4fa0;stroke-width:2;fill:none;stroke-dasharray:4 5;opacity:.8;animation:flow 1.6s linear infinite reverse}
+    @keyframes flow{to{stroke-dashoffset:-24}}
+    @media (prefers-reduced-motion: reduce){.pipe,.up,.down{animation:none}}
+  </style>
+  <rect width="960" height="560" rx="20" fill="#12121f"/>
+  <text class="t" x="40" y="52" fill="#ecebf5" font-size="24" font-weight="700">How a fact gets into governed memory</text>
+  <text class="t" x="40" y="78" fill="#a7a6c2" font-size="14">Camayoc checks a record before Quipu stores it. Each fact keeps how it was learned.</text>
+  <text class="t" x="30" y="122" fill="#ffc24d" font-size="10" font-weight="700" letter-spacing="1">WHAT COMES IN</text>
+  <text class="t" x="290" y="122" fill="#ffc24d" font-size="10" font-weight="700" letter-spacing="1">CAMAYOC CHECKS IT</text>
+  <text class="t" x="650" y="122" fill="#ffc24d" font-size="10" font-weight="700" letter-spacing="1">QUIPU KEEPS IT</text>
+  <rect x="30" y="136" width="220" height="110" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="46" y="164" fill="#ecebf5" font-size="15" font-weight="700">A ruling or a handoff</text>
+  <text class="m" x="46" y="186" fill="#ff4fa0" font-size="12">cy record</text>
+  <text class="t" x="46" y="210.0" fill="#a7a6c2" font-size="12.5">From a person or an agent, at</text>
+  <text class="t" x="46" y="227.2" fill="#a7a6c2" font-size="12.5">the moment it happens.</text>
+  <path class="pipe" d="M252 191 H280"/>
+  <polygon points="288,191 279,186 279,196" fill="#ff8a70"/>
+  <rect x="30" y="264" width="220" height="110" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="46" y="292" fill="#ecebf5" font-size="15" font-weight="700">A delivery event</text>
+  <text class="m" x="46" y="314" fill="#ff4fa0" font-size="12">ingress adapters</text>
+  <text class="t" x="46" y="338.0" fill="#a7a6c2" font-size="12.5">A deployment, a change or a</text>
+  <text class="t" x="46" y="355.2" fill="#a7a6c2" font-size="12.5">review, as CDEvents.</text>
+  <path class="pipe" d="M252 319 H280"/>
+  <polygon points="288,319 279,314 279,324" fill="#ff8a70"/>
+  <rect x="30" y="392" width="220" height="110" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="46" y="420" fill="#ecebf5" font-size="15" font-weight="700">Text an agent read</text>
+  <text class="m" x="46" y="442" fill="#ff4fa0" font-size="12">extraction</text>
+  <text class="t" x="46" y="466.0" fill="#a7a6c2" font-size="12.5">Mentions found in prose.</text>
+  <text class="t" x="46" y="483.2" fill="#a7a6c2" font-size="12.5">Always inferred.</text>
+  <path class="pipe" d="M252 447 H280"/>
+  <polygon points="288,447 279,442 279,452" fill="#ff8a70"/>
+  <rect x="290" y="136" width="260" height="366" rx="14" fill="#20203a" stroke="#ff4fa0" stroke-width="1.6"/>
+  <rect x="306" y="152" width="228" height="102" rx="10" fill="#12121f" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="m" x="322" y="180" fill="#ffc24d" font-size="13" font-weight="700">1</text>
+  <text class="t" x="342" y="180" fill="#ecebf5" font-size="16" font-weight="700">Map</text>
+  <text class="t" x="322" y="202.0" fill="#a7a6c2" font-size="12.5">Onto the shared vocabulary. An</text>
+  <text class="t" x="322" y="219.2" fill="#a7a6c2" font-size="12.5">unknown name or event type</text>
+  <text class="t" x="322" y="236.4" fill="#a7a6c2" font-size="12.5">stops here.</text>
+  <path class="pipe" d="M420 256 V260"/>
+  <polygon points="420,267 415,258 425,258" fill="#ff8a70"/>
+  <rect x="306" y="268" width="228" height="102" rx="10" fill="#12121f" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="m" x="322" y="296" fill="#ffc24d" font-size="13" font-weight="700">2</text>
+  <text class="t" x="342" y="296" fill="#ecebf5" font-size="16" font-weight="700">Tag</text>
+  <text class="t" x="322" y="318.0" fill="#a7a6c2" font-size="12.5">How it was learned: declared,</text>
+  <text class="t" x="322" y="335.2" fill="#a7a6c2" font-size="12.5">observed or inferred.</text>
+  <path class="pipe" d="M420 372 V376"/>
+  <polygon points="420,383 415,374 425,374" fill="#ff8a70"/>
+  <rect x="306" y="384" width="228" height="102" rx="10" fill="#12121f" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="m" x="322" y="412" fill="#ffc24d" font-size="13" font-weight="700">3</text>
+  <text class="t" x="342" y="412" fill="#ecebf5" font-size="16" font-weight="700">Write</text>
+  <text class="t" x="322" y="434.0" fill="#a7a6c2" font-size="12.5">Through Quipu&#x27;s shapes. A</text>
+  <text class="t" x="322" y="451.2" fill="#a7a6c2" font-size="12.5">record that breaks one is</text>
+  <text class="t" x="322" y="468.4" fill="#a7a6c2" font-size="12.5">refused.</text>
+  <rect x="650" y="136" width="280" height="250" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <rect x="666" y="152" width="248" height="62" rx="10" fill="#12121f" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="682" y="177" fill="#ecebf5" font-size="14" font-weight="700">Declared</text>
+  <text class="t" x="682" y="198" fill="#a7a6c2" font-size="12">A person said it.</text>
+  <rect x="666" y="228" width="248" height="62" rx="10" fill="#12121f" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="682" y="253" fill="#ecebf5" font-size="14" font-weight="700">Observed</text>
+  <text class="t" x="682" y="274" fill="#a7a6c2" font-size="12">A tool measured it.</text>
+  <rect x="666" y="304" width="248" height="62" rx="10" fill="#12121f" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="682" y="329" fill="#ecebf5" font-size="14" font-weight="700">Inferred</text>
+  <text class="t" x="682" y="350" fill="#a7a6c2" font-size="12">An agent concluded it. Ranks lowest.</text>
+  <path class="pipe" d="M552 260 H640"/>
+  <polygon points="648,260 639,255 639,265" fill="#ff8a70"/>
+  <text class="m" x="600" y="250" fill="#ff8a70" font-size="12" text-anchor="middle">admit</text>
+  <path class="up" d="M790 388 V402"/>
+  <polygon points="790,410 785,401 795,401" fill="#ffc24d"/>
+  <rect x="650" y="412" width="280" height="90" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="666" y="436" fill="#ffc24d" font-size="10" font-weight="700" letter-spacing="1">WHO READS IT BACK</text>
+  <text class="t" x="666" y="458.0" fill="#a7a6c2" font-size="12.5">cy recall, an agent&#x27;s session start</text>
+  <text class="t" x="666" y="475.2" fill="#a7a6c2" font-size="12.5">and stored queries. Each answer says</text>
+  <text class="t" x="666" y="492.4" fill="#a7a6c2" font-size="12.5">how the fact was learned.</text>
+  <text class="t" x="40" y="536" fill="#6f6e8f" font-size="12.5">A refused record is reported with the field it lacks. It is never stored quietly.</text>
+</svg>

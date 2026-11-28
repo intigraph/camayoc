@@ -7,8 +7,8 @@ knowledge-pack production for the quipu stack. Camayoc owns what facts MEAN
 and how they EARN their way into the graph; it is deliberately not a store
 (quipu), not a harness (shantytown), and not retrieval (bobbin).
 
-Sibling repos: scbrown/quipu (governed store), scbrown/shantytown (crew
-harness), intigraph/yupana (code structure), scbrown/bobbin (retrieval).
+Sibling repos: intigraph/quipu (governed store), intigraph/shantytown (crew
+harness), intigraph/yupana (code structure), intigraph/bobbin (retrieval).
 
 ## Conventions
 

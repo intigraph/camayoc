@@ -61,7 +61,7 @@ class PackageInstall(unittest.TestCase):
         (self.release / CONFIG['checksum']).write_text(manifest)
 
     def open_release(self, request, **kwargs):
-        if request.full_url.startswith('https://api.github.com/repos/scbrown/'):
+        if request.full_url.startswith('https://api.github.com/repos/intigraph/'):
             return io.BytesIO(json.dumps(self.latest).encode())
         return real_urlopen(request, **kwargs)
 

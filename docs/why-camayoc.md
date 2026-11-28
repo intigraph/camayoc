@@ -20,13 +20,13 @@ shantytown / git / yupana / sessions        (activity: raw fiber)
     bobbin / agents                          (retrieval, context, RAG)
 ```
 
-- **[quipu](https://github.com/scbrown/quipu)** stores and governs; it
+- **[quipu](https://github.com/intigraph/quipu)** stores and governs; it
   deliberately contains no extraction and no LLM.
-- **[Yupana](https://github.com/scbrown/yupana)** observes code structure. The
+- **[Yupana](https://github.com/intigraph/yupana)** observes code structure. The
   `hank` executable name remains only as a compatibility alias.
-- **[bobbin](https://github.com/scbrown/bobbin)** serves knowledge back into
+- **[bobbin](https://github.com/intigraph/bobbin)** serves knowledge back into
   agent context.
-- **[shantytown](https://github.com/scbrown/shantytown)** runs the crew whose
+- **[shantytown](https://github.com/intigraph/shantytown)** runs the crew whose
   activity is the first knowledge domain.
 - **camayoc** is the layer TrustGraph-style platforms put *inside* the store
   and this stack deliberately keeps outside it: ontology, ingress discipline,
@@ -248,7 +248,7 @@ archiving, and interpreting the khipus — and answerable, personally, for what
 the knots were read to claim. *Kamayuq* on its own means "specialist, keeper,
 one who is charged with": Quechua formed many such titles (*punku kamayuq*,
 doorkeeper; *chaka kamayuq*, bridge keeper). Beside a sibling project named
-[quipu](https://github.com/scbrown/quipu), this repo's name completes the
+[quipu](https://github.com/intigraph/quipu), this repo's name completes the
 compound.
 
 This project borrows the role as a metaphor for a software layer that decides

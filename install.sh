@@ -100,7 +100,7 @@ def install():
         tag = os.environ.get('STACK_VERSION')
         if not tag:
             metadata = work / 'latest.json'
-            fetch('https://api.github.com/repos/scbrown/' + CONFIG['repo'] + '/releases/latest', metadata)
+            fetch('https://api.github.com/repos/intigraph/' + CONFIG['repo'] + '/releases/latest', metadata)
             release = json.loads(metadata.read_text())
             if release.get('draft') or release.get('prerelease'):
                 raise ValueError('latest release is not stable')
@@ -108,7 +108,7 @@ def install():
         if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', tag):
             raise ValueError('unsupported release tag')
         version = tag[1:]
-        base = os.environ.get('STACK_RELEASE_BASE_URL', 'https://github.com/scbrown/' + CONFIG['repo'] + '/releases/download/' + tag)
+        base = os.environ.get('STACK_RELEASE_BASE_URL', 'https://github.com/intigraph/' + CONFIG['repo'] + '/releases/download/' + tag)
         manifest = work / 'checksums'
         fetch(base + '/' + CONFIG['checksum'], manifest)
         names = [name.format(tag=tag, version=version) for name in CONFIG['assets']]
