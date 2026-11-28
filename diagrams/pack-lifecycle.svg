@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" role="img" aria-label="A pack, from declaration to feedback. Six stages run left to right. Declare: an author writes one directory that holds a domain&#x27;s terms, shapes, queries, questions and commands. Check: Camayoc confirms that every question has a query and every command has a test. Load: Quipu takes the pack after a dry run and records which version it holds. Generate: Camayoc produces the same commands as a CLI, as MCP tools and as agent guidance. Use: an agent or a person calls a command, and each call is checked and leaves a receipt. Learn: Desire Path groups refusals and missing commands into proposals. A proposal that a person accepts changes the declaration, which closes the loop. Below the stages is what the store knows about a pack: the installed version that cy pack status compares with the pack, the verdict for each question, the installed pack&#x27;s name, version and digest, the records and receipts from use, and the proposals waiting for a person.">
+  <style>
+    .t{font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif}
+    .m{font-family:JetBrains Mono,Menlo,Consolas,monospace}
+    .card{fill:#20203a;stroke:#2e2e4d}
+    .pipe{stroke:#ff8a70;stroke-width:2.5;fill:none;stroke-dasharray:6 6;opacity:.75;animation:flow 1.2s linear infinite}
+    .up{stroke:#ffc24d;stroke-width:2;fill:none;stroke-dasharray:4 5;opacity:.8;animation:flow 1.6s linear infinite}
+    .down{stroke:#ff4fa0;stroke-width:2;fill:none;stroke-dasharray:4 5;opacity:.8;animation:flow 1.6s linear infinite reverse}
+    @keyframes flow{to{stroke-dashoffset:-24}}
+    @media (prefers-reduced-motion: reduce){.pipe,.up,.down{animation:none}}
+  </style>
+  <rect width="960" height="590" rx="20" fill="#12121f"/>
+  <text class="t" x="40" y="52" fill="#ecebf5" font-size="24" font-weight="700">A pack, from declaration to feedback</text>
+  <text class="t" x="40" y="78" fill="#a7a6c2" font-size="14">A domain is declared once. Every surface an agent uses is generated from that declaration.</text>
+  <rect x="30" y="150" width="138" height="176" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="43" y="174" fill="#ffc24d" font-size="9" font-weight="700" letter-spacing="0.8">AUTHOR</text>
+  <text class="t" x="43" y="200" fill="#ecebf5" font-size="15" font-weight="700">Declare</text>
+  <text class="m" x="43" y="221" fill="#ff4fa0" font-size="10.5">pack.toml</text>
+  <text class="t" x="43" y="244.0" fill="#a7a6c2" font-size="12">One directory:</text>
+  <text class="t" x="43" y="260.6" fill="#a7a6c2" font-size="12">terms, shapes,</text>
+  <text class="t" x="43" y="277.2" fill="#a7a6c2" font-size="12">queries, questions</text>
+  <text class="t" x="43" y="293.8" fill="#a7a6c2" font-size="12">and commands.</text>
+  <rect x="182" y="150" width="138" height="176" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="195" y="174" fill="#ffc24d" font-size="9" font-weight="700" letter-spacing="0.8">CAMAYOC</text>
+  <text class="t" x="195" y="200" fill="#ecebf5" font-size="15" font-weight="700">Check</text>
+  <text class="m" x="195" y="221" fill="#ff4fa0" font-size="10.5">cy pack check</text>
+  <text class="t" x="195" y="244.0" fill="#a7a6c2" font-size="12">Every question has</text>
+  <text class="t" x="195" y="260.6" fill="#a7a6c2" font-size="12">a query. Every</text>
+  <text class="t" x="195" y="277.2" fill="#a7a6c2" font-size="12">command has a</text>
+  <text class="t" x="195" y="293.8" fill="#a7a6c2" font-size="12">test.</text>
+  <rect x="334" y="150" width="138" height="176" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="347" y="174" fill="#ffc24d" font-size="9" font-weight="700" letter-spacing="0.8">QUIPU</text>
+  <text class="t" x="347" y="200" fill="#ecebf5" font-size="15" font-weight="700">Load</text>
+  <text class="m" x="347" y="221" fill="#ff4fa0" font-size="10.5">cy pack load</text>
+  <text class="t" x="347" y="244.0" fill="#a7a6c2" font-size="12">A dry run first.</text>
+  <text class="t" x="347" y="260.6" fill="#a7a6c2" font-size="12">Then the store</text>
+  <text class="t" x="347" y="277.2" fill="#a7a6c2" font-size="12">records the</text>
+  <text class="t" x="347" y="293.8" fill="#a7a6c2" font-size="12">version it holds.</text>
+  <rect x="486" y="150" width="138" height="176" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="499" y="174" fill="#ffc24d" font-size="9" font-weight="700" letter-spacing="0.8">CAMAYOC</text>
+  <text class="t" x="499" y="200" fill="#ecebf5" font-size="15" font-weight="700">Generate</text>
+  <text class="m" x="499" y="221" fill="#ff4fa0" font-size="10.5">cy · MCP · skill</text>
+  <text class="t" x="499" y="244.0" fill="#a7a6c2" font-size="12">The same commands</text>
+  <text class="t" x="499" y="260.6" fill="#a7a6c2" font-size="12">as a CLI, as MCP</text>
+  <text class="t" x="499" y="277.2" fill="#a7a6c2" font-size="12">tools and as</text>
+  <text class="t" x="499" y="293.8" fill="#a7a6c2" font-size="12">guidance.</text>
+  <rect x="638" y="150" width="138" height="176" rx="14" fill="#20203a" stroke="#ff4fa0" stroke-width="1.6"/>
+  <text class="t" x="651" y="174" fill="#ffc24d" font-size="9" font-weight="700" letter-spacing="0.8">AGENT OR PERSON</text>
+  <text class="t" x="651" y="200" fill="#ecebf5" font-size="15" font-weight="700">Use</text>
+  <text class="m" x="651" y="221" fill="#ff4fa0" font-size="10.5">cy record · cy ask</text>
+  <text class="t" x="651" y="244.0" fill="#a7a6c2" font-size="12">Each call is</text>
+  <text class="t" x="651" y="260.6" fill="#a7a6c2" font-size="12">checked and leaves</text>
+  <text class="t" x="651" y="277.2" fill="#a7a6c2" font-size="12">a receipt.</text>
+  <rect x="790" y="150" width="138" height="176" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="803" y="174" fill="#ffc24d" font-size="9" font-weight="700" letter-spacing="0.8">DESIRE PATH</text>
+  <text class="t" x="803" y="200" fill="#ecebf5" font-size="15" font-weight="700">Learn</text>
+  <text class="m" x="803" y="221" fill="#ff4fa0" font-size="10.5">dp paths</text>
+  <text class="t" x="803" y="244.0" fill="#a7a6c2" font-size="12">Refusals and</text>
+  <text class="t" x="803" y="260.6" fill="#a7a6c2" font-size="12">missing commands</text>
+  <text class="t" x="803" y="277.2" fill="#a7a6c2" font-size="12">group into</text>
+  <text class="t" x="803" y="293.8" fill="#a7a6c2" font-size="12">proposals.</text>
+  <path class="pipe" d="M169 194 H174"/>
+  <polygon points="181,194 172,189 172,199" fill="#ff8a70"/>
+  <path class="pipe" d="M321 194 H326"/>
+  <polygon points="333,194 324,189 324,199" fill="#ff8a70"/>
+  <path class="pipe" d="M473 194 H478"/>
+  <polygon points="485,194 476,189 476,199" fill="#ff8a70"/>
+  <path class="pipe" d="M625 194 H630"/>
+  <polygon points="637,194 628,189 628,199" fill="#ff8a70"/>
+  <path class="pipe" d="M777 194 H782"/>
+  <polygon points="789,194 780,189 780,199" fill="#ff8a70"/>
+  <path class="pipe" d="M859.0 148 V122 H99.0 V138"/>
+  <polygon points="99.0,147 94.0,138 104.0,138" fill="#ff8a70"/>
+  <text class="t" x="479.0" y="114" fill="#ff8a70" font-size="12" text-anchor="middle">an accepted proposal changes the declaration</text>
+  <rect x="30" y="392" width="898" height="136" rx="14" fill="#20203a" stroke="#2e2e4d" stroke-width="1.2"/>
+  <text class="t" x="46" y="416" fill="#ffc24d" font-size="10" font-weight="700" letter-spacing="1">WHAT THE STORE KNOWS ABOUT A PACK</text>
+  <path class="up" d="M99.0 388 V338"/>
+  <polygon points="99.0,329 94.0,338 104.0,338" fill="#ffc24d"/>
+  <text class="t" x="43" y="446" fill="#ecebf5" font-size="13.5" font-weight="700">Drift</text>
+  <text class="t" x="43" y="466.0" fill="#a7a6c2" font-size="11.5">cy pack status</text>
+  <text class="t" x="43" y="481.9" fill="#a7a6c2" font-size="11.5">compares the store</text>
+  <text class="t" x="43" y="497.8" fill="#a7a6c2" font-size="11.5">with the pack.</text>
+  <path class="down" d="M251.0 330 V380"/>
+  <polygon points="251.0,389 246.0,380 256.0,380" fill="#ff4fa0"/>
+  <text class="t" x="195" y="446" fill="#ecebf5" font-size="13.5" font-weight="700">Verdicts</text>
+  <text class="t" x="195" y="466.0" fill="#a7a6c2" font-size="11.5">Which questions</text>
+  <text class="t" x="195" y="481.9" fill="#a7a6c2" font-size="11.5">pass on this store.</text>
+  <path class="down" d="M403.0 330 V380"/>
+  <polygon points="403.0,389 398.0,380 408.0,380" fill="#ff4fa0"/>
+  <text class="t" x="347" y="446" fill="#ecebf5" font-size="13.5" font-weight="700">Installed pack</text>
+  <text class="t" x="347" y="466.0" fill="#a7a6c2" font-size="11.5">Its name, version</text>
+  <text class="t" x="347" y="481.9" fill="#a7a6c2" font-size="11.5">and digest.</text>
+  <path class="down" d="M707.0 330 V380"/>
+  <polygon points="707.0,389 702.0,380 712.0,380" fill="#ff4fa0"/>
+  <text class="t" x="651" y="446" fill="#ecebf5" font-size="13.5" font-weight="700">Receipts</text>
+  <text class="t" x="651" y="466.0" fill="#a7a6c2" font-size="11.5">Who called what,</text>
+  <text class="t" x="651" y="481.9" fill="#a7a6c2" font-size="11.5">and the outcome.</text>
+  <path class="down" d="M859.0 330 V380"/>
+  <polygon points="859.0,389 854.0,380 864.0,380" fill="#ff4fa0"/>
+  <text class="t" x="803" y="446" fill="#ecebf5" font-size="13.5" font-weight="700">Proposals</text>
+  <text class="t" x="803" y="466.0" fill="#a7a6c2" font-size="11.5">A change waiting</text>
+  <text class="t" x="803" y="481.9" fill="#a7a6c2" font-size="11.5">for a person.</text>
+  <text class="t" x="40" y="566" fill="#6f6e8f" font-size="12">Gold: read from the store. Pink: written to the store.</text>
+</svg>

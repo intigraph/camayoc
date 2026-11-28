@@ -3498,6 +3498,154 @@ competency question have a stored query that answers it — and stays with
 <code>query_coverage.py</code>. The verdict's <code>coverage: Empty|Partial|Full</code> field keeps
 its pre-Jev name (camayoc-b6h) because other tools read it; read it as "how
 well the asked question maps".</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="design-packs-and-one-front-door"><a class="header" href="#design-packs-and-one-front-door">Design: packs and one front door</a></h1>
+<p><strong>Status: proposed (2026-11-28).</strong> Nothing on this page is built unless a
+"today" column says so.</p>
+<p>Camayoc promises a memory that is checked on the way in. That holds on a store
+someone has prepared by hand, and it does not hold for a person starting
+fresh. The pieces that keep the promise are spread over one CLI, two MCP
+servers and about 115 scripts. This design makes Camayoc one product: a domain
+is declared once as a <strong>pack</strong>, and <code>cy</code> is the one way to check it, load it
+and use it.</p>
+<p align="center"><img src="design/../diagrams/pack-lifecycle.svg" width="900" alt="A pack, from declaration to feedback. An author declares one directory that holds a domain's terms, shapes, queries, questions and commands. Camayoc checks that every question has a query and every command has a test. Quipu loads the pack after a dry run and records the version it holds. Camayoc generates the same commands as a CLI, as MCP tools and as agent guidance. Each call is checked and leaves a receipt. Desire Path groups refusals and missing commands into proposals, and an accepted proposal changes the declaration."/></p>
+<p>The commands half of this, where an agent is handed exactly the commands its
+work item calls for, is designed in the Capability Layer Design of 2026-11-25
+and tracked as epic aegis-ssx5. This page does not repeat it. It covers what
+that design stands on, and how both meet the
+<a href="https://intigraph.github.io/shuttle/design/orchestrator.html">Shuttle orchestrator</a>.</p>
+<h2 id="what-this-has-to-do"><a class="header" href="#what-this-has-to-do">What this has to do</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>requirement</th><th>today</th></tr></thead><tbody>
+<tr><td>1</td><td>A new user gets working memory from one command</td><td><code>scripts/bootstrap.sh</code> loads the core vocabulary and proves the gate. It does not load the agent-memory shapes, so on that store <code>cy topic add</code> and <code>cy record</code> are refused. <code>cy record</code> also refuses any person or system that is not already in the store, and no <code>cy</code> command adds one.</td></tr>
+<tr><td>2</td><td>A store holds what the tools that read it expect</td><td>Nothing records which Camayoc version a store holds. The live store lacks the stored queries <code>mem_handoff</code> and <code>mem_directives_for</code>, so the session-start memory anchor fails. On this Mac it failed in all 23 sessions that showed one between 2026-11-04 and 2026-11-28.</td></tr>
+<tr><td>3</td><td>Knowledge enters one way, with checks before it is admitted</td><td>Each source has its own script. The admission and governance tools run offline only. No path asks Quipu for a dry-run validation before it writes.</td></tr>
+<tr><td>4</td><td>Meaning is declared once and every surface is generated from it</td><td>True for the five memory entities: one shape and one tool file generate the CLI, the MCP tools, the skill text and the man page. Everything else is hand-written scripts.</td></tr>
+<tr><td>5</td><td>Agents get purpose-built commands</td><td>Not built. The vocabulary for commands, calls, binds and receipts shipped in Quechua 0.14.0.</td></tr>
+<tr><td>6</td><td>Every declaration carries its own test</td><td>Of 124 competency questions, 44 have a stored query, 33 could have one and do not, and 47 need vocabulary that is not admitted. Jev's 94% question-mapping score was measured on the earlier 91-question suite.</td></tr>
+<tr><td>7</td><td>One vocabulary namespace</td><td>Every authored term uses the legacy namespace. The <code>w3id.org/intigraph</code> names exist only in unpublished mapping ledgers.</td></tr>
+<tr><td>8</td><td>Refusals and misses feed back into the declarations</td><td>Desire Path records failed tool calls per host. Nothing carries them into Quipu.</td></tr>
+<tr><td>9</td><td>Camayoc fits the rest of the stack</td><td>See <a href="design/packs.html#fit-with-the-stack">Fit with the stack</a>.</td></tr>
+</tbody></table>
+</div>
+<p>Rows 1 and 2 were measured on 2026-11-28: the first on a fresh local store,
+the second on the live one.</p>
+<h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>thing</th><th>what it is</th></tr></thead><tbody>
+<tr><td><strong>Pack</strong></td><td>One directory that declares a domain: its terms, shapes, stored queries, competency questions, memory entities and commands, with a manifest that names its version.</td></tr>
+<tr><td><strong>Installed pack</strong></td><td>A fact in the store: which pack, which version, which digest, loaded when and by whom.</td></tr>
+<tr><td><strong>Surface</strong></td><td>What an agent touches: a <code>cy</code> subcommand, an MCP tool, a skill. Each is generated from a pack.</td></tr>
+<tr><td><strong>Receipt</strong></td><td>The record of one call: the command, the caller, the outcome and, for a refusal, the reason.</td></tr>
+<tr><td><strong>Verdict</strong></td><td>The result of one competency question on one store: passes, fails or cannot tell.</td></tr>
+</tbody></table>
+</div>
+<h2 id="a-pack-start-to-finish"><a class="header" href="#a-pack-start-to-finish">A pack, start to finish</a></h2>
+<ol>
+<li><strong>Declare.</strong> An author writes or edits a pack. A pack is plain files in a
+repository, so a change is reviewed like code.</li>
+<li><strong>Check.</strong> <code>cy pack check</code> runs without a store. It refuses a pack whose
+shapes do not parse, whose questions have no query, whose queries name
+terms the pack does not declare, or whose commands have no test.</li>
+<li><strong>Load.</strong> <code>cy pack load</code> asks Quipu for a dry run, then loads the pack and
+writes the installed-pack fact. An additive change loads directly. A change
+that tightens or removes something goes to a person as a schema proposal.</li>
+<li><strong>Generate.</strong> <code>cy</code> reads the installed packs and offers their commands as a
+CLI and as MCP tools, with the guidance text an agent reads.</li>
+<li><strong>Use.</strong> Each call is checked against the pack's shapes and leaves a
+receipt, whether it was admitted or refused.</li>
+<li><strong>Learn.</strong> Refused calls and calls to commands that do not exist reach
+Quipu through Desire Path, grouped by pattern. A repeated pattern becomes a
+proposal against one pack.</li>
+</ol>
+<p><code>cy pack status</code> compares a store with the packs it should hold and reports
+each difference: a missing query, an older shape, a pack that was never
+loaded. Chaski raises that as an alarm. The missing memory queries in
+requirement 2 are the kind of gap it reports.</p>
+<h2 id="one-front-door"><a class="header" href="#one-front-door">One front door</a></h2>
+<p><code>cy</code> becomes the way to do everything Camayoc does. Scripts stay as the
+implementation.</p>
+<div class="table-wrapper"><table><thead><tr><th>command</th><th>does</th><th>replaces</th></tr></thead><tbody>
+<tr><td><code>cy init</code></td><td>Finds or starts a store, loads the core and memory packs, registers the planes, adds the first person and agent, and proves the gate.</td><td><code>scripts/bootstrap.sh</code>, <code>scripts/planes.py ensure</code></td></tr>
+<tr><td><code>cy entity add NAME --type Person</code></td><td>Adds a person, a system or an agent. It refuses a name that is close to one that exists and shows the match.</td><td>no command today</td></tr>
+<tr><td><code>cy pack check</code>, <code>load</code>, <code>status</code></td><td>The pack steps above.</td><td><code>memory_tools.py --check</code>, <code>memory_schema_proposal.py</code>, the load steps in the bootstrap</td></tr>
+<tr><td><code>cy admit</code></td><td>One way in for an event or a document: map it, tag it, validate it as a dry run, then write it or quarantine it with the reason. Sources plug in as adapters.</td><td><code>ingest_cdevents.py</code>, <code>github_ingress.py</code>, <code>alertmanager_ingress.py</code> and the other producers</td></tr>
+<tr><td><code>cy ask "QUESTION"</code></td><td>Maps the question to a stored query, runs it and answers with how each fact was learned. It says so when no query answers the question.</td><td><code>scripts/competency.py</code>, the <code>map_question</code> tool on its own</td></tr>
+<tr><td><code>cy record</code>, <code>cy recall</code></td><td>Unchanged.</td><td></td></tr>
+</tbody></table>
+</div>
+<p>Three rules of today's memory tool change with this work:</p>
+<ul>
+<li><strong>Replacing a record is one write.</strong> Today the new record and the mark on
+the old one are two writes, and a failure between them leaves two current
+records.</li>
+<li><strong>A preference's key includes its context,</strong> so a chat preference and an
+email preference on one topic do not replace each other.</li>
+<li><strong><code>cy</code> installs from a tagged release,</strong> not from the head of <code>main</code>.</li>
+</ul>
+<h2 id="questions-are-the-tests"><a class="header" href="#questions-are-the-tests">Questions are the tests</a></h2>
+<p>A pack does not load without its questions, and a question is a test.</p>
+<ul>
+<li>An <strong>answer</strong> question has a stored query and a fixture, and its verdict is
+checked in CI.</li>
+<li>A <strong>discovery</strong> question checks that an agent with a need finds the right
+command or query. Jev maps it and must reach the 0.75 floor.</li>
+<li>A <strong>refusal</strong> question names something that must be refused.</li>
+</ul>
+<p>A pack's release is blocked when a verdict gets worse. The 33 questions that
+could have a query get one, and Jev's score is measured again on all 124.</p>
+<h2 id="how-this-meets-the-shuttle-orchestrator"><a class="header" href="#how-this-meets-the-shuttle-orchestrator">How this meets the Shuttle orchestrator</a></h2>
+<p>The orchestrator design gives each step a performer, inputs and an output
+contract. A pack supplies all three.</p>
+<div class="table-wrapper"><table><thead><tr><th>in a Shuttle step</th><th>comes from a pack as</th></tr></thead><tbody>
+<tr><td>A code step's performer</td><td>A command the pack declares, with its reach and its undo.</td></tr>
+<tr><td>An output contract of kind <code>shape</code> or <code>ask</code></td><td>A shape or a stored query the pack ships.</td></tr>
+<tr><td>An agent step's task pendant</td><td>The grant resolved for the step: the pack's commands the agent may call.</td></tr>
+<tr><td>A step's output</td><td>The receipt of the call that produced it.</td></tr>
+<tr><td>The workflow definition</td><td>A file in the same pack as the commands and agent types it uses.</td></tr>
+</tbody></table>
+</div>
+<p>A deployment then installs a workflow, its commands, its checks and its
+vocabulary as one reviewed bundle.</p>
+<h2 id="fit-with-the-stack"><a class="header" href="#fit-with-the-stack">Fit with the stack</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>tool</th><th>today</th><th>next</th></tr></thead><tbody>
+<tr><td><strong>Quipu</strong></td><td>Loads what the bootstrap or an operator posts. Does not know which Camayoc version it holds. Camayoc calls none of dry-run validation, overlays or policy check.</td><td>Holds an installed-pack fact for each pack. <code>cy pack load</code> and <code>cy admit</code> validate as a dry run before they write. The domain shapes that sit in Quipu move into packs.</td></tr>
+<tr><td><strong>Quechua</strong></td><td>Declares shared terms under its own older namespace. Shapes for Decision, Verification and WorkItem exist in more than one repository.</td><td>Owns the reusable terms. A pack owns the constraints for its domain, and each class has one shape that says what it means.</td></tr>
+<tr><td><strong>Shuttle</strong></td><td>Uses Camayoc's core terms and its monthly graph scheme.</td><td>Workflow definitions, commands and output contracts ship in packs.</td></tr>
+<tr><td><strong>Yupana</strong></td><td>Reads the crew records graph and loads one Camayoc policy shape in its tests.</td><td>Resolves a grant from a work item and names the pack commands it allows.</td></tr>
+<tr><td><strong>Shantytown</strong></td><td>Uses Jev for stop decisions, board ranking and duplicate checks, and Camayoc for cost. Its session start does not call <code>cy</code>.</td><td>Provisions <code>cy</code> and the generated MCP tools from the installed packs. A job's briefing lists the commands its grant allows.</td></tr>
+<tr><td><strong>Bobbin</strong></td><td>Renders the session-start memory anchor from two stored queries that the live store lacks.</td><td>Reads the anchor through <code>cy</code>, so one tool owns how memory is read.</td></tr>
+<tr><td><strong>Chaski</strong></td><td>Runs Camayoc's directive adapters as scheduled jobs and routes on its GitHub records.</td><td>Alarms on pack drift. Its reactions ship in packs.</td></tr>
+<tr><td><strong>Seeds</strong></td><td>Validates work items against a copy of Camayoc's work-item shape.</td><td>Takes that shape from the work pack.</td></tr>
+<tr><td><strong>Rikuy</strong></td><td>Reads Camayoc's deployment, release and change graphs.</td><td>Shows pack status and question verdicts on the brief.</td></tr>
+<tr><td><strong>Desire Path</strong></td><td>No connection.</td><td>Carries refusals and missing commands into Quipu, grouped by pattern.</td></tr>
+<tr><td><strong>Tambo</strong></td><td>Installs a pinned release and runs the bootstrap against a scratch store.</td><td>Runs <code>cy init</code>, then records and recalls a decision as its proof.</td></tr>
+</tbody></table>
+</div>
+<h2 id="plan"><a class="header" href="#plan">Plan</a></h2>
+<p>Each phase ships on its own.</p>
+<div class="table-wrapper"><table><thead><tr><th>phase</th><th>what ships</th><th>tracked work it serves</th></tr></thead><tbody>
+<tr><td><strong>0. Keep today's promise</strong></td><td><code>cy init</code> and <code>cy entity add</code>. The memory queries loaded on the live store. <code>cy</code> released as a tagged wheel. The tests that run <code>cy</code> against a real Quipu block a merge. The book's broken links and stale counts fixed.</td><td>aegis-r4f0, aegis-9uq</td></tr>
+<tr><td><strong>1. Packs</strong></td><td>The manifest and <code>cy pack check</code>, <code>load</code> and <code>status</code>. Core, memory, delivery and GitHub become the first four packs. The drift alarm. Names move to <code>w3id.org/intigraph</code> when a pack loads.</td><td>aegis-kru9, aegis-m5s.3, aegis-55ya</td></tr>
+<tr><td><strong>2. One way in</strong></td><td><code>cy admit</code> with dry-run validation and quarantine. The existing producers become adapters.</td><td>aegis-ov41, aegis-okdh</td></tr>
+<tr><td><strong>3. Questions as tests</strong></td><td><code>cy ask</code>. Verdicts gate a pack's release. The 33 unwritten queries. Jev measured on 124 questions.</td><td></td></tr>
+<tr><td><strong>4. Commands</strong></td><td>Commands declared in packs and generated as CLI and MCP, receipts, grants in observe mode, and Desire Path as the feedback path.</td><td>aegis-ssx5 and its five children</td></tr>
+<tr><td><strong>5. Workflows in packs</strong></td><td>Shuttle definitions ship in packs, and pack commands perform code steps.</td><td>aegis-77y</td></tr>
+</tbody></table>
+</div>
+<h2 id="decisions-this-needs"><a class="header" href="#decisions-this-needs">Decisions this needs</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>decision</th><th>recommendation</th></tr></thead><tbody>
+<tr><td>1</td><td>Whether the pack is the unit and <code>cy</code> the only front door</td><td>Yes. Everything Camayoc owns moves into packs, and every user-facing script becomes a <code>cy</code> subcommand. It extends the generator that already produces the memory commands.</td></tr>
+<tr><td>2</td><td>How a first person or system gets into a store</td><td><code>cy init</code> adds the first person and agent, and <code>cy entity add</code> adds more and refuses near-duplicates. The alternative, where <code>cy record</code> creates any name it does not know, would fill the store with misspelled duplicates.</td></tr>
+<tr><td>3</td><td>What loads without a person</td><td>An additive change loads after its dry run passes: a new query, a new optional property, a new class under a governed parent. A change that tightens or removes goes to a person. This follows the 2026-11-06 ruling that Camayoc should make adding shapes easier and not wait on one person.</td></tr>
+<tr><td>4</td><td>What goes first</td><td>Phase 0 now, as small items, because it repairs things that are broken today. Phases 1 to 3 queue behind the three milestones. Phase 4 keeps the rank epic aegis-ssx5 already has.</td></tr>
+</tbody></table>
+</div>
+<h2 id="what-stays-the-same"><a class="header" href="#what-stays-the-same">What stays the same</a></h2>
+<ul>
+<li><code>cy record</code> and <code>cy recall</code> keep their flags and their refusals.</li>
+<li>Every record still says whether it was observed, declared or inferred, and
+inferred never overrides declared.</li>
+<li>The gate proof stays. <code>cy init</code> reports a store ready only after the store
+has refused a record that does not say how it was learned.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-agent-memory-entities"><a class="header" href="#design-agent-memory-entities">Design: agent-memory entities</a></h1>
 <blockquote>
 <p><strong>Contract review pending (2026-10-29):</strong> see the
