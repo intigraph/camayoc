@@ -18,8 +18,15 @@ jobs:
   # refuse, accept, echo, fault and vanish — so there is no reason for them not
   # to run on every push.
   test:
+    needs: [integration, memory-redirect-macos]
+    if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Require live-store and macOS gates
+        env:
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          MACOS_RESULT: ${{ needs.memory-redirect-macos.result }}
+        run: test "$INTEGRATION_RESULT" = success && test "$MACOS_RESULT" = success
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -39,6 +46,18 @@ jobs:
       - name: Install just
         uses: ./.github/actions/install-just
       - run: just test
+
+  # Exercise hook behavior on macOS too; live-store coverage stays in integration.
+  memory-redirect-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Memory redirect hook and parser tests
+        working-directory: tests
+        run: python3 -m unittest test_memory_redirect.HookTests test_memory_redirect.PathAndParseTests -v
 
   # aegis-qx96wr: the chaski verdict adapters run on the automation host's
   # Python 3.10, and 3.11+ hides 3.10-only failures. Measured: tracker
@@ -62,12 +81,10 @@ jobs:
   # The gate proofs are only as good as the shapes they probe, and the stub
   # store cannot check those. This arm builds a real quipu and lets the
   # integration tests in test_metrics_slice.py — which skip themselves without a
-  # binary — actually run. Allowed to fail: quipu is a sibling repo on its own
-  # release cadence, and a red X here must mean "camayoc broke", not "the
-  # neighbours shipped".
+  # binary — actually run. The checksum-pinned releases below make this a
+  # reproducible, blocking gate, including the cy record/recall round trips.
   integration:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -146,8 +163,7 @@ jobs:
       # has already shipped once (v0.3.32 had no wasm asset) — and a failed step
       # SKIPS every later step, so the suite never runs at all. Without
       # always(), the verdict would be skipped by exactly the event it exists to
-      # report. It writes a GitHub annotation, which surfaces on the run page
-      # even though this job is continue-on-error and therefore green.
+      # report. Missing logs, skips and failures must all fail this job.
       - name: Say whether integration actually ran
         if: always()
         run: python3 scripts/integration_verdict.py integration-suite.log
