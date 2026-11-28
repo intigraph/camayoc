@@ -1,43 +1,12 @@
 #!/usr/bin/env python3
-"""Say whether the integration suite RAN, and refuse to let silence read as a pass.
+"""Fail the integration gate unless the pinned live-store suite ran and passed.
 
-camayoc's `integration` job is `continue-on-error: true`, and that is correct:
-quipu is a sibling repo on its own release cadence, so a red X here must mean
-"camayoc broke", not "the neighbours shipped". But the job also had no way to
-tell anyone it had done nothing. Three independent reasons, each sufficient:
+The blocking CI job provides every optional dependency and permits zero skips.
+A failed fetch or interrupted run must also fail: `if: always()` runs this
+verdict even when no suite log was produced.
 
-* `needs:` appears zero times in `ci.yml`, so nothing consumes this job's
-  outcome;
-* `continue-on-error: true` means its conclusion cannot fail the workflow;
-* `unittest` exits 0 when every test skips, so "ran and passed" and "skipped
-  everything" produce the identical exit code and the identical green job.
-
-And the fetch step is the failure that starts it: it resolves quipu's LATEST
-release and downloads a named tarball asset. quipu has already shipped a release
-with an asset missing (v0.3.32 has no wasm asset at all, aegis-dsbt2g). The same
-failure on the linux binary makes `curl -sfL` fail, the step fail, every later
-step SKIP — so `just test` never runs at all — and `continue-on-error` swallow
-the lot.
-
-So the state this guards against is not only "skipped everything". It is:
-
-    DARK       the suite never ran — no log, or no result line in it
-    SKIPPED    it ran and skipped what it was fetched to exercise
-    RAN        it ran, and the numbers say so
-
-This script reads the numbers `unittest` already prints and nobody read. It does
-not change what the job is allowed to do — the job stays allowed to fail — it
-changes what the job is able to SAY, by writing a GitHub annotation that
-survives onto a green run page and a line into the step summary.
-
-Exit codes are deliberately three-valued, and mirror whose fault it is:
-
-    0  RAN and healthy
-    1  camayoc's fault  — below the floor, unexpected skips, or real failures
-    2  DARK             — the suite never ran; usually the neighbours
-
-Run `python3 scripts/integration_verdict.py --selftest` for the proof that each
-verdict is reachable, or `tests/test_integration_verdict.py` for the full set.
+Exit codes: 0 healthy, 1 unhealthy or skipped, 2 missing/incomplete suite log.
+Run with --selftest to prove every verdict is reachable.
 """
 
 from __future__ import annotations
@@ -86,19 +55,18 @@ def judge(log: str | None, min_tests: int, max_skipped: int) -> Verdict:
     """Decide what the suite output means. Pure: no I/O, so it is testable."""
     if log is None:
         return Verdict(
-            "DARK", 2, "warning",
+            "DARK", 2, "error",
             "integration DARK: the suite produced no log at all.",
             "The step that runs it did not get there — on this job that is "
             "almost always the quipu release fetch failing, which skips every "
-            "later step. Check the `Fetch quipu-server` step. This is not a "
-            "camayoc regression, and the job is allowed to fail; it is here so "
-            "that it cannot do so silently.",
+            "later step. Check the `Fetch quipu-server` step. The pinned "
+            "live-store suite must run before this gate can pass.",
         )
 
     match = _RAN.search(log)
     if match is None:
         return Verdict(
-            "DARK", 2, "warning",
+            "DARK", 2, "error",
             "integration DARK: the suite log has no `Ran N tests` line.",
             "unittest prints that line on every completed run, including an "
             "all-skipped one, so its absence means the run did not complete.",
@@ -150,8 +118,7 @@ def judge(log: str | None, min_tests: int, max_skipped: int) -> Verdict:
 def report(verdict: Verdict, stream=sys.stdout, summary_path: str | None = None) -> None:
     """Emit the verdict as a GitHub annotation, a log line, and a summary row."""
     text = verdict.headline + (f" {verdict.detail}" if verdict.detail else "")
-    # An annotation surfaces on the run page even when the job is green, which
-    # is the whole point: this job is allowed to be green while dark.
+    # Surface the reason for the blocking failure on the run page.
     one_line = text.replace("\n", " ")
     print(f"::{verdict.level}::{one_line}", file=stream)
     print(text, file=stream)
