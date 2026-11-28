@@ -42,6 +42,24 @@ The agent-memory CLI (`camayoc`, alias `cy`) installs separately with
 `uv tool install git+https://github.com/intigraph/camayoc`; see the
 [reference](docs/installation-reference.md#agent-memory-cli-camayoc-alias-cy).
 
+For a fresh agent-memory store, install `quipu-server` and the CLI, then run:
+
+```sh
+cy init --person person-alex --agent assistant
+cy topic add project
+cy record decision --by person-alex --about assistant --topic project --chose "Use shared memory."
+cy recall decision --topic project
+```
+
+`cy init` uses `QUIPU_SERVER` (default `http://localhost:3030`). It connects to
+an existing store or starts an installed `quipu-server` on loopback, loads the
+bundled vocabulary, shapes and queries, labels the trust planes, and adds the
+first person and agent. It reports ready only after a Decision missing
+`sourceKind` is refused by SHACL. Run it again to resume setup; refusals and
+unreachable stores are errors, and partial setup is preserved. Remote stores
+must already be running and accept your configured Quipu credential. Local
+state and the PID live in `.quipu/`; stop it with `kill "$(cat .quipu/server.pid)"`.
+
 Set `STACK_INSTALL_ROOT` on the receiving shell for another prefix.
 Pinned releases, alternatives, configuration and removal are in the
 [installation and usage reference](docs/installation-reference.md).

@@ -35,6 +35,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--version", action="version", version=f"camayoc {__version__}")
     sub = ap.add_subparsers(dest="command", metavar="<command>")
 
+    init = sub.add_parser("init", help="find or start a store and provision working memory")
+    init.add_argument("--person", required=True, help="first person (IRI or local name)")
+    init.add_argument("--agent", required=True, help="first agent (IRI or local name)")
+
     rec = sub.add_parser("record", help="record one entity (writes through quipu's shapes)")
     rec_sub = rec.add_subparsers(dest="entity", metavar="<entity>")
     rcl = sub.add_parser("recall", help="recall current entities (stored queries)")
@@ -183,6 +187,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "prime":
         return prime.run(brief=args.brief, as_json=args.json, static=args.static, section=args.section)
     try:
+        if args.command == "init":
+            from . import initialize
+            return _emit(initialize.run(args.person, args.agent), False)
         if args.command == "record":
             if not args.entity:
                 ap.parse_args(["record", "--help"])
@@ -232,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
               "control characters).", file=sys.stderr)
         return 2
     except Exception as exc:  # noqa: BLE001 - plain words, never a traceback
-        print(f"camayoc: unexpected {type(exc).__name__}; nothing was written. Report it with the command you ran.",
+        print(f"camayoc: unexpected {type(exc).__name__}; outcome unconfirmed. Report it with the command you ran.",
               file=sys.stderr)
         return 3
     return 2
