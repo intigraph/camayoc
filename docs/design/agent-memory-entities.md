@@ -427,7 +427,7 @@ Built so far, for Decision, Directive, Preference, Handoff and Reference:
 
 - `camayoc_cli/`: the `camayoc` CLI and its `cy` alias. It is a Python entry
   point that uses only the standard library (`pyproject.toml`), installed with
-  `uv tool install git+https://github.com/intigraph/camayoc`. It provides
+  `uv tool install https://github.com/intigraph/camayoc/releases/download/v0.1.12/camayoc-0.1.12-py3-none-any.whl`. It provides
   `cy record <entity>`, `cy recall <entity>` (`/ask` on the stored query, or
   the same template rendered client-side when the store has not loaded it),
   `cy topic add`, `cy flush` and `cy prime` (stack-prime/1). The §3 behavior

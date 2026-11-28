@@ -1,4 +1,70 @@
-# Source releases
+# Releases
+
+## v0.1.12 release preparation
+
+This release adds the dependency-free `cy` / `camayoc` Python wheel alongside
+our source archive. All four version declarations (Python project, CLI, plugin
+and marketplace) agree on 0.1.12. The release proof builds the wheel from the
+verified source archive, installs it in a clean environment away from the source
+tree, and exercises both entry points, the packaged primer and generated entity
+definitions. `source.json` binds the wheel digest to the same source revision;
+`SHA256SUMS` covers both artifacts. The build backend is pinned.
+
+The source delta since v0.1.11 includes Alertmanager ingress, deterministic
+release asset checks, repository review-mode queries, receiving-restart recovery,
+review closure fixes and Directive deadline isolation. It also includes the
+accepted packs design; publication does not implement its later phases or load
+new shapes into a running store.
+
+After this preparation merges with green CI, tag that exact main revision
+`v0.1.12` and let the Release workflow publish it. Do not tag the preparation
+branch: the workflow requires the release revision to be on main. Verify both
+checksums and `source.json` from the published release, then install:
+
+```bash
+uv tool install https://github.com/intigraph/camayoc/releases/download/v0.1.12/camayoc-0.1.12-py3-none-any.whl
+cy --version
+```
+
+Expected version: `camayoc 0.1.12`. These install instructions become usable when
+the tag's release workflow succeeds. Retain v0.1.11 source artifacts for rollback;
+consumer adoption remains a separate pinned upgrade. No PyPI publication is
+claimed: the wheel is a GitHub release asset.
+
+## v0.1.11 — published 2026-11-24
+
+Source revision: `78e59e036605b974f958781e611fdacfef47964f`.
+[Release](https://github.com/intigraph/camayoc/releases/tag/v0.1.11).
+This source release includes GitHub discussion ingress, event-armed review
+deadlines, recruitment draining and exact native closure time/reason.
+It predates wheel publication.
+
+The [Release run](https://github.com/intigraph/camayoc/actions/runs/45503532973)
+published source successfully at 22:50 UTC. Pendant readback failed at 23:30 UTC
+with `repository pendant unverified after bounded trusted-producer wait; exit=1`.
+GitHub's release asset records show all three pendant assets were uploaded on
+2026-11-25 at 04:11:48 UTC, after the bounded wait had ended. This establishes
+late asset availability; the underlying producer delay is not established by
+that job. The failure did not retract the already published source release.
+Do not weaken the verifier, extend waits without evidence, or replay a consumed
+producer attempt to make the historical run green. Verify the late assets
+against the exact release revision separately. On 2026-11-28, rerunning the
+current verifier against `78e59e036605b974f958781e611fdacfef47964f` passed
+checksum, provenance, member and share-content checks on those late assets.
+
+## v0.1.10 — published 2026-11-21
+
+[Release](https://github.com/intigraph/camayoc/releases/tag/v0.1.10).
+Carries explicit typed Directive traceability deadlines (#269); the Release
+workflow, including pendant verification, succeeded. Source archive only.
+
+## v0.1.9 — published 2026-11-21
+
+[Release](https://github.com/intigraph/camayoc/releases/tag/v0.1.9).
+Carries the reviewed Directive deadline contract in the release profile (#268)
+and the deferred traceability deadline and work-item reconciliation fixes since
+v0.1.8. The Release workflow, including pendant verification, succeeded.
+Source archive only.
 
 ## v0.1.8 release preparation
 
@@ -64,13 +130,17 @@ and verification gates pass; do not replay its consumed producer attempt.
 Camayoc releases contain the tracked source tree used by the plugin and shell
 bootstrap, plus deterministic compatibility files built from that archived source. They do not contain a native Camayoc executable.
 
-A stable version tag matching both plugin metadata files produces three assets:
+A stable version tag matching both plugin metadata files produces these source assets:
 
 - `camayoc-vMAJOR.MINOR.PATCH.tar.gz`: tracked source under one enclosing directory.
 - `SHA256SUMS`: the archive's SHA-256 digest and exact filename.
 - `source.json`: repository, tag, full source revision, artifact name and digest.
 
-Download all three from the selected release and verify before extracting:
+From v0.1.12, the release also carries `camayoc-VERSION-py3-none-any.whl`,
+covered by the same `SHA256SUMS` and a `wheel` descriptor in `source.json`.
+The source archive and compatibility descriptors retain their existing formats.
+
+Download the selected release assets and verify before extracting:
 
 ```bash
 sha256sum -c SHA256SUMS

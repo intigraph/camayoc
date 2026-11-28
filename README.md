@@ -39,7 +39,7 @@ Python 3.9+, curl, and a Linux or macOS shell. Downloads and verifies the latest
 No native executable, server or agent enrollment is installed.
 
 The agent-memory CLI (`camayoc`, alias `cy`) installs separately with
-`uv tool install git+https://github.com/intigraph/camayoc`; see the
+`uv tool install https://github.com/intigraph/camayoc/releases/download/v0.1.12/camayoc-0.1.12-py3-none-any.whl`; see the
 [reference](docs/installation-reference.md#agent-memory-cli-camayoc-alias-cy).
 
 For a fresh agent-memory store, install `quipu-server` and the CLI, then run:
