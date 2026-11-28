@@ -161,11 +161,13 @@ capture hooks for you with `tambo memory`.
 - [Ingress design](https://intigraph.github.io/camayoc/design/ingress.html): how an event is mapped, checked and quarantined.
 - [Agent-memory entities](https://intigraph.github.io/camayoc/design/agent-memory-entities.html): the five kinds of memory and their rules.
 
-**Load this repository's graph:** each release publishes a repository pendant
-with its checksum and provenance. To query Camayoc's own documentation and
-design as a graph, follow the
-[verified import workflow](https://intigraph.github.io/quipu/sharing/index.html):
-extract the share directory and run `quipu import SHARE_DIR --db repository.db`.
+**Load this repository's graph:** public repository-pendant assets have not
+yet been verified. When a release supplies the archive, checksum and
+provenance, follow the
+[verified import workflow](https://intigraph.github.io/quipu/sharing/index.html)
+to query Camayoc's own documentation and design as a graph: extract the share
+directory and run `quipu import SHARE_DIR --db repository.db`. Import stages
+knowledge; ROOT stays unchanged.
 
 <!-- delivery-catalog:start -->
 
