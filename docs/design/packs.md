@@ -40,10 +40,17 @@ the second on the live one.
 | thing | what it is |
 |---|---|
 | **Pack** | One directory that declares a domain: its terms, shapes, stored queries, competency questions, memory entities and commands, with a manifest that names its version. |
-| **Installed pack** | A fact in the store: which pack, which version, which digest, loaded when and by whom. |
+| **Pendant** | The released form of a pack: the [certified share bundle](certified-knowledge-packs.md) Camayoc already publishes, named by its content hash. |
+| **Installed pack** | A fact in the store: which pack, which version, which content hash, loaded when and by whom. |
 | **Surface** | What an agent touches: a `cy` subcommand, an MCP tool, a skill. Each is generated from a pack. |
 | **Receipt** | The record of one call: the command, the caller, the outcome and, for a refusal, the reason. |
 | **Verdict** | The result of one competency question on one store: passes, fails or cannot tell. |
+
+A pack is source and a pendant is what ships. Camayoc keeps one distribution
+artifact: releasing a pack builds and certifies a pendant, and `cy pack load`
+loads either the source directory or a verified pendant. The content hash in
+the installed-pack fact is the pendant's hash, so `cy pack status` compares a
+store with a release by one value.
 
 ## A pack, start to finish
 
