@@ -8,7 +8,7 @@
       "source": "docs/why-camayoc.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fwhy-camayoc.md",
       "summary": "Camayoc owns ontology, provenance-aware ingress and domain knowledge packs outside the governed store; competency questions precede new classes.",
-      "source_sha256": "8be3eb9a7475399144a5c6835841b829eddf09b4805515c9a993ff39618195c3",
+      "source_sha256": "39bfe4b75e740edefd9bab3e07e80d95cdd8ee5a23e40970077f7eb9c614352b",
       "type": "Concept"
     },
     {
@@ -75,7 +75,7 @@
       "source": "docs/why-camayoc.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Fwhy-camayoc.md",
       "summary": "Start with the ownership boundary between ontology, ingress, storage and retrieval.",
-      "source_sha256": "8be3eb9a7475399144a5c6835841b829eddf09b4805515c9a993ff39618195c3",
+      "source_sha256": "39bfe4b75e740edefd9bab3e07e80d95cdd8ee5a23e40970077f7eb9c614352b",
       "properties": {
         "startHereOrder": 1,
         "glossaryTerm": "https://scbrown.github.io/quechua/ns#Decision"
