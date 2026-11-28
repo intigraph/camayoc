@@ -3499,8 +3499,8 @@ competency question have a stored query that answers it — and stays with
 its pre-Jev name (camayoc-b6h) because other tools read it; read it as "how
 well the asked question maps".</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-packs-and-one-front-door"><a class="header" href="#design-packs-and-one-front-door">Design: packs and one front door</a></h1>
-<p><strong>Status: proposed (2026-11-28).</strong> Nothing on this page is built unless a
-"today" column says so.</p>
+<p><strong>Status: accepted, not built (2026-11-28).</strong> Nothing on this page is built
+unless a "today" column says so.</p>
 <p>Camayoc promises a memory that is checked on the way in. That holds on a store
 someone has prepared by hand, and it does not hold for a person starting
 fresh. The pieces that keep the promise are spread over one CLI, two MCP
@@ -3531,12 +3531,18 @@ the second on the live one.</p>
 <h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>thing</th><th>what it is</th></tr></thead><tbody>
 <tr><td><strong>Pack</strong></td><td>One directory that declares a domain: its terms, shapes, stored queries, competency questions, memory entities and commands, with a manifest that names its version.</td></tr>
-<tr><td><strong>Installed pack</strong></td><td>A fact in the store: which pack, which version, which digest, loaded when and by whom.</td></tr>
+<tr><td><strong>Pendant</strong></td><td>The released form of a pack: the <a href="design/certified-knowledge-packs.html">certified share bundle</a> Camayoc already publishes, named by its content hash.</td></tr>
+<tr><td><strong>Installed pack</strong></td><td>A fact in the store: which pack, which version, which content hash, loaded when and by whom.</td></tr>
 <tr><td><strong>Surface</strong></td><td>What an agent touches: a <code>cy</code> subcommand, an MCP tool, a skill. Each is generated from a pack.</td></tr>
 <tr><td><strong>Receipt</strong></td><td>The record of one call: the command, the caller, the outcome and, for a refusal, the reason.</td></tr>
 <tr><td><strong>Verdict</strong></td><td>The result of one competency question on one store: passes, fails or cannot tell.</td></tr>
 </tbody></table>
 </div>
+<p>A pack is source and a pendant is what ships. Camayoc keeps one distribution
+artifact: releasing a pack builds and certifies a pendant, and <code>cy pack load</code>
+loads either the source directory or a verified pendant. The content hash in
+the installed-pack fact is the pendant's hash, so <code>cy pack status</code> compares a
+store with a release by one value.</p>
 <h2 id="a-pack-start-to-finish"><a class="header" href="#a-pack-start-to-finish">A pack, start to finish</a></h2>
 <ol>
 <li><strong>Declare.</strong> An author writes or edits a pack. A pack is plain files in a
@@ -3630,12 +3636,12 @@ vocabulary as one reviewed bundle.</p>
 <tr><td><strong>5. Workflows in packs</strong></td><td>Shuttle definitions ship in packs, and pack commands perform code steps.</td><td>aegis-77y</td></tr>
 </tbody></table>
 </div>
-<h2 id="decisions-this-needs"><a class="header" href="#decisions-this-needs">Decisions this needs</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>#</th><th>decision</th><th>recommendation</th></tr></thead><tbody>
+<h2 id="decisions-ruled-2026-11-28"><a class="header" href="#decisions-ruled-2026-11-28">Decisions (ruled 2026-11-28)</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>decision</th><th>ruling</th></tr></thead><tbody>
 <tr><td>1</td><td>Whether the pack is the unit and <code>cy</code> the only front door</td><td>Yes. Everything Camayoc owns moves into packs, and every user-facing script becomes a <code>cy</code> subcommand. It extends the generator that already produces the memory commands.</td></tr>
-<tr><td>2</td><td>How a first person or system gets into a store</td><td><code>cy init</code> adds the first person and agent, and <code>cy entity add</code> adds more and refuses near-duplicates. The alternative, where <code>cy record</code> creates any name it does not know, would fill the store with misspelled duplicates.</td></tr>
+<tr><td>2</td><td>How a first person or system gets into a store</td><td><code>cy init</code> adds the first person and agent, and <code>cy entity add</code> adds more and refuses near-duplicates. <code>cy record</code> never creates a name it does not know, because that would fill the store with misspelled duplicates.</td></tr>
 <tr><td>3</td><td>What loads without a person</td><td>An additive change loads after its dry run passes: a new query, a new optional property, a new class under a governed parent. A change that tightens or removes goes to a person. This follows the 2026-11-06 ruling that Camayoc should make adding shapes easier and not wait on one person.</td></tr>
-<tr><td>4</td><td>What goes first</td><td>Phase 0 now, as small items, because it repairs things that are broken today. Phases 1 to 3 queue behind the three milestones. Phase 4 keeps the rank epic aegis-ssx5 already has.</td></tr>
+<tr><td>4</td><td>What goes first</td><td>Phase 0 now, as small items under aegis-a1sn, because it repairs things that are broken today. Phases 1 to 3 queue behind the three milestones. Phase 4 keeps the rank epic aegis-ssx5 already has.</td></tr>
 </tbody></table>
 </div>
 <h2 id="what-stays-the-same"><a class="header" href="#what-stays-the-same">What stays the same</a></h2>
