@@ -1,0 +1,35 @@
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# Directive deadline cardinality (aegis-b9k, sattler ruling 2026-11-28). A
+# Directive has at most ONE traceability deadline, across the stable and the
+# legacy predicate, and it is a typed, timezone-bearing xsd:dateTime. Camayoc's
+# directive_deadline reader fails closed on two values; one such Directive
+# stalled the whole directive-untraced adapter batch (ten were found and
+# cleaned). Episode writes only add triples, so the graph must refuse the second
+# value. REJECT (no quipu:onViolation annotation = default reject).
+#
+# WHAT THIS DOES AND DOES NOT REFUSE (measured 2026-11-28 on quipu 0.19.5,
+# scratch, both validate_on_write settings; aegis-b9k). Quipu validates the
+# INCOMING write, not the stored state of its focus node. So this refuses a
+# single write that carries two deadlines, or an untyped or zone-less one. It
+# does NOT refuse a second deadline added by a LATER write (accepted through
+# /knot and /episode alike), and with validate_on_write = false no stored shape
+# gates /episode at all. The writer guard (graph-extract reads the graph first,
+# aegis #769) and the quipu merged-state cardinality fix carry that case.
+#
+# STANDALONE on purpose. It says nothing about whether a Directive is traced or
+# dated: an untraced, undated Directive stays a Warning in the pinned
+# aegis-ontology DirectiveTraceabilityShape, because capture records a
+# Directive verbatim first and links it afterwards.
+
+aegis:DirectiveDeadlineCardinalityShape a sh:NodeShape ;
+    sh:targetClass aegis:Directive ;
+    sh:property [
+        sh:path [ sh:alternativePath ( <https://w3id.org/intigraph/quechua/ns#traceabilityDueAt> <https://scbrown.github.io/quechua/ns#traceabilityDueAt> ) ] ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:pattern "(Z|[+-][0-9]{2}:[0-9]{2})$" ;
+    ] ;
+    sh:message "A Directive has at most one traceabilityDueAt, a typed timezone-bearing xsd:dateTime (aegis-b9k)" .
