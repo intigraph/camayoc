@@ -317,6 +317,8 @@ class PrimeContractTests(unittest.TestCase):
 
 TEST_SHAPES = """@prefix sh: <http://www.w3.org/ns/shacl#> . @prefix aegis: <http://aegis.gastown.local/ontology/> .
 aegis:TestPersonShape a sh:NodeShape ; sh:targetClass aegis:Person .
+aegis:TestSystemShape a sh:NodeShape ; sh:targetClass aegis:System .
+aegis:TestAgentShape a sh:NodeShape ; sh:targetClass aegis:Agent .
 """
 
 
@@ -398,6 +400,22 @@ class LocalStoreTests(unittest.TestCase):
                 code, out, err = self.cy(*example_argv(entity), now=next(clock))
                 self.assertEqual(0, code, err)
                 self.assertTrue(out.startswith("unchanged "), out)
+
+    def test_entity_registration_and_near_duplicate_refusal(self):
+        for name, kind in (("delta-service", "System"), ("worker-zulu", "Agent")):
+            code, _, err = self.cy("entity", "add", name, "--type", kind)
+            self.assertEqual(0, code, err)
+        code, out, err = self.cy("entity", "add", "new-person-morgan", "--type", "Person")
+        self.assertEqual(0, code, err)
+        self.assertIn("registered Person", out)
+        code, _, err = self.cy("entity", "add", "new-person-morgann", "--type", "Agent")
+        self.assertEqual(2, code, err)
+        self.assertIn("new-person-morgan", err)
+        self.assertEqual(0, self.cy("topic", "add", "entity-registration")[0])
+        code, _, err = self.cy("record", "decision", "--by", "new-person-morgan",
+                               "--about", "repo-goldblum", "--topic", "entity-registration",
+                               "--chose", "Registered person can issue a decision.")
+        self.assertEqual(0, code, err)
 
     def test_supersession_and_history(self):
         base = ["record", "directive", "--issued-by", "person-stiwi", "--applies-to", "repo-goldblum",

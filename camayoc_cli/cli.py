@@ -65,6 +65,13 @@ def build_parser() -> argparse.ArgumentParser:
                 q.add_argument("--history", metavar="KEY", help="every version of one natural key (IRI or key path)")
         q.add_argument("--json", action="store_true", help="print rows as JSON")
 
+    entity = sub.add_parser("entity", help="register people, systems and agents")
+    entity_sub = entity.add_subparsers(dest="entity_command", metavar="<action>")
+    add_entity = entity_sub.add_parser("add", help="register an entity; refuse near-duplicate names")
+    add_entity.add_argument("name")
+    add_entity.add_argument("--type", required=True, choices=("Person", "System", "Agent"))
+    add_entity.add_argument("--json", action="store_true")
+
     topic = sub.add_parser("topic", help="manage registered memory topics")
     topic_sub = topic.add_subparsers(dest="topic_command", metavar="<action>")
     add = topic_sub.add_parser("add", help="register a memory topic (natural-key part)")
@@ -201,6 +208,10 @@ def main(argv: list[str] | None = None) -> int:
             filters = {f: getattr(args, f, None) for r in entity["recall"] for f in r.get("filters", [])}
             out = memory.recall(args.entity, filters, history=getattr(args, "history", None))
             return _emit(out, args.json)
+        if args.command == "entity":
+            if args.entity_command != "add":
+                ap.parse_args(["entity", "--help"])
+            return _emit(memory.add_entity(args.name, args.type), args.json)
         if args.command == "topic":
             if args.topic_command != "add":
                 ap.parse_args(["topic", "--help"])
