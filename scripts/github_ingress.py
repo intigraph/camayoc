@@ -102,16 +102,47 @@ _STATUSES = {"queued", "in_progress", "completed", "requested", "waiting", "pend
 #: transition of one run. Readers take the latest fact per run and treat any
 #: non-completed status as pending (Chaski ci_state), so `workflow_run.requested`
 #: already records "pending" and `completed` records the outcome. The repeat
-#: cost one Quipu /episode per run during CI bursts. Kept: check_run.created,
-#: workflow_run.requested and every completed. Residual risk (ian, n0wc): if a
-#: requested delivery is lost, the run is unseen until it completes.
+#: cost one Quipu /episode per run during CI bursts. Kept: check_run.created (but see
+#: aegis-okdh below), workflow_run.requested and every completed. Residual risk
+#: (ian, n0wc): if a requested delivery is lost, the run is unseen until it
+#: completes.
 _REPEAT_TRANSITIONS = {("workflow_run", "in_progress")}
+#: aegis-okdh: a GitHub Actions job's check_run.created is acknowledged without
+#: a write, too. Its run's workflow_run.requested (kept) already holds the commit
+#: "pending" in Chaski ci_state until workflow_run.completed, and
+#: check_run.completed records the job's outcome. Matched on the redacted
+#: html_url (.../actions/runs/<run>/job/<job>), the only field the spool keeps
+#: that names the app; any other check run (another app, an unrecognised URL)
+#: keeps its created row, since nothing else marks it in flight. Same residual
+#: risk as above: a lost requested leaves the run unseen until it completes.
+_ACTIONS_JOB_URL = re.compile(r"https://github\.com/[^/\s]+/[^/\s]+/actions/runs/\d+/job/\d+")
 _CONCLUSIONS = {"success", "failure", "neutral", "cancelled", "skipped", "timed_out",
                 "action_required", "stale", "startup_failure"}
 
 
 class Ignored(Exception):
     """A delivery that is acknowledged and writes nothing (ping)."""
+
+
+def receive_ignored(event: str, payload: object) -> str | None:
+    """Why this delivery carries no fact any reader needs, or None.
+
+    Decided from the payload alone, so the receiver settles it 'ignored' without
+    taking a pending spool slot (aegis-okdh: the spool hit MAX_PENDING and the
+    receiver answered 503), and the drain settles an already-spooled one the
+    same way. episode_for still checks the mapping first."""
+    if not isinstance(payload, dict):
+        return None
+    action = payload.get("action")
+    if (event, action) in _REPEAT_TRANSITIONS:
+        return f"{event}.{action} repeats a non-terminal state already recorded"
+    if event == "check_run" and action == "created":
+        run = payload.get("check_run")
+        url = run.get("html_url") if isinstance(run, dict) else None
+        if isinstance(url, str) and _ACTIONS_JOB_URL.fullmatch(url):
+            return ("check_run.created of a GitHub Actions job: its workflow_run.requested "
+                    "already records the pending state")
+    return None
 
 
 class MissingField(Quarantined):
@@ -265,8 +296,9 @@ def episode_for(event: str, payload: object, *, actor: str, occurred_at: str | N
         raise Ignored(f"{event}.{action} carries no modelled fact (mapping 'ignored')")
     else:
         raise Quarantined(f"action {action!r} of {event!r} is not mapped")
-    if (event, action) in _REPEAT_TRANSITIONS:
-        raise Ignored(f"{event}.{action} repeats a non-terminal state already recorded")
+    skip = receive_ignored(event, payload)
+    if skip is not None:
+        raise Ignored(skip)
 
     repo = _repository(payload)
     full = repo["properties"]["githubFullName"]
@@ -607,7 +639,7 @@ class Spool:
                 raise
 
     def add(self, delivery: str, event: str, payload: object, *, occurred_at: str | None = None,
-            now: float | None = None, state: str = "pending",
+            now: float | None = None, state: str = "pending", reason: str | None = None,
             verified_webhook: bool = False) -> str:
         """Spool one delivery, REDACTED first: raw bodies never touch disk."""
         now = time.time() if now is None else now
@@ -623,8 +655,8 @@ class Spool:
                     self.conn.execute("COMMIT")
                     return "duplicate"
                 cur = self.conn.execute(
-                    "INSERT OR IGNORE INTO deliveries (id, event, body, occurred_at, received_at, state) "
-                    "VALUES (?,?,?,?,?,?)", (delivery, event, body, occurred_at, now, state))
+                    "INSERT OR IGNORE INTO deliveries (id, event, body, occurred_at, received_at, state, reason) "
+                    "VALUES (?,?,?,?,?,?,?)", (delivery, event, body, occurred_at, now, state, reason))
                 if cur.rowcount == 1 and verified_webhook:
                     self.conn.execute(
                         "INSERT INTO recruitment_events (delivery,event,body,received_at) VALUES (?,?,?,?)",
@@ -1320,7 +1352,11 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
             if full not in repos:
                 return self._verdict("ignored", 202, event, delivery,
                                      {"outcome": "ignored", "reason": "repository not watched"})
-            if (spool.pending() >= MAX_PENDING or recruitment_inbox and
+            # An action no reader needs is recorded 'ignored' with its reason and
+            # takes no pending slot, so it is never refused for a full spool
+            # (aegis-okdh). The recruitment inbox still receives it unchanged.
+            skip = receive_ignored(event, payload)
+            if (skip is None and spool.pending() >= MAX_PENDING or recruitment_inbox and
                     spool.recruitment_pending() >= MAX_PENDING):
                 return self._verdict("spool_full", 503, event, delivery)
             if self.expired:
@@ -1331,10 +1367,14 @@ def make_handler(spool: Spool, secret: bytes, repos: set[str], path: str, wake: 
             if not bodies.check_and_add(body):
                 # The same signed body under a fresh delivery id: a captured replay.
                 return self._verdict("replay_body", 409, event, delivery)
-            outcome = spool.add(delivery, event, payload, verified_webhook=recruitment_inbox)
+            outcome = spool.add(delivery, event, payload, verified_webhook=recruitment_inbox,
+                                state="pending" if skip is None else "ignored", reason=skip)
             if outcome != "accepted":
                 bodies.forget(body)
                 return self._verdict("replay", 409, event, delivery)
+            if skip is not None:  # nothing for the drain to do: no wake
+                return self._verdict("ignored", 202, event, delivery,
+                                     {"outcome": "ignored", "reason": skip, "delivery": delivery})
             wake.set()
             self._verdict("accepted", 202, event, delivery, {"outcome": outcome, "delivery": delivery})
 

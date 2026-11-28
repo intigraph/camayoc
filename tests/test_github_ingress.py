@@ -192,6 +192,13 @@ class MappingTests(unittest.TestCase):
         created = copy.deepcopy(delivery("check_run.completed")["body"])
         created["action"] = "created"
         created["check_run"].update(status="queued", conclusion=None)
+        # aegis-okdh: an Actions job's created is covered by its run's requested ...
+        with self.assertRaisesRegex(gi.Ignored, "check_run.created of a GitHub Actions job"):
+            gi.episode_for("check_run", created, actor="t")
+        # ... but another app's check run has no workflow_run: its created is kept.
+        created["check_run"]["html_url"] = "https://github.com/intigraph/camayoc/runs/122399587112"
+        self.assertEqual("queued", activity(gi.episode_for("check_run", created, actor="t")[0])["githubStatus"])
+        created["check_run"].pop("html_url")
         self.assertEqual("queued", activity(gi.episode_for("check_run", created, actor="t")[0])["githubStatus"])
         self.assertEqual("completed", activity(episode("workflow_run.completed"))["githubStatus"])
         # Through the drain: settled 'ignored', nothing written, nothing retried.
@@ -201,6 +208,13 @@ class MappingTests(unittest.TestCase):
         self.assertEqual({"ignored": 1}, gi.drain_once(spool, actor="t", writer=writer))
         self.assertEqual([], writer.bodies)
         self.assertEqual({}, gi.drain_once(spool, actor="t", writer=writer))
+        # A pending backlog spooled before aegis-okdh drains through the same
+        # rule: Actions check_run.created settled 'ignored', no Quipu write.
+        for n in range(3):
+            spool.add(f"backlog{n}", "check_run", created | {"check_run": dict(
+                created["check_run"], html_url=f"https://github.com/o/r/actions/runs/{n}/job/{n}")})
+        self.assertEqual({"ignored": 3}, gi.drain_once(spool, actor="t", writer=writer))
+        self.assertEqual([], writer.bodies)
 
     def test_ping_is_ignored_and_unknowns_are_quarantined(self):
         with self.assertRaises(gi.Ignored):
@@ -498,6 +512,50 @@ class ReceiverTests(unittest.TestCase):
             self.assertEqual(503, self.post(other)[0])
         finally:
             gi.MAX_PENDING = old
+
+    def test_full_spool_still_settles_actions_no_reader_needs(self):
+        """aegis-okdh: at MAX_PENDING the receiver answered 503 to every
+        delivery, and GitHub does not redeliver on its own. An Actions job's
+        check_run.created and a workflow_run.in_progress carry no fact a reader
+        needs, so they are recorded 'ignored' with the reason, take no pending
+        slot, and are never refused. Outcomes (completed) still need a slot."""
+        def variant(name, action, n, **fields):
+            rec = copy.deepcopy(delivery(name))
+            rec["body"]["action"] = action
+            rec["body"][name.split(".")[0]].update(fields)
+            rec["headers"]["X-GitHub-Delivery"] = f"00000000-0000-0000-0000-0000000ac{n:03d}"
+            return rec
+        created = variant("check_run.completed", "created", 1, status="queued", conclusion=None)
+        running = variant("workflow_run.completed", "in_progress", 2, status="in_progress", conclusion=None)
+        other_app = variant("check_run.completed", "created", 3, status="queued", conclusion=None,
+                            html_url="https://github.com/intigraph/camayoc/runs/1")
+        old = gi.MAX_PENDING
+        gi.MAX_PENDING = 1
+        try:
+            self.assertEqual(202, self.post(delivery("pull_request.closed"))[0])  # fills the spool
+            self.wake.clear()
+            for rec in (created, running):
+                status, out = self.post(rec)
+                self.assertEqual((202, "ignored"), (status, out["outcome"]), rec["headers"])
+                self.assertIn("already record", out["reason"])
+            self.assertFalse(self.wake.is_set())  # nothing for the drain
+            self.assertEqual({"pending": 1, "ignored": 2}, self.spool.counts())
+            reasons = dict(self.spool.conn.execute("SELECT event, reason FROM deliveries WHERE state='ignored'"))
+            self.assertIn("GitHub Actions job", reasons["check_run"])
+            self.assertIn("workflow_run.in_progress", reasons["workflow_run"])
+            self.assertEqual(409, self.post(created)[0])  # still replay-protected
+            self.assertEqual(503, self.post(delivery("check_run.completed"))[0])
+            self.assertEqual(503, self.post(other_app)[0])  # not covered: needs a slot
+            self.assertEqual(2, self.metrics.counts["ignored"])
+        finally:
+            gi.MAX_PENDING = old
+        writer = Collect()
+        self.assertEqual({"written": 1}, gi.drain_once(self.spool, actor="t", writer=writer))
+        self.assertEqual(1, len(writer.bodies))
+        # Below the cap the completed outcome is spooled and written as before.
+        self.assertEqual(202, self.post(delivery("check_run.completed"))[0])
+        self.assertEqual({"written": 1}, gi.drain_once(self.spool, actor="t", writer=writer))
+        self.assertEqual("completed", activity(writer.bodies[-1])["githubStatus"])
 
     def test_refusals_spool_nothing(self):
         rec = delivery("pull_request.closed")
