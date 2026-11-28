@@ -87,6 +87,43 @@ class Tick(unittest.TestCase):
         self.assertEqual(result['completion_disposition']['state'],'unknown')
         self.assertEqual(self.j.next(),frozen)
         self.assertEqual(self.writes,1)
+    def test_receiving_restart_after_send_releases_forgotten_effect(self):
+        """aegis-moy: quipu restarted one second after the send (CD deploy), so
+        /knot/status answers 'unknown' forever. A process start strictly after
+        the journal's own send end, plus exact absence, releases the effect;
+        it is reconciled, never resent in this tick."""
+        self.drop=True
+        self.assertEqual(self.tick()['status'], 'UNKNOWN')
+        pending=self.j.next()
+        envelope=json.loads(pending[2]);envelope['write_id']='a'*64
+        self.j.db.execute('UPDATE pending SET body=? WHERE id=?', (json.dumps(envelope),pending[0]))
+        self.j.record_send_ended(pending[0],'a'*64,1000.0)
+        self.j.db.commit()
+        calls=[]
+        def post(route,body):
+            calls.append(route)
+            if route=='/knot/status':
+                return {'contract':'quipu.knot-completion/v1','write_id':'a'*64,'state':'unknown'}
+            return {'result':False,'truncated':False}
+        starts=[]
+        def started():
+            starts.append(1);return 1001.0
+        result=sync.tick(self.reader,self.j,post,changes=None,plane='urn:private:knowledge',actor='fixture',
+                         process_start=started)
+        self.assertEqual((result['status'],result['writes'],result.get('reconciled')),('OK',0,1))
+        self.assertEqual(result['completion_disposition']['worker_fence'],'receiving-process-restarted')
+        self.assertEqual(result['completion_disposition']['absence'],'proved')
+        self.assertEqual(len(starts),2)  # read before and after the absence proof
+        self.assertEqual(self.j.next(),(pending[0],pending[1],None))  # fresh candidate
+        self.assertEqual(self.writes,1)
+        # A restart BEFORE the send ended proves nothing: the effect stays frozen.
+        self.j.db.execute('UPDATE pending SET body=?,effect_tx=? WHERE id=?', (json.dumps(envelope),pending[1],pending[0]))
+        self.j.db.commit()
+        result=sync.tick(self.reader,self.j,post,changes=None,plane='urn:private:knowledge',actor='fixture',
+                         process_start=lambda:999.0)
+        self.assertEqual(result['status'],'UNKNOWN')
+        self.assertEqual(result['completion_disposition']['worker_fence'],'unproved')
+        self.assertEqual(json.loads(self.j.next()[2]),envelope)
     def test_full_tick_five_calls_one_effect_and_ack(self):
         # The control tests the full IRI without consuming compact SELECT terms.
         original=self.post

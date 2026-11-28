@@ -10,6 +10,7 @@ import re
 import secrets
 import sqlite3
 import time
+import urllib.request
 import seed_change_custody as custody
 import seed_metadata_projection as projection
 import seed_work_items as native
@@ -169,11 +170,67 @@ def completion_summary(status, write_id):
             'absence': 'not-attempted'}
 
 
-def completed_without_effect(post, journal, envelope, item, *, diagnostics=None):
+#: Bound on the receiving server's /metrics body (process start read).
+METRICS_LIMIT=1048576
+
+#: Completion states a receiving-process restart can leave behind: receipts are
+#: process-local, so a restarted server forgets the write_id. Never 'queued',
+#: 'running' or 'finished': those describe a live (or completed) worker.
+FORGOTTEN_STATES=('unknown','absent','evicted')
+
+
+def receiving_process_start(get):
+    """The receiving server's own process_start_time_seconds, exactly one sample."""
+    raw=get('/metrics')
+    if not isinstance(raw,bytes) or len(raw)>METRICS_LIMIT:
+        raise custody.CustodyUnknown('receiving process start unproved')
+    found=re.findall(rb'^process_start_time_seconds ([0-9]+(?:\.[0-9]+)?)$',raw,re.M)
+    if len(found)!=1:raise custody.CustodyUnknown('receiving process start unproved')
+    return float(found[0])
+
+
+def server_get(server):
+    """A bounded GET against `server`, for receiving_process_start()."""
+    def get(path):
+        with urllib.request.urlopen(server+path,timeout=10) as response:
+            return response.read(METRICS_LIMIT+1)
+    return get
+
+
+def restarted_after_send(journal, item, write_id, process_start, *, now=None):
+    """The receiving process start, when it is strictly after this send ended.
+
+    aegis-moy, from the aegis-xdvg.5 superseded-retirement proof: completion
+    receipts are process-local, so a writer inside a process that has since
+    exited cannot commit later. The send bound is the journal's own recorded
+    attempt end (never an operator guess here); no record, no proof.
+    """
+    bound = journal.send_ended(item, write_id)
+    if bound is None or process_start is None:
+        return None
+    try:
+        first = process_start()
+    except (ValueError, OSError, RuntimeError, TypeError, KeyError):
+        return None
+    now = time.time() if now is None else now
+    if type(first) is not float or not bound < first <= now:
+        return None
+    return first
+
+
+def completed_without_effect(post, journal, envelope, item, *, diagnostics=None, process_start=None):
     """A retained native fence plus exact effect absence, never elapsed time.
 
     Old journals, evicted receipts and unavailable capabilities stay UNKNOWN.
     A stopped worker may have committed: readback must still prove absence.
+
+    aegis-moy: a quipu restart (every CD deploy) forgets the write_id, so the
+    status reads 'unknown' forever and the effect froze until an operator
+    retired it. With `process_start`, a forgotten receipt is admitted as a
+    terminal-worker fence ONLY when the receiving process started strictly
+    after this journal's recorded send end, the exact effect is then proved
+    not applied, and the start is unchanged after that read. Elapsed time is
+    still never evidence; a restart before the send ended proves nothing.
     """
     summary = {'schema': 'workitem-completion-disposition/v1',
                'response': 'not-attempted', 'absence': 'not-attempted'}
@@ -191,11 +248,28 @@ def completed_without_effect(post, journal, envelope, item, *, diagnostics=None)
         raise
     summary.update(completion_summary(status, write_id))
     if (not isinstance(status, dict) or status.get('contract') != 'quipu.knot-completion/v1'
-            or status.get('write_id') != write_id or status.get('truncated', False) is not False
-            or status.get('state') not in ('not_started', 'stopped')):
+            or status.get('write_id') != write_id or status.get('truncated', False) is not False):
+        return False
+    restarted = None
+    if (process_start is not None and status.get('state') in FORGOTTEN_STATES
+            and 'receipt' not in status):
+        restarted = restarted_after_send(journal, item, write_id, process_start)
+        summary['worker_fence'] = 'receiving-process-restarted' if restarted is not None else 'unproved'
+        if restarted is None:
+            return False
+    elif status.get('state') not in ('not_started', 'stopped'):
         return False
     proof = effect_not_applied(post, journal, envelope, item)
     summary['absence'] = 'proved' if proof else 'unproved'
+    if proof is not None and restarted is not None:
+        # A restart between the two reads is not proof: read the start again.
+        try:
+            again = process_start()
+        except (ValueError, OSError, RuntimeError, TypeError, KeyError):
+            again = None
+        if again != restarted:
+            summary['worker_fence'] = 'restarted-during-proof'
+            return False
     return proof is not None
 
 
@@ -438,7 +512,8 @@ class TickBudgetReached(custody.CustodyUnknown):
     tick. A CustodyUnknown to any caller that does not handle it."""
 
 
-def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None,diagnostics=None,budget=None):
+def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,witness=None,diagnostics=None,budget=None,
+            process_start=None):
     """Prove one pending item and return its version. Raises on any doubt.
 
     `wrote()` is called BEFORE the one writer request, so a write whose response
@@ -458,7 +533,8 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
         # A negative readback alone is not absence: partial or conflicting
         # facts keep the exact effect frozen. Native completion must precede
         # a fresh absence proof; HTTP timeout never proves worker termination.
-        if not completed_without_effect(call,journal,envelope,item,diagnostics=diagnostics):
+        if not completed_without_effect(call,journal,envelope,item,diagnostics=diagnostics,
+                                        process_start=process_start):
             raise custody.CustodyUnknown('pending effect indeterminate; freeze, no resend')
         journal.release_unconfirmed(item,stored)
         return None
@@ -530,7 +606,7 @@ def deliver(reader,journal,call,pending,*,plane,actor,wrote,completion=False,wit
 
 
 def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
-         cursor_time=None,wall=time.time,completion=False):
+         cursor_time=None,wall=time.time,completion=False,process_start=None):
     requests=0;writes=0;slowest=0.0;last=None
     tick_started=clock()
     def wrote():
@@ -544,6 +620,12 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
         if endpoint=='/query' and body.get('query','').startswith('ASK '):
             receipt['control']=control_summary(response)
         return response
+    def started():
+        # One receiving-process start read, inside the same request budget.
+        nonlocal requests
+        requests+=1
+        if requests>TICK_REQUESTS:raise custody.CustodyUnknown('tick request budget exhausted')
+        return timed(lambda _path:process_start(),'/metrics')
     def timed(function,*args,**kwargs):
         nonlocal slowest,last
         started=clock()
@@ -648,7 +730,8 @@ def tick(reader,journal,post,*,changes,plane,actor,clock=time.monotonic,
             try:
                 version=deliver(reader,journal,call,pending,plane=plane,actor=actor,wrote=wrote,completion=completion,
                                 witness=receipt['envelope_witness'] if 'attempted_item' in receipt else None,diagnostics=receipt,
-                                budget=lambda:TICK_REQUESTS-requests)
+                                budget=lambda:TICK_REQUESTS-requests,
+                                process_start=started if process_start is not None else None)
             except TickBudgetReached:
                 # Clean stop: nothing prepared, the candidate stays fresh for the
                 # next tick. Earlier items this tick stay acknowledged.
