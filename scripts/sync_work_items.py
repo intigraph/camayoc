@@ -609,7 +609,8 @@ def native_main(args):
                 from datetime import datetime
                 return datetime.fromisoformat(str(rows[0]['timestamp']).replace('Z','+00:00')).timestamp()
             receipt=native_sync.tick(reader,journal,post,changes=changes,
-                    plane=planes.plane_for('observed'),actor=args.actor,cursor_time=cursor_time,completion=True)
+                    plane=planes.plane_for('observed'),actor=args.actor,cursor_time=cursor_time,completion=True,
+                    process_start=lambda:native_sync.receiving_process_start(native_sync.server_get(planes.SERVER)))
         except Exception as exc:
             receipt['error']=type(exc).__name__  # never log auth or payloads
         finally:

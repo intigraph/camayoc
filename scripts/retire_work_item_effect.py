@@ -27,7 +27,6 @@ import sys
 import time
 import planes
 import re
-import urllib.request
 import seed_change_custody as custody
 import seed_work_items as native
 import seed_work_item_sync as sync
@@ -83,22 +82,14 @@ def operate(journal,args,post=None):
             'history_has_more':more,'history_next_after':rows[-1][0] if more else None}
 
 
-METRICS_LIMIT=1048576
-
-
-def process_start(get):
-    """The receiving server's own process_start_time_seconds, exactly one sample."""
-    raw=get('/metrics')
-    if not isinstance(raw,bytes) or len(raw)>METRICS_LIMIT:
-        raise custody.CustodyUnknown('receiving process start unproved')
-    found=re.findall(rb'^process_start_time_seconds ([0-9]+(?:\.[0-9]+)?)$',raw,re.M)
-    if len(found)!=1:raise custody.CustodyUnknown('receiving process start unproved')
-    return float(found[0])
+METRICS_LIMIT=sync.METRICS_LIMIT
+#: One parser for the receiving process start, shared with the in-tick
+#: restart fence (aegis-moy).
+process_start=sync.receiving_process_start
 
 
 def server_get(path):
-    with urllib.request.urlopen(planes.SERVER+path,timeout=10) as r:
-        return r.read(METRICS_LIMIT+1)
+    return sync.server_get(planes.SERVER)(path)
 
 
 def superseded_proof(journal,args,post,now,get=server_get):
