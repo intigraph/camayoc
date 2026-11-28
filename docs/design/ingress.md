@@ -555,7 +555,7 @@ published freshness. It does not identify a lock owner. Page/custody failures
 retain their existing UNKNOWN status. Cap 256, K12, 57 requests, the 40-second
 tick budget and 2.5-second slow stop are unchanged. Reverting source leaves the
 admission sidecar inert; no custody reset or replay is needed. Source controls
-and the [private fixture replay](../demos/native-minute-admission/README.md) do
+and the [private fixture replay](https://github.com/intigraph/camayoc/blob/main/docs/demos/native-minute-admission/README.md) do
 not establish catch-up: natural cursor-age decline and the recurring alarm's
 14 authoritative quiet days remain separate acceptance gates.
 

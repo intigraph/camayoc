@@ -6,7 +6,7 @@ pendant verification and exact catalogue/profile readback. It does not load a
 running service, replace an existing catalogue, install a native policy adapter
 or activate a hook.
 
-See the [resource guide](../governance/README.md) for required identity arguments,
+See the [resource guide](https://github.com/intigraph/camayoc/blob/main/governance/README.md) for required identity arguments,
 repeat behavior and refusal cases. The [consumer contract](design/governance-consumer-contract.md)
 defines the separate projection, cache, exemption, freshness and atomic refresh
 requirements for a future native adapter. Offline stage success does not prove

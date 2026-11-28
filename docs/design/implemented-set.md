@@ -1,5 +1,9 @@
 # The implemented set — what the paper may claim
 
+Current suite snapshot (2026-11-28): **44/124 stored** across eleven slices,
+**33 unwritten** and **47 competency gaps** (`just query-coverage`), with
+**67 query files** in `queries/`. The dated audit counts below are historical.
+
 > **Implementation status (2026-08-25):** ✅ **Current — re-measured.** Every
 > row below was measured against this repo on this date, with the grep or file
 > that produced it. Re-run before drafting; do not carry a row forward on

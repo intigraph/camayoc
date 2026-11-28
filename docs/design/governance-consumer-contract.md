@@ -5,7 +5,7 @@ implementation from the retained governance specification; it claims no
 recovered source or historical implementation lineage. No loader, hook, scheduler or enforcement is activated.
 
 Exact resources and new mapping semantics are documented in
-[Governance resources](../../governance/README.md). The retained 0.7.0 payload contains a declaration
+[Governance resources](https://github.com/intigraph/camayoc/blob/main/governance/README.md). The retained 0.7.0 payload contains a declaration
 catalog and one combined profile, not executable policy instances, query sets
 or the original loader. New approved alignments are separate from that payload.
 

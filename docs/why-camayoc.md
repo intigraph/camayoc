@@ -160,8 +160,8 @@ measured, claim-by-claim ledger.
 - **Stored queries, honest coverage** — every named query in
   [queries/](https://github.com/intigraph/camayoc/blob/main/queries/) is tested against a seeded fixture with a positive
   *and* a control-negative arm. `just query-coverage` is the living figure:
-  **40 of 91 stored across six slices**, plus 22 questions that are
-  expressible with today's vocabulary and simply unwritten, and 29 that are
+  **44 of 124 stored across eleven slices**, plus 33 questions that are
+  expressible with today's vocabulary and simply unwritten, and 47 that are
   competency gaps. Those last two are reported apart on purpose — an unwritten
   query is work with a known shape, an ontology gap is a finding — and a
   question with no stored query is never answered from the nearest term.
@@ -273,6 +273,7 @@ Working ingress, honestly bounded. Of the eight aspects in the provisional
 disclosure, four are built, four are partial, and none are design-only —
 [docs/design/implemented-set.md](design/implemented-set.md) is the
 measured ledger, re-run per row rather than carried forward on trust. The
-competency suite spans six slices; 40 stored queries answer it where the
+competency suite spans eleven slices; 44 of its 124 questions have stored
+queries that answer them where the
 vocabulary exists, and `just query-coverage` reports the remaining gaps as
 gaps. The quipu substrate this builds on is itself still in flight.
