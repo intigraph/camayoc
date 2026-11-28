@@ -47,10 +47,8 @@ class DarkTests(unittest.TestCase):
         self.assertEqual("DARK", verdict.state)
         self.assertEqual(2, verdict.exit_code)
 
-    def test_dark_is_a_warning_not_an_error(self):
-        # The job is allowed to fail when the neighbours ship a broken release;
-        # the contract is that it may not do so SILENTLY. Warning, not error.
-        self.assertEqual("warning", judge(None, MIN, MAX_SKIP).level)
+    def test_dark_is_a_blocking_error(self):
+        self.assertEqual("error", judge(None, MIN, MAX_SKIP).level)
 
 
 class SkippedEverythingTests(unittest.TestCase):
@@ -106,7 +104,7 @@ class ReportingTests(unittest.TestCase):
         stream = io.StringIO()
         integration_verdict.report(judge(None, MIN, MAX_SKIP), stream=stream, summary_path=None)
         first = stream.getvalue().splitlines()[0]
-        self.assertTrue(first.startswith("::warning::"))
+        self.assertTrue(first.startswith("::error::"))
         self.assertIn("DARK", first)
 
     def test_the_verdict_reaches_the_step_summary(self):
@@ -118,6 +116,37 @@ class ReportingTests(unittest.TestCase):
                 judge(HEALTHY, MIN, MAX_SKIP), stream=io.StringIO(), summary_path=str(summary)
             )
             self.assertIn("integration: RAN", summary.read_text())
+
+
+class WorkflowGateTests(unittest.TestCase):
+    """The existing test check must reject failed, skipped and cancelled gates."""
+
+    def test_dependency_results_reach_the_existing_test_check(self):
+        import os
+        import subprocess
+        import yaml
+
+        jobs = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
+        integration = jobs["integration"]
+        self.assertFalse(integration.get("continue-on-error", False))
+        suite = next(step for step in integration["steps"] if step.get("name") == "Run the suite")
+        self.assertIn("just test", suite["run"])
+        verdict = integration["steps"][-1]
+        self.assertEqual("always()", verdict["if"])
+        self.assertIn("integration_verdict.py", verdict["run"])
+        gate = jobs["test"]
+        self.assertEqual("always()", gate["if"])
+        self.assertEqual({"integration", "memory-redirect-macos"}, set(gate["needs"]))
+        step = gate["steps"][0]
+        self.assertEqual("${{ needs.integration.result }}", step["env"]["INTEGRATION_RESULT"])
+        self.assertEqual("${{ needs.memory-redirect-macos.result }}", step["env"]["MACOS_RESULT"])
+        for live in ("success", "failure", "cancelled", "skipped", ""):
+            for mac in ("success", "failure", "cancelled", "skipped", ""):
+                with self.subTest(integration=live, macos=mac):
+                    result = subprocess.run(["bash", "-c", step["run"]],
+                                            env={**os.environ, "INTEGRATION_RESULT": live,
+                                                 "MACOS_RESULT": mac}, capture_output=True)
+                    self.assertEqual(live == mac == "success", result.returncode == 0)
 
 
 class SelftestTests(unittest.TestCase):
