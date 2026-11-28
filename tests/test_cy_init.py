@@ -44,6 +44,20 @@ class ResourceTests(unittest.TestCase):
                 initialize.ensure_server(client, Path(project))
             start.assert_not_called()
 
+    def test_portless_loopback_does_not_start_or_create_state(self):
+        for host in ('localhost', '127.0.0.1'):
+            for suffix in ('', '/'):
+                with self.subTest(host=host, suffix=suffix), tempfile.TemporaryDirectory() as temp:
+                    project = Path(temp)
+                    client = mock.Mock(base=f'http://{host}{suffix}')
+                    client.health.side_effect = quipu.Unreachable('offline')
+                    env = {'HOME': temp, 'QUIPU_AUTH_TOKEN_FILE': str(project / 'token')}
+                    with mock.patch.dict(os.environ, env), mock.patch.object(subprocess, 'Popen') as start:
+                        with self.assertRaisesRegex(quipu.QuipuError, 'explicit port'):
+                            initialize.ensure_server(client, project)
+                        start.assert_not_called()
+                    self.assertEqual([], list(project.iterdir()))
+
     def test_timeout_does_not_start(self):
         client = mock.Mock(base='http://127.0.0.1:3030')
         client.health.side_effect = quipu.TimedOut('unknown')

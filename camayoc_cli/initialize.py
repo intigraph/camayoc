@@ -29,6 +29,8 @@ def ensure_server(client, project):
             or endpoint.username or endpoint.password or endpoint.path not in ('', '/')
             or endpoint.query or endpoint.fragment):
         raise quipu.QuipuError('Start the remote store separately; init starts only loopback stores.')
+    if endpoint.port is None:
+        raise quipu.QuipuError('Set an explicit port in QUIPU_SERVER before init starts a local store.')
     binary = os.environ.get('QUIPU_SERVER_BIN') or shutil.which('quipu-server')
     if not binary:
         raise quipu.QuipuError('Install quipu-server, then run cy init again.')
@@ -36,7 +38,7 @@ def ensure_server(client, project):
     state = project / '.quipu'
     if config.parent.is_symlink() or state.is_symlink() or config.is_symlink():
         raise quipu.QuipuError('Local configuration and state must not be symlinks.')
-    port = endpoint.port or 3030
+    port = endpoint.port
     with socket.socket() as listener:
         listener.bind(('127.0.0.1', port))
     if not config.exists():
