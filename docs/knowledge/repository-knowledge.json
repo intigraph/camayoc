@@ -48,11 +48,11 @@
       "kind": "interface",
       "source": "docs/releases.md",
       "subject": "http://aegis.gastown.local/ontology/doc/camayoc/docs%2Freleases.md",
-      "summary": "Stable tags publish the tracked source archive, checksum and source.json; source releases contain no native Camayoc executable.",
-      "source_sha256": "ea0d4c568c2d6240359f3f0f06ebcf2fdbedd99a71308f7575b102054d824dcd",
+      "summary": "Stable tags publish the tracked source archive, checksum, source.json and an installable Python CLI wheel; source releases contain no native Camayoc executable.",
+      "source_sha256": "85f50f27dd0fc30fc46f3fb1ff6843dabbee22e8d2faacf1cf80552e5cb67f12",
       "properties": {
         "interfaceKind": "file-format",
-        "publicName": "source archive, SHA256SUMS, source.json"
+        "publicName": "source archive, SHA256SUMS, source.json, Python CLI wheel"
       }
     },
     {
