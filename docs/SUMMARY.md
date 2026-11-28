@@ -26,6 +26,7 @@
 - [Request cost attribution](design/work-cost.md)
 - [GitHub ingress](design/github-ingress.md)
 - [Jev: typed decisions](design/jev-typed-decisions.md)
+- [Packs and one front door (proposed)](design/packs.md)
 - [Agent-memory entities](design/agent-memory-entities.md)
 - [Agent-memory contract review and stages](design/agent-memory-contract-review.md)
 - [The camayoc / yupana thesis boundary](design/thesis-boundary.md)
