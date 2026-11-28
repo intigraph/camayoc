@@ -349,6 +349,41 @@ class ReplayTests(unittest.TestCase):
         self.assertTrue(any(n["type"] == "GitHubRepository" for n in writer.bodies[0]["nodes"]))
         self.assertIsNotNone(spool.repo_asserted("github.R_kgDOTvaTnA"))
 
+    def test_repository_refusal_retry_survives_an_interleaved_success_and_restart(self):
+        for permanent in (False, True):
+            with self.subTest(permanent=permanent), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "spool.db"
+                spool = gi.Spool(str(path))
+                spool.add("first", "push", delivery("push")["body"], now=0)
+                gi.drain_once(spool, actor="t", writer=Collect(), now=1)
+                spool.add("retry", "pull_request", delivery("pull_request.closed")["body"], now=2)
+
+                def refuse(body):
+                    raise gi.EpisodeRefused("sh:class GitHubRepository")
+
+                self.assertEqual({"retry": 1}, gi.drain_once(
+                    spool, actor="t", writer=refuse, now=3))
+                # A different delivery restores the shared repository digest.
+                spool.add("peer", "check_run", delivery("check_run.completed")["body"], now=4)
+                self.assertEqual({"written": 1}, gi.drain_once(
+                    spool, actor="t", writer=Collect(), now=5))
+                self.assertIsNotNone(spool.repo_asserted("github.R_kgDOTvaTnA"))
+                spool.conn.close()
+                spool = gi.Spool(str(path))
+                seen = []
+
+                def retry(body):
+                    seen.append(body)
+                    if permanent:
+                        raise gi.EpisodeRefused("sh:class GitHubRepository")
+
+                self.assertEqual({"refused" if permanent else "written": 1},
+                                 gi.drain_once(spool, actor="t", writer=retry, now=1000))
+                self.assertEqual(1, len(seen))
+                self.assertTrue(any(n["type"] == "GitHubRepository" for n in seen[0]["nodes"]))
+                self.assertEqual({}, gi.drain_once(spool, actor="t", writer=retry, now=2000))
+                spool.conn.close()
+
     def test_failed_write_stays_pending_then_lands(self):
         spool = gi.Spool(":memory:")
         rec = delivery("push")
