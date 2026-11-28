@@ -2,7 +2,7 @@
 import datetime as dt
 import unittest
 
-from test_directive_edges import board, NOW, A
+from test_directive_edges import board, jev_answering, NOW, A
 import change_adapter as ca
 import directive_deadline as dd
 import directive_edges as de
@@ -84,6 +84,31 @@ class Isolation(unittest.TestCase):
         post = post_with({'new': ([row(NOW)], [row(NOW + dt.timedelta(days=1))])})
         with self.assertRaises(dd.DeadlineUnknown):
             de.judge(post, 'new', NOW)
+
+    def test_proposer_does_not_raise_on_the_isolated_item(self):
+        # Review of #297 finding 1: the adapter now emits the conflicting item
+        # as UNTRACED with an event_id, so it reaches propose(). Raising there
+        # made the emitter retry that one event forever.
+        post = post_with({'new': ([row(NOW)], [row(NOW + dt.timedelta(days=1))])})
+        self.assertEqual(de.judge(post, 'new', NOW, isolate_deadline=True)['verdict'], de.UNTRACED)
+        client, calls = jev_answering('policy_measurement-needs-a-control', 0.9)
+        writes = []
+        p = de.plan(post, client, 'new', NOW)
+        out = de.propose(post, lambda *a: writes.append(a), client,
+                         {'item': 'new', 'event_id': de.event_id('new')}, NOW)
+        for r in (p, out):
+            self.assertEqual(r['outcome'], 'needs-ruling')
+            self.assertEqual(r['verdict'], de.UNTRACED)
+            self.assertIn('conflicting traceability deadlines', r['why'])
+        self.assertEqual(calls, [], 'no Jev call for an unreadable deadline')
+        self.assertEqual(writes, [], 'nothing written')
+
+    def test_proposer_noops_a_traced_item_with_an_unreadable_deadline(self):
+        post = post_with({'old': ([row(NOW)], [row(NOW + dt.timedelta(days=1))])})
+        client, calls = jev_answering('policy_measurement-needs-a-control', 0.9)
+        out = de.plan(post, client, 'old', NOW)
+        self.assertEqual((out['outcome'], out['verdict']), ('noop', de.TRACED))
+        self.assertEqual(calls, [])
 
     def test_failed_read_still_fails_the_batch(self):
         base = board()
