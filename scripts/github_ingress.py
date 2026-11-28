@@ -949,9 +949,12 @@ def drain_once(spool: Spool, *, actor: str, writer, repos: set[str] | None = Non
             tally("duplicate")
             continue
         repo = repository_digest(body)
-        if repo is not None:
+        if repo is not None and attempts == 0:
             body, elided = elide_repository(body, spool.repo_asserted(repo[0]))
         else:
+            # A peer may refill the shared digest after this delivery's elided
+            # refusal. Persisted attempts keep every retry self-contained,
+            # including after restart; a full-body refusal can then quarantine.
             elided = False
         try:
             writer(body)
