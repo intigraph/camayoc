@@ -154,8 +154,70 @@ def governed_memory():
     s.text(40, 536, "A refused record is reported with the field it lacks. It is never stored quietly.", 12.5, DIM)
     return s.render()
 
+def pack_lifecycle():
+    s = Svg(960, 590, (
+        "A pack, from declaration to feedback. Six stages run left to right. Declare: an author writes one "
+        "directory that holds a domain's terms, shapes, queries, questions and commands. Check: Camayoc "
+        "confirms that every question has a query and every command has a test. Load: Quipu takes the pack "
+        "after a dry run and records which version it holds. Generate: Camayoc produces the same commands as a "
+        "CLI, as MCP tools and as agent guidance. Use: an agent or a person calls a command, and each call is "
+        "checked and leaves a receipt. Learn: Desire Path groups refusals and missing commands into proposals. "
+        "A proposal that a person accepts changes the declaration, which closes the loop. Below the stages is "
+        "what the store knows about a pack: the installed version that cy pack status compares with the pack, "
+        "the verdict for each question, the installed pack's name, version and digest, the records and "
+        "receipts from use, and the proposals waiting for a person."))
+    s.text(40, 52, "A pack, from declaration to feedback", 24, INK, 700)
+    s.text(40, 78, "A domain is declared once. Every surface an agent uses is generated from that declaration.", 14)
 
-DIAGRAMS = {"governed-memory.svg": governed_memory}
+    xs, w, top, h = [30, 182, 334, 486, 638, 790], 138, 150, 176
+    stages = [
+        ("AUTHOR", "Declare", "pack.toml", "One directory: terms, shapes, queries, questions and commands."),
+        ("CAMAYOC", "Check", "cy pack check", "Every question has a query. Every command has a test."),
+        ("QUIPU", "Load", "cy pack load", "A dry run first. Then the store records the version it holds."),
+        ("CAMAYOC", "Generate", "cy · MCP · skill", "The same commands as a CLI, as MCP tools and as guidance."),
+        ("AGENT OR PERSON", "Use", "cy record · cy ask", "Each call is checked and leaves a receipt."),
+        ("DESIRE PATH", "Learn", "dp paths", "Refusals and missing commands group into proposals."),
+    ]
+    for x, (role, title, cmd, cap) in zip(xs, stages):
+        hot = title == "Use"
+        s.card(x, top, w, h, stroke=PINK if hot else EDGE, sw=1.6 if hot else 1.2)
+        s.text(x + 13, top + 24, role, 9, GOLD, 700, spacing="0.8")
+        s.text(x + 13, top + 50, title, 15, INK, 700)
+        s.text(x + 13, top + 71, cmd, 10.5, PINK, cls="m")
+        s.para(x + 13, top + 94, cap, w - 22, 12)
+    for x in xs[:-1]:
+        s.path(f"M{x + w + 1} {top + 44} H{x + w + 6}", "pipe")
+        s.head(x + w + 13, top + 44, "right", CORAL)
+    a, b = xs[5] + w / 2, xs[0] + w / 2
+    s.path(f"M{a} {top - 2} V{top - 28} H{b} V{top - 12}", "pipe")
+    s.head(b, top - 3, "down", CORAL)
+    s.text((a + b) / 2, top - 36, "an accepted proposal changes the declaration", 12, CORAL, anchor="middle")
+
+    rtop = 392
+    s.card(30, rtop, 898, 136)
+    s.text(46, rtop + 24, "WHAT THE STORE KNOWS ABOUT A PACK", 10, GOLD, 700, spacing="1")
+    record = [
+        (0, "Drift", "cy pack status compares the store with the pack.", "up"),
+        (1, "Verdicts", "Which questions pass on this store.", "down"),
+        (2, "Installed pack", "Its name, version and digest.", "down"),
+        (4, "Receipts", "Who called what, and the outcome.", "down"),
+        (5, "Proposals", "A change waiting for a person.", "down"),
+    ]
+    for i, title, cap, way in record:
+        x = xs[i]; mid = x + w / 2
+        if way == "up":
+            s.path(f"M{mid} {rtop - 4} V{top + h + 12}", "up")
+            s.head(mid, top + h + 3, "up", GOLD)
+        else:
+            s.path(f"M{mid} {top + h + 4} V{rtop - 12}", "down")
+            s.head(mid, rtop - 3, "down", PINK)
+        s.text(x + 13, rtop + 54, title, 13.5, INK, 700)
+        s.para(x + 13, rtop + 74, cap, w - 20, 11.5)
+    s.text(40, 566, "Gold: read from the store. Pink: written to the store.", 12, DIM)
+    return s.render()
+
+
+DIAGRAMS = {"governed-memory.svg": governed_memory, "pack-lifecycle.svg": pack_lifecycle}
 
 if __name__ == "__main__":
     out = Path(sys.argv[1])
