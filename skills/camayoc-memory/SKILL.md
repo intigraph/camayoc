@@ -185,12 +185,23 @@ and expired records.
 | `cy recall <entity> [filters]` | Current records, declared first, at most 50 |
 | `cy recall decision --history <key>` | Every version of one decision key |
 | `cy topic add <name> [--alias ...]` | Register a memory topic (a natural-key part) |
+| `cy entity add NAME --type Person\|System\|Agent` | Register a named entity; refuse duplicates and show the match |
 | `cy flush` | Replay the local FIFO; keep any unconfirmed head and its tail |
 | `cy flush --hook` | Bounded replay for hooks; always exits 0 |
 | `cy backlog` | Read the local queued count as JSON; unknown is null |
 | `cy mcp` | Serve the same tools over MCP stdio (`record_<entity>`, `recall_<entity>`) |
 | `cy prime [--brief] [--json] [--static]` | This primer plus live state |
 | `cy record <entity> --help` | Every flag of one entity, from its shape |
+
+Entity names use the local-name spelling accepted by `cy record` (letters,
+digits, `.`, `_`, `~` and `-`, starting with a letter or digit). Registration
+checks Person, System and Agent instances, including subclasses, across ROOT
+and the configured memory planes. It compares local names, labels and aliases,
+ignoring case and punctuation, and refuses one-edit differences or spelling
+similarity of at least 85%. An incomplete lookup refuses registration.
+Writes use the declared plane and the store's loaded vocabulary and shapes;
+registration does not load shapes or silently alias names. `cy record` continues
+to refuse unknown names.
 
 ## MCP tools
 

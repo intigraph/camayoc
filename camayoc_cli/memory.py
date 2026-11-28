@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import re
+from difflib import SequenceMatcher
 from dataclasses import dataclass, field
 
 from . import definitions, planes, quipu
@@ -567,6 +568,70 @@ def flush_all(env=None, *, limit=100, timeout=10.0) -> Outcome:
     data['quarantine_retention'] = {key: retention.get(key, 0) + extra.get(key, 0)
                                    for key in retention.keys() | extra.keys()}
     return Outcome(captured.code, out.lines + captured.lines, data)
+
+
+# ---- entity registration --------------------------------------------------------
+
+def _close_name(left: str, right: str) -> bool:
+    """Ignore case/punctuation; refuse one edit or >=85% spelling similarity."""
+    left, right = ("".join(c for c in s.casefold() if c.isalnum()) for s in (left, right))
+    if left == right:
+        return True
+    if not left or not right:
+        return False
+    if abs(len(left) - len(right)) <= 1:
+        # One insertion/deletion/substitution, including short-name typos.
+        if len(left) > len(right):
+            left, right = right, left
+        for i, (a, b) in enumerate(zip(left, right)):
+            if a != b:
+                one_edit = left[i + 1:] == right[i + 1:] if len(left) == len(right) else left[i:] == right[i + 1:]
+                if one_edit:
+                    return True
+                break
+        else:
+            return True
+    return SequenceMatcher(None, left, right).ratio() >= 0.85
+
+
+def add_entity(name: str, entity_type: str, client: quipu.Client | None = None, env=None) -> Outcome:
+    """Explicit registration only; never silently alias or overwrite a name."""
+    if entity_type not in ("Person", "System", "Agent"):
+        return Outcome(2, ["Not registered: --type must be Person, System or Agent."])
+    problems = secret_refusals({"name": name})
+    if problems:
+        return Outcome(2, problems)
+    if not _LOCAL.fullmatch(name):
+        return Outcome(2, ["Not registered: NAME must be a local name of letters, digits, '.', '_', '~' or '-'."])
+    client = client or quipu.Client()
+    a = ns()
+    iri = to_iri(name)
+    if entity_exists(client, iri):
+        return Outcome(2, [f"Not registered: entity already exists: {iri}."], {"match": iri})
+    # A bounded, deterministic check, including subclasses and labels/aliases.
+    # Never use resolve(): its best-effort failures look like no candidates.
+    rows = client.query(
+        f"SELECT DISTINCT ?iri ?label {_from_all()} WHERE {{ "
+        f"VALUES ?kind {{ <{a}Person> <{a}System> <{a}Agent> }} "
+        f"?iri a ?type . ?type <http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?kind . "
+        f"OPTIONAL {{ {{ ?iri <http://www.w3.org/2000/01/rdf-schema#label> ?label }} "
+        f"UNION {{ ?iri <{a}alias> ?label }} }} }} ORDER BY ?iri ?label LIMIT 10001",
+        require_complete=True)
+    if len(rows) > 10000:
+        return Outcome(2, ["Not registered: entity lookup exceeded 10000 names; duplicate check incomplete."])
+    for row in rows:
+        match = quipu.value(row["iri"])
+        label = quipu.value(row.get("label"))
+        if any(_close_name(name, spelling) for spelling in (local_name(match), label) if spelling):
+            return Outcome(2, [f"Not registered: '{name}' is close to {label or local_name(match)} ({match}). "
+                               "Use the existing entity or choose a distinct name."], {"match": match})
+    turtle = (f"{iri_ref(iri)} a <{a}{entity_type}> ; "
+              f"<http://www.w3.org/2000/01/rdf-schema#label> {lit(name)} .\n")
+    try:
+        client.knot(turtle, planes.plane_for("declared"), agent_name(env), "camayoc:cy entity add")
+    except quipu.Refused as exc:
+        return Outcome(2, exc.messages)
+    return Outcome(0, [f"registered {entity_type} {iri}"], {"iri": iri, "status": "recorded"})
 
 
 # ---- topics ---------------------------------------------------------------------

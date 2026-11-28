@@ -139,8 +139,11 @@ class Client:
     def health(self, timeout: float | None = None) -> dict:
         return self._request("/health", timeout=timeout)
 
-    def query(self, sparql: str, timeout: float | None = None) -> list[dict]:
-        return self._request("/query", {"query": sparql, "verbose": True}, timeout=timeout).get("rows", [])
+    def query(self, sparql: str, timeout: float | None = None, *, require_complete=False) -> list[dict]:
+        result = self._request("/query", {"query": sparql, "verbose": True}, timeout=timeout)
+        if require_complete and (result.get("truncated") or "rows" not in result):
+            raise QuipuError("entity lookup incomplete; nothing registered")
+        return result.get("rows", [])
 
     def ask(self, name: str, params: dict) -> dict:
         return self._request("/ask", {"name": name, "params": params})
