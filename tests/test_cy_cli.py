@@ -37,6 +37,8 @@ from quipu_bin_guard import QUIPU_SERVER as QUIPU_SERVER_BIN, requires_quipu_ser
 from camayoc_cli import __version__, cli, definitions, memory, planes as cy_planes  # noqa: E402
 
 A = "http://aegis.gastown.local/ontology/"
+#: Minted instance IRIs use the configured base (aegis-55ya); unset in tests.
+I = cy_planes.DEFAULT_INSTANCE_NS
 SECRET_TAIL = "Ab3dE5gH7jK9mN2pQ4sT6vW8yZ1bC3dF5hJ7"
 
 
@@ -394,7 +396,7 @@ class LocalStoreTests(unittest.TestCase):
             with self.subTest(entity=entity):
                 code, out, err = self.cy(*example_argv(entity), now=next(clock))
                 self.assertEqual(0, code, err)
-                self.assertRegex(out, rf"^(recorded {entity}|unchanged|superseded) {re.escape(A)}mem/{entity}/")
+                self.assertRegex(out, rf"^(recorded {entity}|unchanged|superseded) {re.escape(I)}mem/{entity}/")
                 code, out, err = self.cy(*example_argv(entity), now=next(clock))
                 self.assertEqual(0, code, err)
                 self.assertTrue(out.startswith("unchanged "), out)

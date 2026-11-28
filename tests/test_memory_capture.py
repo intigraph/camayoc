@@ -234,7 +234,7 @@ class OfflineCaptureTests(Isolated):
         self.assertNotIn(" a <", ttl, "a capture is untyped: no class, no shape, never refused for its kind")
         self.assertIn(f"<{A}kindHint> \"decision\"", ttl)
         self.assertIn("urn:camayoc:session:claude:abc", ttl)
-        self.assertTrue(capture.capture_iri(entry).startswith(f"{A}mem/capture/20261028T120000Z-"))
+        self.assertTrue(capture.capture_iri(entry).startswith(f"{planes.DEFAULT_INSTANCE_NS}mem/capture/20261028T120000Z-"))
 
 
 class OfflineFillTests(Isolated):
@@ -469,7 +469,7 @@ class LocalPromotionTests(unittest.TestCase):
             f"<{A}captureSource> ?src . OPTIONAL {{ ?c <{A}promotedTo> ?p }} }}")
         by = {quipu.value(r["src"]): quipu.value(r.get("p")) for r in rows}
         self.assertEqual({"prompt", "answer"}, set(by))
-        self.assertIn(f"{A}mem/directive/hammond/dup-test/", by["prompt"], "session end promoted the ruling")
+        self.assertIn(f"{planes.DEFAULT_INSTANCE_NS}mem/directive/hammond/dup-test/", by["prompt"], "session end promoted the ruling")
         self.assertEqual("", by["answer"], "a plain answer stays evidence")
         self.assertEqual([], capture.spooled(env))
 

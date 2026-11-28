@@ -41,7 +41,16 @@ class Outcome:
 
 
 def ns() -> str:
+    """The VOCABULARY namespace (classes and properties the shapes gate on).
+
+    Not a base for minted instance IRIs: those come from inst() (aegis-55ya).
+    """
     return definitions.load()["namespace"]
+
+
+def inst() -> str:
+    """The configured DEPLOYMENT INSTANCE base for record, topic and capture IRIs."""
+    return planes.instance_ns()
 
 
 def now() -> _dt.datetime:
@@ -245,9 +254,11 @@ def current_versions(client: quipu.Client, entity: dict, key: str) -> list[dict]
     a = ns()
     issuer = next((f for f in entity["fields"] if f["name"] == entity.get("issuer")), None)
     issuer_sel = f"OPTIONAL {{ ?iri <{definitions.expand(issuer['path'])}> ?issuer }}" if issuer else ""
+    keys = [key] if isinstance(key, str) else list(key)
     rows = client.query(
-        f"SELECT ?iri ?hash ?sourceKind ?issuer {_from_all()} WHERE {{ "
-        f"?iri <{a}naturalKey> {iri_ref(key)} ; <{a}contentHash> ?hash ; <{a}sourceKind> ?sourceKind . "
+        f"SELECT ?iri ?key ?hash ?sourceKind ?issuer {_from_all()} WHERE {{ "
+        f"VALUES ?key {{ {' '.join(iri_ref(k) for k in keys)} }} "
+        f"?iri <{a}naturalKey> ?key ; <{a}contentHash> ?hash ; <{a}sourceKind> ?sourceKind . "
         f"{issuer_sel} FILTER NOT EXISTS {{ ?iri <{a}supersededBy> ?newer }} }} ORDER BY DESC(?iri)")
     return [{k: quipu.value(v) for k, v in r.items()} for r in rows]
 
@@ -341,13 +352,19 @@ def record(entity_name: str, args: dict, *, supersede: str | None = None, flags:
 
         a = ns()
         key_parts = [local_name(resolved[k][0]) for k in entity["key"]]
-        key = f"{a}mem/{entity_name}/" + "/".join(key_parts)
+        suffix = f"mem/{entity_name}/" + "/".join(key_parts)
+        # Readers accept the configured base and the former one. A key that
+        # already has a current version keeps its base, so an old-IRI record is
+        # superseded on its own key rather than shadowed by a second one; a new
+        # key is minted under the configured base only.
+        current = current_versions(client, entity, [b + suffix for b in planes.instance_bases()])
+        key = current[0]["key"] if current and current[0].get("key") else inst() + suffix
+        current = [c for c in current if c.get("key", key) == key]
         t = now()
         version = f"{key}/{t.strftime('%Y%m%dT%H%M%SZ')}"
         canonical = json.dumps({k: resolved[k] for k in sorted(resolved)}, sort_keys=True, ensure_ascii=False)
         content_hash = "sha256:" + hashlib.sha256(canonical.encode()).hexdigest()
 
-        current = current_versions(client, entity, key)
         old = current[0] if current else None
         # Repair first: more than one current version on a key means an earlier
         # supersededBy back-link never landed (review of #183). Every older one
@@ -582,9 +599,12 @@ def add_topic(name: str, aliases: list[str], client: quipu.Client | None = None,
         return Outcome(2, problems)
     client = client or quipu.Client()
     a = ns()
-    iri = f"{a}{TOPIC_NS}{s}"
-    if find_topic(client, s) == iri and not aliases:
-        return Outcome(0, [f"unchanged {iri}"], {"iri": iri, "status": "unchanged"})
+    iri = f"{inst()}{TOPIC_NS}{s}"
+    existing = find_topic(client, s)
+    if existing in {b + TOPIC_NS + s for b in planes.instance_bases()}:
+        iri = existing  # an already-registered topic keeps its IRI, old base or new
+        if not aliases:
+            return Outcome(0, [f"unchanged {iri}"], {"iri": iri, "status": "unchanged"})
     triples = [f"a <{a}MemoryTopic>", f"<http://www.w3.org/2000/01/rdf-schema#label> {lit(s)}"]
     alias_vals = [x for x in aliases if slug(x) and x != s]
     if alias_vals:
@@ -614,6 +634,15 @@ def render(template: str, params: list[dict], values: dict) -> str:
     return sparql
 
 
+def _ask(client: quipu.Client, query: dict, values: dict) -> list:
+    try:
+        return client.ask(query["name"], values).get("rows", [])
+    except quipu.QuipuError as exc:
+        if isinstance(exc, quipu.Unreachable) or "unknown" not in str(exc).lower() and "not found" not in str(exc).lower():
+            raise
+        return client.query(render(query["template"], query["params"], values))
+
+
 def recall(entity_name: str, filters: dict, *, history: str | None = None,
            client: quipu.Client | None = None) -> Outcome:
     try:
@@ -633,6 +662,7 @@ def _recall(entity_name: str, filters: dict, *, history: str | None = None,
         return Outcome(2, [f"Not recalled: {entity_name} has no {'history' if history else 'current'} query."])
     t = now()
     values = dict(planes.iris())
+    key_paths: list[str] = []
     for p in query["params"]:
         name = p["name"]
         if name in values:
@@ -648,7 +678,10 @@ def _recall(entity_name: str, filters: dict, *, history: str | None = None,
                 parts = [x for x in h.strip("/").split("/")]
                 if not parts or not all(_LOCAL.match(x) for x in parts):
                     raise BadInput(h)
-                values[name] = f"{ns()}mem/{entity_name}/{'/'.join(parts)}"
+                # A bare key path is tried under every accepted base, the
+                # configured one first, so an old-IRI record still recalls.
+                key_paths = [f"{b}mem/{entity_name}/{'/'.join(parts)}" for b in planes.instance_bases()]
+                values[name] = key_paths[0]
         elif name == "now":
             values[name] = iso(t)
         elif name == "fresh_since":
@@ -664,18 +697,16 @@ def _recall(entity_name: str, filters: dict, *, history: str | None = None,
             if not raw:
                 values[name] = ""
             elif field_def["kind"] == "iri":
-                values[name] = (find_topic(client or quipu.Client(), raw) or to_iri(f"{TOPIC_NS}{slug(raw)}")) \
+                values[name] = (find_topic(client or quipu.Client(), raw) or f"{inst()}{TOPIC_NS}{slug(raw)}") \
                     if name == "topic" else to_iri(raw)
             else:
                 values[name] = raw
     client = client or quipu.Client()
-    try:
-        answer = client.ask(query["name"], values)
-        rows = answer.get("rows", [])
-    except quipu.QuipuError as exc:
-        if isinstance(exc, quipu.Unreachable) or "unknown" not in str(exc).lower() and "not found" not in str(exc).lower():
-            raise
-        rows = client.query(render(query["template"], query["params"], values))
+    rows = _ask(client, query, values)
+    for alt in key_paths[1:]:
+        if rows:
+            break
+        rows = _ask(client, query, {**values, "key": alt})
     rows = [{k: quipu.value(v) for k, v in r.items()} for r in rows]
     overflow = len(rows) > 50
     rows = rows[:50]

@@ -184,7 +184,7 @@ def client_for(env=None, timeout: float = 15.0) -> quipu.Client:
 
 def capture_iri(entry: dict) -> str:
     stamp = entry["at"].replace("-", "").replace(":", "")
-    return f"{memory.ns()}mem/capture/{stamp}-{entry['hash'][7:19]}"
+    return f"{memory.inst()}mem/capture/{stamp}-{entry['hash'][7:19]}"
 
 
 def turtle(entry: dict) -> str:

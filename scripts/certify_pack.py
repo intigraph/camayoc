@@ -272,6 +272,9 @@ def build_envelope(manifest: PackManifest, certification: Certification) -> str:
         else ""
     )
 
+    # VOCABULARY only (aegis:CertifiedShareBundle and its properties); every
+    # instance IRI here is caller-supplied. Held on the namespace the loaded
+    # shapes gate on until the shapes move (aegis-m5s.3).
     return f"""@prefix aegis: <http://aegis.gastown.local/ontology/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 

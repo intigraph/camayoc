@@ -167,6 +167,11 @@ text a caller makes up:
   `aegis:mem/<kind>/<scope-local-name>/<topic-local-name>`.
 - Each version's own IRI is the key IRI plus `/<recordedAt as yyyymmddThhmmssZ>`,
   so versions never collide and supersession links two IRIs.
+- The `mem/` instance base is configuration, not vocabulary
+  (aegis-55ya): `CAMAYOC_INSTANCE_NS`, default `https://camayoc.local/id/`.
+  The aegis deployment configures its former base, so its keys are unchanged.
+  A key that already has a current version under the former base keeps that
+  base, and key-path recall tries the configured base and then the former one.
 - If a new record has the same `about` or scope as a current record, a
   different topic, and a label similarity of 0.8 or more, it is written but
   also listed by `mem_conflicts()`. It never silently becomes a fresh key.

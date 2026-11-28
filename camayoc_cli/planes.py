@@ -14,6 +14,28 @@ def plane_ns() -> str:
     return os.environ.get("CAMAYOC_PLANE_NS", "https://camayoc.local/plane/")
 
 
+#: Neutral public default for DEPLOYMENT INSTANCE IRIs this tool mints
+#: (mem/<kind>/... record keys and versions, mem/topic/, mem/capture/). No
+#: private homelab host is the default (aegis-55ya). A deployment that already
+#: holds records sets CAMAYOC_INSTANCE_NS to its existing base so its keys keep
+#: their IRIs; the aegis deployment sets it to LEGACY_INSTANCE_NS.
+DEFAULT_INSTANCE_NS = "https://camayoc.local/id/"
+#: FORMER-NAME ALIAS, read side only: the base every aegis record was minted
+#: under before aegis-55ya. Readers also look here so an old-IRI record still
+#: recalls and supersedes; nothing new is minted under it unless configured.
+LEGACY_INSTANCE_NS = "http://aegis.gastown.local/ontology/"
+
+
+def instance_ns() -> str:
+    """The configured base for instance IRIs (CAMAYOC_INSTANCE_NS)."""
+    return os.environ.get("CAMAYOC_INSTANCE_NS") or DEFAULT_INSTANCE_NS
+
+
+def instance_bases() -> list[str]:
+    """Bases readers accept: the configured one first, then the former name."""
+    return list(dict.fromkeys([instance_ns(), LEGACY_INSTANCE_NS]))
+
+
 def plane_for(source_kind: str) -> str:
     if source_kind not in ROUTES:
         raise ValueError(f"no plane for sourceKind '{source_kind}'; refusing to default to ROOT")
