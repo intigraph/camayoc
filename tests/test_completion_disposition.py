@@ -135,6 +135,56 @@ class CompletionDisposition(unittest.TestCase):
                 self.assertIs(summary['receipt_tx_valid'], tx == 'nonnegative_integer')
                 self.assertEqual(json.dumps(status, sort_keys=True), before)
 
+    def restart(self, status, *, sent=1000.0, starts=(1001.0, 1001.0), proof='absent'):
+        journal = SimpleNamespace(db=self.db, send_ended=lambda item, write_id:
+                                  sent if (item, write_id) == ('fixture', 'a' * 64) else None)
+        reads = list(starts)
+        def started():
+            value = reads.pop(0)
+            if isinstance(value, Exception):
+                raise value
+            return value
+        diagnostics = {}
+        with patch.object(sync, 'effect_not_applied', return_value=proof) as absence:
+            result = sync.completed_without_effect(lambda route, body: status, journal, self.envelope,
+                                                   'fixture', diagnostics=diagnostics,
+                                                   process_start=started)
+        return result, diagnostics['completion_disposition'], absence.call_count, reads
+
+    def test_forgotten_receipt_after_receiving_restart_needs_absence_and_stable_start(self):
+        """aegis-moy: the CD's quipu restart forgets the write_id ('unknown')."""
+        for state in sync.FORGOTTEN_STATES:
+            status = {'contract': 'quipu.knot-completion/v1', 'write_id': 'a' * 64, 'state': state}
+            with self.subTest(state=state):
+                result, summary, proofs, left = self.restart(status)
+                self.assertTrue(result)
+                self.assertEqual((summary['worker_fence'], summary['absence'], proofs, left),
+                                 ('receiving-process-restarted', 'proved', 1, []))
+        status = {'contract': 'quipu.knot-completion/v1', 'write_id': 'a' * 64, 'state': 'unknown'}
+        refused = [
+            ('restart before send ended', dict(starts=(999.0,)), 0, 'unproved'),
+            ('restart at the send bound', dict(starts=(1000.0,)), 0, 'unproved'),
+            ('no recorded send end', dict(sent=None, starts=(1001.0,)), 0, 'unproved'),
+            ('start unreadable', dict(starts=(OSError('down'),)), 0, 'unproved'),
+            ('start in the future', dict(starts=(9e18,)), 0, 'unproved'),
+            ('restarted again during the proof', dict(starts=(1001.0, 1002.0)), 1, 'restarted-during-proof'),
+            ('start unreadable after the proof', dict(starts=(1001.0, OSError('down'))), 1, 'restarted-during-proof'),
+            ('effect not proved absent', dict(proof=None), 1, 'receiving-process-restarted'),
+        ]
+        for label, kwargs, proofs_expected, fence in refused:
+            with self.subTest(label):
+                result, summary, proofs, _ = self.restart(status, **kwargs)
+                self.assertFalse(result)
+                self.assertEqual((summary['worker_fence'], proofs), (fence, proofs_expected))
+        # A live, finished or receipt-bearing status is never a forgotten one.
+        for extra in ({'state': 'running'}, {'state': 'queued'}, {'state': 'finished'},
+                      {'state': 'unknown', 'receipt': {}}, {'state': 'unknown', 'truncated': True}):
+            with self.subTest(extra=extra):
+                result, summary, proofs, left = self.restart({**status, **extra})
+                self.assertFalse(result)
+                self.assertNotIn('worker_fence', summary)
+                self.assertEqual((proofs, left), (0, [1001.0, 1001.0]))
+
     def test_queued_is_recognized_but_never_authorizes_absence_or_release(self):
         result, summary, proofs = self.run_status({**self.status, 'state': 'queued'})
         self.assertFalse(result)

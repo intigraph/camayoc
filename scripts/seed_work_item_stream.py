@@ -72,6 +72,10 @@ def run(args):
                 headers['Authorization'] = 'Bearer ' + token
             stream = seed_change_stream.Subscription(planes.SERVER, reader.board.graph,
                                                     journal.cursor, identity, headers)
+            get = sync.server_get(planes.SERVER)
+            def process_start():
+                # aegis-moy: a quipu restart forgets in-flight write_ids.
+                return sync.receiving_process_start(get)
             def post(endpoint, body, **kwargs):
                 return planes._post(endpoint, body, client='camayoc-ingress', **kwargs)
             while True:
@@ -85,7 +89,8 @@ def run(args):
                     continue
                 if stream.connected and stream.source_verified:
                     receipt = sync.tick(reader, journal, post, changes=None,
-                                        plane=planes.plane_for('observed'), actor=args.actor, completion=True)
+                                        plane=planes.plane_for('observed'), actor=args.actor, completion=True,
+                                        process_start=process_start)
                 else:
                     receipt = {'status': 'UNKNOWN', 'writes': 0, 'requests': 0, 'verified': 0,
                                'cursor': journal.cursor,
