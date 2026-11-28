@@ -32,7 +32,7 @@ jobs:
         with:
           name: source-release
           path: release
-      - name: Publish existing source format
+      - name: Publish verified source and wheel
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
@@ -45,8 +45,10 @@ jobs:
           expected_revision=$(python3 -c 'import json; print(json.load(open("source.json"))["source_revision"])')
           test "$current_revision" = "$expected_revision"
           python3 -c 'import hashlib,json,sys; p=json.load(open("source.json")); assert p["tag"] == sys.argv[1]; assert p["artifact"] == "camayoc-" + sys.argv[1] + ".tar.gz"; assert hashlib.sha256(open(p["artifact"],"rb").read()).hexdigest() == p["sha256"]' "$RELEASE_TAG"
-          python3 -c 'import json; p=json.load(open("source.json")); print("Source bundle from revision " + p["source_revision"] + ". No native executable is included.")' > notes.txt
-          gh release create "$RELEASE_TAG" "camayoc-${RELEASE_TAG}.tar.gz" SHA256SUMS source.json --verify-tag --title "Camayoc $RELEASE_TAG" --notes-file notes.txt
+          python3 -c 'import json; p=json.load(open("source.json")); print("Source bundle from revision " + p["source_revision"] + ". Includes the dependency-free Python CLI wheel; no native executable is included.")' > notes.txt
+          wheel=$(python3 -c 'import json; print(json.load(open("source.json"))["wheel"]["artifact"])')
+          python3 -c 'import hashlib,json,sys; p=json.load(open("source.json")); w=p["wheel"]; assert w["artifact"] == "camayoc-" + p["version"] + "-py3-none-any.whl"; assert hashlib.sha256(open(w["artifact"],"rb").read()).hexdigest() == w["sha256"]'
+          gh release create "$RELEASE_TAG" "camayoc-${RELEASE_TAG}.tar.gz" "$wheel" SHA256SUMS source.json --verify-tag --title "Camayoc $RELEASE_TAG" --notes-file notes.txt
 
   repository-pendant:
     name: Verify repository pendant assets

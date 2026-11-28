@@ -8,6 +8,10 @@ on:
       - '.github/workflows/release*.yml'
       - 'scripts/package_release.py'
       - 'tests/test_package_release.py'
+      - 'scripts/build_release_wheel.py'
+      - 'tests/test_release_wheel.py'
+      - 'pyproject.toml'
+      - 'camayoc_cli/**'
   workflow_call:
     inputs:
       tag:
@@ -73,6 +77,9 @@ jobs:
           mkdir extracted
           tar -xzf "release/camayoc-${RELEASE_TAG}.tar.gz" -C extracted
           python3 -m unittest discover -s "extracted/camayoc-${RELEASE_TAG}/tests" -p test_bootstrap_rerun.py -v
+      - name: Build and smoke-test wheel from verified source archive
+        run: |
+          python3 scripts/build_release_wheel.py "extracted/camayoc-${RELEASE_TAG}" release
       - uses: actions/upload-artifact@v4
         with:
           name: source-release

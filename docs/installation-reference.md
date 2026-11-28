@@ -117,7 +117,7 @@ Handoff, Reference), generated from `shapes/agent-memory.shapes.ttl`
 library and is installed with:
 
 ```bash
-uv tool install git+https://github.com/intigraph/camayoc
+uv tool install https://github.com/intigraph/camayoc/releases/download/v0.1.12/camayoc-0.1.12-py3-none-any.whl
 ```
 
 This installs `camayoc` and `cy` (the same entry point). `cy prime` prints
