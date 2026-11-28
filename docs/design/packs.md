@@ -1,7 +1,7 @@
 # Design: packs and one front door
 
-**Status: proposed (2026-11-28).** Nothing on this page is built unless a
-"today" column says so.
+**Status: accepted, not built (2026-11-28).** Nothing on this page is built
+unless a "today" column says so.
 
 Camayoc promises a memory that is checked on the way in. That holds on a store
 someone has prepared by hand, and it does not hold for a person starting
@@ -149,14 +149,14 @@ Each phase ships on its own.
 | **4. Commands** | Commands declared in packs and generated as CLI and MCP, receipts, grants in observe mode, and Desire Path as the feedback path. | aegis-ssx5 and its five children |
 | **5. Workflows in packs** | Shuttle definitions ship in packs, and pack commands perform code steps. | aegis-77y |
 
-## Decisions this needs
+## Decisions (ruled 2026-11-28)
 
-| # | decision | recommendation |
+| # | decision | ruling |
 |---|---|---|
 | 1 | Whether the pack is the unit and `cy` the only front door | Yes. Everything Camayoc owns moves into packs, and every user-facing script becomes a `cy` subcommand. It extends the generator that already produces the memory commands. |
-| 2 | How a first person or system gets into a store | `cy init` adds the first person and agent, and `cy entity add` adds more and refuses near-duplicates. The alternative, where `cy record` creates any name it does not know, would fill the store with misspelled duplicates. |
+| 2 | How a first person or system gets into a store | `cy init` adds the first person and agent, and `cy entity add` adds more and refuses near-duplicates. `cy record` never creates a name it does not know, because that would fill the store with misspelled duplicates. |
 | 3 | What loads without a person | An additive change loads after its dry run passes: a new query, a new optional property, a new class under a governed parent. A change that tightens or removes goes to a person. This follows the 2026-11-06 ruling that Camayoc should make adding shapes easier and not wait on one person. |
-| 4 | What goes first | Phase 0 now, as small items, because it repairs things that are broken today. Phases 1 to 3 queue behind the three milestones. Phase 4 keeps the rank epic aegis-ssx5 already has. |
+| 4 | What goes first | Phase 0 now, as small items under aegis-a1sn, because it repairs things that are broken today. Phases 1 to 3 queue behind the three milestones. Phase 4 keeps the rank epic aegis-ssx5 already has. |
 
 ## What stays the same
 
