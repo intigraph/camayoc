@@ -20,3 +20,10 @@ The competency questions themselves live in
 [`competency/`](https://github.com/intigraph/camayoc/tree/main/competency); the
 stored queries that answer them live in
 [`queries/`](https://github.com/intigraph/camayoc/tree/main/queries).
+
+Measured on 2026-11-28: **124 competency questions** across eleven slices —
+**44 stored**, **33 expressible and unwritten**, and **47 competency gaps**
+(`just query-coverage`). The query library contains **67 stored queries**;
+that counts query files, not covered questions. Re-run the coverage command
+and count the 66 `queries/*.json` plus one `queries/*.rq` file to refresh
+these figures.

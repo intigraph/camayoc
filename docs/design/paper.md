@@ -167,8 +167,11 @@ must name what would falsify it.
 ## 5. Evaluation — and its honest state
 
 **Methodology: competency questions, which are the standard for ontology work.**
-The suite is 91 questions across six slices, machine-readable and watermarked
-(`sha256:65bc4c5ad3d84752`, `just competency-list`). The suite sets its own bar:
+As of 2026-11-28, the suite is 124 questions across eleven slices,
+machine-readable and watermarked (`sha256:f752e8ed721a8917`,
+`just competency-list`). Suite-wide coverage is 44 stored, 33 expressible and
+unwritten, and 47 competency gaps (`just query-coverage`); the library holds
+67 stored query files. The suite sets its own bar:
 *every question must eventually run as a named stored query.*
 
 **Coverage of the verification-and-liveness slice: 16 of 19 (`Partial`).**

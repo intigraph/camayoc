@@ -3,6 +3,8 @@
 [Introduction](vision.md)
 
 - [Getting started](getting-started.md)
+- [Installation reference](installation-reference.md)
+- [Offline memory](offline-memory.md)
 - [Using it with agents](agents.md)
 - [Reference](reference.md)
 - [Governance resources](governance.md)
@@ -14,6 +16,10 @@
 # How it works: design notes
 
 - [Ingress: how knowledge earns its way in](design/ingress.md)
+- [Planned work queries](design/planned-work-queries.md)
+- [Governance consumer contract](design/governance-consumer-contract.md)
+- [Memory capture](design/memory-capture.md)
+- [Search context](design/search-context.md)
 - [The bootstrap ontology](design/bootstrap-ontology.md)
 - [What belongs in the graph](design/what-belongs-in-the-graph.md)
 - [The skill is the interface](design/skill.md)
