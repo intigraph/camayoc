@@ -290,7 +290,12 @@ def _directive(kind, post, request, instant, now):
         # Filtering the scope itself makes the entire mixed batch UNKNOWN.
         if not de.is_directive(post, name):
             continue
-        r = de.judge(post, name, instant)
+        # One Directive's conflicting or malformed deadline made the whole
+        # batch exit 1 and stay UNKNOWN (aegis-ztja/aegis-b9k). It is a fact
+        # about that item: its verdict stands, its lapse is LAPSED with the
+        # reason in evidence, and the rest is judged. A failed read still
+        # fails the batch.
+        r = de.judge(post, name, instant, isolate_deadline=True)
         if kind == "directive-lapse":
             r = {**r, "verdict": r["lapse"], "event_id": r["lapse_event_id"]}
         elif r["verdict"] == de.PROPOSED:

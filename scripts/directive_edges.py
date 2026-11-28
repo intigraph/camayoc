@@ -145,18 +145,35 @@ def anchor(post, entity: str, verdict: str) -> dt.datetime | None:
     return min(times) if times else None
 
 
-def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
+def judge(post, entity: str, now: dt.datetime | None = None, *,
+          isolate_deadline: bool = False) -> dict:
     """Both views of one Directive. `verdict` drives the proposer; `lapse`
-    drives the alert. A TRACED Directive never lapses."""
+    drives the alert. A TRACED Directive never lapses.
+
+    A stored deadline that cannot be read as one instant (conflicting values,
+    malformed cell, bound reached) raises DeadlineUnknown. With
+    `isolate_deadline` (the batch adapter, aegis-b9k) it is a fact about this
+    item only: the verdict does not depend on it and is kept, and the lapse
+    view treats the deadline like an unanchored one, LAPSED now with the reason
+    in evidence, so it reaches a person instead of failing the batch or
+    waiting forever. There is no grace fallback either way. A failed read is
+    not DeadlineUnknown and always propagates."""
     now = now or dt.datetime.now(dt.timezone.utc)
     traced = all(_typed_link(post, entity, prop, cls) for prop, cls in
                  (("governedBy", "Policy"), ("trackedBy", "WorkItem")))
     proposed = not traced and all(_has(post, entity, p, (INFERRED,)) for p in EDGES)
     verdict = TRACED if traced else PROPOSED if proposed else UNTRACED
-    from directive_deadline import deadline
-    explicit_due = None if verdict == TRACED else deadline(
-        lambda q, g: _rows(post, q, g), bb.A + entity, DECLARED, _instant)
-    start = None if verdict == TRACED or explicit_due else anchor(post, entity, verdict)
+    from directive_deadline import DeadlineUnknown, deadline
+    unreadable = None
+    try:
+        explicit_due = None if verdict == TRACED else deadline(
+            lambda q, g: _rows(post, q, g), bb.A + entity, DECLARED, _instant)
+    except DeadlineUnknown as exc:
+        if not isolate_deadline:
+            raise
+        explicit_due, unreadable = None, str(exc)
+    start = (None if verdict == TRACED or explicit_due or unreadable
+             else anchor(post, entity, verdict))
     due = explicit_due or (start + GRACE if start else None)
     # UNANCHORED counts as LAPSED (wu, [wu-cm84-review] item 1): measured, 407 of
     # 868 Directives have no datable capture episode. A stateless adapter cannot
@@ -172,12 +189,17 @@ def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
             "lapse": lapse,
             # A lapse is a NEW event each time the anchor moves: a proposal that
             # lapses, is withdrawn and re-proposed is a second lapse, not a replay.
+            # KNOWN LIMIT (aegis-b9k): an unreadable deadline's lapse event is
+            # constant per Directive and verdict, so if its conflicting values
+            # change but stay unreadable, no new alert fires. The first one did.
             "lapse_event_id": (event_id(f"{entity}\0{verdict}\0"
-                                        f"{(explicit_due or start).isoformat() if (explicit_due or start) else 'unanchored'}")
+                                        f"{(explicit_due or start).isoformat() if (explicit_due or start) else 'unreadable-deadline' if unreadable else 'unanchored'}")
                                if lapse == LAPSED else None),
             "due_at": due.isoformat() if due else None,
             "explicit_deadline": explicit_due is not None,
-            "evidence": verdict, "owner": None}
+            "evidence": (f"{verdict}; traceability deadline UNKNOWN: {unreadable}"
+                         if unreadable else verdict),
+            "owner": None}
 
 
 def is_directive(post, entity: str) -> bool:
@@ -265,7 +287,19 @@ def plan(post, client, entity: str, now: dt.datetime) -> dict:
     """What `propose` would write for one Directive. Reads, plus one Jev call."""
     if not is_directive(post, entity):
         return {"entity": entity, "outcome": "noop", "verdict": "NOT_A_DIRECTIVE"}
-    state = judge(post, entity, now)
+    from directive_deadline import DeadlineUnknown
+    try:
+        state = judge(post, entity, now)
+    except DeadlineUnknown as exc:
+        # An unreadable deadline (aegis-b9k) is this item's fact, not a delivery
+        # failure: raising here made the emitter retry this one event forever.
+        # The verdict does not depend on the deadline; an UNTRACED Directive
+        # whose deadline cannot be read needs a person, so no Jev call is made.
+        verdict = judge(post, entity, now, isolate_deadline=True)["verdict"]
+        if verdict != UNTRACED:
+            return {"entity": entity, "outcome": "noop", "verdict": verdict}
+        return {"entity": entity, "outcome": "needs-ruling", "verdict": verdict,
+                "why": f"traceability deadline UNKNOWN: {exc}"}
     verdict = state["verdict"]
     if state["explicit_deadline"] and state["lapse"] == NOT_LAPSED:
         return {"entity": entity, "outcome": "noop", "verdict": "DEFERRED",
@@ -310,7 +344,7 @@ def propose(post, write, client, event: dict, now: dt.datetime | None = None) ->
     write("/knot", {"turtle": p["turtle"], "actor": ACTOR, "graph": INFERRED,
                     "source": f"aegis-q9m5mp.47 directive-edges {event['event_id']} "
                               f"jev {_option(p['policy'])} {p['confidence']:.2f}"})
-    after = judge(post, entity)["verdict"]
+    after = judge(post, entity, isolate_deadline=True)["verdict"]
     if after == UNTRACED:
         raise ConnectionError(f"{entity}: proposal written but not read back (indeterminate)")
     return {**{k: v for k, v in p.items() if k != "turtle"}, "outcome": "proposed", "verdict": after}
@@ -354,7 +388,8 @@ def repair(post, update, entity: str, apply: bool = False) -> dict:
     fixes = malformed(post, entity)
     base = {"entity": entity, "fixes": [{"prop": p, "from": s, "to": f} for p, s, f in fixes]}
     if not fixes:
-        return {**base, "outcome": "noop", "verdict": judge(post, entity)["verdict"]}
+        return {**base, "outcome": "noop",
+                "verdict": judge(post, entity, isolate_deadline=True)["verdict"]}
     if not is_directive(post, entity):
         return {**base, "outcome": "noop", "verdict": "NOT_A_DIRECTIVE"}
     body = {"update": repair_update(entity, fixes), "actor": ACTOR,
@@ -371,7 +406,7 @@ def repair(post, update, entity: str, apply: bool = False) -> dict:
     if left or not fixed:
         raise ConnectionError(f"{entity}: repair tx {result['tx']} committed but read-back failed")
     return {**base, "outcome": "repaired", "tx": result["tx"],
-            "verdict": judge(post, entity)["verdict"]}
+            "verdict": judge(post, entity, isolate_deadline=True)["verdict"]}
 
 
 def discover_malformed(post) -> list[str]:
