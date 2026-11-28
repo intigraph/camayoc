@@ -50,6 +50,9 @@ TRACED, PROPOSED, UNTRACED = "TRACED", "PROPOSED", "UNTRACED"
 #: an explicit traceability deadline replaces the legacy GRACE fallback.
 #: A still-untraced directive reaches a person when its deadline passes.
 LAPSED, NOT_LAPSED = "LAPSED", "NOT_LAPSED"
+#: One Directive whose stored facts cannot be judged (aegis-b9k): reported
+#: per item so the rest of the batch is still evaluated.
+UNKNOWN = "UNKNOWN"
 GRACE = dt.timedelta(days=2)
 EDGES = ("governedBy", "trackedBy")
 PROV = "http://www.w3.org/ns/prov#"
@@ -178,6 +181,15 @@ def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
             "due_at": due.isoformat() if due else None,
             "explicit_deadline": explicit_due is not None,
             "evidence": verdict, "owner": None}
+
+
+def unknown(entity: str, reason: str) -> dict:
+    """The record for a Directive whose deadline cannot be read as one
+    instant. Neither view guesses: no grace fallback, no lapse, no event."""
+    return {"entity": entity, "verdict": UNKNOWN, "event_id": None,
+            "lapse": UNKNOWN, "lapse_event_id": None, "due_at": None,
+            "explicit_deadline": False, "evidence": f"{UNKNOWN}: {reason}",
+            "owner": None}
 
 
 def is_directive(post, entity: str) -> bool:

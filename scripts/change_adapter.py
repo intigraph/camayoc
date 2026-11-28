@@ -276,6 +276,7 @@ def _directive(kind, post, request, instant, now):
     `directive` (verdict UNTRACED drives the proposer) and `directive-lapse`
     (LAPSED drives the alert, with the grace deadline as a next check)."""
     import directive_edges as de
+    from directive_deadline import DeadlineUnknown
     if request.get("discover"):
         return {"version": 1, "items": de.discover(post)}
     if "route" in request:
@@ -290,7 +291,14 @@ def _directive(kind, post, request, instant, now):
         # Filtering the scope itself makes the entire mixed batch UNKNOWN.
         if not de.is_directive(post, name):
             continue
-        r = de.judge(post, name, instant)
+        try:
+            r = de.judge(post, name, instant)
+        except DeadlineUnknown as exc:
+            # One Directive's conflicting or malformed deadline made the whole
+            # batch exit 1 and stay UNKNOWN (aegis-ztja/aegis-b9k). It is a fact
+            # about that item: report it UNKNOWN by name, judge the rest. A
+            # failed read is not this class and still fails the batch.
+            r = de.unknown(name, str(exc))
         if kind == "directive-lapse":
             r = {**r, "verdict": r["lapse"], "event_id": r["lapse_event_id"]}
         elif r["verdict"] == de.PROPOSED:
