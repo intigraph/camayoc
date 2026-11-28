@@ -1,7 +1,7 @@
 # Design: packs and one front door
 
-**Status: proposed (2026-11-28).** Nothing on this page is built unless a
-"today" column says so.
+**Status: accepted, not built (2026-11-28).** Nothing on this page is built
+unless a "today" column says so.
 
 Camayoc promises a memory that is checked on the way in. That holds on a store
 someone has prepared by hand, and it does not hold for a person starting
@@ -40,10 +40,17 @@ the second on the live one.
 | thing | what it is |
 |---|---|
 | **Pack** | One directory that declares a domain: its terms, shapes, stored queries, competency questions, memory entities and commands, with a manifest that names its version. |
-| **Installed pack** | A fact in the store: which pack, which version, which digest, loaded when and by whom. |
+| **Pendant** | The released form of a pack: the [certified share bundle](certified-knowledge-packs.md) Camayoc already publishes, named by its content hash. |
+| **Installed pack** | A fact in the store: which pack, which version, which content hash, loaded when and by whom. |
 | **Surface** | What an agent touches: a `cy` subcommand, an MCP tool, a skill. Each is generated from a pack. |
 | **Receipt** | The record of one call: the command, the caller, the outcome and, for a refusal, the reason. |
 | **Verdict** | The result of one competency question on one store: passes, fails or cannot tell. |
+
+A pack is source and a pendant is what ships. Camayoc keeps one distribution
+artifact: releasing a pack builds and certifies a pendant, and `cy pack load`
+loads either the source directory or a verified pendant. The content hash in
+the installed-pack fact is the pendant's hash, so `cy pack status` compares a
+store with a release by one value.
 
 ## A pack, start to finish
 
@@ -149,14 +156,14 @@ Each phase ships on its own.
 | **4. Commands** | Commands declared in packs and generated as CLI and MCP, receipts, grants in observe mode, and Desire Path as the feedback path. | aegis-ssx5 and its five children |
 | **5. Workflows in packs** | Shuttle definitions ship in packs, and pack commands perform code steps. | aegis-77y |
 
-## Decisions this needs
+## Decisions (ruled 2026-11-28)
 
-| # | decision | recommendation |
+| # | decision | ruling |
 |---|---|---|
 | 1 | Whether the pack is the unit and `cy` the only front door | Yes. Everything Camayoc owns moves into packs, and every user-facing script becomes a `cy` subcommand. It extends the generator that already produces the memory commands. |
-| 2 | How a first person or system gets into a store | `cy init` adds the first person and agent, and `cy entity add` adds more and refuses near-duplicates. The alternative, where `cy record` creates any name it does not know, would fill the store with misspelled duplicates. |
+| 2 | How a first person or system gets into a store | `cy init` adds the first person and agent, and `cy entity add` adds more and refuses near-duplicates. `cy record` never creates a name it does not know, because that would fill the store with misspelled duplicates. |
 | 3 | What loads without a person | An additive change loads after its dry run passes: a new query, a new optional property, a new class under a governed parent. A change that tightens or removes goes to a person. This follows the 2026-11-06 ruling that Camayoc should make adding shapes easier and not wait on one person. |
-| 4 | What goes first | Phase 0 now, as small items, because it repairs things that are broken today. Phases 1 to 3 queue behind the three milestones. Phase 4 keeps the rank epic aegis-ssx5 already has. |
+| 4 | What goes first | Phase 0 now, as small items under aegis-a1sn, because it repairs things that are broken today. Phases 1 to 3 queue behind the three milestones. Phase 4 keeps the rank epic aegis-ssx5 already has. |
 
 ## What stays the same
 
