@@ -4,12 +4,17 @@ Standalone REJECT shape set (sattler ruling 2026-11-28). The bytes are pinned so
 the Quipu proposal and the Gold declaration pin the same bytes. The pyshacl
 controls run when pyshacl is installed, as the other shape tests do.
 """
+import datetime as dt
 import hashlib
+import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHAPES = ROOT / "shapes/directive-deadline.shapes.ttl"
+sys.path.insert(0, str(ROOT / "scripts"))
+import directive_deadline as dd  # noqa: E402
+
 SHAPES_SHA256 = "f69a1a9c9691f5fab7ab99877eeda989c7b00e421098068de966ef13b765e9b7"
 
 try:
@@ -63,6 +68,33 @@ class DirectiveDeadlineShape(unittest.TestCase):
                 data = Graph().parse(data=DATA.format(due=due), format="turtle")
                 conforms, _, report = pyshacl.validate(data, shacl_graph=shapes)
                 self.assertEqual(conforms, expected, report)
+
+
+class CrossGraphConflictIsOutsideTheShape(unittest.TestCase):
+    """Review finding 3 on camayoc#298: the reader unions ROOT and the declared
+    graph, so two graphs each holding ONE deadline still conflict. A per-write
+    shape sees one graph's write at a time and cannot refuse that; the adapter's
+    per-item isolation (camayoc#299) is what carries it."""
+
+    PER_GRAPH = {dd.ROOT_GRAPH: "2030-12-05T00:00:00Z",
+                 "urn:quipu:graph:declared": "2030-12-06T00:00:00+01:00"}
+
+    def test_reader_refuses_the_union_of_two_single_deadlines(self) -> None:
+        def rows(_query, graph):
+            return [{"due": self.PER_GRAPH[graph], "datatype": dd.XSD_DATETIME}]
+        with self.assertRaisesRegex(ValueError, "conflicting traceability deadlines"):
+            dd.deadline(rows, "http://aegis.gastown.local/ontology/d",
+                        "urn:quipu:graph:declared", dt.datetime.fromisoformat)
+
+    @unittest.skipUnless(pyshacl, "pyshacl not installed")
+    def test_each_graph_alone_conforms(self) -> None:
+        shapes = Graph().parse(SHAPES)
+        for graph, value in self.PER_GRAPH.items():
+            with self.subTest(graph=graph):
+                due = f'; q:traceabilityDueAt "{value}"^^xsd:dateTime'
+                data = Graph().parse(data=DATA.format(due=due), format="turtle")
+                conforms, _, report = pyshacl.validate(data, shacl_graph=shapes)
+                self.assertTrue(conforms, report)
 
 
 if __name__ == "__main__":
